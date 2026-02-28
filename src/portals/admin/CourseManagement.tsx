@@ -28,11 +28,7 @@ export function CourseManagement(props: CourseEditorProps) {
   const [linkUrlDraft, setLinkUrlDraft] = useState("");
   const bodyInputRef = useRef<HTMLTextAreaElement | null>(null);
 
-  const pageSize = 6;
-  const totalPages = Math.max(1, Math.ceil(props.courses.length / pageSize));
-  const safePage = Math.min(page, totalPages);
-  const startIndex = (safePage - 1) * pageSize;
-  const visibleCourses = props.courses.slice(startIndex, startIndex + pageSize);
+  const visibleCourses = props.courses;
 
   const selectedCourse = props.courses.find((course) => course.id === selectedCourseId);
 
@@ -195,34 +191,6 @@ export function CourseManagement(props: CourseEditorProps) {
                   <div>New course</div>
                 </button>
               </div>
-              {totalPages > 1 && (
-                <div className="admin-course-pagination">
-                  <button type="button" className="admin-course-page-button" disabled={safePage === 1} onClick={() => setPage(Math.max(1, safePage - 1))}>
-                    Previous
-                  </button>
-                  {Array.from({ length: totalPages }).map((_, index) => {
-                    const pageNumber = index + 1;
-                    return (
-                      <button
-                        key={pageNumber}
-                        type="button"
-                        className={pageNumber === safePage ? "admin-course-page-button admin-course-page-button-active" : "admin-course-page-button"}
-                        onClick={() => setPage(pageNumber)}
-                      >
-                        {pageNumber}
-                      </button>
-                    );
-                  })}
-                  <button
-                    type="button"
-                    className="admin-course-page-button"
-                    disabled={safePage === totalPages}
-                    onClick={() => setPage(Math.min(totalPages, safePage + 1))}
-                  >
-                    Next
-                  </button>
-                </div>
-              )}
             </>
           )}
         </div>
@@ -427,11 +395,12 @@ export function CourseManagement(props: CourseEditorProps) {
                       style={{ display: "none" }}
                       onChange={(event) => {
                         const file = event.target.files?.[0];
-                        if (!file) {
-                          return;
-                        }
-                        const previewUrl = URL.createObjectURL(file);
-                        updateCourse({ ...selectedCourse, coverImageUrl: previewUrl });
+                        if (!file) return;
+                        const reader = new FileReader();
+                        reader.onloadend = () => {
+                          updateCourse({ ...selectedCourse, coverImageUrl: reader.result as string });
+                        };
+                        reader.readAsDataURL(file);
                       }}
                     />
                   </div>
@@ -950,10 +919,10 @@ export function CourseManagement(props: CourseEditorProps) {
                                           <span className="status-toggle-thumb" />
                                         </span>
                                       </button>
-                                      <button type="button" className="course-page-footer-button course-page-footer-cancel">
+                                      <button type="button" className="course-page-footer-button course-page-footer-cancel" onClick={() => setDetailSection("overview")}>
                                         CANCEL
                                       </button>
-                                      <button type="button" className="course-page-footer-button course-page-footer-save" disabled>
+                                      <button type="button" className="course-page-footer-button course-page-footer-save" onClick={() => setDetailSection("overview")}>
                                         SAVE
                                       </button>
                                     </div>
