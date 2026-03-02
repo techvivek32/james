@@ -652,8 +652,8 @@ export function CourseManagement(props: CourseEditorProps) {
                     <button type="button" className="btn-secondary btn-cancel" onClick={() => setViewMode("grid")}>
                       Cancel
                     </button>
-                    <button type="button" className="btn-primary btn-success" onClick={() => addPageForCourse(selectedCourse)}>
-                      Add
+                    <button type="button" className="btn-primary btn-success" onClick={() => setDetailSection("pages")}>
+                      Course Details
                     </button>
                   </div>
                 </>
