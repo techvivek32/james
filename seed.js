@@ -1,3 +1,4 @@
+const bcrypt = require("bcryptjs");
 const mongoose = require("mongoose");
 
 const uri = "mongodb://localhost:27017/millerstorm";
@@ -7,6 +8,7 @@ const mockUsers = [
     id: "admin-1",
     name: "Alex Morgan",
     email: "alex.morgan@company.com",
+    password: "admin123",
     role: "admin",
     strengths: "Strategic vision, leadership, cross-functional execution",
     weaknesses: "Delegation, overcommitting to initiatives",
@@ -55,6 +57,7 @@ const mockUsers = [
     id: "manager-1",
     name: "Brooke Taylor",
     email: "brooke.taylor@company.com",
+    password: "manager123",
     role: "manager",
     strengths: "Coaching, pipeline management, recruiting",
     weaknesses: "Time management, saying no",
@@ -103,6 +106,7 @@ const mockUsers = [
     id: "sales-1",
     name: "Chris Lee",
     email: "chris.lee@company.com",
+    password: "sales123",
     role: "sales",
     managerId: "manager-1",
     strengths: "Door knocking, rapport building, objection handling",
@@ -152,6 +156,7 @@ const mockUsers = [
     id: "marketing-1",
     name: "Dana Smith",
     email: "dana.smith@company.com",
+    password: "marketing123",
     role: "marketing",
     strengths: "Content strategy, social campaigns, analytics",
     weaknesses: "Saying no to ad-hoc requests",
@@ -291,6 +296,7 @@ const userSchema = new mongoose.Schema({
   headshotUrl: String,
   phone: String,
   territory: String,
+  passwordHash: String,
   publicProfile: mongoose.Schema.Types.Mixed,
   webPage: mongoose.Schema.Types.Mixed,
   featureToggles: mongoose.Schema.Types.Mixed
@@ -328,8 +334,16 @@ async function seed() {
     await Course.deleteMany({});
     console.log("✅ Cleared existing data");
 
-    await User.insertMany(mockUsers);
-    console.log(`✅ Seeded ${mockUsers.length} users`);
+    const usersWithHash = await Promise.all(
+      mockUsers.map(async (user) => {
+        const { password, ...rest } = user;
+        const passwordHash = await bcrypt.hash(password, 10);
+        return { ...rest, passwordHash };
+      })
+    );
+
+    await User.insertMany(usersWithHash);
+    console.log(`✅ Seeded ${usersWithHash.length} users`);
 
     await Course.insertMany(initialCourses);
     console.log(`✅ Seeded ${initialCourses.length} courses`);

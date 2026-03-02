@@ -65,7 +65,6 @@ const Training: NextPage = () => {
           items={sidebarItems}
           activeId="training"
           onSelect={handleNavigation}
-          onLogout={handleLogout}
           isCollapsed={isSidebarCollapsed}
           onToggleCollapse={() => setIsSidebarCollapsed((prev) => !prev)}
         />

@@ -60,7 +60,6 @@ const Materials: NextPage = () => {
           items={sidebarItems}
           activeId="materials"
           onSelect={handleNavigation}
-          onLogout={handleLogout}
           isCollapsed={isSidebarCollapsed}
           onToggleCollapse={() => setIsSidebarCollapsed((prev) => !prev)}
         />

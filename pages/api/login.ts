@@ -97,15 +97,15 @@ export default async function handler(
     return;
   }
 
-  if (user.passwordHash) {
-    const match = await bcrypt.compare(normalizedPassword, user.passwordHash);
-    if (!match) {
-      res.status(401).json({ error: "Invalid credentials" });
-      return;
-    }
-  } else {
-    const passwordHash = await bcrypt.hash(normalizedPassword, 10);
-    await UserModel.updateOne({ id: user.id }, { passwordHash });
+  if (!user.passwordHash) {
+    res.status(401).json({ error: "No password set. Please contact admin." });
+    return;
+  }
+
+  const match = await bcrypt.compare(normalizedPassword, user.passwordHash);
+  if (!match) {
+    res.status(401).json({ error: "Invalid credentials" });
+    return;
   }
 
   res.status(200).json(sanitizeUser(user));

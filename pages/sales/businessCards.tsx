@@ -60,7 +60,6 @@ const BusinessCards: NextPage = () => {
           items={sidebarItems}
           activeId="businessCards"
           onSelect={handleNavigation}
-          onLogout={handleLogout}
           isCollapsed={isSidebarCollapsed}
           onToggleCollapse={() => setIsSidebarCollapsed((prev) => !prev)}
         />

@@ -60,7 +60,6 @@ const AiChat: NextPage = () => {
           items={sidebarItems}
           activeId="aiChat"
           onSelect={handleNavigation}
-          onLogout={handleLogout}
           isCollapsed={isSidebarCollapsed}
           onToggleCollapse={() => setIsSidebarCollapsed((prev) => !prev)}
         />

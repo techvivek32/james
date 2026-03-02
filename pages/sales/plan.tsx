@@ -73,7 +73,6 @@ const Plan: NextPage = () => {
           items={sidebarItems}
           activeId="plan"
           onSelect={handleNavigation}
-          onLogout={handleLogout}
           isCollapsed={isSidebarCollapsed}
           onToggleCollapse={() => setIsSidebarCollapsed((prev) => !prev)}
         />

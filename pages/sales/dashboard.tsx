@@ -60,7 +60,6 @@ const DashboardPage: NextPage = () => {
           items={sidebarItems}
           activeId="dashboard"
           onSelect={handleNavigation}
-          onLogout={handleLogout}
           isCollapsed={isSidebarCollapsed}
           onToggleCollapse={() => setIsSidebarCollapsed((prev) => !prev)}
         />
