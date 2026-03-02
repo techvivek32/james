@@ -73,6 +73,12 @@ export function App() {
     return users.find((u) => u.id === currentUser.id) ?? null;
   }, [currentUser, users]);
 
+  useEffect(() => {
+    if (currentProfile?.suspended) {
+      handleLogout();
+    }
+  }, [currentProfile?.suspended]);
+
   async function handleLogin(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setLoginError("");

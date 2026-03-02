@@ -340,7 +340,7 @@ export function UserManagement(props: UserEditorProps) {
           <div className="panel-scroll">
             <div className="panel-header">
               <div className="panel-header-row">
-                <span>User Details</span>
+                <span>User Details{selectedUser.suspended && <span style={{ color: "#dc2626", marginLeft: 8 }}>• SUSPENDED</span>}</span>
                 <div className="panel-header-actions">
                   <button type="button" className="btn-primary btn-small" disabled={!isDirty} onClick={() => {
                     const usersToSave = draftUsers.map((user) => {
@@ -361,8 +361,11 @@ export function UserManagement(props: UserEditorProps) {
                   }}>Save Changes</button>
                   {saveNotice && <span style={{ fontSize: 12, color: "#16a34a" }}>{saveNotice}</span>}
                   <button type="button" className="btn-secondary btn-warning btn-small" onClick={() => {
-                    if (window.confirm(`Suspend ${selectedUser.name}?`)) updateUser({ ...selectedUser, suspended: true });
-                  }}>Suspend User</button>
+                    const action = selectedUser.suspended ? "Unsuspend" : "Suspend";
+                    if (window.confirm(`${action} ${selectedUser.name}?`)) {
+                      updateUser({ ...selectedUser, suspended: !selectedUser.suspended });
+                    }
+                  }}>{selectedUser.suspended ? "Unsuspend User" : "Suspend User"}</button>
                   <button type="button" className="btn-ghost btn-danger" onClick={() => {
                     if (window.confirm(`Delete ${selectedUser.name}?`)) deleteUser(selectedUser.id);
                   }}>Delete User</button>

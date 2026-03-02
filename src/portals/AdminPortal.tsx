@@ -644,7 +644,7 @@ function UserManagement(props: UserEditorProps) {
           <div className="panel-scroll">
             <div className="panel-header">
               <div className="panel-header-row">
-                <span>User Details</span>
+                <span>User Details{selectedUser.suspended && <span style={{ color: "#dc2626", marginLeft: 8 }}>• SUSPENDED</span>}</span>
                 <div className="panel-header-actions">
                   <button
                     type="button"

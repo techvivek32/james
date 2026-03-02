@@ -97,6 +97,11 @@ export default async function handler(
     return;
   }
 
+  if (user.suspended) {
+    res.status(403).json({ error: "Account suspended. Contact administrator." });
+    return;
+  }
+
   if (!user.passwordHash) {
     res.status(401).json({ error: "No password set. Please contact admin." });
     return;
