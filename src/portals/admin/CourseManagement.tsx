@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useRef, useState, useEffect } from "react";
 import { Course, CoursePage, CourseFolder } from "../../types";
 
 type CourseEditorProps = {
@@ -26,11 +26,23 @@ export function CourseManagement(props: CourseEditorProps) {
   const [isLinkModalOpen, setIsLinkModalOpen] = useState(false);
   const [linkLabelDraft, setLinkLabelDraft] = useState("");
   const [linkUrlDraft, setLinkUrlDraft] = useState("");
-  const bodyInputRef = useRef<HTMLTextAreaElement | null>(null);
+  const bodyInputRef = useRef<HTMLDivElement | null>(null);
+  const [lastPageId, setLastPageId] = useState<string | null>(null);
+  const [activeFormats, setActiveFormats] = useState<Set<string>>(new Set());
 
   const visibleCourses = props.courses;
 
   const selectedCourse = props.courses.find((course) => course.id === selectedCourseId);
+
+  useEffect(() => {
+    if (bodyInputRef.current && activePageId) {
+      const course = props.courses.find((c) => c.id === selectedCourseId);
+      const page = course?.pages?.find((p) => p.id === activePageId);
+      if (page && bodyInputRef.current.innerHTML !== page.body) {
+        bodyInputRef.current.innerHTML = page.body || "";
+      }
+    }
+  }, [activePageId, selectedCourseId, props.courses]);
 
   function updateCourse(updated: Course) {
     const next = props.courses.map((course) => (course.id === updated.id ? updated : course));
@@ -509,42 +521,76 @@ export function CourseManagement(props: CourseEditorProps) {
                           const pages = selectedCourse.pages ?? [];
                           const folders = selectedCourse.folders ?? [];
                           const activePage = pages.find((page) => page.id === activePageId) ?? pages[pages.length - 1] ?? pages[0];
-                          function applyFormatting(kind: "h1" | "h2" | "h3" | "h4" | "bold" | "italic" | "strike" | "code" | "ul" | "ol" | "quote") {
-                            if (!activePage) return;
-                            const textarea = bodyInputRef.current;
-                            if (!textarea) return;
-                            const value = textarea.value;
-                            const start = textarea.selectionStart ?? 0;
-                            const end = textarea.selectionEnd ?? start;
-                            const selected = value.slice(start, end);
-                            let replacement = selected;
-                            if (kind === "h1") replacement = selected ? `# ${selected}` : "# ";
-                            else if (kind === "h2") replacement = selected ? `## ${selected}` : "## ";
-                            else if (kind === "h3") replacement = selected ? `### ${selected}` : "### ";
-                            else if (kind === "h4") replacement = selected ? `#### ${selected}` : "#### ";
-                            else if (kind === "bold") replacement = selected ? `**${selected}**` : "**bold text**";
-                            else if (kind === "italic") replacement = selected ? `_${selected}_` : "_italic text_";
-                            else if (kind === "strike") replacement = selected ? `~~${selected}~~` : "~~text~~";
-                            else if (kind === "code") replacement = selected ? `\`${selected}\`` : "`code`";
-                            else if (kind === "ul") {
-                              const block = selected || "List item";
-                              replacement = block.split("\n").map((line) => (line ? `- ${line}` : "- ")).join("\n");
-                            } else if (kind === "ol") {
-                              const block = selected || "List item";
-                              let index = 1;
-                              replacement = block.split("\n").map((line) => {
-                                const text = line || "Item";
-                                const current = `${index}. ${text}`;
-                                index += 1;
-                                return current;
-                              }).join("\n");
+                          function applyFormatting(kind: "h1" | "h2" | "h3" | "h4" | "bold" | "italic" | "underline" | "strike" | "code" | "ul" | "ol" | "quote") {
+                            if (kind === "code") {
+                              const selection = window.getSelection();
+                              if (selection && selection.rangeCount > 0) {
+                                const range = selection.getRangeAt(0);
+                                const node = selection.anchorNode;
+                                let parent = node?.parentElement;
+                                let codeElement = null;
+                                while (parent && parent !== bodyInputRef.current) {
+                                  if (parent.tagName === "CODE") {
+                                    codeElement = parent;
+                                    break;
+                                  }
+                                  parent = parent.parentElement;
+                                }
+                                if (codeElement) {
+                                  const text = codeElement.textContent || "";
+                                  const textNode = document.createTextNode(text);
+                                  codeElement.parentNode?.replaceChild(textNode, codeElement);
+                                } else if (!selection.isCollapsed) {
+                                  const selectedText = range.toString();
+                                  const code = document.createElement("code");
+                                  code.style.backgroundColor = "#f4f4f4";
+                                  code.style.padding = "2px 4px";
+                                  code.style.borderRadius = "3px";
+                                  code.style.fontFamily = "monospace";
+                                  code.textContent = selectedText;
+                                  range.deleteContents();
+                                  range.insertNode(code);
+                                }
+                              }
                             } else if (kind === "quote") {
-                              const block = selected || "Quote";
-                              replacement = block.split("\n").map((line) => (line ? `> ${line}` : "> ")).join("\n");
+                              const currentBlock = document.queryCommandValue("formatBlock");
+                              if (currentBlock.toLowerCase() === "blockquote") {
+                                document.execCommand("formatBlock", false, "p");
+                              } else {
+                                document.execCommand("formatBlock", false, "blockquote");
+                              }
+                            } else {
+                              document.execCommand(kind === "h1" ? "formatBlock" : kind === "h2" ? "formatBlock" : kind === "h3" ? "formatBlock" : kind === "h4" ? "formatBlock" : kind === "bold" ? "bold" : kind === "italic" ? "italic" : kind === "underline" ? "underline" : kind === "strike" ? "strikeThrough" : kind === "ul" ? "insertUnorderedList" : kind === "ol" ? "insertOrderedList" : "", false, kind === "h1" ? "h1" : kind === "h2" ? "h2" : kind === "h3" ? "h3" : kind === "h4" ? "h4" : undefined);
                             }
-                            const nextBody = value.slice(0, start) + replacement + value.slice(end);
-                            const nextPages = pages.map((page) => (page.id === activePage.id ? { ...page, body: nextBody } : page));
-                            updateCourse({ ...(selectedCourse as Course), pages: nextPages });
+                            const editor = bodyInputRef.current;
+                            if (editor) {
+                              const nextBody = editor.innerHTML;
+                              const nextPages = pages.map((page) => (page.id === activePage.id ? { ...page, body: nextBody } : page));
+                              updateCourse({ ...(selectedCourse as Course), pages: nextPages });
+                            }
+                            updateActiveFormats();
+                          }
+                          function updateActiveFormats() {
+                            const formats = new Set<string>();
+                            if (document.queryCommandState("bold")) formats.add("bold");
+                            if (document.queryCommandState("italic")) formats.add("italic");
+                            if (document.queryCommandState("underline")) formats.add("underline");
+                            if (document.queryCommandState("strikeThrough")) formats.add("strike");
+                            if (document.queryCommandState("insertUnorderedList")) formats.add("ul");
+                            if (document.queryCommandState("insertOrderedList")) formats.add("ol");
+                            const value = document.queryCommandValue("formatBlock");
+                            if (value) formats.add(value.toLowerCase());
+                            const selection = window.getSelection();
+                            if (selection && selection.rangeCount > 0) {
+                              const node = selection.anchorNode;
+                              let parent = node?.parentElement;
+                              while (parent && parent !== bodyInputRef.current) {
+                                if (parent.tagName === "CODE") formats.add("code");
+                                if (parent.tagName === "BLOCKQUOTE") formats.add("quote");
+                                parent = parent.parentElement;
+                              }
+                            }
+                            setActiveFormats(formats);
                           }
                           return (
                             <>
@@ -794,17 +840,21 @@ export function CourseManagement(props: CourseEditorProps) {
                                   <>
                                     <div className="course-page-main-header">
                                       <div className="course-page-toolbar">
-                                        <button type="button" className="course-page-toolbar-button" onClick={() => applyFormatting("h1")}>H1</button>
-                                        <button type="button" className="course-page-toolbar-button" onClick={() => applyFormatting("h2")}>H2</button>
-                                        <button type="button" className="course-page-toolbar-button" onClick={() => applyFormatting("h3")}>H3</button>
-                                        <button type="button" className="course-page-toolbar-button" onClick={() => applyFormatting("h4")}>H4</button>
-                                        <button type="button" className="course-page-toolbar-button course-page-toolbar-button-bold" onClick={() => applyFormatting("bold")}>B</button>
-                                        <button type="button" className="course-page-toolbar-button" onClick={() => applyFormatting("italic")}>I</button>
-                                        <button type="button" className="course-page-toolbar-button" onClick={() => applyFormatting("strike")}>S</button>
-                                        <button type="button" className="course-page-toolbar-button course-page-toolbar-button-icon" onClick={() => applyFormatting("code")}>{"</>"}</button>
-                                        <button type="button" className="course-page-toolbar-button course-page-toolbar-button-icon" onClick={() => applyFormatting("ul")}>•</button>
-                                        <button type="button" className="course-page-toolbar-button course-page-toolbar-button-icon" onClick={() => applyFormatting("ol")}>1.</button>
-                                        <button type="button" className="course-page-toolbar-button course-page-toolbar-button-icon" onClick={() => applyFormatting("quote")}>"</button>
+                                        <button type="button" className={activeFormats.has("h1") ? "course-page-toolbar-button active" : "course-page-toolbar-button"} onClick={() => applyFormatting("h1")}>H1</button>
+                                        <button type="button" className={activeFormats.has("h2") ? "course-page-toolbar-button active" : "course-page-toolbar-button"} onClick={() => applyFormatting("h2")}>H2</button>
+                                        <button type="button" className={activeFormats.has("h3") ? "course-page-toolbar-button active" : "course-page-toolbar-button"} onClick={() => applyFormatting("h3")}>H3</button>
+                                        <button type="button" className={activeFormats.has("h4") ? "course-page-toolbar-button active" : "course-page-toolbar-button"} onClick={() => applyFormatting("h4")}>H4</button>
+                                        <span style={{ borderLeft: "1px solid #ddd", height: "20px", margin: "0 8px" }} />
+                                        <button type="button" className={activeFormats.has("bold") ? "course-page-toolbar-button course-page-toolbar-button-bold active" : "course-page-toolbar-button course-page-toolbar-button-bold"} onClick={() => applyFormatting("bold")}>B</button>
+                                        <button type="button" className={activeFormats.has("italic") ? "course-page-toolbar-button course-page-toolbar-button-italic active" : "course-page-toolbar-button course-page-toolbar-button-italic"} onClick={() => applyFormatting("italic")}>I</button>
+                                        <button type="button" className={activeFormats.has("underline") ? "course-page-toolbar-button active" : "course-page-toolbar-button"} onClick={() => applyFormatting("underline")}>U</button>
+                                        <button type="button" className={activeFormats.has("strike") ? "course-page-toolbar-button course-page-toolbar-button-strike active" : "course-page-toolbar-button course-page-toolbar-button-strike"} onClick={() => applyFormatting("strike")}>S</button>
+                                        <button type="button" className={activeFormats.has("code") ? "course-page-toolbar-button course-page-toolbar-button-icon active" : "course-page-toolbar-button course-page-toolbar-button-icon"} onClick={() => applyFormatting("code")}>{"</>"}</button>
+                                        <span style={{ borderLeft: "1px solid #ddd", height: "20px", margin: "0 8px" }} />
+                                        <button type="button" className={activeFormats.has("ul") ? "course-page-toolbar-button course-page-toolbar-button-icon active" : "course-page-toolbar-button course-page-toolbar-button-icon"} onClick={() => applyFormatting("ul")}>•</button>
+                                        <button type="button" className={activeFormats.has("ol") ? "course-page-toolbar-button course-page-toolbar-button-icon active" : "course-page-toolbar-button course-page-toolbar-button-icon"} onClick={() => applyFormatting("ol")}>1.</button>
+                                        <button type="button" className={activeFormats.has("quote") ? "course-page-toolbar-button course-page-toolbar-button-icon active" : "course-page-toolbar-button course-page-toolbar-button-icon"} onClick={() => applyFormatting("quote")}>"</button>
+                                        <span style={{ borderLeft: "1px solid #ddd", height: "20px", margin: "0 8px" }} />
                                         <button type="button" className="course-page-toolbar-button course-page-toolbar-button-icon">🖼</button>
                                         <button type="button" className="course-page-toolbar-button course-page-toolbar-button-icon">🔗</button>
                                         <button
@@ -828,15 +878,31 @@ export function CourseManagement(props: CourseEditorProps) {
                                       />
                                     </div>
                                     <div className="course-page-editor-body">
-                                      <textarea
+                                      <div
                                         ref={bodyInputRef}
                                         className="course-page-body-input"
-                                        rows={10}
-                                        value={activePage.body}
-                                        placeholder="Start writing your content for this page."
-                                        onChange={(event) => {
-                                          const nextPages = pages.map((page) => (page.id === activePage.id ? { ...page, body: event.target.value } : page));
+                                        contentEditable
+                                        suppressContentEditableWarning
+                                        onInput={(event) => {
+                                          const nextBody = event.currentTarget.innerHTML;
+                                          const nextPages = pages.map((page) => (page.id === activePage.id ? { ...page, body: nextBody } : page));
                                           updateCourse({ ...selectedCourse, pages: nextPages });
+                                        }}
+                                        onMouseUp={updateActiveFormats}
+                                        onKeyUp={updateActiveFormats}
+                                        onFocus={(event) => {
+                                          if (activePageId !== lastPageId) {
+                                            event.currentTarget.innerHTML = activePage.body || "";
+                                            setLastPageId(activePageId);
+                                          }
+                                        }}
+                                        style={{
+                                          minHeight: "200px",
+                                          padding: "12px",
+                                          border: "1px solid #ddd",
+                                          borderRadius: "4px",
+                                          outline: "none",
+                                          whiteSpace: "pre-wrap"
                                         }}
                                       />
                                     </div>
