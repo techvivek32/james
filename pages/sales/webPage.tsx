@@ -1,16 +1,11 @@
 import type { NextPage } from "next";
 import { useEffect, useState } from "react";
-import { Layout } from "../../src/components/Layout";
-import { SalesSidebar } from "../../src/components/SalesSidebar";
-import { Header } from "../../src/components/Header";
+import { SalesLayout } from "../../src/portals/sales/SalesLayout";
 import { WebPagePreview } from "../../src/portals/sales/WebPagePreview";
-import { useAuth } from "../../src/contexts/AuthContext";
 import { UserProfile } from "../../src/types";
 
 const WebPage: NextPage = () => {
-  const { logout } = useAuth();
   const [profile, setProfile] = useState<UserProfile | null>(null);
-  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
 
   useEffect(() => {
     async function loadData() {
@@ -46,27 +41,9 @@ const WebPage: NextPage = () => {
   }
 
   return (
-    <Layout
-      isSidebarCollapsed={isSidebarCollapsed}
-      sidebar={
-        <SalesSidebar
-          activeId="webPage"
-          isCollapsed={isSidebarCollapsed}
-          onToggleCollapse={() => setIsSidebarCollapsed((prev) => !prev)}
-        />
-      }
-      header={
-        <Header
-          title="Sales OS"
-          subtitle="Sales rep view"
-          userName={profile.name}
-          roleLabel="Sales Rep"
-          onLogout={logout}
-        />
-      }
-    >
+    <SalesLayout currentView="webPage" userName={profile.name}>
       <WebPagePreview profile={profile} onProfileChange={handleProfileChange} />
-    </Layout>
+    </SalesLayout>
   );
 };
 

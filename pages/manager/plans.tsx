@@ -1,16 +1,11 @@
 import type { NextPage } from "next";
 import { useEffect, useState } from "react";
-import { Layout } from "../../src/components/Layout";
-import { ManagerSidebar } from "../../src/components/ManagerSidebar";
-import { Header } from "../../src/components/Header";
+import { ManagerLayout } from "../../src/portals/manager/ManagerLayout";
 import { TeamBusinessPlansPage } from "../../src/portals/manager/TeamBusinessPlans";
-import { useAuth } from "../../src/contexts/AuthContext";
 import { UserProfile } from "../../src/types";
 
 const PlansPage: NextPage = () => {
-  const { logout } = useAuth();
   const [teamMembers, setTeamMembers] = useState<UserProfile[]>([]);
-  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
 
   useEffect(() => {
     async function loadData() {
@@ -41,27 +36,9 @@ const PlansPage: NextPage = () => {
   }
 
   return (
-    <Layout
-      isSidebarCollapsed={isSidebarCollapsed}
-      header={
-        <Header
-          title="Unified Sales & Marketing OS"
-          subtitle="Manager view"
-          userName="Manager"
-          roleLabel="Manager"
-          onLogout={logout}
-        />
-      }
-      sidebar={
-        <ManagerSidebar
-          activeId="plans"
-          isCollapsed={isSidebarCollapsed}
-          onToggleCollapse={() => setIsSidebarCollapsed((prev) => !prev)}
-        />
-      }
-    >
+    <ManagerLayout currentView="plans">
       <TeamBusinessPlansPage teamMembers={teamMembers} onTeamMembersChange={handleTeamMembersChange} />
-    </Layout>
+    </ManagerLayout>
   );
 };
 

@@ -1,17 +1,12 @@
 import type { NextPage } from "next";
 import { useEffect, useState } from "react";
-import { Layout } from "../../src/components/Layout";
-import { ManagerSidebar } from "../../src/components/ManagerSidebar";
-import { Header } from "../../src/components/Header";
+import { ManagerLayout } from "../../src/portals/manager/ManagerLayout";
 import { TaskTracker } from "../../src/portals/manager/TaskTracker";
-import { useAuth } from "../../src/contexts/AuthContext";
 import { UserProfile, Course } from "../../src/types";
 
 const TaskTrackerPage: NextPage = () => {
-  const { logout } = useAuth();
   const [teamMembers, setTeamMembers] = useState<UserProfile[]>([]);
   const [courses, setCourses] = useState<Course[]>([]);
-  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
 
   useEffect(() => {
     async function loadData() {
@@ -33,27 +28,9 @@ const TaskTrackerPage: NextPage = () => {
   }, []);
 
   return (
-    <Layout
-      isSidebarCollapsed={isSidebarCollapsed}
-      header={
-        <Header
-          title="Unified Sales & Marketing OS"
-          subtitle="Manager view"
-          userName="Manager"
-          roleLabel="Manager"
-          onLogout={logout}
-        />
-      }
-      sidebar={
-        <ManagerSidebar
-          activeId="taskTracker"
-          isCollapsed={isSidebarCollapsed}
-          onToggleCollapse={() => setIsSidebarCollapsed((prev) => !prev)}
-        />
-      }
-    >
+    <ManagerLayout currentView="taskTracker">
       <TaskTracker teamMembers={teamMembers} courses={courses} />
-    </Layout>
+    </ManagerLayout>
   );
 };
 

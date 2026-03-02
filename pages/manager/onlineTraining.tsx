@@ -1,16 +1,11 @@
 import type { NextPage } from "next";
 import { useEffect, useState } from "react";
-import { Layout } from "../../src/components/Layout";
-import { ManagerSidebar } from "../../src/components/ManagerSidebar";
-import { Header } from "../../src/components/Header";
+import { ManagerLayout } from "../../src/portals/manager/ManagerLayout";
 import { ManagerOnlineTrainingPage } from "../../src/portals/manager/OnlineTraining";
-import { useAuth } from "../../src/contexts/AuthContext";
 import { Course, AuthenticatedUser } from "../../src/types";
 
 const OnlineTrainingPage: NextPage = () => {
-  const { logout } = useAuth();
   const [courses, setCourses] = useState<Course[]>([]);
-  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const currentUser: AuthenticatedUser = { id: "manager-1", name: "Manager", role: "manager" };
 
   useEffect(() => {
@@ -26,27 +21,9 @@ const OnlineTrainingPage: NextPage = () => {
   }, []);
 
   return (
-    <Layout
-      isSidebarCollapsed={isSidebarCollapsed}
-      header={
-        <Header
-          title="Unified Sales & Marketing OS"
-          subtitle="Manager view"
-          userName="Manager"
-          roleLabel="Manager"
-          onLogout={logout}
-        />
-      }
-      sidebar={
-        <ManagerSidebar
-          activeId="onlineTraining"
-          isCollapsed={isSidebarCollapsed}
-          onToggleCollapse={() => setIsSidebarCollapsed((prev) => !prev)}
-        />
-      }
-    >
+    <ManagerLayout currentView="onlineTraining">
       <ManagerOnlineTrainingPage currentUser={currentUser} courses={courses} />
-    </Layout>
+    </ManagerLayout>
   );
 };
 

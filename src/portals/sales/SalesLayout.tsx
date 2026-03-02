@@ -1,0 +1,44 @@
+import { useState } from "react";
+import { Layout } from "../../components/Layout";
+import { SalesSidebar } from "../../components/SalesSidebar";
+import { Header } from "../../components/Header";
+import { useAuth } from "../../contexts/AuthContext";
+
+type SalesViewId = "dashboard" | "profile" | "plan" | "training" | "materials" | "aiChat" | "webPage" | "businessCards";
+
+type SalesLayoutProps = {
+  children: React.ReactNode;
+  currentView: SalesViewId;
+  userName?: string;
+};
+
+export function SalesLayout({ children, currentView, userName }: SalesLayoutProps) {
+  const { logout } = useAuth();
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+
+  return (
+    <Layout
+      isSidebarCollapsed={isSidebarCollapsed}
+      header={
+        <Header
+          title="Sales OS"
+          subtitle="Sales rep view"
+          userName={userName ?? "Sales Rep"}
+          roleLabel="Sales Rep"
+          onLogout={logout}
+        />
+      }
+      sidebar={
+        <SalesSidebar
+          activeId={currentView}
+          isCollapsed={isSidebarCollapsed}
+          onToggleCollapse={() => setIsSidebarCollapsed((prev) => !prev)}
+        />
+      }
+    >
+      {children}
+    </Layout>
+  );
+}
+
+export type { SalesViewId };

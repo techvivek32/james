@@ -1,37 +1,12 @@
 import type { NextPage } from "next";
-import { useState } from "react";
-import { Layout } from "../../src/components/Layout";
-import { MarketingSidebar } from "../../src/components/MarketingSidebar";
-import { Header } from "../../src/components/Header";
+import { MarketingLayout } from "../../src/portals/marketing/MarketingLayout";
 import { MarketingDashboard } from "../../src/portals/marketing/Dashboard";
-import { useAuth } from "../../src/contexts/AuthContext";
 
 const DashboardPage: NextPage = () => {
-  const { logout } = useAuth();
-  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
-
   return (
-    <Layout
-      isSidebarCollapsed={isSidebarCollapsed}
-      header={
-        <Header
-          title="Unified Sales & Marketing OS"
-          subtitle="Marketing view"
-          userName="Marketing"
-          roleLabel="Marketing"
-          onLogout={logout}
-        />
-      }
-      sidebar={
-        <MarketingSidebar
-          activeId="dashboard"
-          isCollapsed={isSidebarCollapsed}
-          onToggleCollapse={() => setIsSidebarCollapsed((prev) => !prev)}
-        />
-      }
-    >
+    <MarketingLayout currentView="dashboard">
       <MarketingDashboard />
-    </Layout>
+    </MarketingLayout>
   );
 };
 

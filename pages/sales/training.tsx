@@ -1,17 +1,12 @@
 import type { NextPage } from "next";
 import { useEffect, useState } from "react";
-import { Layout } from "../../src/components/Layout";
-import { SalesSidebar } from "../../src/components/SalesSidebar";
-import { Header } from "../../src/components/Header";
+import { SalesLayout } from "../../src/portals/sales/SalesLayout";
 import { TrainingCenter } from "../../src/portals/sales/TrainingCenter";
-import { useAuth } from "../../src/contexts/AuthContext";
 import { UserProfile, Course } from "../../src/types";
 
 const Training: NextPage = () => {
-  const { logout } = useAuth();
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [courses, setCourses] = useState<Course[]>([]);
-  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
 
   useEffect(() => {
     async function loadData() {
@@ -38,27 +33,9 @@ const Training: NextPage = () => {
   }
 
   return (
-    <Layout
-      isSidebarCollapsed={isSidebarCollapsed}
-      sidebar={
-        <SalesSidebar
-          activeId="training"
-          isCollapsed={isSidebarCollapsed}
-          onToggleCollapse={() => setIsSidebarCollapsed((prev) => !prev)}
-        />
-      }
-      header={
-        <Header
-          title="Sales OS"
-          subtitle="Sales rep view"
-          userName={profile.name}
-          roleLabel="Sales Rep"
-          onLogout={logout}
-        />
-      }
-    >
+    <SalesLayout currentView="training" userName={profile.name}>
       <TrainingCenter courses={courses} />
-    </Layout>
+    </SalesLayout>
   );
 };
 
