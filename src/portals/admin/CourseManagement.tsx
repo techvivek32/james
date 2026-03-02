@@ -23,6 +23,7 @@ export function CourseManagement(props: CourseEditorProps) {
   const [isAddMenuOpen, setIsAddMenuOpen] = useState(false);
   const [isVideoModalOpen, setIsVideoModalOpen] = useState(false);
   const [videoUrlDraft, setVideoUrlDraft] = useState("");
+  const videoFileInputRef = useRef<HTMLInputElement | null>(null);
   const [isLinkModalOpen, setIsLinkModalOpen] = useState(false);
   const [linkLabelDraft, setLinkLabelDraft] = useState("");
   const [linkUrlDraft, setLinkUrlDraft] = useState("");
@@ -322,9 +323,55 @@ export function CourseManagement(props: CourseEditorProps) {
           if (!trimmed) {
             return;
           }
-          const nextPages = pages.map((page) => (page.id === pageForVideo.id ? { ...page, videoUrl: trimmed } : page));
-          updateCourse({ ...(course as Course), pages: nextPages });
+          
+          const isYouTube = trimmed.includes("youtube.com") || trimmed.includes("youtu.be");
+          let videoHtml = "";
+          
+          if (isYouTube) {
+            const match = trimmed.match(/(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/ ]{11})/);
+            const videoId = match ? match[1] : "";
+            if (videoId) {
+              videoHtml = `<div contenteditable="false" style="margin: 16px 0; width: 100%; aspect-ratio: 16/9; background: #000; border-radius: 12px; overflow: hidden;"><iframe src="https://www.youtube.com/embed/${videoId}" style="width: 100%; height: 100%; border: none;" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe></div>`;
+            }
+          } else if (trimmed.startsWith("data:video")) {
+            videoHtml = `<div contenteditable="false" style="margin: 16px 0; width: 100%; aspect-ratio: 16/9; background: #000; border-radius: 12px; overflow: hidden;"><video controls style="width: 100%; height: 100%; object-fit: contain;"><source src="${trimmed}"></video></div>`;
+          } else {
+            videoHtml = `<div contenteditable="false" style="margin: 16px 0; width: 100%; aspect-ratio: 16/9; background: #000; border-radius: 12px; overflow: hidden;"><video controls src="${trimmed}" style="width: 100%; height: 100%; object-fit: contain;"></video></div>`;
+          }
+          
+          if (bodyInputRef.current && videoHtml) {
+            bodyInputRef.current.focus();
+            const selection = window.getSelection();
+            if (selection && selection.rangeCount > 0) {
+              const range = selection.getRangeAt(0);
+              range.deleteContents();
+              const tempDiv = document.createElement("div");
+              tempDiv.innerHTML = videoHtml + '<p><br></p>';
+              const videoNode = tempDiv.firstChild!;
+              const lineBreak = tempDiv.lastChild!;
+              range.insertNode(lineBreak);
+              range.insertNode(videoNode);
+              
+              const newRange = document.createRange();
+              newRange.setStartAfter(lineBreak);
+              newRange.collapse(true);
+              selection.removeAllRanges();
+              selection.addRange(newRange);
+            } else {
+              bodyInputRef.current.innerHTML += videoHtml + '<p><br></p>';
+            }
+            
+            setTimeout(() => {
+              if (bodyInputRef.current) {
+                const nextBody = bodyInputRef.current.innerHTML;
+                const nextPages = pages.map((page) => (page.id === pageForVideo.id ? { ...page, body: nextBody } : page));
+                updateCourse({ ...(course as Course), pages: nextPages });
+              }
+            }, 0);
+          }
+          
           setIsVideoModalOpen(false);
+          setVideoUrlDraft("");
         }
         return (
           <div className="overlay">
@@ -334,11 +381,26 @@ export function CourseManagement(props: CourseEditorProps) {
                 <span className="field-label">YouTube, Loom, Vimeo, or Wistia link</span>
                 <input className="field-input" value={videoUrlDraft} onChange={(event) => setVideoUrlDraft(event.target.value)} placeholder="https://" />
               </label>
-              <div className="video-dropzone">
+              <div className="video-dropzone" onClick={() => videoFileInputRef.current?.click()}>
                 <div className="video-dropzone-icon">⬆</div>
                 <div className="video-dropzone-text-main">Drag and drop video here</div>
                 <div className="video-dropzone-text-sub">or select file</div>
               </div>
+              <input
+                ref={videoFileInputRef}
+                type="file"
+                accept="video/*"
+                style={{ display: "none" }}
+                onChange={(event) => {
+                  const file = event.target.files?.[0];
+                  if (!file) return;
+                  const reader = new FileReader();
+                  reader.onloadend = () => {
+                    setVideoUrlDraft(reader.result as string);
+                  };
+                  reader.readAsDataURL(file);
+                }}
+              />
               <div className="dialog-footer">
                 <div />
                 <div className="dialog-actions">
@@ -879,7 +941,7 @@ export function CourseManagement(props: CourseEditorProps) {
                                           type="button"
                                           className="course-page-toolbar-button course-page-toolbar-button-icon course-page-toolbar-button-video"
                                           onClick={() => {
-                                            setVideoUrlDraft(activePage.videoUrl ?? "");
+                                            setVideoUrlDraft("");
                                             setIsVideoModalOpen(true);
                                           }}
                                         >
@@ -908,6 +970,27 @@ export function CourseManagement(props: CourseEditorProps) {
                                         }}
                                         onMouseUp={updateActiveFormats}
                                         onKeyUp={updateActiveFormats}
+                                        onKeyDown={(event) => {
+                                          if (event.key === "Backspace") {
+                                            const selection = window.getSelection();
+                                            if (selection && selection.rangeCount > 0 && selection.isCollapsed) {
+                                              const range = selection.getRangeAt(0);
+                                              const node = range.startContainer;
+                                              const offset = range.startOffset;
+                                              
+                                              if (offset === 0 && node.previousSibling) {
+                                                const prev = node.previousSibling;
+                                                if (prev.nodeType === Node.ELEMENT_NODE && (prev as Element).getAttribute("contenteditable") === "false") {
+                                                  event.preventDefault();
+                                                  prev.remove();
+                                                  const nextBody = bodyInputRef.current?.innerHTML || "";
+                                                  const nextPages = pages.map((page) => (page.id === activePage.id ? { ...page, body: nextBody } : page));
+                                                  updateCourse({ ...selectedCourse, pages: nextPages });
+                                                }
+                                              }
+                                            }
+                                          }
+                                        }}
                                         onFocus={(event) => {
                                           if (activePageId !== lastPageId) {
                                             event.currentTarget.innerHTML = activePage.body || "";
