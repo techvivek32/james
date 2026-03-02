@@ -1216,6 +1216,21 @@ body {
 .admin-user-management,
 .admin-course-management {
   display: flex;
+  flex-direction: column;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.admin-user-management > .panel-header {
+  background-color: #ffffff;
+  border-radius: 12px;
+  box-shadow: 0 10px 20px rgba(15, 23, 42, 0.04);
+  border: 1px solid #e2e8f0;
+  margin-bottom: 16px;
+}
+
+.admin-user-management-content {
+  display: flex;
   min-width: 0;
   overflow: hidden;
 }

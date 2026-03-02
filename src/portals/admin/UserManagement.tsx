@@ -165,6 +165,36 @@ export function UserManagement(props: UserEditorProps) {
     }
   }
 
+  function handleExportCSV() {
+    const headers = ["id", "name", "email", "role", "phone", "territory", "strengths", "weaknesses"];
+    const toggleKeys = Object.keys(draftUsers[0]?.featureToggles || {});
+    const allHeaders = [...headers, ...toggleKeys.map(k => `featureToggles.${k}`)];
+    
+    const rows = draftUsers.map(user => {
+      const baseData = [
+        user.id,
+        user.name,
+        user.email,
+        user.role,
+        user.phone || "",
+        user.territory || "",
+        user.strengths || "",
+        user.weaknesses || ""
+      ];
+      const toggleData = toggleKeys.map(k => user.featureToggles[k] ? "TRUE" : "FALSE");
+      return [...baseData, ...toggleData];
+    });
+    
+    const csv = [allHeaders.join(","), ...rows.map(r => r.join(","))].join("\n");
+    const blob = new Blob([csv], { type: "text/csv" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `users-export-${Date.now()}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
   async function confirmImport() {
     setImporting(true);
     try {
@@ -195,6 +225,22 @@ export function UserManagement(props: UserEditorProps) {
 
   return (
     <div className="admin-user-management">
+      <div className="panel-header" style={{ marginBottom: 16 }}>
+        <div className="panel-header-row">
+          <span>User Management</span>
+          <div style={{ display: "flex", gap: 8 }}>
+            <button type="button" className="btn-secondary btn-small" onClick={handleExportCSV}>
+              Export CSV
+            </button>
+            <button type="button" className="btn-secondary btn-small" onClick={() => fileInputRef.current?.click()} disabled={importing}>
+              {importing ? "Importing..." : "Import CSV"}
+            </button>
+            <input ref={fileInputRef} type="file" accept=".csv" style={{ display: "none" }} onChange={handleImportCSV} />
+            <button type="button" className="btn-primary btn-success" onClick={createUser}>+ Add User</button>
+          </div>
+        </div>
+      </div>
+      <div className="admin-user-management-content">
       {showImportConfirm && (
         <div className="overlay">
           <div className="dialog" style={{ width: 600, maxWidth: "90vw" }}>
@@ -240,13 +286,6 @@ export function UserManagement(props: UserEditorProps) {
         <div className="panel-header">
           <div className="panel-header-row">
             <span>Users</span>
-            <div style={{ display: "flex", gap: 8 }}>
-              <button type="button" className="btn-secondary btn-small" onClick={() => fileInputRef.current?.click()} disabled={importing}>
-                {importing ? "Importing..." : "Import CSV"}
-              </button>
-              <input ref={fileInputRef} type="file" accept=".csv" style={{ display: "none" }} onChange={handleImportCSV} />
-              <button type="button" className="btn-primary btn-success" onClick={createUser}>+ Add User</button>
-            </div>
           </div>
         </div>
         <div className="panel-body">
@@ -466,6 +505,7 @@ export function UserManagement(props: UserEditorProps) {
         ) : (
           <div className="panel-empty">Select a user to manage details.</div>
         )}
+      </div>
       </div>
     </div>
   );
