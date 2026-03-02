@@ -18,7 +18,7 @@ export function Header(props: HeaderProps) {
       <div className="header-profile">
         <div className="header-user-info">
           <span className="header-user-name">{props.userName}</span>
-          <span className="header-user-role"> {props.roleLabel}</span>
+          <span className="header-user-role">{props.roleLabel}</span>
         </div>
         <button className="header-logout" onClick={props.onLogout}>
           Logout

@@ -18,6 +18,7 @@ export function Layout(props: LayoutProps) {
       <div className="app-main">
         <header className="app-header">{props.header}</header>
         <main className="app-content">{props.children}</main>
+        <div className="powered-by-footer">Powered by James</div>
       </div>
     </div>
   );

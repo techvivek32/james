@@ -22,14 +22,14 @@ export default async function handler(
     // Get user to check training center feature toggle
     const user = await UserModel.findOne({ id: userId }).lean();
     if (!user) {
-      res.status(404).json({ error: "User not found" });
+      res.status(200).json([]);
       return;
     }
     
     // Filter courses based on access mode and user's training center toggle
     const filteredCourses = courses.filter((course: any) => {
-      // Only show published courses
-      if (course.status === "draft") return false;
+      // Only show published courses (not draft)
+      if (course.status !== "published") return false;
       
       // Check if user has training center enabled
       if (!user.featureToggles?.trainingCenter) return false;

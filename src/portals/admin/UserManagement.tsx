@@ -22,6 +22,10 @@ export function UserManagement(props: UserEditorProps) {
   const [showWebPreview, setShowWebPreview] = useState(false);
   const [showRolesDropdown, setShowRolesDropdown] = useState(false);
   const [managerDraftId, setManagerDraftId] = useState<string>(props.users.find((u) => u.id === selectedUserId)?.managerId ?? "");
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [importing, setImporting] = useState(false);
+  const [pendingImportUsers, setPendingImportUsers] = useState<any[]>([]);
+  const [showImportConfirm, setShowImportConfirm] = useState(false);
 
   const featureToggleKeysByRole: Record<UserProfile["role"], (keyof FeatureToggles)[]> = {
     admin: ["dashboard", "userManagement", "roleHierarchy", "businessUnits", "salesOverview", "marketingOverview", "courseManagement", "materialsLibrary", "approvalWorkflows", "aiBots", "webTemplates"],
@@ -117,13 +121,132 @@ export function UserManagement(props: UserEditorProps) {
     updateUser({ ...user, featureToggles: { ...user.featureToggles, ...toggles } });
   }
 
+  async function handleImportCSV(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    try {
+      const text = await file.text();
+      const lines = text.split("\n").filter(line => line.trim());
+      const headers = lines[0].split(",").map(h => h.trim());
+      const hasFeatureToggles = headers.some(h => h.startsWith("featureToggles."));
+      
+      const users = lines.slice(1).map(line => {
+        const values = line.split(",").map(v => v.trim());
+        const user: any = { featureToggles: {} };
+        headers.forEach((header, i) => {
+          if (header.startsWith("featureToggles.")) {
+            const key = header.replace("featureToggles.", "");
+            user.featureToggles[key] = values[i]?.toUpperCase() === "TRUE";
+          } else {
+            user[header] = values[i];
+          }
+        });
+        
+        if (!hasFeatureToggles && user.role) {
+          const roleToggles = featureToggleKeysByRole[user.role as UserRole];
+          if (roleToggles) {
+            roleToggles.forEach(key => {
+              user.featureToggles[key] = true;
+            });
+          }
+        }
+        
+        return user;
+      });
+
+      setPendingImportUsers(users);
+      setShowImportConfirm(true);
+    } catch (error) {
+      console.error("Import error:", error);
+      alert("Failed to parse CSV file");
+    } finally {
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  }
+
+  async function confirmImport() {
+    setImporting(true);
+    try {
+      const res = await fetch("/api/users/import", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ users: pendingImportUsers })
+      });
+
+      if (res.ok) {
+        const result = await res.json();
+        setSaveNotice(`Imported ${result.count} users successfully`);
+        if (saveNoticeTimeout.current) clearTimeout(saveNoticeTimeout.current);
+        saveNoticeTimeout.current = setTimeout(() => setSaveNotice(""), 3000);
+        setShowImportConfirm(false);
+        setPendingImportUsers([]);
+        window.location.reload();
+      } else {
+        alert("Failed to import users");
+      }
+    } catch (error) {
+      console.error("Import error:", error);
+      alert("Failed to import users");
+    } finally {
+      setImporting(false);
+    }
+  }
+
   return (
     <div className="admin-user-management">
+      {showImportConfirm && (
+        <div className="overlay">
+          <div className="dialog" style={{ width: 600, maxWidth: "90vw" }}>
+            <div className="dialog-title">Confirm User Import</div>
+            <div style={{ fontSize: 13, color: "#6b7280", marginBottom: 12 }}>
+              {pendingImportUsers.length} user(s) will be imported:
+            </div>
+            <div style={{ maxHeight: 400, overflowY: "auto", marginBottom: 16, border: "1px solid #e5e7eb", borderRadius: 8 }}>
+              <table style={{ width: "100%", fontSize: 12 }}>
+                <thead style={{ position: "sticky", top: 0, backgroundColor: "#f9fafb", borderBottom: "1px solid #e5e7eb" }}>
+                  <tr>
+                    <th style={{ padding: "8px 12px", textAlign: "left", fontWeight: 600 }}>Name</th>
+                    <th style={{ padding: "8px 12px", textAlign: "left", fontWeight: 600 }}>Email</th>
+                    <th style={{ padding: "8px 12px", textAlign: "left", fontWeight: 600 }}>Role</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {pendingImportUsers.map((user, index) => (
+                    <tr key={index} style={{ borderBottom: "1px solid #f1f5f9" }}>
+                      <td style={{ padding: "8px 12px" }}>{user.name}</td>
+                      <td style={{ padding: "8px 12px" }}>{user.email}</td>
+                      <td style={{ padding: "8px 12px", textTransform: "capitalize" }}>{user.role}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <div className="dialog-footer">
+              <div />
+              <div className="dialog-actions">
+                <button type="button" className="btn-secondary btn-cancel" onClick={() => { setShowImportConfirm(false); setPendingImportUsers([]); }} disabled={importing}>
+                  Cancel
+                </button>
+                <button type="button" className="btn-primary btn-success" onClick={confirmImport} disabled={importing}>
+                  {importing ? "Importing..." : "Confirm"}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
       <div className="panel panel-left">
         <div className="panel-header">
           <div className="panel-header-row">
             <span>Users</span>
-            <button type="button" className="btn-primary btn-success" onClick={createUser}>+ Add User</button>
+            <div style={{ display: "flex", gap: 8 }}>
+              <button type="button" className="btn-secondary btn-small" onClick={() => fileInputRef.current?.click()} disabled={importing}>
+                {importing ? "Importing..." : "Import CSV"}
+              </button>
+              <input ref={fileInputRef} type="file" accept=".csv" style={{ display: "none" }} onChange={handleImportCSV} />
+              <button type="button" className="btn-primary btn-success" onClick={createUser}>+ Add User</button>
+            </div>
           </div>
         </div>
         <div className="panel-body">
