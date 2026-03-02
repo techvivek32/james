@@ -371,13 +371,41 @@ export function CourseManagement(props: CourseEditorProps) {
           if (!label || !href) {
             return;
           }
-          const nextPages = pages.map((page) =>
-            page.id === pageForLink.id
-              ? { ...page, resourceLinks: [...page.resourceLinks, { label, href }] }
-              : page
-          );
-          updateCourse({ ...(course as Course), pages: nextPages });
+          
+          const linkHtml = `<a href="${href}" target="_blank" rel="noopener noreferrer" style="color: #3b82f6; text-decoration: underline; cursor: pointer;">${label}</a>`;
+          
+          if (bodyInputRef.current) {
+            bodyInputRef.current.focus();
+            const selection = window.getSelection();
+            if (selection && selection.rangeCount > 0) {
+              const range = selection.getRangeAt(0);
+              range.deleteContents();
+              const tempDiv = document.createElement("div");
+              tempDiv.innerHTML = linkHtml;
+              const linkNode = tempDiv.firstChild!;
+              range.insertNode(linkNode);
+              
+              const newRange = document.createRange();
+              newRange.setStartAfter(linkNode);
+              newRange.collapse(true);
+              selection.removeAllRanges();
+              selection.addRange(newRange);
+            } else {
+              bodyInputRef.current.innerHTML += linkHtml;
+            }
+            
+            setTimeout(() => {
+              if (bodyInputRef.current) {
+                const nextBody = bodyInputRef.current.innerHTML;
+                const nextPages = pages.map((page) => (page.id === pageForLink.id ? { ...page, body: nextBody } : page));
+                updateCourse({ ...(course as Course), pages: nextPages });
+              }
+            }, 0);
+          }
+          
           setIsLinkModalOpen(false);
+          setLinkLabelDraft("");
+          setLinkUrlDraft("");
         }
         return (
           <div className="overlay">
