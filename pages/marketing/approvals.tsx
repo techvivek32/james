@@ -1,30 +1,14 @@
 import type { NextPage } from "next";
 import { useState } from "react";
 import { Layout } from "../../src/components/Layout";
-import { Sidebar } from "../../src/components/Sidebar";
+import { MarketingSidebar } from "../../src/components/MarketingSidebar";
 import { Header } from "../../src/components/Header";
 import { Placeholder } from "../../src/portals/marketing/Placeholder";
-import { useRouter } from "next/router";
-
-const sidebarItems = [
-  { id: "dashboard", label: "Dashboard" },
-  { id: "training", label: "Training Center" },
-  { id: "assets", label: "Asset Library" },
-  { id: "approvals", label: "Content Approvals" },
-  { id: "socialMetrics", label: "Social Metrics Dashboard" }
-];
+import { useAuth } from "../../src/contexts/AuthContext";
 
 const ApprovalsPage: NextPage = () => {
-  const router = useRouter();
+  const { logout } = useAuth();
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
-
-  function handleNavigation(id: string) {
-    router.push(`/marketing/${id}`);
-  }
-
-  function handleLogout() {
-    router.push("/");
-  }
 
   return (
     <Layout
@@ -35,15 +19,12 @@ const ApprovalsPage: NextPage = () => {
           subtitle="Marketing view"
           userName="Marketing"
           roleLabel="Marketing"
-          onLogout={handleLogout}
+          onLogout={logout}
         />
       }
       sidebar={
-        <Sidebar
-          header={<div className="sidebar-title">Marketing Portal</div>}
-          items={sidebarItems}
+        <MarketingSidebar
           activeId="approvals"
-          onSelect={handleNavigation}
           isCollapsed={isSidebarCollapsed}
           onToggleCollapse={() => setIsSidebarCollapsed((prev) => !prev)}
         />

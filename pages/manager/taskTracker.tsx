@@ -1,23 +1,14 @@
 import type { NextPage } from "next";
 import { useEffect, useState } from "react";
 import { Layout } from "../../src/components/Layout";
-import { Sidebar } from "../../src/components/Sidebar";
+import { ManagerSidebar } from "../../src/components/ManagerSidebar";
 import { Header } from "../../src/components/Header";
 import { TaskTracker } from "../../src/portals/manager/TaskTracker";
+import { useAuth } from "../../src/contexts/AuthContext";
 import { UserProfile, Course } from "../../src/types";
-import { useRouter } from "next/router";
-
-const sidebarItems = [
-  { id: "dashboard", label: "My Dashboard" },
-  { id: "team", label: "My Team" },
-  { id: "plans", label: "Team Business Plans" },
-  { id: "training", label: "Team Training Progress" },
-  { id: "onlineTraining", label: "Online Course Training" },
-  { id: "taskTracker", label: "Task Tracker" }
-];
 
 const TaskTrackerPage: NextPage = () => {
-  const router = useRouter();
+  const { logout } = useAuth();
   const [teamMembers, setTeamMembers] = useState<UserProfile[]>([]);
   const [courses, setCourses] = useState<Course[]>([]);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
@@ -41,14 +32,6 @@ const TaskTrackerPage: NextPage = () => {
     loadData();
   }, []);
 
-  function handleNavigation(id: string) {
-    router.push(`/manager/${id === "dashboard" ? "dashboard" : id}`);
-  }
-
-  function handleLogout() {
-    router.push("/");
-  }
-
   return (
     <Layout
       isSidebarCollapsed={isSidebarCollapsed}
@@ -58,15 +41,12 @@ const TaskTrackerPage: NextPage = () => {
           subtitle="Manager view"
           userName="Manager"
           roleLabel="Manager"
-          onLogout={handleLogout}
+          onLogout={logout}
         />
       }
       sidebar={
-        <Sidebar
-          header={<div className="sidebar-title">Manager Portal</div>}
-          items={sidebarItems}
+        <ManagerSidebar
           activeId="taskTracker"
-          onSelect={handleNavigation}
           isCollapsed={isSidebarCollapsed}
           onToggleCollapse={() => setIsSidebarCollapsed((prev) => !prev)}
         />

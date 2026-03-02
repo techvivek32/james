@@ -1,25 +1,14 @@
 import type { NextPage } from "next";
 import { useEffect, useState } from "react";
-import { useRouter } from "next/router";
 import { Layout } from "../../src/components/Layout";
-import { Sidebar } from "../../src/components/Sidebar";
+import { SalesSidebar } from "../../src/components/SalesSidebar";
 import { Header } from "../../src/components/Header";
 import { AiChatPanel } from "../../src/portals/sales/AiChatPanel";
+import { useAuth } from "../../src/contexts/AuthContext";
 import { UserProfile } from "../../src/types";
 
-const sidebarItems = [
-  { id: "dashboard", label: "My Dashboard" },
-  { id: "profile", label: "My Profile" },
-  { id: "plan", label: "My Business Plan" },
-  { id: "training", label: "Training Center" },
-  { id: "materials", label: "Marketing Materials" },
-  { id: "aiChat", label: "Jay Miller's Clone" },
-  { id: "webPage", label: "My Web Page" },
-  { id: "businessCards", label: "Tools/ Apps" }
-];
-
 const AiChat: NextPage = () => {
-  const router = useRouter();
+  const { logout } = useAuth();
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
 
@@ -39,14 +28,6 @@ const AiChat: NextPage = () => {
     loadData();
   }, []);
 
-  function handleNavigation(id: string) {
-    router.push(`/sales/${id}`);
-  }
-
-  function handleLogout() {
-    window.location.href = "/";
-  }
-
   if (!profile) {
     return <div>Loading...</div>;
   }
@@ -55,11 +36,8 @@ const AiChat: NextPage = () => {
     <Layout
       isSidebarCollapsed={isSidebarCollapsed}
       sidebar={
-        <Sidebar
-          header={<div className="sidebar-title">Sales Team Portal</div>}
-          items={sidebarItems}
+        <SalesSidebar
           activeId="aiChat"
-          onSelect={handleNavigation}
           isCollapsed={isSidebarCollapsed}
           onToggleCollapse={() => setIsSidebarCollapsed((prev) => !prev)}
         />
@@ -70,7 +48,7 @@ const AiChat: NextPage = () => {
           subtitle="Sales rep view"
           userName={profile.name}
           roleLabel="Sales Rep"
-          onLogout={handleLogout}
+          onLogout={logout}
         />
       }
     >

@@ -1,23 +1,14 @@
 import type { NextPage } from "next";
 import { useEffect, useState } from "react";
 import { Layout } from "../../src/components/Layout";
-import { Sidebar } from "../../src/components/Sidebar";
+import { ManagerSidebar } from "../../src/components/ManagerSidebar";
 import { Header } from "../../src/components/Header";
 import { TeamPage } from "../../src/portals/manager/TeamPage";
+import { useAuth } from "../../src/contexts/AuthContext";
 import { UserProfile } from "../../src/types";
-import { useRouter } from "next/router";
-
-const sidebarItems = [
-  { id: "dashboard", label: "My Dashboard" },
-  { id: "team", label: "My Team" },
-  { id: "plans", label: "Team Business Plans" },
-  { id: "training", label: "Team Training Progress" },
-  { id: "onlineTraining", label: "Online Course Training" },
-  { id: "taskTracker", label: "Task Tracker" }
-];
 
 const TeamPageRoute: NextPage = () => {
-  const router = useRouter();
+  const { logout } = useAuth();
   const [teamMembers, setTeamMembers] = useState<UserProfile[]>([]);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
 
@@ -49,14 +40,6 @@ const TeamPageRoute: NextPage = () => {
     }
   }
 
-  function handleNavigation(id: string) {
-    router.push(`/manager/${id === "dashboard" ? "dashboard" : id}`);
-  }
-
-  function handleLogout() {
-    router.push("/");
-  }
-
   return (
     <Layout
       isSidebarCollapsed={isSidebarCollapsed}
@@ -66,15 +49,12 @@ const TeamPageRoute: NextPage = () => {
           subtitle="Manager view"
           userName="Manager"
           roleLabel="Manager"
-          onLogout={handleLogout}
+          onLogout={logout}
         />
       }
       sidebar={
-        <Sidebar
-          header={<div className="sidebar-title">Manager Portal</div>}
-          items={sidebarItems}
+        <ManagerSidebar
           activeId="team"
-          onSelect={handleNavigation}
           isCollapsed={isSidebarCollapsed}
           onToggleCollapse={() => setIsSidebarCollapsed((prev) => !prev)}
         />

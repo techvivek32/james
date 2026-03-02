@@ -1,23 +1,14 @@
 import type { NextPage } from "next";
 import { useEffect, useState } from "react";
 import { Layout } from "../../src/components/Layout";
-import { Sidebar } from "../../src/components/Sidebar";
+import { ManagerSidebar } from "../../src/components/ManagerSidebar";
 import { Header } from "../../src/components/Header";
 import { ManagerOnlineTrainingPage } from "../../src/portals/manager/OnlineTraining";
+import { useAuth } from "../../src/contexts/AuthContext";
 import { Course, AuthenticatedUser } from "../../src/types";
-import { useRouter } from "next/router";
-
-const sidebarItems = [
-  { id: "dashboard", label: "My Dashboard" },
-  { id: "team", label: "My Team" },
-  { id: "plans", label: "Team Business Plans" },
-  { id: "training", label: "Team Training Progress" },
-  { id: "onlineTraining", label: "Online Course Training" },
-  { id: "taskTracker", label: "Task Tracker" }
-];
 
 const OnlineTrainingPage: NextPage = () => {
-  const router = useRouter();
+  const { logout } = useAuth();
   const [courses, setCourses] = useState<Course[]>([]);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const currentUser: AuthenticatedUser = { id: "manager-1", name: "Manager", role: "manager" };
@@ -34,14 +25,6 @@ const OnlineTrainingPage: NextPage = () => {
     loadData();
   }, []);
 
-  function handleNavigation(id: string) {
-    router.push(`/manager/${id === "dashboard" ? "dashboard" : id}`);
-  }
-
-  function handleLogout() {
-    router.push("/");
-  }
-
   return (
     <Layout
       isSidebarCollapsed={isSidebarCollapsed}
@@ -51,15 +34,12 @@ const OnlineTrainingPage: NextPage = () => {
           subtitle="Manager view"
           userName="Manager"
           roleLabel="Manager"
-          onLogout={handleLogout}
+          onLogout={logout}
         />
       }
       sidebar={
-        <Sidebar
-          header={<div className="sidebar-title">Manager Portal</div>}
-          items={sidebarItems}
+        <ManagerSidebar
           activeId="onlineTraining"
-          onSelect={handleNavigation}
           isCollapsed={isSidebarCollapsed}
           onToggleCollapse={() => setIsSidebarCollapsed((prev) => !prev)}
         />
