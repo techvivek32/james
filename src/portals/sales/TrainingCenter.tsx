@@ -8,6 +8,7 @@ export function TrainingCenter(props: { courses: Course[] }) {
   const [selectedCourse, setSelectedCourse] = useState<Course | null>(null);
   const [activePageId, setActivePageId] = useState<string | null>(null);
   const [collapsedFolders, setCollapsedFolders] = useState<Set<string>>(new Set());
+  const [selectedAnswers, setSelectedAnswers] = useState<Record<string, number>>({});
 
   const filteredCourses = useMemo(() => {
     const term = search.toLowerCase();
@@ -94,25 +95,71 @@ export function TrainingCenter(props: { courses: Course[] }) {
                 <div className="course-page-main-header">
                   <h2 className="course-page-title-input" style={{ border: "none", background: "none", padding: 0 }}>{activePage.title}</h2>
                 </div>
-                <div className="course-page-editor-body">
-                  <div
-                    className="course-page-body-input"
-                    dangerouslySetInnerHTML={{ __html: activePage.body || "" }}
-                    style={{
-                      padding: "12px",
-                      border: "1px solid #ddd",
-                      borderRadius: "4px",
-                      whiteSpace: "pre-wrap",
-                      minHeight: "auto",
-                      maxHeight: "none",
-                      overflow: "visible"
-                    }}
-                  />
-                </div>
+                {activePage.isQuiz && activePage.quizQuestions && activePage.quizQuestions.length > 0 ? (
+                  <div className="course-page-editor-body">
+                    <div style={{ padding: "12px" }}>
+                      {activePage.quizQuestions.map((q, qIdx) => (
+                        <div key={q.id} style={{ marginBottom: 32 }}>
+                          <div style={{ fontSize: "16px", fontWeight: 600, marginBottom: 16 }}>Question {qIdx + 1}: {q.prompt}</div>
+                          {q.options.map((option, optIdx) => (
+                            <div
+                              key={optIdx}
+                              onClick={() => setSelectedAnswers({ ...selectedAnswers, [q.id]: optIdx })}
+                              style={{
+                                padding: "12px 16px",
+                                marginBottom: 12,
+                                border: "2px solid",
+                                borderColor: selectedAnswers[q.id] === optIdx ? "#3b82f6" : "#e5e7eb",
+                                borderRadius: 8,
+                                cursor: "pointer",
+                                backgroundColor: selectedAnswers[q.id] === optIdx ? "#eff6ff" : "#fff"
+                              }}
+                            >
+                              <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                                <div
+                                  style={{
+                                    width: 20,
+                                    height: 20,
+                                    borderRadius: "50%",
+                                    border: "2px solid",
+                                    borderColor: selectedAnswers[q.id] === optIdx ? "#3b82f6" : "#d1d5db",
+                                    backgroundColor: selectedAnswers[q.id] === optIdx ? "#3b82f6" : "#fff",
+                                    display: "flex",
+                                    alignItems: "center",
+                                    justifyContent: "center"
+                                  }}
+                                >
+                                  {selectedAnswers[q.id] === optIdx && <div style={{ width: 8, height: 8, borderRadius: "50%", backgroundColor: "#fff" }} />}
+                                </div>
+                                <span style={{ fontSize: 14 }}>{option}</span>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="course-page-editor-body">
+                    <div
+                      className="course-page-body-input"
+                      dangerouslySetInnerHTML={{ __html: activePage.body || "" }}
+                      style={{
+                        padding: "12px",
+                        border: "1px solid #ddd",
+                        borderRadius: "4px",
+                        whiteSpace: "pre-wrap",
+                        minHeight: "auto",
+                        maxHeight: "none",
+                        overflow: "visible"
+                      }}
+                    />
+                  </div>
+                )}
               </>
             )}
           </div>
-          <LessonAIChat lessonTitle={activePage?.title || selectedCourse.title} />
+          {activePage && !activePage.isQuiz && <LessonAIChat lessonTitle={activePage.title || selectedCourse.title} />}
         </div>
       </div>
     );

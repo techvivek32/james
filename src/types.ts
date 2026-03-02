@@ -116,6 +116,8 @@ export type CoursePage = {
   pinnedCommunityPostUrl?: string;
   resourceLinks: LessonLink[];
   fileUrls: string[];
+  isQuiz?: boolean;
+  quizQuestions?: QuizQuestion[];
 };
 
 export type CourseFolder = {

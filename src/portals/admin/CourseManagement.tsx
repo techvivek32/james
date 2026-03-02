@@ -108,17 +108,19 @@ export function CourseManagement(props: CourseEditorProps) {
     }
   }
 
-  function addPageForCourse(course: Course, folderId?: string) {
+  function addPageForCourse(course: Course, folderId?: string, isQuiz?: boolean) {
     const pages = course.pages ?? [];
     const newPage: CoursePage = {
       id: `page-${Date.now()}`,
-      title: "New page",
+      title: isQuiz ? "New quiz" : "New page",
       status: "draft",
       body: "",
       folderId,
       videoUrl: "",
       resourceLinks: [],
-      fileUrls: []
+      fileUrls: [],
+      isQuiz: isQuiz || false,
+      quizQuestions: isQuiz ? [{ id: `q-${Date.now()}`, prompt: "", options: ["", "", "", ""], correctIndex: 0 }] : undefined
     };
     const nextCourse: Course = {
       ...course,
@@ -925,6 +927,16 @@ export function CourseManagement(props: CourseEditorProps) {
                                               type="button"
                                               className="course-page-menu-item"
                                               onClick={() => {
+                                                addPageForCourse(selectedCourse, folder.id, true);
+                                                setOpenFolderMenuId(null);
+                                              }}
+                                            >
+                                              Add quiz
+                                            </button>
+                                            <button
+                                              type="button"
+                                              className="course-page-menu-item"
+                                              onClick={() => {
                                                 const now = Date.now();
                                                 const folderPagesInner = pages.filter((page) => page.folderId === folder.id);
                                                 const duplicatedFolder: CourseFolder = { ...folder, id: `folder-${now}-copy`, title: `${folder.title} copy` };
@@ -1045,6 +1057,123 @@ export function CourseManagement(props: CourseEditorProps) {
                               <div className="course-page-main">
                                 {activePage && (
                                   <>
+                                    {activePage.isQuiz ? (
+                                      <>
+                                        <div className="course-page-main-header">
+                                          <input
+                                            className="course-page-title-input"
+                                            value={activePage.title}
+                                            onChange={(event) => {
+                                              const nextPages = pages.map((page) => (page.id === activePage.id ? { ...page, title: event.target.value } : page));
+                                              updateCourse({ ...selectedCourse, pages: nextPages });
+                                            }}
+                                          />
+                                        </div>
+                                        <div className="course-page-editor-body">
+                                          {(activePage.quizQuestions || []).map((q, qIdx) => (
+                                            <div key={q.id} style={{ marginBottom: 24, padding: 16, border: "1px solid #e5e7eb", borderRadius: 8 }}>
+                                              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+                                                <span style={{ fontWeight: 600 }}>Question {qIdx + 1}</span>
+                                                <button
+                                                  type="button"
+                                                  className="btn-ghost btn-danger btn-small"
+                                                  onClick={() => {
+                                                    const nextQuestions = (activePage.quizQuestions || []).filter((_, i) => i !== qIdx);
+                                                    const nextPages = pages.map((page) => (page.id === activePage.id ? { ...page, quizQuestions: nextQuestions } : page));
+                                                    updateCourse({ ...selectedCourse, pages: nextPages });
+                                                  }}
+                                                >
+                                                  Delete
+                                                </button>
+                                              </div>
+                                              <label className="field">
+                                                <span className="field-label">Question</span>
+                                                <textarea
+                                                  className="field-input"
+                                                  rows={3}
+                                                  value={q.prompt}
+                                                  onChange={(e) => {
+                                                    const nextQuestions = [...(activePage.quizQuestions || [])];
+                                                    nextQuestions[qIdx] = { ...q, prompt: e.target.value };
+                                                    const nextPages = pages.map((page) => (page.id === activePage.id ? { ...page, quizQuestions: nextQuestions } : page));
+                                                    updateCourse({ ...selectedCourse, pages: nextPages });
+                                                  }}
+                                                />
+                                              </label>
+                                              {q.options.map((option, optIdx) => (
+                                                <label key={optIdx} className="field" style={{ marginTop: 12 }}>
+                                                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                                                    <input
+                                                      type="radio"
+                                                      name={`correct-${q.id}`}
+                                                      checked={q.correctIndex === optIdx}
+                                                      onChange={() => {
+                                                        const nextQuestions = [...(activePage.quizQuestions || [])];
+                                                        nextQuestions[qIdx] = { ...q, correctIndex: optIdx };
+                                                        const nextPages = pages.map((page) => (page.id === activePage.id ? { ...page, quizQuestions: nextQuestions } : page));
+                                                        updateCourse({ ...selectedCourse, pages: nextPages });
+                                                      }}
+                                                    />
+                                                    <span className="field-label" style={{ marginBottom: 0 }}>Option {optIdx + 1}</span>
+                                                  </div>
+                                                  <input
+                                                    className="field-input"
+                                                    value={option}
+                                                    onChange={(e) => {
+                                                      const nextQuestions = [...(activePage.quizQuestions || [])];
+                                                      const nextOptions = [...q.options];
+                                                      nextOptions[optIdx] = e.target.value;
+                                                      nextQuestions[qIdx] = { ...q, options: nextOptions };
+                                                      const nextPages = pages.map((page) => (page.id === activePage.id ? { ...page, quizQuestions: nextQuestions } : page));
+                                                      updateCourse({ ...selectedCourse, pages: nextPages });
+                                                    }}
+                                                  />
+                                                </label>
+                                              ))}
+                                            </div>
+                                          ))}
+                                          <button
+                                            type="button"
+                                            className="btn-secondary"
+                                            onClick={() => {
+                                              const newQuestion = { id: `q-${Date.now()}`, prompt: "", options: ["", "", "", ""], correctIndex: 0 };
+                                              const nextQuestions = [...(activePage.quizQuestions || []), newQuestion];
+                                              const nextPages = pages.map((page) => (page.id === activePage.id ? { ...page, quizQuestions: nextQuestions } : page));
+                                              updateCourse({ ...selectedCourse, pages: nextPages });
+                                            }}
+                                          >
+                                            + Add Question
+                                          </button>
+                                        </div>
+                                        <div className="course-page-footer">
+                                          <div />
+                                          <button
+                                            type="button"
+                                            className={activePage.status === "published" ? "status-toggle status-toggle-on" : "status-toggle"}
+                                            onClick={() => {
+                                              const nextPages = pages.map((page) =>
+                                                page.id === activePage.id
+                                                  ? { ...page, status: (page.status === "published" ? "draft" : "published") as CoursePage["status"] }
+                                                  : page
+                                              );
+                                              updateCourse({ ...selectedCourse, pages: nextPages });
+                                            }}
+                                          >
+                                            <span className={activePage.status === "published" ? "status-toggle-label status-toggle-label-on" : "status-toggle-label"}>{activePage.status === "published" ? "Published" : "Draft"}</span>
+                                            <span className="status-toggle-track">
+                                              <span className="status-toggle-thumb" />
+                                            </span>
+                                          </button>
+                                          <button type="button" className="course-page-footer-button course-page-footer-cancel" onClick={() => setDetailSection("overview")}>
+                                            CANCEL
+                                          </button>
+                                          <button type="button" className="course-page-footer-button course-page-footer-save" onClick={() => setDetailSection("overview")}>
+                                            SAVE
+                                          </button>
+                                        </div>
+                                      </>
+                                    ) : (
+                                      <>
                                     <div className="course-page-main-header">
                                       <div className="course-page-toolbar">
                                         <button type="button" className={activeFormats.has("h1") ? "course-page-toolbar-button active" : "course-page-toolbar-button"} onClick={() => applyFormatting("h1")}>H1</button>
@@ -1216,6 +1345,8 @@ export function CourseManagement(props: CourseEditorProps) {
                                         SAVE
                                       </button>
                                     </div>
+                                      </>
+                                    )}
                                   </>
                                 )}
                               </div>
