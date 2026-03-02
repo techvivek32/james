@@ -1208,7 +1208,7 @@ export function CourseManagement(props: CourseEditorProps) {
                                           updateCourse({ ...selectedCourse, pages: nextPages });
                                         }}
                                       >
-                                        <span className={activePage.status === "published" ? "status-toggle-label status-toggle-label-on" : "status-toggle-label"}>Published</span>
+                                        <span className={activePage.status === "published" ? "status-toggle-label status-toggle-label-on" : "status-toggle-label"}>{activePage.status === "published" ? "Published" : "Draft"}</span>
                                         <span className="status-toggle-track">
                                           <span className="status-toggle-thumb" />
                                         </span>
