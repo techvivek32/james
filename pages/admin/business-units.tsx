@@ -1,6 +1,6 @@
 import type { NextPage } from "next";
 import { useEffect, useState } from "react";
-import { AdminLayout } from "../../src/portals/admin/AdminLayout";
+import { AdminPageWrapper } from "../../src/portals/admin/AdminPageWrapper";
 import { BusinessUnitsManager } from "../../src/portals/admin/BusinessUnits";
 import { UserProfile } from "../../src/types";
 
@@ -20,9 +20,9 @@ const BusinessUnitsPage: NextPage = () => {
   }, []);
 
   return (
-    <AdminLayout currentView="businessUnits">
+    <AdminPageWrapper currentView="businessUnits">
       <BusinessUnitsManager users={users} />
-    </AdminLayout>
+    </AdminPageWrapper>
   );
 };
 

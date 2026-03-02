@@ -1,6 +1,6 @@
 import type { NextPage } from "next";
 import { useEffect, useState } from "react";
-import { AdminLayout } from "../../src/portals/admin/AdminLayout";
+import { AdminPageWrapper } from "../../src/portals/admin/AdminPageWrapper";
 import { AdminDashboard } from "../../src/portals/admin/Dashboard";
 import { Course, UserProfile } from "../../src/types";
 
@@ -22,9 +22,9 @@ const DashboardPage: NextPage = () => {
   }, []);
 
   return (
-    <AdminLayout currentView="dashboard">
+    <AdminPageWrapper currentView="dashboard">
       <AdminDashboard users={users} courses={courses} />
-    </AdminLayout>
+    </AdminPageWrapper>
   );
 };
 

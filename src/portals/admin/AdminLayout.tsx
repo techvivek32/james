@@ -3,7 +3,8 @@ import { useRouter } from "next/router";
 import { Layout } from "../../components/Layout";
 import { Sidebar } from "../../components/Sidebar";
 import { Header } from "../../components/Header";
-import { AuthenticatedUser, Course, UserProfile } from "../../types";
+import { useAuth } from "../../contexts/AuthContext";
+import { Course, UserProfile } from "../../types";
 
 type AdminViewId =
   | "dashboard"
@@ -41,33 +42,8 @@ type AdminLayoutProps = {
 
 export function AdminLayout({ children, currentView }: AdminLayoutProps) {
   const router = useRouter();
-  const [currentUser, setCurrentUser] = useState<AuthenticatedUser | null>(null);
-  const [users, setUsers] = useState<UserProfile[]>([]);
-  const [courses, setCourses] = useState<Course[]>([]);
+  const { user, logout } = useAuth();
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
-
-  useEffect(() => {
-    async function loadData() {
-      try {
-        const [usersRes, coursesRes] = await Promise.all([
-          fetch("/api/users"),
-          fetch("/api/courses")
-        ]);
-        if (usersRes.ok && coursesRes.ok) {
-          setUsers(await usersRes.json());
-          setCourses(await coursesRes.json());
-        }
-      } catch (error) {
-        console.error("Failed to load data:", error);
-      }
-    }
-    loadData();
-  }, []);
-
-  function handleLogout() {
-    setCurrentUser(null);
-    router.push("/");
-  }
 
   function handleNavigation(viewId: AdminViewId) {
     const item = sidebarItems.find((i) => i.id === viewId);
@@ -83,9 +59,9 @@ export function AdminLayout({ children, currentView }: AdminLayoutProps) {
         <Header
           title="Sales & Marketing OS"
           subtitle="Enterprise control center"
-          userName={currentUser?.name ?? "Admin"}
-          roleLabel={currentUser?.role ?? "Admin"}
-          onLogout={handleLogout}
+          userName={user?.name ?? "Admin"}
+          roleLabel="Admin"
+          onLogout={logout}
         />
       }
       sidebar={

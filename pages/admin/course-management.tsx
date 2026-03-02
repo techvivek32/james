@@ -1,6 +1,6 @@
 import type { NextPage } from "next";
 import { useEffect, useState } from "react";
-import { AdminLayout } from "../../src/portals/admin/AdminLayout";
+import { AdminPageWrapper } from "../../src/portals/admin/AdminPageWrapper";
 import { CourseManagement } from "../../src/portals/admin/CourseManagement";
 import { Course } from "../../src/types";
 
@@ -29,9 +29,9 @@ const CourseManagementPage: NextPage = () => {
   }
 
   return (
-    <AdminLayout currentView="courseManagement">
+    <AdminPageWrapper currentView="courseManagement">
       <CourseManagement courses={courses} onCoursesChange={handleCoursesChange} />
-    </AdminLayout>
+    </AdminPageWrapper>
   );
 };
 

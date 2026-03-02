@@ -1,6 +1,6 @@
 import type { NextPage } from "next";
 import { useEffect, useState } from "react";
-import { AdminLayout } from "../../src/portals/admin/AdminLayout";
+import { AdminPageWrapper } from "../../src/portals/admin/AdminPageWrapper";
 import { UserManagement } from "../../src/portals/admin/UserManagement";
 import { UserProfile } from "../../src/types";
 
@@ -34,14 +34,14 @@ const UserManagementPage: NextPage = () => {
   }
 
   return (
-    <AdminLayout currentView="userManagement">
+    <AdminPageWrapper currentView="userManagement">
       <UserManagement
         users={users}
         deletedUsers={deletedUsers}
         onUsersChange={handleUsersChange}
         onDeletedUsersChange={setDeletedUsers}
       />
-    </AdminLayout>
+    </AdminPageWrapper>
   );
 };
 

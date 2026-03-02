@@ -1,6 +1,6 @@
 import type { NextPage } from "next";
 import { useEffect, useState } from "react";
-import { AdminLayout } from "../../src/portals/admin/AdminLayout";
+import { AdminPageWrapper } from "../../src/portals/admin/AdminPageWrapper";
 import { WebTemplatesPage as WebTemplatesComponent } from "../../src/portals/admin/WebTemplates";
 import { UserProfile } from "../../src/types";
 
@@ -29,9 +29,9 @@ const WebTemplatesPage: NextPage = () => {
   }
 
   return (
-    <AdminLayout currentView="webTemplates">
+    <AdminPageWrapper currentView="webTemplates">
       <WebTemplatesComponent users={users} onUsersChange={handleUsersChange} />
-    </AdminLayout>
+    </AdminPageWrapper>
   );
 };
 

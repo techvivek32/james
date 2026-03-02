@@ -1,12 +1,12 @@
 import type { NextPage } from "next";
-import { AdminLayout } from "../../src/portals/admin/AdminLayout";
+import { AdminPageWrapper } from "../../src/portals/admin/AdminPageWrapper";
 import { AppsToolManagement } from "../../src/portals/admin/AppsTools";
 
 const AppsToolsPage: NextPage = () => {
   return (
-    <AdminLayout currentView="appsTools">
+    <AdminPageWrapper currentView="appsTools">
       <AppsToolManagement />
-    </AdminLayout>
+    </AdminPageWrapper>
   );
 };
 

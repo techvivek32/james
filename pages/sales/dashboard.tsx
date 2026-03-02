@@ -5,6 +5,8 @@ import { Layout } from "../../src/components/Layout";
 import { Sidebar } from "../../src/components/Sidebar";
 import { Header } from "../../src/components/Header";
 import { SalesDashboard } from "../../src/portals/sales/Dashboard";
+import { ProtectedRoute } from "../../src/components/ProtectedRoute";
+import { useAuth } from "../../src/contexts/AuthContext";
 import { UserProfile } from "../../src/types";
 
 const sidebarItems = [
@@ -20,6 +22,7 @@ const sidebarItems = [
 
 const DashboardPage: NextPage = () => {
   const router = useRouter();
+  const { logout } = useAuth();
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
 
@@ -43,39 +46,37 @@ const DashboardPage: NextPage = () => {
     router.push(`/sales/${id}`);
   }
 
-  function handleLogout() {
-    window.location.href = "/";
-  }
-
   if (!profile) {
     return <div>Loading...</div>;
   }
 
   return (
-    <Layout
-      isSidebarCollapsed={isSidebarCollapsed}
-      sidebar={
-        <Sidebar
-          header={<div className="sidebar-title">Sales Team Portal</div>}
-          items={sidebarItems}
-          activeId="dashboard"
-          onSelect={handleNavigation}
-          isCollapsed={isSidebarCollapsed}
-          onToggleCollapse={() => setIsSidebarCollapsed((prev) => !prev)}
-        />
-      }
-      header={
-        <Header
-          title="Sales OS"
-          subtitle="Sales rep view"
-          userName={profile.name}
-          roleLabel="Sales Rep"
-          onLogout={handleLogout}
-        />
-      }
-    >
-      <SalesDashboard profile={profile} />
-    </Layout>
+    <ProtectedRoute allowedRoles={["sales"]}>
+      <Layout
+        isSidebarCollapsed={isSidebarCollapsed}
+        sidebar={
+          <Sidebar
+            header={<div className="sidebar-title">Sales Team Portal</div>}
+            items={sidebarItems}
+            activeId="dashboard"
+            onSelect={handleNavigation}
+            isCollapsed={isSidebarCollapsed}
+            onToggleCollapse={() => setIsSidebarCollapsed((prev) => !prev)}
+          />
+        }
+        header={
+          <Header
+            title="Sales OS"
+            subtitle="Sales rep view"
+            userName={profile.name}
+            roleLabel="Sales Rep"
+            onLogout={logout}
+          />
+        }
+      >
+        <SalesDashboard profile={profile} />
+      </Layout>
+    </ProtectedRoute>
   );
 };
 

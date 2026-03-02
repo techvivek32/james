@@ -1,6 +1,6 @@
 import type { NextPage } from "next";
 import { useEffect, useState } from "react";
-import { AdminLayout } from "../../src/portals/admin/AdminLayout";
+import { AdminPageWrapper } from "../../src/portals/admin/AdminPageWrapper";
 import { AiBotManagement } from "../../src/portals/admin/AIBots";
 import { Course } from "../../src/types";
 
@@ -20,9 +20,9 @@ const AIBotsPage: NextPage = () => {
   }, []);
 
   return (
-    <AdminLayout currentView="aiBots">
+    <AdminPageWrapper currentView="aiBots">
       <AiBotManagement courses={courses} />
-    </AdminLayout>
+    </AdminPageWrapper>
   );
 };
 
