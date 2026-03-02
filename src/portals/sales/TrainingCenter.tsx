@@ -1,5 +1,6 @@
 import { useState, useMemo } from "react";
 import { Course } from "../../types";
+import { LessonAIChat } from "../../components/LessonAIChat";
 
 export function TrainingCenter(props: { courses: Course[] }) {
   const courses = props.courses;
@@ -111,6 +112,7 @@ export function TrainingCenter(props: { courses: Course[] }) {
               </>
             )}
           </div>
+          <LessonAIChat lessonTitle={activePage?.title || selectedCourse.title} />
         </div>
       </div>
     );

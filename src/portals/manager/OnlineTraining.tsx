@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { DashboardCard } from "../../components/DashboardCard";
 import { AuthenticatedUser, Course } from "../../types";
+import { LessonAIChat } from "../../components/LessonAIChat";
 
 export function ManagerOnlineTrainingPage(props: {
   currentUser: AuthenticatedUser;
@@ -124,6 +125,7 @@ export function ManagerOnlineTrainingPage(props: {
               </>
             )}
           </div>
+          <LessonAIChat lessonTitle={activePage?.title || selectedCourse.title} />
         </div>
       </div>
     );
