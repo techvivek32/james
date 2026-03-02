@@ -3,6 +3,7 @@ import { DashboardCard } from "../../components/DashboardCard";
 import { Course, UserProfile } from "../../types";
 
 export function AdminDashboard(props: { users: UserProfile[]; courses: Course[] }) {
+  const [showSocialDetails, setShowSocialDetails] = useState(true);
   const users = props.users;
   const courses = props.courses;
 
@@ -144,14 +145,65 @@ export function AdminDashboard(props: { users: UserProfile[]; courses: Course[] 
         <div className="panel-header">
           <div className="panel-header-row">
             <span>Social Media Dashboard</span>
+            <button
+              type="button"
+              className="btn-secondary btn-small"
+              onClick={() => setShowSocialDetails(!showSocialDetails)}
+            >
+              {showSocialDetails ? "Hide Details" : "Show Details"}
+            </button>
           </div>
         </div>
         <div className="panel-body">
-          <div className="grid grid-3" style={{ marginBottom: 16 }}>
+          <div className="grid grid-3" style={{ marginBottom: showSocialDetails ? 16 : 0 }}>
             <DashboardCard title="Total Followers" value={totalFollowers.toLocaleString()} />
             <DashboardCard title="Posts (Last 30 Days)" value={totalPosts30d.toLocaleString()} />
             <DashboardCard title="Views (Last 30 Days)" value={totalViews30d.toLocaleString()} />
           </div>
+          {showSocialDetails && (
+            <>
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "minmax(0, 180px) repeat(3, minmax(0, 160px))",
+                  columnGap: 12,
+                  rowGap: 8,
+                  fontSize: 12,
+                  fontWeight: 600,
+                  marginBottom: 8,
+                  padding: "4px 0",
+                  borderBottom: "1px solid #e5e7eb",
+                  color: "#6b7280"
+                }}
+              >
+                <div>Platform</div>
+                <div style={{ textAlign: "right" }}>Followers</div>
+                <div style={{ textAlign: "right" }}>Posts (30 days)</div>
+                <div style={{ textAlign: "right" }}>Views (30 days)</div>
+              </div>
+              {socialPlatforms.map((platform, index) => (
+                <div
+                  key={platform.id}
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: "minmax(0, 180px) repeat(3, minmax(0, 160px))",
+                    columnGap: 12,
+                    rowGap: 8,
+                    alignItems: "center",
+                    padding: "8px 0",
+                    borderTop: index === 0 ? "1px solid #e5e7eb" : "1px solid #f1f5f9",
+                    backgroundColor: index % 2 === 0 ? "#ffffff" : "#f9fafb",
+                    fontSize: 13
+                  }}
+                >
+                  <div>{platform.name}</div>
+                  <div style={{ textAlign: "right" }}>{platform.followers.toLocaleString()}</div>
+                  <div style={{ textAlign: "right" }}>{platform.posts30d.toLocaleString()}</div>
+                  <div style={{ textAlign: "right" }}>{platform.views30d.toLocaleString()}</div>
+                </div>
+              ))}
+            </>
+          )}
         </div>
       </div>
     </div>
