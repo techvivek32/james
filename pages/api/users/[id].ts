@@ -37,7 +37,7 @@ export default async function handler(
       { id },
       { ...rest, passwordHash: hashedPassword },
       {
-        new: true,
+        returnDocument: 'after',
         upsert: true
       }
     ).lean();

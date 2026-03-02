@@ -26,7 +26,7 @@ export default async function handler(
 
   if (req.method === "PUT") {
     const updated = await CourseModel.findOneAndUpdate({ id }, req.body, {
-      new: true,
+      returnDocument: 'after',
       upsert: true
     }).lean();
     res.status(200).json(updated);
