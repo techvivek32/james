@@ -287,7 +287,8 @@ body {
 .app-content {
   padding: 24px;
   flex: 1;
-  overflow: auto;
+  overflow-y: auto;
+  overflow-x: hidden;
 }
 
 .grid {
@@ -653,6 +654,8 @@ body {
   margin-top: 8px;
   display: flex;
   gap: 16px;
+  min-width: 0;
+  overflow: hidden;
 }
 
 .course-pages-left {
@@ -874,6 +877,8 @@ body {
   border-radius: 12px;
   padding: 16px 18px;
   border: 1px solid #e5e7eb;
+  min-width: 0;
+  overflow: hidden;
 }
 
 .course-page-main-header {
@@ -920,6 +925,7 @@ body {
 
 .course-page-title-input {
   flex: 1;
+  min-width: 0;
   border-radius: 10px;
   border: 1px solid #e5e7eb;
   padding: 6px 10px;
@@ -929,16 +935,27 @@ body {
 
 .course-page-editor-body {
   margin-top: 10px;
+  width: 100%;
+  max-width: 100%;
+  overflow: hidden;
 }
 
 .course-page-body-input {
   width: 100%;
-  min-height: 400px;
+  max-width: 100%;
+  min-height: 200px;
+  max-height: 400px;
+  overflow-y: auto;
+  overflow-x: hidden;
   border-radius: 10px;
   border: 1px solid #e5e7eb;
   padding: 10px 12px;
   font-size: 14px;
   resize: vertical;
+  white-space: pre-wrap;
+  word-break: break-word;
+  overflow-wrap: anywhere;
+  box-sizing: border-box;
 }
 
 .course-page-add {
@@ -1193,6 +1210,8 @@ body {
 .admin-user-management,
 .admin-course-management {
   display: flex;
+  min-width: 0;
+  overflow: hidden;
 }
 
 .list {

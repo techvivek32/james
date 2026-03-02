@@ -11,16 +11,17 @@ const Training: NextPage = () => {
   useEffect(() => {
     async function loadData() {
       try {
-        const [usersRes, coursesRes] = await Promise.all([
-          fetch("/api/users"),
-          fetch("/api/courses")
-        ]);
+        const usersRes = await fetch("/api/users");
         if (usersRes.ok) {
           const users = await usersRes.json();
           const salesUser = users.find((u: UserProfile) => u.role === "sales");
-          if (salesUser) setProfile(salesUser);
+          if (salesUser) {
+            setProfile(salesUser);
+            // Fetch courses with user context
+            const coursesRes = await fetch(`/api/courses?userId=${salesUser.id}&userRole=${salesUser.role}`);
+            if (coursesRes.ok) setCourses(await coursesRes.json());
+          }
         }
-        if (coursesRes.ok) setCourses(await coursesRes.json());
       } catch (error) {
         console.error("Failed to load sales data:", error);
       }

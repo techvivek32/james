@@ -1,6 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import { connectMongo } from "../../../src/lib/mongodb";
 import { CourseModel } from "../../../src/lib/models/Course";
+import { UserModel } from "../../../src/lib/models/User";
 
 export default async function handler(
   req: NextApiRequest,
@@ -9,8 +10,40 @@ export default async function handler(
   await connectMongo();
 
   if (req.method === "GET") {
+    const { userId, userRole } = req.query;
     const courses = await CourseModel.find().lean();
-    res.status(200).json(courses);
+    
+    // If no user context, return all courses (for admin)
+    if (!userId || !userRole) {
+      res.status(200).json(courses);
+      return;
+    }
+    
+    // Get user to check training center feature toggle
+    const user = await UserModel.findOne({ id: userId }).lean();
+    if (!user) {
+      res.status(404).json({ error: "User not found" });
+      return;
+    }
+    
+    // Filter courses based on access mode and user's training center toggle
+    const filteredCourses = courses.filter((course: any) => {
+      // Only show published courses
+      if (course.status === "draft") return false;
+      
+      // Check if user has training center enabled
+      if (!user.featureToggles?.trainingCenter) return false;
+      
+      // If course is open to all members, show it
+      if (course.accessMode === "open" || !course.accessMode) return true;
+      
+      // If course is assigned only, show only to managers
+      if (course.accessMode === "assigned" && userRole === "manager") return true;
+      
+      return false;
+    });
+    
+    res.status(200).json(filteredCourses);
     return;
   }
 

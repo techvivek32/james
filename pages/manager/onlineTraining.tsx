@@ -11,7 +11,7 @@ const OnlineTrainingPage: NextPage = () => {
   useEffect(() => {
     async function loadData() {
       try {
-        const coursesRes = await fetch("/api/courses");
+        const coursesRes = await fetch(`/api/courses?userId=${currentUser.id}&userRole=${currentUser.role}`);
         if (coursesRes.ok) setCourses(await coursesRes.json());
       } catch (error) {
         console.error("Failed to load courses:", error);

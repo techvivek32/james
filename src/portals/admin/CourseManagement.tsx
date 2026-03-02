@@ -1126,11 +1126,19 @@ export function CourseManagement(props: CourseEditorProps) {
                                         }}
                                         style={{
                                           minHeight: "200px",
+                                          maxHeight: "400px",
+                                          overflowY: "auto",
+                                          overflowX: "hidden",
                                           padding: "12px",
                                           border: "1px solid #ddd",
                                           borderRadius: "4px",
                                           outline: "none",
-                                          whiteSpace: "pre-wrap"
+                                          whiteSpace: "pre-wrap",
+                                          wordBreak: "break-word",
+                                          overflowWrap: "anywhere",
+                                          boxSizing: "border-box",
+                                          width: "100%",
+                                          maxWidth: "100%"
                                         }}
                                       />
                                     </div>
@@ -1167,19 +1175,7 @@ export function CourseManagement(props: CourseEditorProps) {
                                             >
                                               Add resource file
                                             </button>
-                                            <button
-                                              type="button"
-                                              className="course-page-menu-item"
-                                              onClick={() => {
-                                                const nextPages = pages.map((page) =>
-                                                  page.id === activePage.id ? { ...page, transcript: page.transcript ?? "" } : page
-                                                );
-                                                updateCourse({ ...selectedCourse, pages: nextPages });
-                                                setIsAddMenuOpen(false);
-                                              }}
-                                            >
-                                              Add transcript
-                                            </button>
+                                            
                                             <button
                                               type="button"
                                               className="course-page-menu-item"
