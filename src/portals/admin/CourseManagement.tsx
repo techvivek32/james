@@ -469,48 +469,6 @@ export function CourseManagement(props: CourseEditorProps) {
                 </>
               ) : (
                 <>
-                  <div className="course-pages-course-header">
-                    <div className="course-pages-course-header-row">
-                      <div className="course-pages-course-title">{selectedCourse.title}</div>
-                      <div className="course-pages-course-header-right">
-                        <button
-                          type="button"
-                          className="course-page-menu-trigger course-pages-course-menu-trigger"
-                          onClick={() => {
-                            setIsCourseMenuOpen(!isCourseMenuOpen);
-                            setOpenPageMenuId(null);
-                          }}
-                        >
-                          ⋯
-                        </button>
-                        {isCourseMenuOpen && (
-                          <div className="course-page-menu">
-                            <button type="button" className="course-page-menu-item" onClick={() => addPageForCourse(selectedCourse)}>
-                              Add page
-                            </button>
-                            <button
-                              type="button"
-                              className="course-page-menu-item"
-                              onClick={() => {
-                                setIsFolderModalOpen(true);
-                                setIsCourseMenuOpen(false);
-                                setNewFolderName("");
-                                setNewFolderPublished(true);
-                              }}
-                            >
-                              Add folder
-                            </button>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                    <div className="course-pages-course-progress">
-                      <div className="course-pages-course-progress-label">0%</div>
-                      <div className="course-pages-course-progress-track">
-                        <div className="course-pages-course-progress-fill" />
-                      </div>
-                    </div>
-                  </div>
                   <div className="course-pages-layout">
                     {(!selectedCourse.pages || selectedCourse.pages.length === 0) &&
                     (!selectedCourse.folders || selectedCourse.folders.length === 0) ? (
@@ -594,7 +552,50 @@ export function CourseManagement(props: CourseEditorProps) {
                           }
                           return (
                             <>
-                              <div className="course-pages-sidebar">
+                              <div className="course-pages-left">
+                                <div className="course-pages-course-header">
+                                  <div className="course-pages-course-header-row">
+                                    <div className="course-pages-course-title">{selectedCourse.title}</div>
+                                    <div className="course-pages-course-header-right">
+                                      <button
+                                        type="button"
+                                        className="course-page-menu-trigger course-pages-course-menu-trigger"
+                                        onClick={() => {
+                                          setIsCourseMenuOpen(!isCourseMenuOpen);
+                                          setOpenPageMenuId(null);
+                                        }}
+                                      >
+                                        ⋯
+                                      </button>
+                                      {isCourseMenuOpen && (
+                                        <div className="course-page-menu">
+                                          <button type="button" className="course-page-menu-item" onClick={() => addPageForCourse(selectedCourse)}>
+                                            Add page
+                                          </button>
+                                          <button
+                                            type="button"
+                                            className="course-page-menu-item"
+                                            onClick={() => {
+                                              setIsFolderModalOpen(true);
+                                              setIsCourseMenuOpen(false);
+                                              setNewFolderName("");
+                                              setNewFolderPublished(true);
+                                            }}
+                                          >
+                                            Add folder
+                                          </button>
+                                        </div>
+                                      )}
+                                    </div>
+                                  </div>
+                                  <div className="course-pages-course-progress">
+                                    <div className="course-pages-course-progress-label">0%</div>
+                                    <div className="course-pages-course-progress-track">
+                                      <div className="course-pages-course-progress-fill" />
+                                    </div>
+                                  </div>
+                                </div>
+                                <div className="course-pages-sidebar">
                                 {pages.filter((page) => !page.folderId).map((page) => (
                                   <div
                                     key={page.id}
@@ -835,6 +836,7 @@ export function CourseManagement(props: CourseEditorProps) {
                                   );
                                 })}
                               </div>
+                            </div>
                               <div className="course-page-main">
                                 {activePage && (
                                   <>
