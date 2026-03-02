@@ -11,6 +11,7 @@ export function CourseManagement(props: CourseEditorProps) {
   const [viewMode, setViewMode] = useState<"grid" | "detail">("grid");
   const [page, setPage] = useState(1);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const imageFileInputRef = useRef<HTMLInputElement | null>(null);
   const [detailSection, setDetailSection] = useState<"overview" | "pages">("overview");
   const [activePageId, setActivePageId] = useState<string | null>(null);
   const [openPageMenuId, setOpenPageMenuId] = useState<string | null>(null);
@@ -24,6 +25,8 @@ export function CourseManagement(props: CourseEditorProps) {
   const [isVideoModalOpen, setIsVideoModalOpen] = useState(false);
   const [videoUrlDraft, setVideoUrlDraft] = useState("");
   const videoFileInputRef = useRef<HTMLInputElement | null>(null);
+  const [isImageModalOpen, setIsImageModalOpen] = useState(false);
+  const [imageUrlDraft, setImageUrlDraft] = useState("");
   const [isLinkModalOpen, setIsLinkModalOpen] = useState(false);
   const [linkLabelDraft, setLinkLabelDraft] = useState("");
   const [linkUrlDraft, setLinkUrlDraft] = useState("");
@@ -255,6 +258,102 @@ export function CourseManagement(props: CourseEditorProps) {
           </div>
         </div>
       )}
+      {isImageModalOpen && selectedCourse && (() => {
+        const course = selectedCourse as Course;
+        const pages = course.pages ?? [];
+        const activePage =
+          (activePageId ? pages.find((page) => page.id === activePageId) : undefined) ??
+          (pages.length > 0 ? pages[pages.length - 1] : undefined) ??
+          undefined;
+        if (!activePage) {
+          return null;
+        }
+        const pageForImage = activePage as CoursePage;
+        function handleAddImage() {
+          const trimmed = imageUrlDraft.trim();
+          if (!trimmed) {
+            return;
+          }
+          
+          const imageHtml = `<div contenteditable="false" style="margin: 16px 0;"><img src="${trimmed}" style="max-width: 100%; height: auto; border-radius: 8px;"></div>`;
+          
+          if (bodyInputRef.current && imageHtml) {
+            bodyInputRef.current.focus();
+            const selection = window.getSelection();
+            if (selection && selection.rangeCount > 0) {
+              const range = selection.getRangeAt(0);
+              range.deleteContents();
+              const tempDiv = document.createElement("div");
+              tempDiv.innerHTML = imageHtml + '<p><br></p>';
+              const imageNode = tempDiv.firstChild!;
+              const lineBreak = tempDiv.lastChild!;
+              range.insertNode(lineBreak);
+              range.insertNode(imageNode);
+              
+              const newRange = document.createRange();
+              newRange.setStartAfter(lineBreak);
+              newRange.collapse(true);
+              selection.removeAllRanges();
+              selection.addRange(newRange);
+            } else {
+              bodyInputRef.current.innerHTML += imageHtml + '<p><br></p>';
+            }
+            
+            setTimeout(() => {
+              if (bodyInputRef.current) {
+                const nextBody = bodyInputRef.current.innerHTML;
+                const nextPages = pages.map((page) => (page.id === pageForImage.id ? { ...page, body: nextBody } : page));
+                updateCourse({ ...(course as Course), pages: nextPages });
+              }
+            }, 0);
+          }
+          
+          setIsImageModalOpen(false);
+          setImageUrlDraft("");
+        }
+        return (
+          <div className="overlay">
+            <div className="dialog">
+              <div className="dialog-title">Add an image</div>
+              <label className="field">
+                <span className="field-label">Image URL</span>
+                <input className="field-input" value={imageUrlDraft} onChange={(event) => setImageUrlDraft(event.target.value)} placeholder="https://" />
+              </label>
+              <div className="video-dropzone" onClick={() => imageFileInputRef.current?.click()}>
+                <div className="video-dropzone-icon">⬆</div>
+                <div className="video-dropzone-text-main">Drag and drop image here</div>
+                <div className="video-dropzone-text-sub">or select file</div>
+              </div>
+              <input
+                ref={imageFileInputRef}
+                type="file"
+                accept="image/*"
+                style={{ display: "none" }}
+                onChange={(event) => {
+                  const file = event.target.files?.[0];
+                  if (!file) return;
+                  const reader = new FileReader();
+                  reader.onloadend = () => {
+                    setImageUrlDraft(reader.result as string);
+                  };
+                  reader.readAsDataURL(file);
+                }}
+              />
+              <div className="dialog-footer">
+                <div />
+                <div className="dialog-actions">
+                  <button type="button" className="btn-secondary btn-cancel" onClick={() => setIsImageModalOpen(false)}>
+                    CANCEL
+                  </button>
+                  <button type="button" className="btn-primary btn-success" disabled={!imageUrlDraft.trim()} onClick={handleAddImage}>
+                    ADD
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
       {isLinkModalOpen && selectedCourse && (() => {
         const course = selectedCourse as Course;
         const pages = course.pages ?? [];
@@ -935,8 +1034,8 @@ export function CourseManagement(props: CourseEditorProps) {
                                         <button type="button" className={activeFormats.has("ol") ? "course-page-toolbar-button course-page-toolbar-button-icon active" : "course-page-toolbar-button course-page-toolbar-button-icon"} onClick={() => applyFormatting("ol")}>1.</button>
                                         <button type="button" className={activeFormats.has("quote") ? "course-page-toolbar-button course-page-toolbar-button-icon active" : "course-page-toolbar-button course-page-toolbar-button-icon"} onClick={() => applyFormatting("quote")}>"</button>
                                         <span style={{ borderLeft: "1px solid #ddd", height: "20px", margin: "0 8px" }} />
-                                        <button type="button" className="course-page-toolbar-button course-page-toolbar-button-icon">🖼</button>
-                                        <button type="button" className="course-page-toolbar-button course-page-toolbar-button-icon">🔗</button>
+                                        <button type="button" className="course-page-toolbar-button course-page-toolbar-button-icon" onClick={() => { setImageUrlDraft(""); setIsImageModalOpen(true); }}>🖼</button>
+                                        <button type="button" className="course-page-toolbar-button course-page-toolbar-button-icon" onClick={() => { setLinkLabelDraft(""); setLinkUrlDraft(""); setIsLinkModalOpen(true); }}>🔗</button>
                                         <button
                                           type="button"
                                           className="course-page-toolbar-button course-page-toolbar-button-icon course-page-toolbar-button-video"
