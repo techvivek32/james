@@ -26,6 +26,8 @@ export function UserManagement(props: UserEditorProps) {
   const [importing, setImporting] = useState(false);
   const [pendingImportUsers, setPendingImportUsers] = useState<any[]>([]);
   const [showImportConfirm, setShowImportConfirm] = useState(false);
+  const [showActiveUsers, setShowActiveUsers] = useState(true);
+  const [showSuspendedUsers, setShowSuspendedUsers] = useState(true);
 
   const featureToggleKeysByRole: Record<UserProfile["role"], (keyof FeatureToggles)[]> = {
     admin: ["dashboard", "userManagement", "roleHierarchy", "businessUnits", "salesOverview", "marketingOverview", "courseManagement", "materialsLibrary", "approvalWorkflows", "aiBots", "webTemplates"],
@@ -290,26 +292,58 @@ export function UserManagement(props: UserEditorProps) {
         </div>
         <div className="panel-body">
           <div className="panel-section">
-            <div className="panel-section-title">Active Users</div>
-            <div className="list">
-              {draftUsers.map((user) => {
-                const isActive = user.id === selectedUserId;
-                return (
-                  <button key={user.id} className={isActive ? "list-item active" : "list-item"} onClick={() => setSelectedUserId(user.id)}>
-                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
-                      <div>
-                        <div className="list-item-title">{user.name}</div>
-                        <div className="list-item-subtitle">
-                          {(user.roles || [user.role]).map(r => r.toUpperCase()).join(", ")} • {user.email}
-                          {user.suspended && <span style={{ color: "#dc2626", marginLeft: 8 }}>• SUSPENDED</span>}
+            <div className="panel-section-title" style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer" }} onClick={() => setShowActiveUsers(!showActiveUsers)}>
+              <span>{showActiveUsers ? "▾" : "▸"}</span>
+              <span>Active Users</span>
+            </div>
+            {showActiveUsers && (
+              <div className="list">
+                {draftUsers.filter(u => !u.suspended).map((user) => {
+                  const isActive = user.id === selectedUserId;
+                  return (
+                    <button key={user.id} className={isActive ? "list-item active" : "list-item"} onClick={() => setSelectedUserId(user.id)}>
+                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
+                        <div>
+                          <div className="list-item-title">{user.name}</div>
+                          <div className="list-item-subtitle">
+                            {(user.roles || [user.role]).map(r => r.toUpperCase()).join(", ")} • {user.email}
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
           </div>
+          {draftUsers.filter(u => u.suspended).length > 0 && (
+            <div className="panel-section">
+              <div className="panel-section-title" style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer" }} onClick={() => setShowSuspendedUsers(!showSuspendedUsers)}>
+                <span>{showSuspendedUsers ? "▾" : "▸"}</span>
+                <span>Suspended Users</span>
+              </div>
+              {showSuspendedUsers && (
+                <div className="list">
+                  {draftUsers.filter(u => u.suspended).map((user) => {
+                    const isActive = user.id === selectedUserId;
+                    return (
+                      <button key={user.id} className={isActive ? "list-item active" : "list-item"} onClick={() => setSelectedUserId(user.id)}>
+                        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
+                          <div>
+                            <div className="list-item-title">{user.name}</div>
+                            <div className="list-item-subtitle">
+                              {(user.roles || [user.role]).map(r => r.toUpperCase()).join(", ")} • {user.email}
+                              <span style={{ color: "#dc2626", marginLeft: 8 }}>• SUSPENDED</span>
+                            </div>
+                          </div>
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          )}
           {draftDeletedUsers.length > 0 && (
             <div className="panel-section">
               <div className="panel-section-title">Deleted Users</div>
