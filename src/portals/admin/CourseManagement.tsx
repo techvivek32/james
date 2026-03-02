@@ -29,6 +29,7 @@ export function CourseManagement(props: CourseEditorProps) {
   const bodyInputRef = useRef<HTMLDivElement | null>(null);
   const [lastPageId, setLastPageId] = useState<string | null>(null);
   const [activeFormats, setActiveFormats] = useState<Set<string>>(new Set());
+  const [collapsedFolders, setCollapsedFolders] = useState<Set<string>>(new Set());
 
   const visibleCourses = props.courses;
 
@@ -674,10 +675,25 @@ export function CourseManagement(props: CourseEditorProps) {
                                 ))}
                                 {folders.map((folder) => {
                                   const folderPages = pages.filter((page) => page.folderId === folder.id);
+                                  const isCollapsed = collapsedFolders.has(folder.id);
                                   return (
                                     <div key={folder.id} className="course-folder-group">
                                       <div className="course-folder-item">
-                                        <button type="button" className="course-folder-toggle">˅</button>
+                                        <button 
+                                          type="button" 
+                                          className="course-folder-toggle"
+                                          onClick={() => {
+                                            const next = new Set(collapsedFolders);
+                                            if (isCollapsed) {
+                                              next.delete(folder.id);
+                                            } else {
+                                              next.add(folder.id);
+                                            }
+                                            setCollapsedFolders(next);
+                                          }}
+                                        >
+                                          {isCollapsed ? "▸" : "▾"}
+                                        </button>
                                         <span className="course-folder-title">{folder.status === "draft" ? `(Draft) ${folder.title}` : folder.title}</span>
                                         <button
                                           type="button"
@@ -756,7 +772,7 @@ export function CourseManagement(props: CourseEditorProps) {
                                           </div>
                                         )}
                                       </div>
-                                      {folderPages.map((page) => (
+                                      {!isCollapsed && folderPages.map((page) => (
                                         <div
                                           key={page.id}
                                           className={activePage && page.id === activePage.id ? "course-pages-item course-pages-item-child active" : "course-pages-item course-pages-item-child"}
