@@ -1,96 +1,94 @@
 import { useEffect, useState } from "react";
 import { DashboardCard } from "../../components/DashboardCard";
-import { BusinessPlan, UserProfile } from "../../types";
+import { UserProfile, BusinessPlan } from "../../types";
 import { useAuth } from "../../contexts/AuthContext";
 
-type BusinessPlanWithUser = {
-  userId: string;
-  userName: string;
-  userRole: string;
-  businessPlan: BusinessPlan | null;
-  updatedAt: Date | null;
-};
-
 export function TeamBusinessPlansPage() {
-  const [businessPlans, setBusinessPlans] = useState<BusinessPlanWithUser[]>([]);
+  const [users, setUsers] = useState<UserProfile[]>([]);
   const [loading, setLoading] = useState(true);
+  const [editingUser, setEditingUser] = useState<UserProfile | null>(null);
+  const [editForm, setEditForm] = useState<BusinessPlan | null>(null);
   const { user } = useAuth();
 
   useEffect(() => {
     if (user) {
-      fetchBusinessPlans();
+      fetchUsers();
     }
   }, [user]);
 
-  async function fetchBusinessPlans() {
+  async function fetchUsers() {
     try {
-      if (!user || user.role !== 'manager') {
-        console.log('No manager user found');
-        return;
-      }
-      
-      console.log('Current logged-in manager:', user.name, user.id);
       const response = await fetch(`/api/users`);
       if (response.ok) {
-        const users = await response.json();
-        const teamMembers = users.filter((u: UserProfile) => u.managerId === user.id && u.role === 'sales');
-        const plansData = teamMembers.map((member: UserProfile) => ({
-          userId: member.id,
-          userName: member.name,
-          userRole: member.role,
-          businessPlan: member.businessPlan || null,
-          updatedAt: null
-        }));
-        setBusinessPlans(plansData);
+        const allUsers = await response.json();
+        setUsers(allUsers);
       }
     } catch (error) {
-      console.error('Failed to fetch business plans:', error);
+      console.error('Failed to fetch users:', error);
     } finally {
       setLoading(false);
     }
   }
 
-  const salesPlans = businessPlans.filter(plan => plan.userRole === 'sales');
-  
-  const totals = salesPlans.reduce(
-    (acc, planData) => {
-      const plan = planData.businessPlan;
-      if (plan) {
-        acc.revenueGoal += plan.revenueGoal || 0;
-        acc.dealsPerYear += plan.dealsPerYear || 0;
-        acc.inspectionsNeeded += plan.inspectionsNeeded || 0;
-        acc.doorsPerYear += plan.doorsPerYear || 0;
+  async function handleSave() {
+    if (!editingUser || !editForm) return;
+    try {
+      const response = await fetch(`/api/users/${editingUser.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: editingUser.id,
+          name: editingUser.name,
+          email: editingUser.email,
+          role: editingUser.role,
+          managerId: editingUser.managerId,
+          businessPlan: editForm
+        })
+      });
+      if (response.ok) {
+        window.location.reload();
       }
-      return acc;
-    },
-    { revenueGoal: 0, dealsPerYear: 0, inspectionsNeeded: 0, doorsPerYear: 0 }
-  );
+    } catch (error) {
+      console.error('Failed to update:', error);
+    }
+  }
 
   if (loading) {
     return <div>Loading business plans...</div>;
   }
+
+  if (!user || user.role !== 'manager') {
+    return <div>Access denied</div>;
+  }
+
+  const teamMembers = users.filter((u) => u.managerId === user.id);
+  const teamPlans = teamMembers.filter((m) => !!m.businessPlan).map((m) => m.businessPlan!);
+  const teamRevenue = teamPlans.reduce((sum, p) => sum + (p.revenueGoal || 0), 0);
+  const totalDeals = teamPlans.reduce((sum, p) => sum + (p.dealsPerYear || 0), 0);
+  const totalInspections = teamPlans.reduce((sum, p) => sum + (p.inspectionsNeeded || 0), 0);
+  const totalDoors = teamPlans.reduce((sum, p) => sum + (p.doorsPerYear || 0), 0);
 
   return (
     <div>
       <div className="grid grid-4">
         <DashboardCard
           title="Team Revenue Goal"
-          value={`$${totals.revenueGoal.toLocaleString()}`}
+          value={`$${teamRevenue.toLocaleString()}`}
           description="Sum of rep plans"
         />
         <DashboardCard
           title="Deals Needed (Year)"
-          value={totals.dealsPerYear.toLocaleString()}
+          value={totalDeals.toLocaleString()}
           description="Across all reps"
         />
         <DashboardCard
           title="Inspections Needed"
-          value={totals.inspectionsNeeded.toLocaleString()}
+          value={totalInspections.toLocaleString()}
           description="From plan assumptions"
         />
         <DashboardCard
           title="Door Knocks (Year)"
-          value={totals.doorsPerYear.toLocaleString()}
+          value={totalDoors.toLocaleString()}
           description="Team goal"
         />
       </div>
@@ -101,9 +99,9 @@ export function TeamBusinessPlansPage() {
           </div>
         </div>
         <div className="panel-body">
-          {salesPlans.length === 0 ? (
+          {teamMembers.length === 0 ? (
             <div className="panel-empty">
-              No sales team members found.
+              No team members assigned.
             </div>
           ) : (
             <div style={{ overflowX: "auto" }}>
@@ -118,14 +116,15 @@ export function TeamBusinessPlansPage() {
                     <th style={{ padding: "8px 12px", textAlign: "center" }}>Inspections</th>
                     <th style={{ padding: "8px 12px", textAlign: "center" }}>Door Knocks</th>
                     <th style={{ padding: "8px 12px", textAlign: "center" }}>Status</th>
+                    <th style={{ padding: "8px 12px", textAlign: "center" }}>Actions</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {salesPlans.map((planData, index) => {
-                    const plan = planData.businessPlan;
+                  {teamMembers.map((member, index) => {
+                    const plan = member.businessPlan;
                     return (
                       <tr
-                        key={planData.userId}
+                        key={member.id}
                         style={{
                           fontSize: 13,
                           backgroundColor: index % 2 === 0 ? "#ffffff" : "#f9fafb",
@@ -134,10 +133,10 @@ export function TeamBusinessPlansPage() {
                       >
                         <td style={{ padding: "8px 12px" }}>
                           <div style={{ fontSize: 13, fontWeight: 500 }}>
-                            {planData.userName}
+                            {member.name}
                           </div>
                           <div style={{ fontSize: 11, color: "#6b7280" }}>
-                            {planData.userRole.toUpperCase()}
+                            {member.role.toUpperCase()}
                           </div>
                         </td>
                         <td style={{ padding: "8px 12px", textAlign: "center" }}>
@@ -169,6 +168,27 @@ export function TeamBusinessPlansPage() {
                             <span style={{ color: "#6b7280" }}>Not Set</span>
                           )}
                         </td>
+                        <td style={{ padding: "8px 12px", textAlign: "center" }}>
+                          <button
+                            onClick={() => {
+                              setEditingUser(member);
+                              setEditForm(member.businessPlan || {
+                                revenueGoal: 0,
+                                daysPerWeek: 0,
+                                territories: [],
+                                dealsPerYear: 0,
+                                dealsPerMonth: 0,
+                                inspectionsNeeded: 0,
+                                doorsPerYear: 0,
+                                doorsPerDay: 0,
+                                committed: false
+                              });
+                            }}
+                            className="btn-secondary btn-small"
+                          >
+                            Edit
+                          </button>
+                        </td>
                       </tr>
                     );
                   })}
@@ -178,6 +198,43 @@ export function TeamBusinessPlansPage() {
           )}
         </div>
       </div>
+      {editingUser && editForm && (
+        <div className="overlay" onClick={() => setEditingUser(null)}>
+          <div className="dialog" style={{ width: 500 }} onClick={(e) => e.stopPropagation()}>
+            <div className="dialog-title">Edit Business Plan - {editingUser.name}</div>
+            <div className="form-grid" style={{ gridTemplateColumns: '1fr 1fr' }}>
+              <div className="field">
+                <label className="field-label">Revenue Goal</label>
+                <input className="field-input" type="number" value={editForm.revenueGoal || 0} onChange={(e) => setEditForm({...editForm, revenueGoal: Number(e.target.value)})} />
+              </div>
+              <div className="field">
+                <label className="field-label">Days Per Week</label>
+                <input className="field-input" type="number" value={editForm.daysPerWeek || 0} onChange={(e) => setEditForm({...editForm, daysPerWeek: Number(e.target.value)})} />
+              </div>
+              <div className="field">
+                <label className="field-label">Deals Per Year</label>
+                <input className="field-input" type="number" value={editForm.dealsPerYear || 0} onChange={(e) => setEditForm({...editForm, dealsPerYear: Number(e.target.value)})} />
+              </div>
+              <div className="field">
+                <label className="field-label">Deals Per Month</label>
+                <input className="field-input" type="number" value={editForm.dealsPerMonth || 0} onChange={(e) => setEditForm({...editForm, dealsPerMonth: Number(e.target.value)})} />
+              </div>
+              <div className="field">
+                <label className="field-label">Inspections Needed</label>
+                <input className="field-input" type="number" value={editForm.inspectionsNeeded || 0} onChange={(e) => setEditForm({...editForm, inspectionsNeeded: Number(e.target.value)})} />
+              </div>
+              <div className="field">
+                <label className="field-label">Door Knocks Per Year</label>
+                <input className="field-input" type="number" value={editForm.doorsPerYear || 0} onChange={(e) => setEditForm({...editForm, doorsPerYear: Number(e.target.value)})} />
+              </div>
+            </div>
+            <div className="dialog-footer">
+              <button className="btn-secondary btn-cancel" onClick={() => setEditingUser(null)}>Cancel</button>
+              <button className="btn-primary solid" onClick={handleSave}>Save</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
