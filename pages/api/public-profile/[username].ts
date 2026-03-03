@@ -29,8 +29,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   try {
     await connectMongo();
     const searchName = typeof username === 'string' ? username : String(username);
-    const user = await User.findOne({ 
-      name: { $regex: new RegExp(`^${searchName}$`, 'i') } 
+    
+    // Try to find user by matching name with spaces removed and case-insensitive
+    const users = await User.find({});
+    const user = users.find(u => {
+      const normalizedDbName = u.name.toLowerCase().replace(/\s+/g, '');
+      const normalizedSearchName = searchName.toLowerCase().replace(/\s+/g, '');
+      return normalizedDbName === normalizedSearchName;
     });
 
     if (!user) {

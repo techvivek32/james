@@ -491,31 +491,6 @@ export function UserManagement(props: UserEditorProps) {
                 <textarea className="field-input" rows={3} value={selectedUser.weaknesses} onChange={(e) => updateUser({ ...selectedUser, weaknesses: e.target.value })} />
               </label>
             </div>
-            <div className="panel-section">
-              <div className="panel-section-title">Rep Web Page Status</div>
-              <div className="status-row">
-                <span className="status-label">Status</span>
-                <span className={"status-chip " + (selectedUser.webPage?.status ?? "draft")}>
-                  {selectedUser.webPage?.status ?? "draft"}
-                </span>
-              </div>
-              <div className="status-actions">
-                <button className="btn-secondary btn-dark btn-small" type="button" onClick={() => setShowWebPreview((prev) => !prev)}>
-                  <span className="btn-with-icon">
-                    {showWebPreview ? (
-                      <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true">
-                        <path fill="currentColor" d="M12 5c-7 0-10 7-10 7s3 7 10 7 10-7 10-7-3-7-10-7zm0 12a5 5 0 1 1 0-10 5 5 0 0 1 0 10zm-7-5l-2-2 10-6 2 2-10 6z" />
-                      </svg>
-                    ) : (
-                      <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true">
-                        <path fill="currentColor" d="M12 5c7 0 10 7 10 7s-3 7-10 7S2 12 2 12s3-7 10-7zm0 12a5 5 0 1 0 0-10 5 5 0 0 0 0 10z" />
-                      </svg>
-                    )}
-                    <span>{showWebPreview ? "Hide" : "View"}</span>
-                  </span>
-                </button>
-              </div>
-            </div>
             {showWebPreview && selectedUser && (
               <div className="panel-section">
                 <div className="panel-section-title">Rep Web Page Preview</div>
