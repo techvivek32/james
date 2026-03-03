@@ -15,9 +15,22 @@ const DashboardPage: NextPage = () => {
       if (!user?.id) return;
       
       try {
-        const userRes = await fetch(`/api/users/${user.id}`);
+        const [userRes, planRes] = await Promise.all([
+          fetch(`/api/users/${user.id}`),
+          fetch(`/api/business-plan?userId=${user.id}`)
+        ]);
+        
         if (userRes.ok) {
           const userProfile = await userRes.json();
+          
+          if (planRes.ok) {
+            const plansData = await planRes.json();
+            const userPlan = plansData.find((p: any) => p.userId === user.id);
+            if (userPlan?.businessPlan) {
+              userProfile.businessPlan = userPlan.businessPlan;
+            }
+          }
+          
           setProfile(userProfile);
         }
       } catch (error) {
