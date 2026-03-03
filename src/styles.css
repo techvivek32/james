@@ -2368,6 +2368,12 @@ body {
   padding: 0 80px;
 }
 
+.ms-copy-dynamic {
+  margin-top: 26px;
+  max-width: 100%;
+  padding: 0 150px;
+}
+
 .ms-copy-section + .ms-copy-section {
   margin-top: 22px;
 }
@@ -3315,6 +3321,50 @@ body {
 
   .web-preview-layout {
     grid-template-columns: minmax(0, 1fr);
+  }
+
+  .ms-mission {
+    padding: 0 20px;
+  }
+
+  .ms-mission-card {
+    grid-template-columns: 1fr;
+  }
+
+  .ms-mission-title {
+    font-size: 28px;
+  }
+
+  .ms-copy {
+    padding: 0 20px;
+  }
+
+  .ms-copy-dynamic {
+    padding: 0 20px;
+  }
+
+  .ms-testimonials {
+    padding: 0 20px 32px;
+  }
+
+  .ms-testimonials-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .ms-review-strip {
+    padding: 18px 20px 20px;
+  }
+
+  .ms-review-strip-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .ms-header-top-text {
+    font-size: 14px !important;
+  }
+
+  .ms-header-logo-image {
+    width: 160px !important;
   }
 }
 

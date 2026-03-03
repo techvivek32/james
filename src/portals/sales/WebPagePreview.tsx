@@ -214,7 +214,7 @@ export function WebPagePreview(props: {
         )}
       </div>
       {webTextItems.length > 0 && (
-        <div className="ms-copy" style={{ padding: "0 150px" }}>
+        <div className="ms-copy ms-copy-dynamic">
           {webTextItems.map((item) => (
             <div key={item._id} className="ms-copy-section">
               <div className="ms-copy-title" style={{ fontSize: 28, fontWeight: 700 }}>{item.title}</div>
