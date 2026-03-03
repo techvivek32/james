@@ -80,15 +80,6 @@ export function WebPagePreview(props: {
         </button>
         <button
           type="button"
-          className="btn-primary btn-small"
-          onClick={() => {
-            alert("Changes saved (placeholder).");
-          }}
-        >
-          Save
-        </button>
-        <button
-          type="button"
           className="btn-primary btn-success btn-small"
           onClick={submitForApproval}
         >
@@ -96,12 +87,9 @@ export function WebPagePreview(props: {
         </button>
       </div>
       <div className="web-preview-url">{url}</div>
-      <div className="web-preview-url web-preview-url-secondary">
-        Short link: {shortUrl}
-      </div>
       <div className="ms-header-preview">
         <div className="ms-header-top">
-          <div className="ms-header-top-text">
+          <div className="ms-header-top-text" style={{ fontSize: 20, fontWeight: 600 }}>
             24/7 Emergency Service Available: Call or Text (817) 367-0843
           </div>
         </div>
