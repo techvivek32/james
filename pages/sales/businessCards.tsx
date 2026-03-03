@@ -8,7 +8,7 @@ const BusinessCards: NextPage = () => {
   if (!user) return <div>Loading...</div>;
 
   return (
-    <SalesLayout currentView="businessCards" userName={user.name}>
+    <SalesLayout currentView="businessCards" userName={user.name} userId={user.id}>
       <BusinessCardsRequest />
     </SalesLayout>
   );

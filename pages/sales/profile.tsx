@@ -46,7 +46,7 @@ const Profile: NextPage = () => {
 
   return (
     <ProtectedRoute allowedRoles={["sales"]}>
-      <SalesLayout currentView="profile" userName={user.name}>
+      <SalesLayout currentView="profile" userName={user.name} userId={user.id}>
         <ProfilePage profile={profile} onProfileChange={handleProfileChange} />
       </SalesLayout>
     </ProtectedRoute>

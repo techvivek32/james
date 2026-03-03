@@ -43,7 +43,7 @@ const WebPage: NextPage = () => {
   }
 
   return (
-    <SalesLayout currentView="webPage" userName={user.name}>
+    <SalesLayout currentView="webPage" userName={user.name} userId={user.id}>
       <WebPagePreview profile={profile} onProfileChange={handleProfileChange} />
     </SalesLayout>
   );

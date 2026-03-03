@@ -44,7 +44,7 @@ const Plan: NextPage = () => {
   }
 
   return (
-    <SalesLayout currentView="plan" userName={user.name}>
+    <SalesLayout currentView="plan" userName={user.name} userId={user.id}>
       <BusinessPlanPage profile={profile} onProfileChange={handleProfileChange} />
     </SalesLayout>
   );

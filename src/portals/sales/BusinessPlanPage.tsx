@@ -73,7 +73,7 @@ export function BusinessPlanPage(props: {
     };
   }, [existingPlan?.averageDealSize, revenueGoal, daysPerWeek]);
 
-  function handleCommit() {
+  async function handleCommit() {
     const territoryInput = existingPlan?.territories.join(", ") ?? props.profile.territory ?? "";
     const territories = territoryInput
       .split(",")
@@ -93,23 +93,82 @@ export function BusinessPlanPage(props: {
       committed: true
     };
 
-    // Save to database
-    fetch('/api/business-plan', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        userId: props.profile.id,
-        businessPlan: plan
-      })
-    }).then(() => {
+    try {
+      // Save to database
+      await fetch('/api/business-plan', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId: props.profile.id,
+          businessPlan: plan
+        })
+      });
+
+      // Build change details
+      const changes: string[] = [];
+      if (existingPlan?.revenueGoal !== plan.revenueGoal) {
+        changes.push(`Revenue Goal: $${existingPlan?.revenueGoal?.toLocaleString() || 0} → $${plan.revenueGoal?.toLocaleString()}`);
+      }
+      if (existingPlan?.daysPerWeek !== plan.daysPerWeek) {
+        changes.push(`Days/Week: ${existingPlan?.daysPerWeek || 0} → ${plan.daysPerWeek}`);
+      }
+      if (existingPlan?.dealsPerYear !== plan.dealsPerYear) {
+        changes.push(`Deals/Year: ${existingPlan?.dealsPerYear || 0} → ${plan.dealsPerYear}`);
+      }
+      if (existingPlan?.dealsPerMonth !== plan.dealsPerMonth) {
+        changes.push(`Deals/Month: ${existingPlan?.dealsPerMonth || 0} → ${plan.dealsPerMonth}`);
+      }
+      if (existingPlan?.inspectionsNeeded !== plan.inspectionsNeeded) {
+        changes.push(`Inspections: ${existingPlan?.inspectionsNeeded || 0} → ${plan.inspectionsNeeded}`);
+      }
+      if (existingPlan?.doorsPerYear !== plan.doorsPerYear) {
+        changes.push(`Door Knocks: ${existingPlan?.doorsPerYear?.toLocaleString() || 0} → ${plan.doorsPerYear?.toLocaleString()}`);
+      }
+      const changeMessage = changes.length > 0 ? changes.join(', ') : 'Plan committed';
+
+      // Create notifications for manager and admins
+      const allUsers = await fetch('/api/users').then(r => r.json());
+      const admins = allUsers.filter((u: any) => u.role === 'admin');
+      const notifications = [];
+
+      if (props.profile.managerId) {
+        notifications.push({
+          userId: props.profile.managerId,
+          type: 'plan_updated',
+          title: 'Sales Rep Updated Plan',
+          message: `${props.profile.name} updated their business plan. ${changeMessage}`,
+          metadata: { updatedBy: 'sales', targetUser: props.profile.id }
+        });
+      }
+
+      notifications.push(
+        ...admins.map((admin: any) => ({
+          userId: admin.id,
+          type: 'plan_updated',
+          title: 'Sales Rep Updated Plan',
+          message: `${props.profile.name} updated their business plan. ${changeMessage}`,
+          metadata: { updatedBy: 'sales', targetUser: props.profile.id }
+        }))
+      );
+
+      await Promise.all(
+        notifications.map(n => 
+          fetch('/api/notifications', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(n)
+          })
+        )
+      );
+
       props.onProfileChange({
         ...props.profile,
         businessPlan: plan
       });
       setCommitted(true);
-    }).catch(error => {
+    } catch (error) {
       console.error('Failed to save business plan:', error);
-    });
+    }
   }
 
   if (loading) {

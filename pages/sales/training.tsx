@@ -28,7 +28,7 @@ const Training: NextPage = () => {
   }
 
   return (
-    <SalesLayout currentView="training" userName={user.name}>
+    <SalesLayout currentView="training" userName={user.name} userId={user.id}>
       <TrainingCenter courses={courses} />
     </SalesLayout>
   );

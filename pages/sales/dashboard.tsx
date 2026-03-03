@@ -46,7 +46,7 @@ const DashboardPage: NextPage = () => {
 
   return (
     <ProtectedRoute allowedRoles={["sales"]}>
-      <SalesLayout currentView="dashboard" userName={user.name}>
+      <SalesLayout currentView="dashboard" userName={user.name} userId={user.id}>
         <SalesDashboard profile={profile} />
       </SalesLayout>
     </ProtectedRoute>

@@ -8,6 +8,7 @@ export function TeamBusinessPlansPage() {
   const [loading, setLoading] = useState(true);
   const [editingUser, setEditingUser] = useState<UserProfile | null>(null);
   const [editForm, setEditForm] = useState<BusinessPlan | null>(null);
+  const [originalForm, setOriginalForm] = useState<BusinessPlan | null>(null);
   const { user } = useAuth();
 
   useEffect(() => {
@@ -46,7 +47,7 @@ export function TeamBusinessPlansPage() {
   }
 
   async function handleSave() {
-    if (!editingUser || !editForm) return;
+    if (!editingUser || !editForm || !originalForm) return;
     try {
       await fetch('/api/business-plan', {
         method: 'POST',
@@ -56,6 +57,60 @@ export function TeamBusinessPlansPage() {
           businessPlan: editForm
         })
       });
+
+      // Build change details
+      const changes: string[] = [];
+      if (originalForm.revenueGoal !== editForm.revenueGoal) {
+        changes.push(`Revenue Goal: $${originalForm.revenueGoal?.toLocaleString()} → $${editForm.revenueGoal?.toLocaleString()}`);
+      }
+      if (originalForm.daysPerWeek !== editForm.daysPerWeek) {
+        changes.push(`Days/Week: ${originalForm.daysPerWeek} → ${editForm.daysPerWeek}`);
+      }
+      if (originalForm.dealsPerYear !== editForm.dealsPerYear) {
+        changes.push(`Deals/Year: ${originalForm.dealsPerYear} → ${editForm.dealsPerYear}`);
+      }
+      if (originalForm.dealsPerMonth !== editForm.dealsPerMonth) {
+        changes.push(`Deals/Month: ${originalForm.dealsPerMonth} → ${editForm.dealsPerMonth}`);
+      }
+      if (originalForm.inspectionsNeeded !== editForm.inspectionsNeeded) {
+        changes.push(`Inspections: ${originalForm.inspectionsNeeded} → ${editForm.inspectionsNeeded}`);
+      }
+      if (originalForm.doorsPerYear !== editForm.doorsPerYear) {
+        changes.push(`Door Knocks: ${originalForm.doorsPerYear?.toLocaleString()} → ${editForm.doorsPerYear?.toLocaleString()}`);
+      }
+      const changeMessage = changes.length > 0 ? changes.join(', ') : 'No changes';
+
+      // Create notifications
+      const allUsers = await fetch('/api/users').then(r => r.json());
+      const admins = allUsers.filter((u: any) => u.role === 'admin');
+      
+      const notifications = [
+        {
+          userId: editingUser.id,
+          type: 'plan_updated',
+          title: 'Business Plan Updated',
+          message: `Your manager updated your business plan. ${changeMessage}`,
+          metadata: { updatedBy: 'manager', businessPlan: editForm }
+        },
+        ...admins.map((admin: any) => ({
+          userId: admin.id,
+          type: 'plan_updated',
+          title: 'Business Plan Updated',
+          message: `Manager updated ${editingUser.name}'s business plan. ${changeMessage}`,
+          metadata: { updatedBy: 'manager', targetUser: editingUser.id }
+        }))
+      ];
+
+      await Promise.all(
+        notifications.map(n => 
+          fetch('/api/notifications', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(n)
+          })
+        )
+      );
+
       window.location.reload();
     } catch (error) {
       console.error('Failed to update:', error);
@@ -180,8 +235,7 @@ export function TeamBusinessPlansPage() {
                         <td style={{ padding: "8px 12px", textAlign: "center" }}>
                           <button
                             onClick={() => {
-                              setEditingUser(member);
-                              setEditForm(member.businessPlan || {
+                              const plan = member.businessPlan || {
                                 revenueGoal: 0,
                                 daysPerWeek: 0,
                                 territories: [],
@@ -191,7 +245,10 @@ export function TeamBusinessPlansPage() {
                                 doorsPerYear: 0,
                                 doorsPerDay: 0,
                                 committed: false
-                              });
+                              };
+                              setEditingUser(member);
+                              setEditForm(plan);
+                              setOriginalForm(plan);
                             }}
                             className="btn-secondary btn-small"
                           >

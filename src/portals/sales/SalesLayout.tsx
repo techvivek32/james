@@ -10,9 +10,10 @@ type SalesLayoutProps = {
   children: React.ReactNode;
   currentView: SalesViewId;
   userName?: string;
+  userId?: string;
 };
 
-export function SalesLayout({ children, currentView, userName }: SalesLayoutProps) {
+export function SalesLayout({ children, currentView, userName, userId }: SalesLayoutProps) {
   const { logout } = useAuth();
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
 
@@ -24,6 +25,7 @@ export function SalesLayout({ children, currentView, userName }: SalesLayoutProp
           title="Sales OS"
           subtitle="Sales rep view"
           userName={userName ?? "Sales Rep"}
+          userId={userId}
           roleLabel="Sales Rep"
           onLogout={logout}
         />

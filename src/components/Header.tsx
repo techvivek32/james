@@ -1,8 +1,11 @@
+import { NotificationBell } from "./NotificationBell";
+
 type HeaderProps = {
   title: string;
   subtitle?: string;
   userName: string;
   roleLabel: string;
+  userId?: string;
   onLogout: () => void;
 };
 
@@ -16,6 +19,7 @@ export function Header(props: HeaderProps) {
         )}
       </div>
       <div className="header-profile">
+        {props.userId && <NotificationBell userId={props.userId} />}
         <div className="header-user-info">
           <span className="header-user-name">{props.userName}</span>
           <span className="header-user-role">{props.roleLabel}</span>

@@ -35,6 +35,7 @@ export function AdminLayout({ children, currentView }: AdminLayoutProps) {
           title="Sales & Marketing OS"
           subtitle="Enterprise control center"
           userName={user?.name ?? "Admin"}
+          userId={user?.id}
           roleLabel="Admin"
           onLogout={logout}
         />

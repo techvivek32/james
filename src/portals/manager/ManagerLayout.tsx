@@ -23,6 +23,7 @@ export function ManagerLayout({ children, currentView }: ManagerLayoutProps) {
           title="Unified Sales & Marketing OS"
           subtitle="Manager view"
           userName={user?.name ?? "Manager"}
+          userId={user?.id}
           roleLabel="Manager"
           onLogout={logout}
         />

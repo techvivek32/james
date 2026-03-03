@@ -8,7 +8,7 @@ const AiChat: NextPage = () => {
   if (!user) return <div>Loading...</div>;
 
   return (
-    <SalesLayout currentView="aiChat" userName={user.name}>
+    <SalesLayout currentView="aiChat" userName={user.name} userId={user.id}>
       <AiChatPanel />
     </SalesLayout>
   );

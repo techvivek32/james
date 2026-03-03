@@ -11,7 +11,7 @@ const Materials: NextPage = () => {
   }
 
   return (
-    <SalesLayout currentView="materials" userName={user.name}>
+    <SalesLayout currentView="materials" userName={user.name} userId={user.id}>
       <MarketingMaterials />
     </SalesLayout>
   );
