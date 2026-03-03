@@ -1,13 +1,42 @@
 import { useState } from "react";
 
-export function LessonAIChat(props: { lessonTitle: string }) {
+export function LessonAIChat(props: { lessonTitle: string; lessonContent?: string; videoUrl?: string; courseTitle?: string; allPages?: any[] }) {
   const [message, setMessage] = useState("");
   const [messages, setMessages] = useState<Array<{ role: "user" | "assistant"; content: string }>>([]);
+  const [isLoading, setIsLoading] = useState(false);
 
-  function handleSend() {
-    if (!message.trim()) return;
-    setMessages([...messages, { role: "user", content: message }]);
+  async function handleSend() {
+    if (!message.trim() || isLoading) return;
+    
+    const userMessage = message.trim();
     setMessage("");
+    setMessages([...messages, { role: "user", content: userMessage }]);
+    setIsLoading(true);
+
+    try {
+      const response = await fetch("/api/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          messages: [...messages, { role: "user", content: userMessage }],
+          lessonTitle: props.lessonTitle,
+          lessonContent: props.lessonContent,
+          videoUrl: props.videoUrl,
+          courseTitle: props.courseTitle,
+          allPages: props.allPages
+        })
+      });
+
+      if (!response.ok) throw new Error("Failed to get response");
+
+      const data = await response.json();
+      setMessages(prev => [...prev, { role: "assistant", content: data.message }]);
+    } catch (error) {
+      console.error("Chat error:", error);
+      setMessages(prev => [...prev, { role: "assistant", content: "Sorry, I couldn't process your request. Please try again." }]);
+    } finally {
+      setIsLoading(false);
+    }
   }
 
   return (
@@ -79,19 +108,20 @@ export function LessonAIChat(props: { lessonTitle: string }) {
         <button
           type="button"
           onClick={handleSend}
+          disabled={isLoading || !message.trim()}
           style={{
             width: "100%",
             padding: "8px 16px",
-            backgroundColor: "#dc2626",
+            backgroundColor: isLoading || !message.trim() ? "#9ca3af" : "#dc2626",
             color: "#fff",
             border: "none",
             borderRadius: 8,
             fontSize: 13,
             fontWeight: 600,
-            cursor: "pointer"
+            cursor: isLoading || !message.trim() ? "not-allowed" : "pointer"
           }}
         >
-          Send
+          {isLoading ? "Thinking..." : "Send"}
         </button>
       </div>
     </div>
