@@ -303,32 +303,6 @@ export function WebPagePreview(props: {
               </svg>
             </a>
           </div>
-          <div className="ms-footer-left-phone">
-            <div className="ms-footer-contact">
-              {contactPhone && (
-                <a href={`tel:${contactPhone}`} className="ms-footer-link ms-footer-contact-item">
-                  <svg viewBox="0 0 24 24" aria-hidden="true">
-                    <path
-                      fill="currentColor"
-                      d="M6.6 10.8c1.2 2.3 3.3 4.4 5.6 5.6l2-2c.3-.3.8-.4 1.2-.2 1 .3 2 .5 3.1.5.7 0 1.3.6 1.3 1.3V20c0 .7-.6 1.3-1.3 1.3C10.9 21.3 2.7 13.1 2.7 3.3 2.7 2.6 3.3 2 4 2h3.2c.7 0 1.3.6 1.3 1.3 0 1.1.2 2.1.5 3.1.1.4 0 .9-.3 1.2l-2.1 2.2z"
-                    />
-                  </svg>
-                  <span>{contactPhone}</span>
-                </a>
-              )}
-              {contactEmail && (
-                <a href={`mailto:${contactEmail}`} className="ms-footer-link ms-footer-contact-item">
-                  <svg viewBox="0 0 24 24" aria-hidden="true">
-                    <path
-                      fill="currentColor"
-                      d="M4 4h16a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2zm0 2v.01L12 12l8-5.99V6H4zm16 12V8l-8 6-8-6v10h16z"
-                    />
-                  </svg>
-                  <span>{contactEmail}</span>
-                </a>
-              )}
-            </div>
-          </div>
           <div className="ms-footer-copy">
             © 2026-2027{" "}
             <a
