@@ -2168,7 +2168,7 @@ body {
   justify-content: center;
   gap: 24px;
   padding: 20px 28px;
-  background-color: #111827;
+  background: linear-gradient(135deg, #0f172a 0%, #334155 50%, #dc2626 100%);
 }
 
 .ms-header-logo-centered {
