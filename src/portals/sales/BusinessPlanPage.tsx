@@ -1,4 +1,4 @@
-import { useState, useMemo, ChangeEvent } from "react";
+import { useState, useMemo, ChangeEvent, useEffect } from "react";
 import { DashboardCard } from "../../components/DashboardCard";
 import { UserProfile, BusinessPlan } from "../../types";
 
@@ -6,7 +6,8 @@ export function BusinessPlanPage(props: {
   profile: UserProfile;
   onProfileChange: (profile: UserProfile) => void;
 }) {
-  const existingPlan = props.profile.businessPlan;
+  const [existingPlan, setExistingPlan] = useState<BusinessPlan | null>(null);
+  const [loading, setLoading] = useState(true);
   const revenueOptions = Array.from(
     { length: 19 },
     (_, index) => 100000 + index * 50000
@@ -17,7 +18,32 @@ export function BusinessPlanPage(props: {
   const [daysPerWeek, setDaysPerWeek] = useState(
     existingPlan?.daysPerWeek ?? 5
   );
-  const [committed, setCommitted] = useState(existingPlan?.committed ?? false);
+  const [committed, setCommitted] = useState(false);
+
+  // Load user's business plan from database
+  useEffect(() => {
+    async function loadBusinessPlan() {
+      try {
+        const response = await fetch(`/api/business-plan?userId=${props.profile.id}`);
+        if (response.ok) {
+          const data = await response.json();
+          const userPlan = data.find(plan => plan.userId === props.profile.id);
+          if (userPlan?.businessPlan) {
+            setExistingPlan(userPlan.businessPlan);
+            setRevenueGoal(userPlan.businessPlan.revenueGoal || 100000);
+            setDaysPerWeek(userPlan.businessPlan.daysPerWeek || 5);
+            setCommitted(userPlan.businessPlan.committed || false);
+          }
+        }
+      } catch (error) {
+        console.error('Failed to load business plan:', error);
+      } finally {
+        setLoading(false);
+      }
+    }
+    
+    loadBusinessPlan();
+  }, [props.profile.id]);
 
   const metrics = useMemo(() => {
     const averageDealSize = existingPlan?.averageDealSize ?? 12000;
@@ -84,6 +110,10 @@ export function BusinessPlanPage(props: {
     }).catch(error => {
       console.error('Failed to save business plan:', error);
     });
+  }
+
+  if (loading) {
+    return <div>Loading your business plan...</div>;
   }
 
   return (
