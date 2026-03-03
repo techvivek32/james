@@ -67,11 +67,23 @@ export function BusinessPlanPage(props: {
       committed: true
     };
 
-    props.onProfileChange({
-      ...props.profile,
-      businessPlan: plan
+    // Save to database
+    fetch('/api/business-plan', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        userId: props.profile.id,
+        businessPlan: plan
+      })
+    }).then(() => {
+      props.onProfileChange({
+        ...props.profile,
+        businessPlan: plan
+      });
+      setCommitted(true);
+    }).catch(error => {
+      console.error('Failed to save business plan:', error);
     });
-    setCommitted(true);
   }
 
   return (
