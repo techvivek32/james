@@ -103,9 +103,19 @@ export function BusinessPlanPage(props: {
               min={1}
               max={7}
               value={daysPerWeek}
-              onChange={(e: ChangeEvent<HTMLInputElement>) =>
-                setDaysPerWeek(Number(e.target.value) || 0)
-              }
+              onChange={(e: ChangeEvent<HTMLInputElement>) => {
+                const value = Number(e.target.value);
+                if (value >= 1 && value <= 7) {
+                  setDaysPerWeek(value);
+                } else if (e.target.value === '') {
+                  setDaysPerWeek(1);
+                }
+              }}
+              onKeyDown={(e) => {
+                if (e.key === 'e' || e.key === 'E' || e.key === '+' || e.key === '-' || e.key === '.') {
+                  e.preventDefault();
+                }
+              }}
             />
             <button
               type="button"
