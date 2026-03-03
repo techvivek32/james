@@ -15,6 +15,7 @@ export function TrainingCenter(props: { courses: Course[] }) {
   const [quizSubmitted, setQuizSubmitted] = useState(false);
   const [quizScore, setQuizScore] = useState<{ correct: number; total: number } | null>(null);
   const [savedQuizResults, setSavedQuizResults] = useState<any[]>([]);
+  const [courseCompleted, setCourseCompleted] = useState(false);
 
   useEffect(() => {
     if (selectedCourse && user) {
@@ -23,6 +24,7 @@ export function TrainingCenter(props: { courses: Course[] }) {
         .then(data => {
           setCompletedPages(new Set(data.completedPages || []));
           setSavedQuizResults(data.quizResults || []);
+          setCourseCompleted(data.courseCompleted || false);
         })
         .catch(err => console.error("Failed to load progress:", err));
     }
@@ -116,6 +118,16 @@ export function TrainingCenter(props: { courses: Course[] }) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ userId: user.id, courseId: selectedCourse.id, quizResults: updatedResults })
       }).catch(err => console.error("Failed to save quiz:", err));
+    };
+
+    const handleCompleteCourse = () => {
+      if (!user || !selectedCourse) return;
+      setCourseCompleted(true);
+      fetch('/api/progress', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: user.id, courseId: selectedCourse.id, courseCompleted: true })
+      }).catch(err => console.error("Failed to complete course:", err));
     };
 
     return (
@@ -270,22 +282,35 @@ export function TrainingCenter(props: { courses: Course[] }) {
                     />
                   </div>
                 )}
-                <div style={{ padding: "16px", borderTop: "1px solid #e5e7eb", display: "flex", justifyContent: "flex-end", gap: "12px" }}>
-                  {activePage.isQuiz && !quizSubmitted && (
-                    <button 
-                      type="button" 
-                      className="btn-primary" 
-                      onClick={handleSubmitQuiz}
-                      disabled={Object.keys(selectedAnswers).length !== (activePage.quizQuestions?.length || 0)}
-                    >
-                      Submit Quiz
-                    </button>
+                <div style={{ padding: "16px", borderTop: "1px solid #e5e7eb", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                  {courseCompleted && (
+                    <div style={{ display: "flex", alignItems: "center", gap: "8px", color: "#10b981", fontWeight: 600 }}>
+                      <span>✓</span>
+                      <span>Course Completed!</span>
+                    </div>
                   )}
-                  {(!activePage.isQuiz || quizSubmitted) && pages.findIndex(p => p.id === activePage.id) < pages.length - 1 && (
-                    <button type="button" className="btn-primary" onClick={handleNextPage}>
-                      Next Page →
-                    </button>
-                  )}
+                  <div style={{ display: "flex", gap: "12px", marginLeft: "auto" }}>
+                    {activePage.isQuiz && !quizSubmitted && (
+                      <button 
+                        type="button" 
+                        className="btn-primary" 
+                        onClick={handleSubmitQuiz}
+                        disabled={Object.keys(selectedAnswers).length !== (activePage.quizQuestions?.length || 0)}
+                      >
+                        Submit Quiz
+                      </button>
+                    )}
+                    {pages.findIndex(p => p.id === activePage.id) === pages.length - 1 && (!activePage.isQuiz || quizSubmitted) && !courseCompleted && (
+                      <button type="button" className="btn-primary" onClick={handleCompleteCourse} style={{ backgroundColor: "#10b981" }}>
+                        ✓ Complete Course
+                      </button>
+                    )}
+                    {(!activePage.isQuiz || quizSubmitted) && pages.findIndex(p => p.id === activePage.id) < pages.length - 1 && (
+                      <button type="button" className="btn-primary" onClick={handleNextPage}>
+                        Next Page →
+                      </button>
+                    )}
+                  </div>
                 </div>
               </>
             )}

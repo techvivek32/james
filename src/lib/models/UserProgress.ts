@@ -15,7 +15,9 @@ const userProgressSchema = new Schema(
     userId: { type: String, required: true },
     courseId: { type: String, required: true },
     completedPages: [String],
-    quizResults: [quizResultSchema]
+    quizResults: [quizResultSchema],
+    courseCompleted: { type: Boolean, default: false },
+    completedAt: Date
   },
   { timestamps: true }
 );

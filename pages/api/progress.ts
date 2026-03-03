@@ -17,7 +17,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   if (req.method === "POST") {
-    const { userId, courseId, completedPages, quizResults } = req.body;
+    const { userId, courseId, completedPages, quizResults, courseCompleted } = req.body;
     if (!userId || !courseId) {
       res.status(400).json({ error: "Invalid data" });
       return;
@@ -25,6 +25,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const updateData: any = {};
     if (Array.isArray(completedPages)) updateData.completedPages = completedPages;
     if (Array.isArray(quizResults)) updateData.quizResults = quizResults;
+    if (courseCompleted === true) {
+      updateData.courseCompleted = true;
+      updateData.completedAt = new Date();
+    }
     
     const progress = await UserProgressModel.findOneAndUpdate(
       { userId, courseId },
