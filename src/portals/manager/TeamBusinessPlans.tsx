@@ -30,10 +30,18 @@ export function TeamBusinessPlansPage() {
       }
       
       console.log('Current logged-in manager:', user.name, user.id);
-      const response = await fetch(`/api/business-plan?managerId=${user.id}`);
+      const response = await fetch(`/api/users`);
       if (response.ok) {
-        const data = await response.json();
-        setBusinessPlans(data);
+        const users = await response.json();
+        const teamMembers = users.filter((u: UserProfile) => u.managerId === user.id && u.role === 'sales');
+        const plansData = teamMembers.map((member: UserProfile) => ({
+          userId: member.id,
+          userName: member.name,
+          userRole: member.role,
+          businessPlan: member.businessPlan || null,
+          updatedAt: null
+        }));
+        setBusinessPlans(plansData);
       }
     } catch (error) {
       console.error('Failed to fetch business plans:', error);
