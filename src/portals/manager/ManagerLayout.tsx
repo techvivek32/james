@@ -12,7 +12,7 @@ type ManagerLayoutProps = {
 };
 
 export function ManagerLayout({ children, currentView }: ManagerLayoutProps) {
-  const { logout } = useAuth();
+  const { user, logout } = useAuth();
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
 
   return (
@@ -22,7 +22,7 @@ export function ManagerLayout({ children, currentView }: ManagerLayoutProps) {
         <Header
           title="Unified Sales & Marketing OS"
           subtitle="Manager view"
-          userName="Manager"
+          userName={user?.name ?? "Manager"}
           roleLabel="Manager"
           onLogout={logout}
         />

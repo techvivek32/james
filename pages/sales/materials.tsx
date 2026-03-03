@@ -1,34 +1,17 @@
 import type { NextPage } from "next";
-import { useEffect, useState } from "react";
 import { SalesLayout } from "../../src/portals/sales/SalesLayout";
 import { MarketingMaterials } from "../../src/portals/sales/MarketingMaterials";
-import { UserProfile } from "../../src/types";
+import { useAuth } from "../../src/contexts/AuthContext";
 
 const Materials: NextPage = () => {
-  const [profile, setProfile] = useState<UserProfile | null>(null);
+  const { user } = useAuth();
 
-  useEffect(() => {
-    async function loadData() {
-      try {
-        const usersRes = await fetch("/api/users");
-        if (usersRes.ok) {
-          const users = await usersRes.json();
-          const salesUser = users.find((u: UserProfile) => u.role === "sales");
-          if (salesUser) setProfile(salesUser);
-        }
-      } catch (error) {
-        console.error("Failed to load sales data:", error);
-      }
-    }
-    loadData();
-  }, []);
-
-  if (!profile) {
+  if (!user) {
     return <div>Loading...</div>;
   }
 
   return (
-    <SalesLayout currentView="materials" userName={profile.name}>
+    <SalesLayout currentView="materials" userName={user.name}>
       <MarketingMaterials />
     </SalesLayout>
   );

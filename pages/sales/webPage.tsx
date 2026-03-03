@@ -2,26 +2,28 @@ import type { NextPage } from "next";
 import { useEffect, useState } from "react";
 import { SalesLayout } from "../../src/portals/sales/SalesLayout";
 import { WebPagePreview } from "../../src/portals/sales/WebPagePreview";
+import { useAuth } from "../../src/contexts/AuthContext";
 import { UserProfile } from "../../src/types";
 
 const WebPage: NextPage = () => {
+  const { user } = useAuth();
   const [profile, setProfile] = useState<UserProfile | null>(null);
 
   useEffect(() => {
-    async function loadData() {
+    async function loadUserProfile() {
+      if (!user?.id) return;
       try {
-        const usersRes = await fetch("/api/users");
-        if (usersRes.ok) {
-          const users = await usersRes.json();
-          const salesUser = users.find((u: UserProfile) => u.role === "sales");
-          if (salesUser) setProfile(salesUser);
+        const userRes = await fetch(`/api/users/${user.id}`);
+        if (userRes.ok) {
+          const userProfile = await userRes.json();
+          setProfile(userProfile);
         }
       } catch (error) {
-        console.error("Failed to load sales data:", error);
+        console.error("Failed to load user profile:", error);
       }
     }
-    loadData();
-  }, []);
+    loadUserProfile();
+  }, [user?.id]);
 
   async function handleProfileChange(updatedProfile: UserProfile) {
     setProfile(updatedProfile);
@@ -36,12 +38,12 @@ const WebPage: NextPage = () => {
     }
   }
 
-  if (!profile) {
+  if (!profile || !user) {
     return <div>Loading...</div>;
   }
 
   return (
-    <SalesLayout currentView="webPage" userName={profile.name}>
+    <SalesLayout currentView="webPage" userName={user.name}>
       <WebPagePreview profile={profile} onProfileChange={handleProfileChange} />
     </SalesLayout>
   );

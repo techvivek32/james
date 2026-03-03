@@ -3,34 +3,37 @@ import { useEffect, useState } from "react";
 import { SalesLayout } from "../../src/portals/sales/SalesLayout";
 import { SalesDashboard } from "../../src/portals/sales/Dashboard";
 import { ProtectedRoute } from "../../src/components/ProtectedRoute";
+import { useAuth } from "../../src/contexts/AuthContext";
 import { UserProfile } from "../../src/types";
 
 const DashboardPage: NextPage = () => {
+  const { user } = useAuth();
   const [profile, setProfile] = useState<UserProfile | null>(null);
 
   useEffect(() => {
-    async function loadData() {
+    async function loadUserProfile() {
+      if (!user?.id) return;
+      
       try {
-        const usersRes = await fetch("/api/users");
-        if (usersRes.ok) {
-          const users = await usersRes.json();
-          const salesUser = users.find((u: UserProfile) => u.role === "sales");
-          if (salesUser) setProfile(salesUser);
+        const userRes = await fetch(`/api/users/${user.id}`);
+        if (userRes.ok) {
+          const userProfile = await userRes.json();
+          setProfile(userProfile);
         }
       } catch (error) {
-        console.error("Failed to load sales data:", error);
+        console.error("Failed to load user profile:", error);
       }
     }
-    loadData();
-  }, []);
+    loadUserProfile();
+  }, [user?.id]);
 
-  if (!profile) {
+  if (!profile || !user) {
     return <div>Loading...</div>;
   }
 
   return (
     <ProtectedRoute allowedRoles={["sales"]}>
-      <SalesLayout currentView="dashboard" userName={profile.name}>
+      <SalesLayout currentView="dashboard" userName={user.name}>
         <SalesDashboard profile={profile} />
       </SalesLayout>
     </ProtectedRoute>

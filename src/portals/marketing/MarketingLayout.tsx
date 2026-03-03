@@ -12,7 +12,7 @@ type MarketingLayoutProps = {
 };
 
 export function MarketingLayout({ children, currentView }: MarketingLayoutProps) {
-  const { logout } = useAuth();
+  const { user, logout } = useAuth();
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
 
   return (
@@ -22,7 +22,7 @@ export function MarketingLayout({ children, currentView }: MarketingLayoutProps)
         <Header
           title="Unified Sales & Marketing OS"
           subtitle="Marketing view"
-          userName="Marketing"
+          userName={user?.name ?? "Marketing"}
           roleLabel="Marketing"
           onLogout={logout}
         />
