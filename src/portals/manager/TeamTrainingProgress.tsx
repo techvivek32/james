@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { DashboardCard } from "../../components/DashboardCard";
 import { AuthenticatedUser, Course, UserProfile } from "../../types";
 
@@ -12,18 +12,60 @@ export function TeamTrainingProgressPage(props: {
     (course) => course.status !== "draft"
   );
 
-  function getCourseCompletion(member: UserProfile, course: Course) {
-    const memberCode =
-      (member.id.charCodeAt(0) || 0) + (member.name.charCodeAt(0) || 0);
-    const courseCode = course.id.charCodeAt(0) || 0;
-    const raw = (memberCode * 7 + courseCode * 3) % 101;
-    return raw;
-  }
+  const [userProgress, setUserProgress] = useState<Record<string, Record<string, { completed: number; total: number; isCompleted: boolean }>>>({});
+
+  useEffect(() => {
+    const loadAllProgress = async () => {
+      const progressData: Record<string, Record<string, { completed: number; total: number; isCompleted: boolean }>> = {};
+      
+      for (const member of props.teamMembers) {
+        progressData[member.id] = {};
+        for (const course of publishedCourses) {
+          try {
+            const res = await fetch(`/api/progress?userId=${member.id}&courseId=${course.id}`);
+            const data = await res.json();
+            const totalPages = course.pages?.length || 0;
+            const completedPages = data.completedPages?.length || 0;
+            progressData[member.id][course.id] = {
+              completed: completedPages,
+              total: totalPages,
+              isCompleted: data.courseCompleted || false
+            };
+          } catch (err) {
+            console.error(`Failed to load progress for ${member.id}/${course.id}:`, err);
+          }
+        }
+      }
+      
+      progressData[props.currentUser.id] = {};
+      for (const course of publishedCourses) {
+        try {
+          const res = await fetch(`/api/progress?userId=${props.currentUser.id}&courseId=${course.id}`);
+          const data = await res.json();
+          const totalPages = course.pages?.length || 0;
+          const completedPages = data.completedPages?.length || 0;
+          progressData[props.currentUser.id][course.id] = {
+            completed: completedPages,
+            total: totalPages,
+            isCompleted: data.courseCompleted || false
+          };
+        } catch (err) {
+          console.error(`Failed to load progress for manager:`, err);
+        }
+      }
+      
+      setUserProgress(progressData);
+    };
+    loadAllProgress();
+  }, [props.teamMembers, publishedCourses, props.currentUser]);
 
   const memberProgress = props.teamMembers.map((member) => {
-    const coursePercentages = publishedCourses.map((course) =>
-      getCourseCompletion(member, course)
-    );
+    const coursePercentages = publishedCourses.map((course) => {
+      const progress = userProgress[member.id]?.[course.id];
+      if (!progress || progress.total === 0) return 0;
+      if (progress.isCompleted) return 100;
+      return Math.round((progress.completed / progress.total) * 100);
+    });
     const overall =
       coursePercentages.length > 0
         ? Math.round(
@@ -52,18 +94,12 @@ export function TeamTrainingProgressPage(props: {
         )
       : 0;
 
-  function getManagerCourseCompletion(course: Course) {
-    const userCode =
-      (props.currentUser.id.charCodeAt(0) || 0) +
-      (props.currentUser.name.charCodeAt(0) || 0);
-    const courseCode = course.id.charCodeAt(0) || 0;
-    const raw = (userCode * 5 + courseCode * 11) % 101;
-    return raw;
-  }
-
-  const managerCoursePercentages = publishedCourses.map((course) =>
-    getManagerCourseCompletion(course)
-  );
+  const managerCoursePercentages = publishedCourses.map((course) => {
+    const progress = userProgress[props.currentUser.id]?.[course.id];
+    if (!progress || progress.total === 0) return 0;
+    if (progress.isCompleted) return 100;
+    return Math.round((progress.completed / progress.total) * 100);
+  });
 
   const managerAverageCompletion =
     managerCoursePercentages.length > 0
