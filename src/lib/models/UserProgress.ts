@@ -1,10 +1,21 @@
 import { Schema, model, models } from "mongoose";
 
+const quizResultSchema = new Schema(
+  {
+    pageId: String,
+    answers: Schema.Types.Mixed,
+    score: { correct: Number, total: Number },
+    submittedAt: Date
+  },
+  { _id: false }
+);
+
 const userProgressSchema = new Schema(
   {
     userId: { type: String, required: true },
     courseId: { type: String, required: true },
-    completedPages: [String]
+    completedPages: [String],
+    quizResults: [quizResultSchema]
   },
   { timestamps: true }
 );

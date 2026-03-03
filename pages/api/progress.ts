@@ -17,14 +17,18 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   if (req.method === "POST") {
-    const { userId, courseId, completedPages } = req.body;
-    if (!userId || !courseId || !Array.isArray(completedPages)) {
+    const { userId, courseId, completedPages, quizResults } = req.body;
+    if (!userId || !courseId) {
       res.status(400).json({ error: "Invalid data" });
       return;
     }
+    const updateData: any = {};
+    if (Array.isArray(completedPages)) updateData.completedPages = completedPages;
+    if (Array.isArray(quizResults)) updateData.quizResults = quizResults;
+    
     const progress = await UserProgressModel.findOneAndUpdate(
       { userId, courseId },
-      { $set: { completedPages } },
+      { $set: updateData },
       { upsert: true, new: true }
     ).lean();
     res.status(200).json(progress);

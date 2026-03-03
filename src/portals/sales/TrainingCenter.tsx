@@ -12,15 +12,39 @@ export function TrainingCenter(props: { courses: Course[] }) {
   const [collapsedFolders, setCollapsedFolders] = useState<Set<string>>(new Set());
   const [selectedAnswers, setSelectedAnswers] = useState<Record<string, number>>({});
   const [completedPages, setCompletedPages] = useState<Set<string>>(new Set());
+  const [quizSubmitted, setQuizSubmitted] = useState(false);
+  const [quizScore, setQuizScore] = useState<{ correct: number; total: number } | null>(null);
+  const [savedQuizResults, setSavedQuizResults] = useState<any[]>([]);
 
   useEffect(() => {
     if (selectedCourse && user) {
       fetch(`/api/progress?userId=${user.id}&courseId=${selectedCourse.id}`)
         .then(res => res.json())
-        .then(data => setCompletedPages(new Set(data.completedPages || [])))
+        .then(data => {
+          setCompletedPages(new Set(data.completedPages || []));
+          setSavedQuizResults(data.quizResults || []);
+        })
         .catch(err => console.error("Failed to load progress:", err));
     }
   }, [selectedCourse, user]);
+
+  useEffect(() => {
+    if (!activePageId || !selectedCourse) return;
+    const pages = selectedCourse.pages ?? [];
+    const page = pages.find(p => p.id === activePageId);
+    if (!page) return;
+    
+    const savedResult = savedQuizResults.find(r => r.pageId === page.id);
+    if (savedResult) {
+      setSelectedAnswers(savedResult.answers);
+      setQuizScore(savedResult.score);
+      setQuizSubmitted(true);
+    } else {
+      setQuizSubmitted(false);
+      setQuizScore(null);
+      setSelectedAnswers({});
+    }
+  }, [activePageId, savedQuizResults, selectedCourse]);
 
   const filteredCourses = useMemo(() => {
     const term = search.toLowerCase();
@@ -66,6 +90,32 @@ export function TrainingCenter(props: { courses: Course[] }) {
       if (currentIndex < pages.length - 1) {
         setActivePageId(pages[currentIndex + 1].id);
       }
+    };
+
+    const handleSubmitQuiz = () => {
+      if (!activePage?.quizQuestions || !user || !selectedCourse) return;
+      let correct = 0;
+      activePage.quizQuestions.forEach(q => {
+        if (selectedAnswers[q.id] === q.correctIndex) correct++;
+      });
+      const score = { correct, total: activePage.quizQuestions.length };
+      setQuizScore(score);
+      setQuizSubmitted(true);
+      
+      const newResult = {
+        pageId: activePage.id,
+        answers: selectedAnswers,
+        score,
+        submittedAt: new Date()
+      };
+      const updatedResults = [...savedQuizResults.filter(r => r.pageId !== activePage.id), newResult];
+      setSavedQuizResults(updatedResults);
+      
+      fetch('/api/progress', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: user.id, courseId: selectedCourse.id, quizResults: updatedResults })
+      }).catch(err => console.error("Failed to save quiz:", err));
     };
 
     return (
@@ -145,44 +195,60 @@ export function TrainingCenter(props: { courses: Course[] }) {
                 </div>
                 {activePage.isQuiz && activePage.quizQuestions && activePage.quizQuestions.length > 0 ? (
                   <div className="course-page-editor-body">
+                    {quizSubmitted && quizScore && (
+                      <div style={{ padding: "16px", marginBottom: "16px", backgroundColor: quizScore.correct === quizScore.total ? "#d1fae5" : "#fef3c7", borderRadius: "8px", textAlign: "center" }}>
+                        <div style={{ fontSize: "24px", fontWeight: "bold", marginBottom: "8px" }}>
+                          Score: {quizScore.correct}/{quizScore.total}
+                        </div>
+                        <div style={{ fontSize: "14px", color: "#666" }}>
+                          {quizScore.correct === quizScore.total ? "Perfect! 🎉" : `You got ${Math.round((quizScore.correct / quizScore.total) * 100)}%`}
+                        </div>
+                      </div>
+                    )}
                     <div style={{ padding: "12px" }}>
                       {activePage.quizQuestions.map((q, qIdx) => (
                         <div key={q.id} style={{ marginBottom: 32 }}>
                           <div style={{ fontSize: "16px", fontWeight: 600, marginBottom: 16 }}>Question {qIdx + 1}: {q.prompt}</div>
-                          {q.options.map((option, optIdx) => (
-                            <div
-                              key={optIdx}
-                              onClick={() => setSelectedAnswers({ ...selectedAnswers, [q.id]: optIdx })}
-                              style={{
-                                padding: "12px 16px",
-                                marginBottom: 12,
-                                border: "2px solid",
-                                borderColor: selectedAnswers[q.id] === optIdx ? "#3b82f6" : "#e5e7eb",
-                                borderRadius: 8,
-                                cursor: "pointer",
-                                backgroundColor: selectedAnswers[q.id] === optIdx ? "#eff6ff" : "#fff"
-                              }}
-                            >
-                              <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                                <div
-                                  style={{
-                                    width: 20,
-                                    height: 20,
-                                    borderRadius: "50%",
-                                    border: "2px solid",
-                                    borderColor: selectedAnswers[q.id] === optIdx ? "#3b82f6" : "#d1d5db",
-                                    backgroundColor: selectedAnswers[q.id] === optIdx ? "#3b82f6" : "#fff",
-                                    display: "flex",
-                                    alignItems: "center",
-                                    justifyContent: "center"
-                                  }}
-                                >
-                                  {selectedAnswers[q.id] === optIdx && <div style={{ width: 8, height: 8, borderRadius: "50%", backgroundColor: "#fff" }} />}
+                          {q.options.map((option, optIdx) => {
+                            const isSelected = selectedAnswers[q.id] === optIdx;
+                            const isCorrect = q.correctIndex === optIdx;
+                            const showResult = quizSubmitted;
+                            return (
+                              <div
+                                key={optIdx}
+                                onClick={() => !quizSubmitted && setSelectedAnswers({ ...selectedAnswers, [q.id]: optIdx })}
+                                style={{
+                                  padding: "12px 16px",
+                                  marginBottom: 12,
+                                  border: "2px solid",
+                                  borderColor: showResult ? (isCorrect ? "#10b981" : isSelected ? "#ef4444" : "#e5e7eb") : (isSelected ? "#3b82f6" : "#e5e7eb"),
+                                  borderRadius: 8,
+                                  cursor: quizSubmitted ? "default" : "pointer",
+                                  backgroundColor: showResult ? (isCorrect ? "#d1fae5" : isSelected ? "#fee2e2" : "#fff") : (isSelected ? "#eff6ff" : "#fff")
+                                }}
+                              >
+                                <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                                  <div
+                                    style={{
+                                      width: 20,
+                                      height: 20,
+                                      borderRadius: "50%",
+                                      border: "2px solid",
+                                      borderColor: showResult ? (isCorrect ? "#10b981" : isSelected ? "#ef4444" : "#d1d5db") : (isSelected ? "#3b82f6" : "#d1d5db"),
+                                      backgroundColor: isSelected ? (showResult ? (isCorrect ? "#10b981" : "#ef4444") : "#3b82f6") : "#fff",
+                                      display: "flex",
+                                      alignItems: "center",
+                                      justifyContent: "center"
+                                    }}
+                                  >
+                                    {isSelected && <div style={{ width: 8, height: 8, borderRadius: "50%", backgroundColor: "#fff" }} />}
+                                  </div>
+                                  <span style={{ fontSize: 14 }}>{option}</span>
+                                  {showResult && isCorrect && <span style={{ marginLeft: "auto", color: "#10b981" }}>✓</span>}
                                 </div>
-                                <span style={{ fontSize: 14 }}>{option}</span>
                               </div>
-                            </div>
-                          ))}
+                            );
+                          })}
                         </div>
                       ))}
                     </div>
@@ -204,8 +270,18 @@ export function TrainingCenter(props: { courses: Course[] }) {
                     />
                   </div>
                 )}
-                <div style={{ padding: "16px", borderTop: "1px solid #e5e7eb", display: "flex", justifyContent: "flex-end" }}>
-                  {pages.findIndex(p => p.id === activePage.id) < pages.length - 1 && (
+                <div style={{ padding: "16px", borderTop: "1px solid #e5e7eb", display: "flex", justifyContent: "flex-end", gap: "12px" }}>
+                  {activePage.isQuiz && !quizSubmitted && (
+                    <button 
+                      type="button" 
+                      className="btn-primary" 
+                      onClick={handleSubmitQuiz}
+                      disabled={Object.keys(selectedAnswers).length !== (activePage.quizQuestions?.length || 0)}
+                    >
+                      Submit Quiz
+                    </button>
+                  )}
+                  {(!activePage.isQuiz || quizSubmitted) && pages.findIndex(p => p.id === activePage.id) < pages.length - 1 && (
                     <button type="button" className="btn-primary" onClick={handleNextPage}>
                       Next Page →
                     </button>
