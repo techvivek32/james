@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { DashboardCard } from "../../components/DashboardCard";
 import { AuthenticatedUser, Course } from "../../types";
 import { LessonAIChat } from "../../components/LessonAIChat";
@@ -12,6 +12,16 @@ export function ManagerOnlineTrainingPage(props: {
   const [activePageId, setActivePageId] = useState<string | null>(null);
   const [collapsedFolders, setCollapsedFolders] = useState<Set<string>>(new Set());
   const [selectedAnswers, setSelectedAnswers] = useState<Record<string, number>>({});
+  const [completedPages, setCompletedPages] = useState<Set<string>>(new Set());
+
+  useEffect(() => {
+    if (selectedCourse && props.currentUser) {
+      fetch(`/api/progress?userId=${props.currentUser.id}&courseId=${selectedCourse.id}`)
+        .then(res => res.json())
+        .then(data => setCompletedPages(new Set(data.completedPages || [])))
+        .catch(err => console.error("Failed to load progress:", err));
+    }
+  }, [selectedCourse, props.currentUser]);
 
   function getManagerCourseCompletion(course: Course) {
     const userCode =
@@ -39,6 +49,30 @@ export function ManagerOnlineTrainingPage(props: {
     const folders = selectedCourse.folders ?? [];
     const activePage = pages.find((p) => p.id === activePageId) ?? pages[0];
 
+    const isPageUnlocked = (pageId: string) => {
+      const pageIndex = pages.findIndex(p => p.id === pageId);
+      if (pageIndex === 0) return true;
+      const previousPage = pages[pageIndex - 1];
+      return previousPage ? completedPages.has(previousPage.id) : false;
+    };
+
+    const handleNextPage = () => {
+      if (!activePage || !props.currentUser || !selectedCourse) return;
+      const currentIndex = pages.findIndex(p => p.id === activePage.id);
+      const newCompleted = new Set([...completedPages, activePage.id]);
+      setCompletedPages(newCompleted);
+      
+      fetch('/api/progress', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: props.currentUser.id, courseId: selectedCourse.id, completedPages: Array.from(newCompleted) })
+      }).catch(err => console.error("Failed to save progress:", err));
+      
+      if (currentIndex < pages.length - 1) {
+        setActivePageId(pages[currentIndex + 1].id);
+      }
+    };
+
     return (
       <div className="training-center">
         <div className="panel-header">
@@ -52,15 +86,21 @@ export function ManagerOnlineTrainingPage(props: {
         <div className="course-pages-layout">
           <div className="course-pages-left">
             <div className="course-pages-sidebar">
-              {pages.filter((page) => !page.folderId).map((page) => (
-                <div
-                  key={page.id}
-                  className={activePage?.id === page.id ? "course-pages-item active" : "course-pages-item"}
-                  onClick={() => setActivePageId(page.id)}
-                >
-                  <span className="course-pages-item-title">{page.title}</span>
-                </div>
-              ))}
+              {pages.filter((page) => !page.folderId).map((page) => {
+                const unlocked = isPageUnlocked(page.id);
+                return (
+                  <div
+                    key={page.id}
+                    className={activePage?.id === page.id ? "course-pages-item active" : "course-pages-item"}
+                    onClick={() => unlocked && setActivePageId(page.id)}
+                    style={{ cursor: unlocked ? "pointer" : "not-allowed", opacity: unlocked ? 1 : 0.5 }}
+                  >
+                    <span className="course-pages-item-title">
+                      {!unlocked && "🔒 "}{page.title}
+                    </span>
+                  </div>
+                );
+              })}
               {folders.map((folder) => {
                 const folderPages = pages.filter((p) => p.folderId === folder.id);
                 const isCollapsed = collapsedFolders.has(folder.id);
@@ -84,15 +124,21 @@ export function ManagerOnlineTrainingPage(props: {
                       </button>
                       <span className="course-folder-title">{folder.title}</span>
                     </div>
-                    {!isCollapsed && folderPages.map((page) => (
-                      <div
-                        key={page.id}
-                        className={activePage?.id === page.id ? "course-pages-item course-pages-item-child active" : "course-pages-item course-pages-item-child"}
-                        onClick={() => setActivePageId(page.id)}
-                      >
-                        <span className="course-pages-item-title">{page.title}</span>
-                      </div>
-                    ))}
+                    {!isCollapsed && folderPages.map((page) => {
+                      const unlocked = isPageUnlocked(page.id);
+                      return (
+                        <div
+                          key={page.id}
+                          className={activePage?.id === page.id ? "course-pages-item course-pages-item-child active" : "course-pages-item course-pages-item-child"}
+                          onClick={() => unlocked && setActivePageId(page.id)}
+                          style={{ cursor: unlocked ? "pointer" : "not-allowed", opacity: unlocked ? 1 : 0.5 }}
+                        >
+                          <span className="course-pages-item-title">
+                            {!unlocked && "🔒 "}{page.title}
+                          </span>
+                        </div>
+                      );
+                    })}
                   </div>
                 );
               })}
@@ -169,6 +215,13 @@ export function ManagerOnlineTrainingPage(props: {
                     />
                   </div>
                 )}
+                <div style={{ padding: "16px", borderTop: "1px solid #e5e7eb", display: "flex", justifyContent: "flex-end" }}>
+                  {pages.findIndex(p => p.id === activePage.id) < pages.length - 1 && (
+                    <button type="button" className="btn-primary" onClick={handleNextPage}>
+                      Next Page →
+                    </button>
+                  )}
+                </div>
               </>
             )}
           </div>
