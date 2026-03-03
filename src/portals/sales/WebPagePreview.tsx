@@ -17,14 +17,17 @@ type WebTextItem = {
 export function WebPagePreview(props: {
   profile: UserProfile;
   onProfileChange: (profile: UserProfile) => void;
+  isPublic?: boolean;
 }) {
   const profile = props.profile;
+  const isPublic = props.isPublic ?? false;
   const [webTextItems, setWebTextItems] = useState<WebTextItem[]>([]);
   const slug = profile.name
     .toLowerCase()
     .replace(/\s+/g, "");
-  const url = `https://www.millerstorm.com/team/${slug}`;
-  const shortUrl = `https://ms.millerstorm.com/${slug}`;
+  const primaryDomain = process.env.NEXT_PUBLIC_PRIMARY_DOMAIN || 'localhost:3000';
+  const url = `http://${slug}.${primaryDomain}`;
+  const shortUrl = url;
 
   useEffect(() => {
     async function fetchWebText() {
@@ -96,24 +99,28 @@ export function WebPagePreview(props: {
 
   return (
     <div className="web-preview">
-      <div className="panel-header">Sales Rep Web Page Preview</div>
-      <div className="web-preview-actions">
-        <button
-          type="button"
-          className="btn-secondary btn-dark btn-small"
-          onClick={openPreview}
-        >
-          Preview
-        </button>
-        <button
-          type="button"
-          className="btn-primary btn-success btn-small"
-          onClick={submitForApproval}
-        >
-          Save & Publish
-        </button>
-      </div>
-      <div className="web-preview-url">{url}</div>
+      {!isPublic && (
+        <>
+          <div className="panel-header">Sales Rep Web Page Preview</div>
+          <div className="web-preview-actions">
+            <button
+              type="button"
+              className="btn-secondary btn-dark btn-small"
+              onClick={openPreview}
+            >
+              Preview
+            </button>
+            <button
+              type="button"
+              className="btn-primary btn-success btn-small"
+              onClick={submitForApproval}
+            >
+              Save & Publish
+            </button>
+          </div>
+          <div className="web-preview-url">{url}</div>
+        </>
+      )}
       <div className="ms-header-preview">
         <div className="ms-header-top">
           <div className="ms-header-top-text" style={{ fontSize: 18, fontWeight: 500 }}>
