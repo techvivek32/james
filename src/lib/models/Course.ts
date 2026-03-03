@@ -29,7 +29,9 @@ const coursePageSchema = new Schema(
     transcript: String,
     pinnedCommunityPostUrl: String,
     resourceLinks: [lessonLinkSchema],
-    fileUrls: [String]
+    fileUrls: [String],
+    isQuiz: Boolean,
+    quizQuestions: [quizQuestionSchema]
   },
   { _id: false }
 );
@@ -68,7 +70,7 @@ const courseSchema = new Schema(
     folders: [courseFolderSchema],
     pages: [coursePageSchema]
   },
-  { timestamps: true }
+  { timestamps: true, strict: true, minimize: false }
 );
 
 export const CourseModel = models.Course || model("Course", courseSchema);

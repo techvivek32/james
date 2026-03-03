@@ -28,6 +28,16 @@ export default async function handler(
     return;
   }
 
+  console.log("Bulk save - Received courses:");
+  courses.forEach(c => {
+    console.log(`  Course ${c.id}: ${c.pages?.length || 0} pages`);
+    c.pages?.forEach(p => {
+      if (p.isQuiz) {
+        console.log(`    - Quiz: ${p.title}, questions: ${p.quizQuestions?.length || 0}`);
+      }
+    });
+  });
+
   const ids = courses.map((course) => course.id).filter(Boolean);
   await CourseModel.deleteMany({
     id: { $nin: ids.length ? ids : ["__none__"] }
@@ -35,10 +45,23 @@ export default async function handler(
 
   await Promise.all(
     courses.map((course) =>
-      CourseModel.updateOne({ id: course.id }, course, { upsert: true })
+      CourseModel.findOneAndUpdate(
+        { id: course.id },
+        { $set: course },
+        { upsert: true, new: true }
+      )
     )
   );
 
   const nextCourses = await CourseModel.find().lean();
+  console.log("After save - courses in DB:");
+  nextCourses.forEach(c => {
+    console.log(`  Course ${c.id}: ${c.pages?.length || 0} pages`);
+    c.pages?.forEach(p => {
+      if (p.isQuiz) {
+        console.log(`    - Quiz: ${p.title}, questions: ${p.quizQuestions?.length || 0}`);
+      }
+    });
+  });
   res.status(200).json(nextCourses);
 }

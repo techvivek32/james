@@ -120,12 +120,13 @@ export function CourseManagement(props: CourseEditorProps) {
       resourceLinks: [],
       fileUrls: [],
       isQuiz: isQuiz || false,
-      quizQuestions: isQuiz ? [{ id: `q-${Date.now()}`, prompt: "", options: ["", "", "", ""], correctIndex: 0 }] : undefined
+      quizQuestions: isQuiz ? [{ id: `q-${Date.now()}`, prompt: "", options: ["", "", "", ""], correctIndex: 0 }] : []
     };
     const nextCourse: Course = {
       ...course,
       pages: [...pages, newPage]
     };
+    console.log("Adding page to course:", { courseId: course.id, newPage, totalPages: nextCourse.pages.length });
     updateCourse(nextCourse);
     setDetailSection("pages");
     setActivePageId(newPage.id);
@@ -1254,10 +1255,6 @@ export function CourseManagement(props: CourseEditorProps) {
                                           }
                                         }}
                                         style={{
-                                          minHeight: "200px",
-                                          maxHeight: "400px",
-                                          overflowY: "auto",
-                                          overflowX: "hidden",
                                           padding: "12px",
                                           border: "1px solid #ddd",
                                           borderRadius: "4px",
