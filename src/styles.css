@@ -2172,7 +2172,7 @@ body {
 }
 
 .ms-header-logo-image {
-  width: 220px;
+  width: 350px;
   height: auto;
   object-fit: contain;
 }
@@ -2262,9 +2262,9 @@ body {
 }
 
 .ms-mission-title {
-  font-size: 18px;
+  font-size: 54px;
   font-weight: 700;
-  letter-spacing: 0.16em;
+  letter-spacing: 0.3em;
 }
 
 .ms-mission-body {
@@ -2289,6 +2289,40 @@ body {
   background: linear-gradient(to right, #ef4444, #b91c1c);
   color: #ffffff;
   cursor: default;
+}
+
+.ms-mission-contact {
+  margin-top: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.ms-mission-contact-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 18px;
+  color: #4b5563;
+  line-height: 1;
+}
+
+.ms-mission-contact-item svg {
+  flex-shrink: 0;
+  display: block;
+  width: 20px;
+  height: 20px;
+  margin-top: 3px;
+}
+
+.ms-mission-contact-link {
+  color: #111827;
+  text-decoration: none;
+  font-weight: 500;
+}
+
+.ms-mission-contact-link:hover {
+  color: #b91c1c;
 }
 
 .ms-mission-image {

@@ -2,6 +2,10 @@ import Image from "next/image";
 import { UserProfile } from "../../types";
 import headerLogo from "../../../ref. images/ChatGPT_Image_Feb_23__2026__07_00_52_PM-removebg-preview.png";
 import footerImage from "../../../ref. images/image.png";
+import facebookLogo from "../../../ref. images/facebook.webp";
+import bbbLogo from "../../../ref. images/bbb.webp";
+import googleLogo from "../../../ref. images/google.webp";
+import homeLogo from "../../../ref. images/home.webp";
 
 export function WebPagePreview(props: {
   profile: UserProfile;
@@ -89,7 +93,7 @@ export function WebPagePreview(props: {
       <div className="web-preview-url">{url}</div>
       <div className="ms-header-preview">
         <div className="ms-header-top">
-          <div className="ms-header-top-text" style={{ fontSize: 20, fontWeight: 600 }}>
+          <div className="ms-header-top-text" style={{ fontSize: 18, fontWeight: 500 }}>
             24/7 Emergency Service Available: Call or Text (817) 367-0843
           </div>
         </div>
@@ -114,6 +118,32 @@ export function WebPagePreview(props: {
                 <p key={index}>{paragraph}</p>
               ))}
             </div>
+            {(contactEmail || contactPhone) && (
+              <div className="ms-mission-contact">
+                {contactEmail && (
+                  <div className="ms-mission-contact-item">
+                    <svg viewBox="0 0 24 24" aria-hidden="true" style={{ width: 16, height: 16 }}>
+                      <path
+                        fill="currentColor"
+                        d="M4 4h16a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2zm0 2v.01L12 12l8-5.99V6H4zm16 12V8l-8 6-8-6v10h16z"
+                      />
+                    </svg>
+                    <a href={`mailto:${contactEmail}`} className="ms-mission-contact-link">{contactEmail}</a>
+                  </div>
+                )}
+                {contactPhone && (
+                  <div className="ms-mission-contact-item">
+                    <svg viewBox="0 0 24 24" aria-hidden="true" style={{ width: 16, height: 16 }}>
+                      <path
+                        fill="currentColor"
+                        d="M6.6 10.8c1.2 2.3 3.3 4.4 5.6 5.6l2-2c.3-.3.8-.4 1.2-.2 1 .3 2 .5 3.1.5.7 0 1.3.6 1.3 1.3V20c0 .7-.6 1.3-1.3 1.3C10.9 21.3 2.7 13.1 2.7 3.3 2.7 2.6 3.3 2 4 2h3.2c.7 0 1.3.6 1.3 1.3 0 1.1.2 2.1.5 3.1.1.4 0 .9-.3 1.2l-2.1 2.2z"
+                      />
+                    </svg>
+                    <a href={`tel:${contactPhone}`} className="ms-mission-contact-link">{contactPhone}</a>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
           <div className="ms-mission-image">
             {missionImageUrl ? (
@@ -195,22 +225,22 @@ export function WebPagePreview(props: {
           <div className="ms-review-strip-item">
             <div className="ms-review-strip-stars">★★★★★</div>
             <div className="ms-review-strip-text">100% Recommended</div>
-            <div className="ms-review-strip-brand">facebook reviews</div>
+            <Image src={facebookLogo} alt="Facebook" width={120} height={45} style={{ marginTop: 8 }} />
           </div>
           <div className="ms-review-strip-item">
             <div className="ms-review-strip-stars">★★★★★</div>
             <div className="ms-review-strip-text">5/5 Perfect Rating</div>
-            <div className="ms-review-strip-brand">BBB Accredited Business</div>
+            <Image src={bbbLogo} alt="BBB" width={130} height={45} style={{ marginTop: 8 }} />
           </div>
           <div className="ms-review-strip-item">
             <div className="ms-review-strip-stars">★★★★★</div>
             <div className="ms-review-strip-text">Over 200 Reviews</div>
-            <div className="ms-review-strip-brand">Google Reviews</div>
+            <Image src={googleLogo} alt="Google" width={120} height={45} style={{ marginTop: 8 }} />
           </div>
           <div className="ms-review-strip-item">
             <div className="ms-review-strip-stars">★★★★★</div>
             <div className="ms-review-strip-text">5.0 Star Rating</div>
-            <div className="ms-review-strip-brand">HomeAdvisor</div>
+            <Image src={homeLogo} alt="HomeAdvisor" width={130} height={45  } style={{ marginTop: 8 }} />
           </div>
         </div>
       </div>
