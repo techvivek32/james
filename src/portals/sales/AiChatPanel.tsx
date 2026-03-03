@@ -14,8 +14,12 @@ export function AiChatPanel() {
   const [input, setInput] = useState("");
   const [messages, setMessages] = useState<AiMessage[]>([]);
   const [nextId, setNextId] = useState(1);
+  const [showAttachMenu, setShowAttachMenu] = useState(false);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const imageInputRef = useRef<HTMLInputElement>(null);
+  const videoInputRef = useRef<HTMLInputElement>(null);
+  const documentInputRef = useRef<HTMLInputElement>(null);
 
   function pushMessage(role: AiMessage["role"], text: string) {
     setMessages((prev) => [...prev, { id: nextId, role, text }]);
@@ -23,13 +27,28 @@ export function AiChatPanel() {
   }
 
   function handleAttachment() {
-    fileInputRef.current?.click();
+    setShowAttachMenu(!showAttachMenu);
   }
 
-  function handleFileChange(event: ChangeEvent<HTMLInputElement>) {
+  function handleImageSelect() {
+    imageInputRef.current?.click();
+    setShowAttachMenu(false);
+  }
+
+  function handleVideoSelect() {
+    videoInputRef.current?.click();
+    setShowAttachMenu(false);
+  }
+
+  function handleDocumentSelect() {
+    documentInputRef.current?.click();
+    setShowAttachMenu(false);
+  }
+
+  function handleFileChange(event: ChangeEvent<HTMLInputElement>, type: string) {
     const file = event.target.files?.[0];
     if (file) {
-      pushMessage("user", `📎 Uploaded: ${file.name}`);
+      setInput(prev => prev + `[${type}: ${file.name}] `);
     }
   }
 
@@ -120,14 +139,42 @@ export function AiChatPanel() {
             )}
           </div>
           <div className="ai-clone-input-container" style={{position: 'relative', display: 'flex', alignItems: 'flex-end', gap: '8px'}}>
-            <button
-              type="button"
-              className="ai-clone-icon-button"
-              onClick={handleAttachment}
-              style={{marginBottom: '8px'}}
-            >
-              📎
-            </button>
+            <div style={{position: 'relative'}}>
+              <button
+                type="button"
+                className="ai-clone-icon-button"
+                onClick={handleAttachment}
+                style={{marginBottom: '8px'}}
+              >
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66L9.64 16.2a2 2 0 0 1-2.83-2.83l8.49-8.48"/>
+                </svg>
+              </button>
+              {showAttachMenu && (
+                <div style={{
+                  position: 'absolute',
+                  bottom: '100%',
+                  left: '0',
+                  backgroundColor: 'white',
+                  border: '1px solid #ccc',
+                  borderRadius: '8px',
+                  padding: '8px',
+                  boxShadow: '0 2px 10px rgba(0,0,0,0.1)',
+                  zIndex: 10,
+                  minWidth: '120px'
+                }}>
+                  <button onClick={handleImageSelect} style={{display: 'block', width: '100%', padding: '8px', border: 'none', background: 'none', textAlign: 'left', cursor: 'pointer'}}>
+                    🖼️ Image
+                  </button>
+                  <button onClick={handleVideoSelect} style={{display: 'block', width: '100%', padding: '8px', border: 'none', background: 'none', textAlign: 'left', cursor: 'pointer'}}>
+                    🎥 Video
+                  </button>
+                  <button onClick={handleDocumentSelect} style={{display: 'block', width: '100%', padding: '8px', border: 'none', background: 'none', textAlign: 'left', cursor: 'pointer'}}>
+                    📄 Document
+                  </button>
+                </div>
+              )}
+            </div>
             <textarea
               className="ai-clone-input"
               placeholder="Message AI... (Shift+Enter for new line)"
@@ -155,11 +202,25 @@ export function AiChatPanel() {
               ➤
             </button>
             <input
-              ref={fileInputRef}
+              ref={imageInputRef}
               type="file"
               style={{display: 'none'}}
-              onChange={handleFileChange}
-              accept=".pdf,.doc,.docx,.txt,.jpg,.png,.gif"
+              onChange={(e) => handleFileChange(e, 'Image')}
+              accept=".jpg,.jpeg,.png,.gif,.webp"
+            />
+            <input
+              ref={videoInputRef}
+              type="file"
+              style={{display: 'none'}}
+              onChange={(e) => handleFileChange(e, 'Video')}
+              accept=".mp4,.avi,.mov,.wmv,.flv"
+            />
+            <input
+              ref={documentInputRef}
+              type="file"
+              style={{display: 'none'}}
+              onChange={(e) => handleFileChange(e, 'Document')}
+              accept=".pdf,.doc,.docx,.txt,.rtf"
             />
           </div>
         </div>
