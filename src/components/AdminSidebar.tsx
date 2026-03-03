@@ -13,6 +13,7 @@ const sidebarItems = [
   { id: "approvalWorkflows", label: "Approval Workflows" },
   { id: "aiBots", label: "AI Bot Management" },
   { id: "webTemplates", label: "Web Page Templates" },
+  { id: "webText", label: "Web Text" },
   { id: "appsTools", label: "Apps/Tool" }
 ];
 

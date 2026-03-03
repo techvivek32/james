@@ -37,6 +37,7 @@ type AdminViewId =
   | "approvalWorkflows"
   | "aiBots"
   | "webTemplates"
+  | "webText"
   | "appsTools";
 
 const sidebarItems: { id: AdminViewId; label: string }[] = [
@@ -51,6 +52,7 @@ const sidebarItems: { id: AdminViewId; label: string }[] = [
   { id: "approvalWorkflows", label: "Approval Workflows" },
   { id: "aiBots", label: "AI Bot Management" },
   { id: "webTemplates", label: "Web Page Templates" },
+  { id: "webText", label: "Web Text" },
   { id: "appsTools", label: "Apps/Tool" }
 ];
 
@@ -3853,6 +3855,14 @@ export function AdminPortal(props: AdminPortalProps) {
     }
     if (activeView === "appsTools") {
       return <AppsToolManagement />;
+    }
+    if (activeView === "webText") {
+      return (
+        <PlaceholderSection
+          title="Web Text Management"
+          description="Manage website text content. Navigate to /admin/web-text for full functionality."
+        />
+      );
     }
     return null;
   }
