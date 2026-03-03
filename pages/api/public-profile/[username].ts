@@ -30,7 +30,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     await connectMongo();
     const searchName = typeof username === 'string' ? username : String(username);
     
-    // Try to find user by matching name with spaces removed and case-insensitive
     const users = await User.find({});
     const user = users.find(u => {
       const normalizedDbName = u.name.toLowerCase().replace(/\s+/g, '');
@@ -40,6 +39,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     if (!user) {
       return res.status(404).json({ error: 'User not found' });
+    }
+
+    if (user.webPage?.status !== 'published') {
+      return res.status(403).json({ error: 'Page not published' });
     }
 
     res.status(200).json(user);

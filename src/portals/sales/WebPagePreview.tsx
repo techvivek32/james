@@ -60,6 +60,7 @@ export function WebPagePreview(props: {
     return "";
   }
   const missionImageUrl = pickImageUrl(profile.headshotUrl, profile.missionImageUrl);
+  const showHeadshot = profile.publicProfile?.showHeadshot ?? true;
   const whyUsTitle = profile.whyUsTitle || "HERE'S WHY YOU NEED US";
   const whyUsBody =
     profile.whyUsBody || marketingMaterialsNotes || "";
@@ -84,14 +85,18 @@ export function WebPagePreview(props: {
       alert("Web page is already published.");
       return;
     }
+    if (profile.webPage?.status === "pendingApproval") {
+      alert("Web page is already pending approval.");
+      return;
+    }
     props.onProfileChange({
       ...profile,
       webPage: {
         ...(profile.webPage ?? {}),
-        status: "published"
+        status: "pendingApproval"
       }
     });
-    alert("✓ Web page published successfully!");
+    alert("✓ Web page submitted for approval!");
   }
 
   function openPreview() {
@@ -177,7 +182,7 @@ export function WebPagePreview(props: {
             )}
           </div>
           <div className="ms-mission-image">
-            {missionImageUrl ? (
+            {missionImageUrl && showHeadshot ? (
               <img
                 src={missionImageUrl}
                 alt="Miller Storm team"

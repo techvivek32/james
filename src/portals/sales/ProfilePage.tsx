@@ -312,44 +312,16 @@ export function ProfilePage(props: {
       <div className="profile-save-row">
         <button
           type="button"
-          className="btn-secondary btn-dark"
-          onClick={() => {
-            const slug = profile.name.toLowerCase().replace(/\s+/g, "");
-            const primaryDomain = process.env.NEXT_PUBLIC_PRIMARY_DOMAIN || 'localhost:3000';
-            const url = `http://${slug}.${primaryDomain}`;
-            window.open(url, "_blank");
-          }}
-        >
-          Preview
-        </button>
-        <button
-          type="button"
-          className="btn-primary"
-          onClick={() => {
-            setSaveNotice("Saved");
-            if (saveNoticeTimeout.current) {
-              clearTimeout(saveNoticeTimeout.current);
-            }
-            saveNoticeTimeout.current = setTimeout(() => {
-              setSaveNotice("");
-            }, 2000);
-          }}
-          style={{ marginLeft: 8 }}
-        >
-          Save
-        </button>
-        <button
-          type="button"
           className="btn-primary btn-success"
           onClick={() => {
             props.onProfileChange({
               ...profile,
               webPage: {
                 ...(profile.webPage ?? {}),
-                status: "published"
+                status: "pendingApproval"
               }
             });
-            setSaveNotice("✓ Published successfully!");
+            setSaveNotice("✓ Submitted for approval!");
             if (saveNoticeTimeout.current) {
               clearTimeout(saveNoticeTimeout.current);
             }
@@ -357,7 +329,6 @@ export function ProfilePage(props: {
               setSaveNotice("");
             }, 2000);
           }}
-          style={{ marginLeft: 8 }}
         >
           Save & Publish
         </button>

@@ -26,7 +26,12 @@ const UserWebPage: NextPage = () => {
   }, [username]);
 
   if (!profile) {
-    return <div>Loading...</div>;
+    return (
+      <div style={{ padding: '40px', textAlign: 'center' }}>
+        <h2>Page Not Available</h2>
+        <p>This page is not published yet or does not exist.</p>
+      </div>
+    );
   }
 
   return <WebPagePreview profile={profile} onProfileChange={() => {}} isPublic />;

@@ -5,7 +5,7 @@ export function WebTemplatesPage(props: {
   users: UserProfile[];
   onUsersChange: (users: UserProfile[]) => void;
 }) {
-  const salesReps = props.users.filter((user) => user.role === "sales");
+  const salesReps = props.users.filter((user) => user.role === "sales" && user.webPage?.status === "pendingApproval");
   const [editingRepId, setEditingRepId] = useState<string | null>(null);
   const editingRep = editingRepId ? props.users.find((u) => u.id === editingRepId) || null : null;
 
@@ -66,7 +66,8 @@ export function WebTemplatesPage(props: {
               <tbody>
                 {salesReps.map((rep, index) => {
                   const slug = rep.name.toLowerCase().replace(/\s+/g, "");
-                  const url = `https://www.millerstorm.com/team/${slug}`;
+                  const primaryDomain = process.env.NEXT_PUBLIC_PRIMARY_DOMAIN || 'localhost:3000';
+                  const url = `http://${slug}.${primaryDomain}`;
                   const status = rep.webPage?.status ?? "draft";
                   const statusClass = getStatusClassName(status);
                   const statusLabel = getStatusLabel(status);
