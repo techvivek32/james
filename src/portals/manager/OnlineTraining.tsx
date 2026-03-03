@@ -70,6 +70,31 @@ export function ManagerOnlineTrainingPage(props: {
         )
       : 0;
 
+  const [courseProgress, setCourseProgress] = useState<Record<string, { completed: number; total: number; isCompleted: boolean }>>({});
+
+  useEffect(() => {
+    const loadProgress = async () => {
+      const progressMap: Record<string, { completed: number; total: number; isCompleted: boolean }> = {};
+      for (const course of publishedCourses) {
+        try {
+          const res = await fetch(`/api/progress?userId=${props.currentUser.id}&courseId=${course.id}`);
+          const data = await res.json();
+          const totalPages = course.pages?.length || 0;
+          const completedPages = data.completedPages?.length || 0;
+          progressMap[course.id] = { 
+            completed: completedPages, 
+            total: totalPages,
+            isCompleted: data.courseCompleted || false
+          };
+        } catch (err) {
+          console.error(`Failed to load progress for ${course.id}:`, err);
+        }
+      }
+      setCourseProgress(progressMap);
+    };
+    loadProgress();
+  }, [publishedCourses, props.currentUser]);
+
   if (selectedCourse) {
     const pages = selectedCourse.pages ?? [];
     const folders = selectedCourse.folders ?? [];
@@ -357,7 +382,8 @@ export function ManagerOnlineTrainingPage(props: {
       ) : (
         <div className="training-card-grid">
           {publishedCourses.map((course, index) => {
-            const pct = managerCoursePercentages[index] ?? 0;
+            const progress = courseProgress[course.id] || { completed: 0, total: 0, isCompleted: false };
+            const percentage = progress.total > 0 ? Math.round((progress.completed / progress.total) * 100) : 0;
             return (
               <button
                 key={course.id}
@@ -384,17 +410,23 @@ export function ManagerOnlineTrainingPage(props: {
                 </div>
                 <div className="training-card-body">
                   <div className="training-card-title">{course.title}</div>
-                  <div className="training-card-progress-row">
-                    <div className="training-card-progress-label">
-                      {pct}%
+                  {progress.isCompleted ? (
+                    <div style={{ color: "#10b981", fontSize: "14px", fontWeight: 600, marginTop: "8px" }}>
+                      ✓ Completed
                     </div>
-                    <div className="training-card-progress-track">
-                      <div
-                        className="training-card-progress-fill"
-                        style={{ width: `${pct}%` }}
-                      />
+                  ) : (
+                    <div className="training-card-progress-row">
+                      <div className="training-card-progress-label">
+                        {percentage}%
+                      </div>
+                      <div className="training-card-progress-track">
+                        <div
+                          className="training-card-progress-fill"
+                          style={{ width: `${percentage}%` }}
+                        />
+                      </div>
                     </div>
-                  </div>
+                  )}
                 </div>
               </button>
             );

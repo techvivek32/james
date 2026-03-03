@@ -65,6 +65,32 @@ export function TrainingCenter(props: { courses: Course[] }) {
     });
   }, [courses, search]);
 
+  const [courseProgress, setCourseProgress] = useState<Record<string, { completed: number; total: number; isCompleted: boolean }>>({});
+
+  useEffect(() => {
+    if (!user) return;
+    const loadProgress = async () => {
+      const progressMap: Record<string, { completed: number; total: number; isCompleted: boolean }> = {};
+      for (const course of courses) {
+        try {
+          const res = await fetch(`/api/progress?userId=${user.id}&courseId=${course.id}`);
+          const data = await res.json();
+          const totalPages = course.pages?.length || 0;
+          const completedPages = data.completedPages?.length || 0;
+          progressMap[course.id] = { 
+            completed: completedPages, 
+            total: totalPages,
+            isCompleted: data.courseCompleted || false
+          };
+        } catch (err) {
+          console.error(`Failed to load progress for ${course.id}:`, err);
+        }
+      }
+      setCourseProgress(progressMap);
+    };
+    loadProgress();
+  }, [courses, user]);
+
   if (selectedCourse) {
     const pages = selectedCourse.pages ?? [];
     const folders = selectedCourse.folders ?? [];
@@ -336,39 +362,49 @@ export function TrainingCenter(props: { courses: Course[] }) {
       </div>
       {filteredCourses.length > 0 ? (
         <div className="training-card-grid">
-          {filteredCourses.map((course: Course) => (
-            <button
-              key={course.id}
-              type="button"
-              className="training-card"
-              onClick={() => setSelectedCourse(course)}
-              style={{ cursor: "pointer", border: "none", background: "none", padding: 0, textAlign: "left" }}
-            >
-              <div 
-                className="training-card-image"
-                style={
-                  course.coverImageUrl
-                    ? { backgroundImage: `url(${course.coverImageUrl})`, backgroundSize: "cover", backgroundPosition: "center" }
-                    : undefined
-                }
+          {filteredCourses.map((course: Course) => {
+            const progress = courseProgress[course.id] || { completed: 0, total: 0, isCompleted: false };
+            const percentage = progress.total > 0 ? Math.round((progress.completed / progress.total) * 100) : 0;
+            return (
+              <button
+                key={course.id}
+                type="button"
+                className="training-card"
+                onClick={() => setSelectedCourse(course)}
+                style={{ cursor: "pointer", border: "none", background: "none", padding: 0, textAlign: "left" }}
               >
-                <div className="training-card-image-overlay">
-                  {course.tagline && (
-                    <span className="training-card-chip">{course.tagline}</span>
-                  )}
-                </div>
-              </div>
-              <div className="training-card-body">
-                <div className="training-card-title">{course.title}</div>
-                <div className="training-card-progress-row">
-                  <div className="training-card-progress-label">0%</div>
-                  <div className="training-card-progress-track">
-                    <div className="training-card-progress-fill" />
+                <div 
+                  className="training-card-image"
+                  style={
+                    course.coverImageUrl
+                      ? { backgroundImage: `url(${course.coverImageUrl})`, backgroundSize: "cover", backgroundPosition: "center" }
+                      : undefined
+                  }
+                >
+                  <div className="training-card-image-overlay">
+                    {course.tagline && (
+                      <span className="training-card-chip">{course.tagline}</span>
+                    )}
                   </div>
                 </div>
-              </div>
-            </button>
-          ))}
+                <div className="training-card-body">
+                  <div className="training-card-title">{course.title}</div>
+                  {progress.isCompleted ? (
+                    <div style={{ color: "#10b981", fontSize: "14px", fontWeight: 600, marginTop: "8px" }}>
+                      ✓ Completed
+                    </div>
+                  ) : (
+                    <div className="training-card-progress-row">
+                      <div className="training-card-progress-label">{percentage}%</div>
+                      <div className="training-card-progress-track">
+                        <div className="training-card-progress-fill" style={{ width: `${percentage}%` }} />
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </button>
+            );
+          })}
         </div>
       ) : (
         <div className="panel-empty">No trainings match your search yet.</div>
