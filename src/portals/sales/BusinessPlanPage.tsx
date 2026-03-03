@@ -24,15 +24,14 @@ export function BusinessPlanPage(props: {
   useEffect(() => {
     async function loadBusinessPlan() {
       try {
-        const response = await fetch(`/api/business-plan?userId=${props.profile.id}`);
+        const response = await fetch(`/api/users/${props.profile.id}`);
         if (response.ok) {
-          const data = await response.json();
-          const userPlan = data.find(plan => plan.userId === props.profile.id);
-          if (userPlan?.businessPlan) {
-            setExistingPlan(userPlan.businessPlan);
-            setRevenueGoal(userPlan.businessPlan.revenueGoal || 100000);
-            setDaysPerWeek(userPlan.businessPlan.daysPerWeek || 5);
-            setCommitted(userPlan.businessPlan.committed || false);
+          const userData = await response.json();
+          if (userData.businessPlan) {
+            setExistingPlan(userData.businessPlan);
+            setRevenueGoal(userData.businessPlan.revenueGoal || 100000);
+            setDaysPerWeek(userData.businessPlan.daysPerWeek || 5);
+            setCommitted(userData.businessPlan.committed || false);
           }
         }
       } catch (error) {
@@ -94,11 +93,15 @@ export function BusinessPlanPage(props: {
     };
 
     // Save to database
-    fetch('/api/business-plan', {
-      method: 'POST',
+    fetch(`/api/users/${props.profile.id}`, {
+      method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        userId: props.profile.id,
+        id: props.profile.id,
+        name: props.profile.name,
+        email: props.profile.email,
+        role: props.profile.role,
+        managerId: props.profile.managerId,
         businessPlan: plan
       })
     }).then(() => {

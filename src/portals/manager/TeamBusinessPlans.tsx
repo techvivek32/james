@@ -18,10 +18,25 @@ export function TeamBusinessPlansPage() {
 
   async function fetchUsers() {
     try {
-      const response = await fetch(`/api/users`);
-      if (response.ok) {
-        const allUsers = await response.json();
-        setUsers(allUsers);
+      const [usersRes, plansRes] = await Promise.all([
+        fetch(`/api/users`),
+        fetch(`/api/business-plan?managerId=${user?.id}`)
+      ]);
+      
+      if (usersRes.ok && plansRes.ok) {
+        const allUsers = await usersRes.json();
+        const plansData = await plansRes.json();
+        
+        // Merge business plans into users
+        const usersWithPlans = allUsers.map((u: UserProfile) => {
+          const planData = plansData.find((p: any) => p.userId === u.id);
+          return {
+            ...u,
+            businessPlan: planData?.businessPlan || u.businessPlan
+          };
+        });
+        
+        setUsers(usersWithPlans);
       }
     } catch (error) {
       console.error('Failed to fetch users:', error);
@@ -33,21 +48,15 @@ export function TeamBusinessPlansPage() {
   async function handleSave() {
     if (!editingUser || !editForm) return;
     try {
-      const response = await fetch(`/api/users/${editingUser.id}`, {
-        method: 'PUT',
+      await fetch('/api/business-plan', {
+        method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          id: editingUser.id,
-          name: editingUser.name,
-          email: editingUser.email,
-          role: editingUser.role,
-          managerId: editingUser.managerId,
+          userId: editingUser.id,
           businessPlan: editForm
         })
       });
-      if (response.ok) {
-        window.location.reload();
-      }
+      window.location.reload();
     } catch (error) {
       console.error('Failed to update:', error);
     }

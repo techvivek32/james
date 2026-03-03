@@ -28,21 +28,15 @@ export function BusinessUnitsManager(props: { users: UserProfile[] }) {
   async function handleSave() {
     if (!editingUser || !editForm) return;
     try {
-      const response = await fetch(`/api/users/${editingUser.id}`, {
-        method: 'PUT',
+      await fetch('/api/business-plan', {
+        method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          id: editingUser.id,
-          name: editingUser.name,
-          email: editingUser.email,
-          role: editingUser.role,
-          managerId: editingUser.managerId,
+          userId: editingUser.id,
           businessPlan: editForm
         })
       });
-      if (response.ok) {
-        window.location.reload();
-      }
+      window.location.reload();
     } catch (error) {
       console.error('Failed to update:', error);
     }

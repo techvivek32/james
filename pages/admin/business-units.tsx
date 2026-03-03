@@ -10,8 +10,26 @@ const BusinessUnitsPage: NextPage = () => {
   useEffect(() => {
     async function loadData() {
       try {
-        const res = await fetch("/api/users");
-        if (res.ok) setUsers(await res.json());
+        const [usersRes, plansRes] = await Promise.all([
+          fetch("/api/users"),
+          fetch("/api/business-plan")
+        ]);
+        
+        if (usersRes.ok && plansRes.ok) {
+          const allUsers = await usersRes.json();
+          const plansData = await plansRes.json();
+          
+          // Merge business plans into users
+          const usersWithPlans = allUsers.map((u: UserProfile) => {
+            const planData = plansData.find((p: any) => p.userId === u.id);
+            return {
+              ...u,
+              businessPlan: planData?.businessPlan || u.businessPlan
+            };
+          });
+          
+          setUsers(usersWithPlans);
+        }
       } catch (error) {
         console.error("Failed to load users:", error);
       }
