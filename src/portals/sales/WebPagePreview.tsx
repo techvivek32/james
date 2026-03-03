@@ -1,5 +1,6 @@
 import Image from "next/image";
 import { UserProfile } from "../../types";
+import { useState, useEffect } from "react";
 import headerLogo from "../../../ref. images/ChatGPT_Image_Feb_23__2026__07_00_52_PM-removebg-preview.png";
 import footerImage from "../../../ref. images/image.png";
 import facebookLogo from "../../../ref. images/facebook.webp";
@@ -7,16 +8,38 @@ import bbbLogo from "../../../ref. images/bbb.webp";
 import googleLogo from "../../../ref. images/google.webp";
 import homeLogo from "../../../ref. images/home.webp";
 
+type WebTextItem = {
+  _id: string;
+  title: string;
+  description: string;
+};
+
 export function WebPagePreview(props: {
   profile: UserProfile;
   onProfileChange: (profile: UserProfile) => void;
 }) {
   const profile = props.profile;
+  const [webTextItems, setWebTextItems] = useState<WebTextItem[]>([]);
   const slug = profile.name
     .toLowerCase()
     .replace(/\s+/g, "");
   const url = `https://www.millerstorm.com/team/${slug}`;
   const shortUrl = `https://ms.millerstorm.com/${slug}`;
+
+  useEffect(() => {
+    async function fetchWebText() {
+      try {
+        const res = await fetch("/api/web-text");
+        if (res.ok) {
+          const data = await res.json();
+          setWebTextItems(data);
+        }
+      } catch (error) {
+        console.error("Failed to fetch web text:", error);
+      }
+    }
+    fetchWebText();
+  }, []);
 
   const missionTitle = profile.missionTitle || profile.name || "MY BIO";
   const missionBody = profile.missionBody ?? profile.bio ?? "";
@@ -182,6 +205,18 @@ export function WebPagePreview(props: {
           </div>
         )}
       </div>
+      {webTextItems.length > 0 && (
+        <div className="ms-copy" style={{ padding: "0 60px" }}>
+          {webTextItems.map((item) => (
+            <div key={item._id} className="ms-copy-section">
+              <div className="ms-copy-title" style={{ fontSize: 28, fontWeight: 700 }}>{item.title}</div>
+              <div className="ms-copy-body">
+                <p>{item.description}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
       <div className="ms-testimonials">
         <div className="ms-testimonials-grid">
           <div className="ms-testimonial-card">
