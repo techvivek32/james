@@ -2,6 +2,7 @@ import Image from "next/image";
 import { UserProfile } from "../../types";
 import { useState, useEffect } from "react";
 import headerLogo from "../../../ref. images/ChatGPT_Image_Feb_23__2026__07_00_52_PM-removebg-preview.png";
+import bgLogo from "../../../ref. images/bg-logo.png";
 import footerImage from "../../../ref. images/image.png";
 import facebookLogo from "../../../ref. images/facebook.webp";
 import bbbLogo from "../../../ref. images/bbb.webp";
@@ -52,7 +53,7 @@ export function WebPagePreview(props: {
     for (const u of urls) {
       const url = (u ?? "").trim();
       if (!url) continue;
-      if (/^(https?:\/\/|blob:|data:image)/.test(url)) {
+      if (/^(https?:\/\/|\/|blob:|data:image)/.test(url)) {
         return url;
       }
     }
@@ -124,10 +125,10 @@ export function WebPagePreview(props: {
       <div className="ms-header-preview">
         <div className="ms-header-top">
           <div className="ms-header-top-text" style={{ fontSize: 18, fontWeight: 500 }}>
-            24/7 Emergency Service Available: Call or Text (817) 367-0843
+            24/7 Emergency Service Available: Call or Text <a href="tel:8173670843" style={{ color: 'inherit', textDecoration: 'underline' }}>(817) 367-0843</a>
           </div>
         </div>
-        <div className="ms-header-main">
+        <div className="ms-header-main" style={{ backgroundImage: `linear-gradient(rgba(0, 0, 0, 0.6), rgba(0, 0, 0, 0.6)), url(${bgLogo.src})`, backgroundSize: 'cover', backgroundPosition: 'center' }}>
           <div className="ms-header-logo-centered">
             <Image
               src={headerLogo}
@@ -152,7 +153,7 @@ export function WebPagePreview(props: {
               <div className="ms-mission-contact">
                 {contactEmail && (
                   <div className="ms-mission-contact-item">
-                    <svg viewBox="0 0 24 24" aria-hidden="true" style={{ width: 16, height: 16 }}>
+                    <svg viewBox="0 0 24 24" aria-hidden="true" style={{ width: 24, height: 24 }}>
                       <path
                         fill="currentColor"
                         d="M4 4h16a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2zm0 2v.01L12 12l8-5.99V6H4zm16 12V8l-8 6-8-6v10h16z"
@@ -163,7 +164,7 @@ export function WebPagePreview(props: {
                 )}
                 {contactPhone && (
                   <div className="ms-mission-contact-item">
-                    <svg viewBox="0 0 24 24" aria-hidden="true" style={{ width: 16, height: 16 }}>
+                    <svg viewBox="0 0 24 24" aria-hidden="true" style={{ width: 24, height: 24 }}>
                       <path
                         fill="currentColor"
                         d="M6.6 10.8c1.2 2.3 3.3 4.4 5.6 5.6l2-2c.3-.3.8-.4 1.2-.2 1 .3 2 .5 3.1.5.7 0 1.3.6 1.3 1.3V20c0 .7-.6 1.3-1.3 1.3C10.9 21.3 2.7 13.1 2.7 3.3 2.7 2.6 3.3 2 4 2h3.2c.7 0 1.3.6 1.3 1.3 0 1.1.2 2.1.5 3.1.1.4 0 .9-.3 1.2l-2.1 2.2z"
@@ -213,7 +214,7 @@ export function WebPagePreview(props: {
         )}
       </div>
       {webTextItems.length > 0 && (
-        <div className="ms-copy" style={{ padding: "0 60px" }}>
+        <div className="ms-copy" style={{ padding: "0 150px" }}>
           {webTextItems.map((item) => (
             <div key={item._id} className="ms-copy-section">
               <div className="ms-copy-title" style={{ fontSize: 28, fontWeight: 700 }}>{item.title}</div>

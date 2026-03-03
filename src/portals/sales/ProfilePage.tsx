@@ -28,6 +28,23 @@ export function ProfilePage(props: {
     }
     const objectUrl = URL.createObjectURL(file);
     update({ headshotUrl: objectUrl });
+    
+    const formData = new FormData();
+    formData.append('file', file);
+    
+    fetch('/api/upload-image', {
+      method: 'POST',
+      body: formData,
+    })
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.url) {
+          update({ headshotUrl: data.url });
+        }
+      })
+      .catch((error) => {
+        console.error('Upload failed:', error);
+      });
   }
 
   const territoryOptions = [
@@ -297,7 +314,10 @@ export function ProfilePage(props: {
           type="button"
           className="btn-secondary btn-dark"
           onClick={() => {
-            window.open(`https://www.millerstorm.com/team/${profile.name.toLowerCase().replace(/\s+/g, "")}`, "_blank");
+            const slug = profile.name.toLowerCase().replace(/\s+/g, "");
+            const primaryDomain = process.env.NEXT_PUBLIC_PRIMARY_DOMAIN || 'localhost:3000';
+            const url = `http://${slug}.${primaryDomain}`;
+            window.open(url, "_blank");
           }}
         >
           Preview
