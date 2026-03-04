@@ -1,7 +1,8 @@
 const bcrypt = require("bcryptjs");
 const mongoose = require("mongoose");
+require('dotenv').config();
 
-const uri = "mongodb://localhost:27017/millerstorm";
+const uri = process.env.MONGODB_URI || "mongodb://localhost:27017/millerstorm";
 
 const mockUsers = [
   {
