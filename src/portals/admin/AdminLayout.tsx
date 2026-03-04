@@ -32,7 +32,7 @@ export function AdminLayout({ children, currentView }: AdminLayoutProps) {
       isSidebarCollapsed={isSidebarCollapsed}
       header={
         <Header
-          title="Sales & Marketing OS"
+          title="Sales & Marketing Operating System"
           subtitle="Enterprise control center"
           userName={user?.name ?? "Admin"}
           userId={user?.id}

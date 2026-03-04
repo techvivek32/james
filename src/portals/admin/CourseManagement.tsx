@@ -168,7 +168,13 @@ export function CourseManagement(props: CourseEditorProps) {
         </div>
         <div className="panel-body">
           {props.courses.length === 0 ? (
-            <div className="panel-empty">No courses yet.</div>
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "20px", padding: "40px" }}>
+              <div className="panel-empty">No courses yet.</div>
+              <button type="button" className="admin-course-card-new" onClick={() => { createCourse(); }}>
+                <div className="admin-course-card-new-icon">+</div>
+                <div>New course</div>
+              </button>
+            </div>
           ) : (
             <>
               <div className="training-card-grid">

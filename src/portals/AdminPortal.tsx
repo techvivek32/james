@@ -3883,7 +3883,7 @@ export function AdminPortal(props: AdminPortalProps) {
       }
       header={
         <Header
-          title="Sales & Marketing OS"
+          title="Sales & Marketing Operating System"
           subtitle="Enterprise control center"
           userName={props.currentUser.name}
           roleLabel="Admin"
