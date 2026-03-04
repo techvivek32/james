@@ -30,14 +30,45 @@ export function UserManagement(props: UserEditorProps) {
   const [showSuspendedUsers, setShowSuspendedUsers] = useState(true);
 
   const featureToggleKeysByRole: Record<UserProfile["role"], (keyof FeatureToggles)[]> = {
-    admin: ["dashboard", "userManagement", "roleHierarchy", "businessUnits", "salesOverview", "marketingOverview", "courseManagement", "materialsLibrary", "approvalWorkflows", "aiBots", "webTemplates"],
-    manager: ["dashboard", "teamBusinessPlans", "teamTraining", "teamFunnelMetrics", "trainingCenter"],
-    sales: ["dashboard", "businessPlan", "trainingCenter", "marketingMaterials", "aiChat", "repWebPage", "businessCards"],
-    marketing: ["dashboard", "trainingCenter", "assetLibrary", "contentApprovals", "socialMetrics"]
+    admin: ["dashboard", "userManagement", "roleHierarchy", "businessUnits", "salesOverview", "marketingOverview", "courseManagement", "materialsLibrary", "approvalWorkflows", "aiBots", "webTemplates", "webText", "appsTools", "socialMediaMetrics"],
+    manager: ["dashboard", "team", "plans", "training", "onlineTraining", "taskTracker", "webTemplates"],
+    sales: ["dashboard", "profile", "plan", "training", "materials", "aiChat", "webPage", "businessCards"],
+    marketing: ["dashboard", "assets", "approvals", "socialMetrics"]
+  };
+
+  const featureToggleLabels: Record<string, string> = {
+    dashboard: "Dashboard",
+    userManagement: "User Management",
+    roleHierarchy: "Role & Hierarchy Manager",
+    businessUnits: "Business Units",
+    salesOverview: "Sales Team Overview",
+    marketingOverview: "Marketing Overview",
+    courseManagement: "Course Management",
+    materialsLibrary: "Marketing Materials Library",
+    approvalWorkflows: "Approval Workflows",
+    aiBots: "AI Bot Management",
+    webTemplates: "Web Page Approval",
+    webText: "Web Text",
+    appsTools: "Apps/Tool",
+    socialMediaMetrics: "Social Media Metrics",
+    team: "My Team",
+    plans: "Team Business Plans",
+    training: "Training Center",
+    onlineTraining: "Online Training",
+    taskTracker: "Task Tracker",
+    profile: "My Profile",
+    plan: "My Business Plan",
+    materials: "Marketing Materials",
+    aiChat: "Jay Miller's Clone",
+    webPage: "My Web Page",
+    businessCards: "Tools/ Apps",
+    assets: "Marketing Assets",
+    approvals: "Approval Queue",
+    socialMetrics: "Social Metrics"
   };
 
   const selectedUser = draftUsers.find((u) => u.id === selectedUserId);
-  const visibleToggleKeys = selectedUser ? featureToggleKeysByRole[selectedUser.role].filter((key) => key in selectedUser.featureToggles) : [];
+  const visibleToggleKeys = selectedUser ? featureToggleKeysByRole[selectedUser.role] : [];
 
   useEffect(() => {
     const current = draftUsers.find((u) => u.id === selectedUserId);
@@ -502,8 +533,8 @@ export function UserManagement(props: UserEditorProps) {
               <div className="panel-section-title">Feature Toggles</div>
               <div className="toggle-grid">
                 {visibleToggleKeys.map((key) => {
-                  const enabled = selectedUser.featureToggles[key];
-                  const label = key.replace(/([A-Z])/g, " $1").replace(/^./, (str) => str.toUpperCase()).replace(/ai/gi, "AI").trim();
+                  const enabled = selectedUser.featureToggles[key] ?? false;
+                  const label = featureToggleLabels[key] || key.replace(/([A-Z])/g, " $1").replace(/^./, (str) => str.toUpperCase()).replace(/ai/gi, "AI").trim();
                   return (
                     <label key={key} className="toggle-item">
                       <input type="checkbox" checked={enabled} onChange={(e) => updateFeatureToggles(selectedUser, { [key]: e.target.checked } as Partial<FeatureToggles>)} />

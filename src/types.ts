@@ -12,6 +12,23 @@ export type ModuleKey =
   | "approvalWorkflows"
   | "aiBots"
   | "webTemplates"
+  | "webText"
+  | "appsTools"
+  | "socialMediaMetrics"
+  | "team"
+  | "plans"
+  | "training"
+  | "onlineTraining"
+  | "taskTracker"
+  | "profile"
+  | "plan"
+  | "materials"
+  | "aiChat"
+  | "webPage"
+  | "businessCards"
+  | "assets"
+  | "approvals"
+  | "socialMetrics"
   | "featureToggles"
   | "systemSettings"
   | "teamBusinessPlans"
@@ -21,12 +38,9 @@ export type ModuleKey =
   | "businessPlan"
   | "trainingCenter"
   | "marketingMaterials"
-  | "aiChat"
   | "repWebPage"
-  | "businessCards"
   | "assetLibrary"
-  | "contentApprovals"
-  | "socialMetrics";
+  | "contentApprovals";
 
 export type FeatureToggles = Record<ModuleKey, boolean>;
 

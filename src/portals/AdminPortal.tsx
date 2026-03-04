@@ -382,31 +382,67 @@ function UserManagement(props: UserEditorProps) {
       "materialsLibrary",
       "approvalWorkflows",
       "aiBots",
-      "webTemplates"
+      "webTemplates",
+      "webText",
+      "appsTools",
+      "socialMediaMetrics"
     ],
     manager: [
       "dashboard",
-      "teamBusinessPlans",
-      "teamTraining",
-      "teamFunnelMetrics",
-      "trainingCenter"
+      "team",
+      "plans",
+      "training",
+      "onlineTraining",
+      "taskTracker",
+      "webTemplates"
     ],
     sales: [
       "dashboard",
-      "businessPlan",
-      "trainingCenter",
-      "marketingMaterials",
+      "profile",
+      "plan",
+      "training",
+      "materials",
       "aiChat",
-      "repWebPage",
+      "webPage",
       "businessCards"
     ],
     marketing: [
       "dashboard",
-      "trainingCenter",
-      "assetLibrary",
-      "contentApprovals",
+      "assets",
+      "approvals",
       "socialMetrics"
     ]
+  };
+
+  const featureToggleLabels: Record<string, string> = {
+    dashboard: "Dashboard",
+    userManagement: "User Management",
+    roleHierarchy: "Role & Hierarchy Manager",
+    businessUnits: "Business Units",
+    salesOverview: "Sales Team Overview",
+    marketingOverview: "Marketing Overview",
+    courseManagement: "Course Management",
+    materialsLibrary: "Marketing Materials Library",
+    approvalWorkflows: "Approval Workflows",
+    aiBots: "AI Bot Management",
+    webTemplates: "Web Page Approval",
+    webText: "Web Text",
+    appsTools: "Apps/Tool",
+    socialMediaMetrics: "Social Media Metrics",
+    team: "My Team",
+    plans: "Team Business Plans",
+    training: "Training Center",
+    onlineTraining: "Online Training",
+    taskTracker: "Task Tracker",
+    profile: "My Profile",
+    plan: "My Business Plan",
+    materials: "Marketing Materials",
+    aiChat: "Jay Miller's Clone",
+    webPage: "My Web Page",
+    businessCards: "Tools/ Apps",
+    assets: "Marketing Assets",
+    approvals: "Approval Queue",
+    socialMetrics: "Social Metrics"
   };
 
   const selectedUser = draftUsers.find((u) => u.id === selectedUserId);
@@ -965,7 +1001,7 @@ function UserManagement(props: UserEditorProps) {
               <div className="toggle-grid">
                 {visibleToggleKeys.map((key) => {
                   const enabled = selectedUser.featureToggles[key];
-                  const label = key
+                  const label = featureToggleLabels[key] || key
                     .replace(/([A-Z])/g, " $1")
                     .replace(/^./, (str) => str.toUpperCase())
                     .replace(/ai/gi, "AI")
