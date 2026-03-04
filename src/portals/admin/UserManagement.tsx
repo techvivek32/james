@@ -533,7 +533,7 @@ export function UserManagement(props: UserEditorProps) {
               <div className="panel-section-title">Feature Toggles</div>
               <div className="toggle-grid">
                 {visibleToggleKeys.map((key) => {
-                  const enabled = selectedUser.featureToggles[key] ?? false;
+                  const enabled = selectedUser.featureToggles[key];
                   const label = featureToggleLabels[key] || key.replace(/([A-Z])/g, " $1").replace(/^./, (str) => str.toUpperCase()).replace(/ai/gi, "AI").trim();
                   return (
                     <label key={key} className="toggle-item">
