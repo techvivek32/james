@@ -3,9 +3,17 @@ import { UserProfile } from "../../types";
 
 export function WebTemplatesPage(props: {
   users: UserProfile[];
+  managerId: string;
   onUsersChange: (users: UserProfile[]) => void;
 }) {
-  const salesReps = props.users.filter((user) => user.role === "sales" && user.webPage?.status === "pendingApproval");
+  // Filter sales reps that belong to this manager and have pending approval
+  const salesReps = props.users.filter(
+    (user) => 
+      user.role === "sales" && 
+      user.managerId === props.managerId &&
+      user.webPage?.status === "pendingApproval"
+  );
+  
   const [editingRepId, setEditingRepId] = useState<string | null>(null);
   const editingRep = editingRepId ? props.users.find((u) => u.id === editingRepId) || null : null;
 
@@ -53,12 +61,12 @@ export function WebTemplatesPage(props: {
     <div className="panel">
       <div className="panel-header">
         <div className="panel-header-row">
-          <span>Rep Web Page Templates</span>
+          <span>Team Web Page Approvals</span>
         </div>
       </div>
       <div className="panel-body">
         {salesReps.length === 0 ? (
-          <div className="panel-empty">No pending web page approvals.</div>
+          <div className="panel-empty">No pending web page approvals from your team.</div>
         ) : (
           <div style={{ overflowX: "auto" }}>
             <table style={{ width: "100%", borderCollapse: "separate", borderSpacing: 0, minWidth: 720 }}>
@@ -90,14 +98,44 @@ export function WebTemplatesPage(props: {
                         <div style={{ fontWeight: 600 }}>{rep.name}</div>
                         <div style={{ fontSize: 12, color: "#6b7280" }}>{rep.email}</div>
                       </td>
-                      <td style={{ padding: "10px 12px", fontSize: 12 }}>{url}</td>
+                      <td style={{ padding: "10px 12px", fontSize: 12 }}>
+                        <a 
+                          href={url} 
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                          style={{ color: '#3b82f6', textDecoration: 'underline' }}
+                        >
+                          {url}
+                        </a>
+                      </td>
                       <td style={{ padding: "10px 12px", textAlign: "center" }}>
                         <span className={`status-badge ${statusClass}`}>{statusLabel}</span>
                       </td>
                       <td style={{ padding: "10px 12px", textAlign: "right" }}>
-                        <button type="button" className="btn-primary btn-success btn-small" style={{ marginLeft: 0 }} onClick={() => updateStatus(rep, "published")}>Approve</button>
-                        <button type="button" className="btn-secondary btn-danger-solid btn-small" style={{ marginLeft: 8 }} onClick={() => updateStatus(rep, "rejected")}>Reject</button>
-                        <button type="button" className="btn-secondary btn-dark btn-small" style={{ marginLeft: 8 }} onClick={() => setEditingRepId(rep.id)}>Edit Template</button>
+                        <button 
+                          type="button" 
+                          className="btn-primary btn-success btn-small" 
+                          style={{ marginLeft: 0 }} 
+                          onClick={() => updateStatus(rep, "published")}
+                        >
+                          Approve
+                        </button>
+                        <button 
+                          type="button" 
+                          className="btn-secondary btn-danger-solid btn-small" 
+                          style={{ marginLeft: 8 }} 
+                          onClick={() => updateStatus(rep, "rejected")}
+                        >
+                          Reject
+                        </button>
+                        <button 
+                          type="button" 
+                          className="btn-secondary btn-dark btn-small" 
+                          style={{ marginLeft: 8 }} 
+                          onClick={() => setEditingRepId(rep.id)}
+                        >
+                          Edit Template
+                        </button>
                         <a
                           href={url}
                           target="_blank"
