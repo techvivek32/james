@@ -1,86 +1,96 @@
-import { useState, ChangeEvent, useRef } from "react";
+import { useState, ChangeEvent, useRef, useEffect } from "react";
 
 type AiMessage = {
   id: number;
   role: "user" | "ai";
   text: string;
+  attachments?: Array<{
+    type: 'image' | 'video' | 'document';
+    name: string;
+    url: string;
+  }>;
 };
 
 export function AiChatPanel() {
-  const [model, setModel] = useState("Gemini 3 Flash");
-  const [profileOption, setProfileOption] = useState("None");
-  const [offerOption, setOfferOption] = useState("None");
-  const [modeOption, setModeOption] = useState("Just Chat");
   const [input, setInput] = useState("");
   const [messages, setMessages] = useState<AiMessage[]>([]);
   const [nextId, setNextId] = useState(1);
+  const [isLoading, setIsLoading] = useState(false);
+  const [attachments, setAttachments] = useState<Array<{
+    type: 'image' | 'video' | 'document';
+    name: string;
+    url: string;
+  }>>([]);
   const [showAttachMenu, setShowAttachMenu] = useState(false);
 
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
   const videoInputRef = useRef<HTMLInputElement>(null);
   const documentInputRef = useRef<HTMLInputElement>(null);
 
-  function pushMessage(role: AiMessage["role"], text: string) {
-    setMessages((prev) => [...prev, { id: nextId, role, text }]);
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages]);
+
+  function pushMessage(role: AiMessage["role"], text: string, attachments?: AiMessage["attachments"]) {
+    setMessages((prev) => [...prev, { id: nextId, role, text, attachments }]);
     setNextId((id) => id + 1);
   }
 
-  function handleAttachment() {
-    setShowAttachMenu(!showAttachMenu);
-  }
-
-  function handleImageSelect() {
-    imageInputRef.current?.click();
-    setShowAttachMenu(false);
-  }
-
-  function handleVideoSelect() {
-    videoInputRef.current?.click();
-    setShowAttachMenu(false);
-  }
-
-  function handleDocumentSelect() {
-    documentInputRef.current?.click();
-    setShowAttachMenu(false);
-  }
-
-  function handleFileChange(event: ChangeEvent<HTMLInputElement>, type: string) {
-    const file = event.target.files?.[0];
-    if (file) {
-      setInput(prev => prev + `[${type}: ${file.name}] `);
-    }
-  }
-
   function handleInputChange(event: ChangeEvent<HTMLTextAreaElement>) {
-    const textarea = event.target;
-    setInput(textarea.value);
-    
-    // Auto-resize textarea
-    textarea.style.height = 'auto';
-    const scrollHeight = textarea.scrollHeight;
-    const maxHeight = 140; // 7 lines * 20px line-height
-    textarea.style.height = Math.min(scrollHeight, maxHeight) + 'px';
+    setInput(event.target.value);
+  }
+
+  function handleFileSelect(type: 'image' | 'video' | 'document') {
+    if (type === 'image') {
+      imageInputRef.current?.click();
+    } else if (type === 'video') {
+      videoInputRef.current?.click();
+    } else {
+      documentInputRef.current?.click();
+    }
+    setShowAttachMenu(false);
+  }
+
+  function handleFileChange(event: ChangeEvent<HTMLInputElement>, type: 'image' | 'video' | 'document') {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setAttachments(prev => [...prev, {
+        type,
+        name: file.name,
+        url: reader.result as string
+      }]);
+    };
+    reader.readAsDataURL(file);
+    event.target.value = '';
+  }
+
+  function removeAttachment(index: number) {
+    setAttachments(prev => prev.filter((_, i) => i !== index));
   }
 
   async function handleSend() {
     const text = input.trim();
-    if (!text) {
+    if ((!text && attachments.length === 0) || isLoading) {
       return;
     }
-    pushMessage("user", text);
+    
+    const messageText = text || "Sent attachments";
+    pushMessage("user", messageText, attachments.length > 0 ? [...attachments] : undefined);
     setInput("");
+    setAttachments([]);
+    setIsLoading(true);
     
     try {
       const response = await fetch("/api/sales-chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          message: text,
-          model,
-          profile: profileOption,
-          offer: offerOption,
-          mode: modeOption
+        body: JSON.stringify({ 
+          message: messageText,
+          attachments: attachments
         })
       });
       
@@ -95,6 +105,8 @@ export function AiChatPanel() {
     } catch (error) {
       console.error("Network Error:", error);
       pushMessage("ai", "Sorry, I'm having trouble responding right now. Please try again.");
+    } finally {
+      setIsLoading(false);
     }
   }
 
@@ -106,124 +118,385 @@ export function AiChatPanel() {
   }
 
   return (
-    <div className="ai-clone-page" style={{height: '100vh', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center'}}>
-      <div className="ai-clone-shell" style={{flex: 1, display: 'flex', flexDirection: 'column', maxWidth: '800px', width: '100%'}}>
-        <div className="ai-clone-icon">💬</div>
-        <div className="ai-clone-title">How can I help you today?</div>
-        <div className="ai-clone-subtitle">
-          Your intelligent co-pilot for strategy, content, and growth. Ask
-          anything or use a tool to get started.
-        </div>
-        <div className="ai-clone-card" style={{display: 'flex', flexDirection: 'column', margin: '0', padding: '20px'}}>
-          <div className="ai-clone-messages chat-messages" style={{flex: 1, overflowY: 'auto', minHeight: '400px'}}>
-            {messages.length === 0 ? (
-              <div className="ai-clone-empty">
-                Start typing below to chat with your assistant.
-              </div>
-            ) : (
-              messages.map((message) => (
-                <div
-                  key={message.id}
-                  className={
-                    message.role === "user"
-                      ? "chat-message chat-message-user"
-                      : "chat-message chat-message-ai"
-                  }
-                >
-                  <div className="chat-message-label">
-                    {message.role === "user" ? "You" : "AI"}
-                  </div>
-                  <div className="chat-message-text">{message.text}</div>
-                </div>
-              ))
-            )}
-          </div>
-          <div className="ai-clone-input-container" style={{position: 'relative', display: 'flex', alignItems: 'flex-end', gap: '8px'}}>
-            <div style={{position: 'relative'}}>
-              <button
-                type="button"
-                className="ai-clone-icon-button"
-                onClick={handleAttachment}
-                style={{marginBottom: '8px'}}
-              >
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66L9.64 16.2a2 2 0 0 1-2.83-2.83l8.49-8.48"/>
-                </svg>
-              </button>
-              {showAttachMenu && (
-                <div style={{
-                  position: 'absolute',
-                  bottom: '100%',
-                  left: '0',
-                  backgroundColor: 'white',
-                  border: '1px solid #ccc',
-                  borderRadius: '8px',
-                  padding: '8px',
-                  boxShadow: '0 2px 10px rgba(0,0,0,0.1)',
-                  zIndex: 10,
-                  minWidth: '120px'
-                }}>
-                  <button onClick={handleImageSelect} style={{display: 'block', width: '100%', padding: '8px', border: 'none', background: 'none', textAlign: 'left', cursor: 'pointer'}}>
-                    🖼️ Image
-                  </button>
-                  <button onClick={handleVideoSelect} style={{display: 'block', width: '100%', padding: '8px', border: 'none', background: 'none', textAlign: 'left', cursor: 'pointer'}}>
-                    🎥 Video
-                  </button>
-                  <button onClick={handleDocumentSelect} style={{display: 'block', width: '100%', padding: '8px', border: 'none', background: 'none', textAlign: 'left', cursor: 'pointer'}}>
-                    📄 Document
-                  </button>
-                </div>
-              )}
+    <div style={{
+      height: 'calc(100vh - 60px)',
+      display: 'flex',
+      flexDirection: 'column',
+      backgroundColor: '#ffffff',
+      maxWidth: '100%',
+      margin: '0 auto'
+    }}>
+      {/* Messages Area */}
+      <div style={{
+        flex: 1,
+        overflowY: 'auto',
+        padding: '24px',
+        display: 'flex',
+        flexDirection: 'column'
+      }}>
+        {messages.length === 0 ? (
+          <div style={{
+            flex: 1,
+            display: 'flex',
+            flexDirection: 'column',
+            justifyContent: 'center',
+            alignItems: 'center',
+            textAlign: 'center',
+            color: '#6b7280'
+          }}>
+            <div style={{
+              width: '120px',
+              height: '120px',
+              borderRadius: '30px',
+              backgroundColor: '#f3f4f6',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              marginBottom: '24px',
+              fontSize: '48px'
+            }}>
+              🤖
             </div>
-            <textarea
-              className="ai-clone-input"
-              placeholder="Message AI... (Shift+Enter for new line)"
-              value={input}
-              onChange={handleInputChange}
-              onKeyDown={handleKeyDown}
-              style={{
-                flex: 1, 
-                paddingRight: '50px',
-                minHeight: '40px',
-                maxHeight: '140px',
-                height: 'auto',
-                resize: 'none',
-                overflowY: input.split('\n').length > 7 ? 'auto' : 'hidden',
-                lineHeight: '20px'
-              }}
-              rows={1}
-            />
+            <div style={{fontSize: '32px', fontWeight: 600, marginBottom: '16px', color: '#1f2937'}}>
+              How can I help you today?
+            </div>
+            <div style={{fontSize: '16px', maxWidth: '600px', lineHeight: '1.6', color: '#6b7280'}}>
+              Your intelligent co-pilot for strategy, content, and growth.<br />
+              Ask anything or use a tool to get started.
+            </div>
+          </div>
+        ) : (
+          <>
+            {messages.map((message) => (
+              <div
+                key={message.id}
+                style={{
+                  display: 'flex',
+                  justifyContent: message.role === "user" ? 'flex-end' : 'flex-start',
+                  marginBottom: '16px'
+                }}
+              >
+                <div
+                  style={{
+                    maxWidth: '70%',
+                    padding: '12px 16px',
+                    borderRadius: '18px',
+                    backgroundColor: message.role === "user" ? '#dc2626' : '#f3f4f6',
+                    color: message.role === "user" ? '#ffffff' : '#1f2937',
+                    wordWrap: 'break-word',
+                    boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
+                    fontSize: '15px',
+                    lineHeight: '1.5'
+                  }}
+                >
+                  {message.attachments && message.attachments.length > 0 && (
+                    <div style={{ marginBottom: '8px' }}>
+                      {message.attachments.map((att, idx) => (
+                        <div key={idx} style={{ marginBottom: '8px' }}>
+                          {att.type === 'image' && (
+                            <img 
+                              src={att.url} 
+                              alt={att.name}
+                              style={{ 
+                                maxWidth: '100%', 
+                                borderRadius: '8px',
+                                display: 'block'
+                              }} 
+                            />
+                          )}
+                          {att.type === 'video' && (
+                            <video 
+                              src={att.url} 
+                              controls
+                              style={{ 
+                                maxWidth: '100%', 
+                                borderRadius: '8px',
+                                display: 'block'
+                              }} 
+                            />
+                          )}
+                          {att.type === 'document' && (
+                            <div style={{
+                              padding: '8px 12px',
+                              backgroundColor: message.role === "user" ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.05)',
+                              borderRadius: '8px',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '8px'
+                            }}>
+                              <span>📄</span>
+                              <span style={{ fontSize: '13px' }}>{att.name}</span>
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  {message.text}
+                </div>
+              </div>
+            ))}
+            {isLoading && (
+              <div style={{
+                display: 'flex',
+                justifyContent: 'flex-start',
+                marginBottom: '16px'
+              }}>
+                <div style={{
+                  padding: '12px 16px',
+                  borderRadius: '18px',
+                  backgroundColor: '#f3f4f6',
+                  color: '#6b7280',
+                  fontSize: '15px'
+                }}>
+                  Thinking...
+                </div>
+              </div>
+            )}
+            <div ref={messagesEndRef} />
+          </>
+        )}
+      </div>
+
+      {/* Input Area */}
+      <div style={{
+        borderTop: '1px solid #e5e7eb',
+        padding: '16px 24px',
+        backgroundColor: '#ffffff'
+      }}>
+        {/* Attachments Preview */}
+        {attachments.length > 0 && (
+          <div style={{
+            maxWidth: '900px',
+            margin: '0 auto 12px',
+            display: 'flex',
+            gap: '8px',
+            flexWrap: 'wrap'
+          }}>
+            {attachments.map((att, idx) => (
+              <div key={idx} style={{
+                position: 'relative',
+                padding: '8px 12px',
+                backgroundColor: '#f3f4f6',
+                borderRadius: '12px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                fontSize: '13px'
+              }}>
+                <span>
+                  {att.type === 'image' && '🖼️'}
+                  {att.type === 'video' && '🎥'}
+                  {att.type === 'document' && '📄'}
+                </span>
+                <span style={{ maxWidth: '150px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  {att.name}
+                </span>
+                <button
+                  onClick={() => removeAttachment(idx)}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    cursor: 'pointer',
+                    padding: '0 4px',
+                    fontSize: '16px',
+                    color: '#6b7280'
+                  }}
+                >
+                  ×
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+        
+        <div style={{
+          maxWidth: '900px',
+          margin: '0 auto',
+          display: 'flex',
+          alignItems: 'flex-end',
+          gap: '12px',
+          backgroundColor: '#f9fafb',
+          borderRadius: '24px',
+          padding: '8px 16px',
+          border: '1px solid #e5e7eb'
+        }}>
+          {/* Attachment Button */}
+          <div style={{ position: 'relative' }}>
             <button
               type="button"
-              className="ai-clone-send-button"
-              onClick={handleSend}
-              style={{position: 'absolute', right: '8px', bottom: '8px', zIndex: 1}}
+              onClick={() => setShowAttachMenu(!showAttachMenu)}
+              disabled={isLoading}
+              style={{
+                width: '36px',
+                height: '36px',
+                borderRadius: '50%',
+                border: 'none',
+                backgroundColor: 'transparent',
+                color: '#6b7280',
+                cursor: isLoading ? 'not-allowed' : 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: '20px',
+                transition: 'all 0.2s',
+                flexShrink: 0
+              }}
             >
-              ➤
+              📎
             </button>
-            <input
-              ref={imageInputRef}
-              type="file"
-              style={{display: 'none'}}
-              onChange={(e) => handleFileChange(e, 'Image')}
-              accept=".jpg,.jpeg,.png,.gif,.webp"
-            />
-            <input
-              ref={videoInputRef}
-              type="file"
-              style={{display: 'none'}}
-              onChange={(e) => handleFileChange(e, 'Video')}
-              accept=".mp4,.avi,.mov,.wmv,.flv"
-            />
-            <input
-              ref={documentInputRef}
-              type="file"
-              style={{display: 'none'}}
-              onChange={(e) => handleFileChange(e, 'Document')}
-              accept=".pdf,.doc,.docx,.txt,.rtf"
-            />
+            
+            {showAttachMenu && (
+              <div style={{
+                position: 'absolute',
+                bottom: '100%',
+                left: '0',
+                marginBottom: '8px',
+                backgroundColor: 'white',
+                border: '1px solid #e5e7eb',
+                borderRadius: '12px',
+                padding: '8px',
+                boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+                zIndex: 10,
+                minWidth: '160px'
+              }}>
+                <button 
+                  onClick={() => handleFileSelect('image')}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    width: '100%',
+                    padding: '10px 12px',
+                    border: 'none',
+                    background: 'none',
+                    textAlign: 'left',
+                    cursor: 'pointer',
+                    borderRadius: '8px',
+                    fontSize: '14px',
+                    transition: 'background 0.2s'
+                  }}
+                  onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f3f4f6'}
+                  onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                >
+                  <span>🖼️</span>
+                  <span>Image</span>
+                </button>
+                <button 
+                  onClick={() => handleFileSelect('video')}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    width: '100%',
+                    padding: '10px 12px',
+                    border: 'none',
+                    background: 'none',
+                    textAlign: 'left',
+                    cursor: 'pointer',
+                    borderRadius: '8px',
+                    fontSize: '14px',
+                    transition: 'background 0.2s'
+                  }}
+                  onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f3f4f6'}
+                  onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                >
+                  <span>🎥</span>
+                  <span>Video</span>
+                </button>
+                <button 
+                  onClick={() => handleFileSelect('document')}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    width: '100%',
+                    padding: '10px 12px',
+                    border: 'none',
+                    background: 'none',
+                    textAlign: 'left',
+                    cursor: 'pointer',
+                    borderRadius: '8px',
+                    fontSize: '14px',
+                    transition: 'background 0.2s'
+                  }}
+                  onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f3f4f6'}
+                  onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                >
+                  <span>📄</span>
+                  <span>Document</span>
+                </button>
+              </div>
+            )}
           </div>
+
+          <textarea
+            placeholder="Message AI... (Shift+Enter for new line)"
+            value={input}
+            onChange={handleInputChange}
+            onKeyDown={handleKeyDown}
+            disabled={isLoading}
+            style={{
+              flex: 1,
+              border: 'none',
+              outline: 'none',
+              resize: 'none',
+              fontSize: '15px',
+              lineHeight: '24px',
+              padding: '8px 0',
+              backgroundColor: 'transparent',
+              minHeight: '24px',
+              maxHeight: '120px',
+              fontFamily: 'inherit'
+            }}
+            rows={1}
+          />
+          <button
+            type="button"
+            onClick={handleSend}
+            disabled={((!input.trim() && attachments.length === 0) || isLoading)}
+            style={{
+              width: '36px',
+              height: '36px',
+              borderRadius: '50%',
+              border: 'none',
+              backgroundColor: (input.trim() || attachments.length > 0) && !isLoading ? '#dc2626' : '#d1d5db',
+              color: '#ffffff',
+              cursor: (input.trim() || attachments.length > 0) && !isLoading ? 'pointer' : 'not-allowed',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontSize: '18px',
+              transition: 'all 0.2s',
+              flexShrink: 0
+            }}
+          >
+            ➤
+          </button>
         </div>
+        
+        {/* Hidden File Inputs */}
+        <input
+          ref={imageInputRef}
+          type="file"
+          accept="image/*"
+          style={{ display: 'none' }}
+          onChange={(e) => handleFileChange(e, 'image')}
+        />
+        <input
+          ref={videoInputRef}
+          type="file"
+          accept="video/*"
+          style={{ display: 'none' }}
+          onChange={(e) => handleFileChange(e, 'video')}
+        />
+        <input
+          ref={documentInputRef}
+          type="file"
+          accept=".pdf,.doc,.docx,.txt,.rtf"
+          style={{ display: 'none' }}
+          onChange={(e) => handleFileChange(e, 'document')}
+        />
       </div>
     </div>
   );
