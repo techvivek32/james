@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { DashboardCard } from "../../components/DashboardCard";
 import { UserProfile } from "../../types";
 
@@ -13,12 +14,40 @@ export function SalesDashboard(props: { profile: UserProfile }) {
     plan && plan.territories.length > 0 ? plan.territories[0] : undefined;
   const location = props.profile.territory ?? locationFromPlan ?? "";
 
-  const incomeActual = 84000;
-  const dealsActual = 6;
-  const claimsActual = 8;
-  const inspectionsActual = 32;
-  const convosActual = 85;
-  const doorsActual = 420;
+  const [isEditing, setIsEditing] = useState(false);
+  const [incomeActual, setIncomeActual] = useState(84000);
+  const [dealsActual, setDealsActual] = useState(6);
+  const [claimsActual, setClaimsActual] = useState(8);
+  const [inspectionsActual, setInspectionsActual] = useState(32);
+  const [convosActual, setConvosActual] = useState(85);
+  const [doorsActual, setDoorsActual] = useState(420);
+
+  async function handleSave() {
+    try {
+      // Save actuals to database
+      await fetch('/api/business-plan', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId: props.profile.id,
+          actuals: {
+            incomeActual,
+            dealsActual,
+            claimsActual,
+            inspectionsActual,
+            convosActual,
+            doorsActual
+          }
+        })
+      });
+      
+      setIsEditing(false);
+      alert('Actuals saved successfully!');
+    } catch (error) {
+      console.error('Failed to save actuals:', error);
+      alert('Failed to save actuals');
+    }
+  }
 
   const incomeDelta = incomeActual - incomeGoal;
   const dealsDelta = dealsActual - dealsNeeded;
@@ -33,7 +62,7 @@ export function SalesDashboard(props: { profile: UserProfile }) {
       label: "Income",
       goal: incomeGoal,
       actual: incomeActual,
-      format: (value: number) => `$${value.toLocaleString()}`
+      format: (value: number) => `${value.toLocaleString()}`
     },
     {
       id: "deals",
@@ -94,7 +123,7 @@ export function SalesDashboard(props: { profile: UserProfile }) {
       <div className="grid grid-4">
         <DashboardCard
           title="Income Goal"
-          value={`$${incomeGoal.toLocaleString()}`}
+          value={`${incomeGoal.toLocaleString()}`}
         />
         <DashboardCard
           title="Deals Needed"
@@ -121,29 +150,112 @@ export function SalesDashboard(props: { profile: UserProfile }) {
         <div className="sales-plan-summary-main">
           <div className="sales-plan-summary-name">Actuals</div>
         </div>
+        <div style={{ display: 'flex', gap: 8 }}>
+          {!isEditing ? (
+            <button type="button" className="btn-primary btn-small" onClick={() => setIsEditing(true)}>
+              Edit
+            </button>
+          ) : (
+            <>
+              <button type="button" className="btn-primary btn-success btn-small" onClick={handleSave}>
+                Save
+              </button>
+              <button type="button" className="btn-secondary btn-small" onClick={() => setIsEditing(false)}>
+                Cancel
+              </button>
+            </>
+          )}
+        </div>
       </div>
       <div className="grid grid-4">
-        <DashboardCard
-          title="Income Actual"
-          value={`$${incomeActual.toLocaleString()}`}
-        />
-        <DashboardCard title="Deals Actual" value={String(dealsActual)} />
-        <DashboardCard
-          title="Claims Actual"
-          value={claimsActual.toLocaleString()}
-        />
-        <DashboardCard
-          title="Inspections Actual"
-          value={inspectionsActual.toLocaleString()}
-        />
-        <DashboardCard
-          title="Convos Actual"
-          value={convosActual.toLocaleString()}
-        />
-        <DashboardCard
-          title="Doors Actual"
-          value={doorsActual.toLocaleString()}
-        />
+        {isEditing ? (
+          <>
+            <div className="card">
+              <div className="card-title">Income Actual</div>
+              <input 
+                type="number" 
+                className="field-input" 
+                value={incomeActual} 
+                onChange={(e) => setIncomeActual(Number(e.target.value))}
+                style={{ marginTop: 8 }}
+              />
+            </div>
+            <div className="card">
+              <div className="card-title">Deals Actual</div>
+              <input 
+                type="number" 
+                className="field-input" 
+                value={dealsActual} 
+                onChange={(e) => setDealsActual(Number(e.target.value))}
+                style={{ marginTop: 8 }}
+              />
+            </div>
+            <div className="card">
+              <div className="card-title">Claims Actual</div>
+              <input 
+                type="number" 
+                className="field-input" 
+                value={claimsActual} 
+                onChange={(e) => setClaimsActual(Number(e.target.value))}
+                style={{ marginTop: 8 }}
+              />
+            </div>
+            <div className="card">
+              <div className="card-title">Inspections Actual</div>
+              <input 
+                type="number" 
+                className="field-input" 
+                value={inspectionsActual} 
+                onChange={(e) => setInspectionsActual(Number(e.target.value))}
+                style={{ marginTop: 8 }}
+              />
+            </div>
+            <div className="card">
+              <div className="card-title">Convos Actual</div>
+              <input 
+                type="number" 
+                className="field-input" 
+                value={convosActual} 
+                onChange={(e) => setConvosActual(Number(e.target.value))}
+                style={{ marginTop: 8 }}
+              />
+            </div>
+            <div className="card">
+              <div className="card-title">Doors Actual</div>
+              <input 
+                type="number" 
+                className="field-input" 
+                value={doorsActual} 
+                onChange={(e) => setDoorsActual(Number(e.target.value))}
+                style={{ marginTop: 8 }}
+              />
+            </div>
+          </>
+        ) : (
+          <>
+            <DashboardCard
+              title="Income Actual"
+              value={`${incomeActual.toLocaleString()}`}
+            />
+            <DashboardCard title="Deals Actual" value={String(dealsActual)} />
+            <DashboardCard
+              title="Claims Actual"
+              value={claimsActual.toLocaleString()}
+            />
+            <DashboardCard
+              title="Inspections Actual"
+              value={inspectionsActual.toLocaleString()}
+            />
+            <DashboardCard
+              title="Convos Actual"
+              value={convosActual.toLocaleString()}
+            />
+            <DashboardCard
+              title="Doors Actual"
+              value={doorsActual.toLocaleString()}
+            />
+          </>
+        )}
       </div>
       <div className="sales-plan-heading">
         <div className="sales-plan-summary-main">
@@ -153,7 +265,7 @@ export function SalesDashboard(props: { profile: UserProfile }) {
       <div className="grid grid-4">
         <DashboardCard
           title="Income Delta"
-          value={`$${incomeDelta.toLocaleString()}`}
+          value={`${incomeDelta.toLocaleString()}`}
         />
         <DashboardCard
           title="Deals Delta"
