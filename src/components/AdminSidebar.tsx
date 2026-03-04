@@ -14,7 +14,8 @@ const sidebarItems = [
   { id: "aiBots", label: "AI Bot Management" },
   { id: "webTemplates", label: "Web Page Approval" },
   { id: "webText", label: "Web Text" },
-  { id: "appsTools", label: "Apps/Tool" }
+  { id: "appsTools", label: "Apps/Tool" },
+  { id: "socialMediaMetrics", label: "Social Media Metrics" }
 ];
 
 type AdminSidebarProps = {
