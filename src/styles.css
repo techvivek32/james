@@ -2694,7 +2694,7 @@ body {
   height: 10px;
   border-radius: 999px;
   background-color: #f3f4f6;
-  overflow: hidden;
+  overflow: visible;
   position: relative;
 }
 
@@ -2702,26 +2702,34 @@ body {
   height: 100%;
   border-radius: 999px;
   background: linear-gradient(90deg, #fecaca, #b91c1c);
+  overflow: hidden;
 }
 
 .sales-chart-runner {
   position: absolute;
   top: 50%;
   transform: translate(-50%, -50%);
-  width: 14px;
-  height: 14px;
-  border-radius: 999px;
-  background: radial-gradient(circle at 30% 30%, #ffffff, #fecaca, #b91c1c);
-  box-shadow: 0 0 0 2px #fee2e2;
+  width: 24px;
+  height: 24px;
   animation: sales-chart-runner-bob 1.2s ease-in-out infinite alternate;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10;
+}
+
+.sales-chart-runner::before {
+  content: "⚡";
+  font-size: 24px;
+  filter: drop-shadow(0 0 4px rgba(234, 179, 8, 0.8));
 }
 
 @keyframes sales-chart-runner-bob {
   from {
-    transform: translate(-50%, -45%);
+    transform: translate(-50%, -50%) scale(1);
   }
   to {
-    transform: translate(-50%, -55%);
+    transform: translate(-50%, -50%) scale(1.1);
   }
 }
 
