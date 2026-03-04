@@ -30,6 +30,12 @@ export function CourseManagement(props: CourseEditorProps) {
   const [isLinkModalOpen, setIsLinkModalOpen] = useState(false);
   const [linkLabelDraft, setLinkLabelDraft] = useState("");
   const [linkUrlDraft, setLinkUrlDraft] = useState("");
+  const [isResourceFileModalOpen, setIsResourceFileModalOpen] = useState(false);
+  const [resourceFileUrlDraft, setResourceFileUrlDraft] = useState("");
+  const [resourceFileLabelDraft, setResourceFileLabelDraft] = useState("");
+  const [isPinPostModalOpen, setIsPinPostModalOpen] = useState(false);
+  const [pinPostUrlDraft, setPinPostUrlDraft] = useState("");
+  const resourceFileInputRef = useRef<HTMLInputElement | null>(null);
   const bodyInputRef = useRef<HTMLDivElement | null>(null);
   const [lastPageId, setLastPageId] = useState<string | null>(null);
   const [activeFormats, setActiveFormats] = useState<Set<string>>(new Set());
@@ -477,6 +483,182 @@ export function CourseManagement(props: CourseEditorProps) {
                   </button>
                   <button type="button" className="btn-primary btn-success" disabled={!linkLabelDraft.trim() || !linkUrlDraft.trim()} onClick={handleAddLink}>
                     ADD
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+      {isResourceFileModalOpen && selectedCourse && (() => {
+        const course = selectedCourse as Course;
+        const pages = course.pages ?? [];
+        const activePage =
+          (activePageId ? pages.find((page) => page.id === activePageId) : undefined) ??
+          (pages.length > 0 ? pages[pages.length - 1] : undefined) ??
+          undefined;
+        if (!activePage) {
+          return null;
+        }
+        const pageForFile = activePage as CoursePage;
+        function handleAddResourceFile() {
+          const label = resourceFileLabelDraft.trim();
+          const href = resourceFileUrlDraft.trim();
+          if (!label || !href) {
+            return;
+          }
+          
+          // Create a downloadable link in the page body
+          const linkHtml = `<a href="${href}" download target="_blank" rel="noopener noreferrer" style="display: inline-flex; align-items: center; gap: 8px; color: #3b82f6; text-decoration: underline; cursor: pointer;">📎 ${label}</a>`;
+          
+          if (bodyInputRef.current) {
+            bodyInputRef.current.focus();
+            const selection = window.getSelection();
+            if (selection && selection.rangeCount > 0) {
+              const range = selection.getRangeAt(0);
+              range.deleteContents();
+              const tempDiv = document.createElement("div");
+              tempDiv.innerHTML = linkHtml;
+              const linkNode = tempDiv.firstChild!;
+              range.insertNode(linkNode);
+              
+              const newRange = document.createRange();
+              newRange.setStartAfter(linkNode);
+              newRange.collapse(true);
+              selection.removeAllRanges();
+              selection.addRange(newRange);
+            } else {
+              bodyInputRef.current.innerHTML += linkHtml;
+            }
+            
+            setTimeout(() => {
+              if (bodyInputRef.current) {
+                const nextBody = bodyInputRef.current.innerHTML;
+                // Save to fileUrls array
+                const existingFiles = pageForFile.fileUrls || [];
+                const nextPages = pages.map((page) => 
+                  page.id === pageForFile.id 
+                    ? { ...page, body: nextBody, fileUrls: [...existingFiles, href] } 
+                    : page
+                );
+                updateCourse({ ...(course as Course), pages: nextPages });
+              }
+            }, 0);
+          }
+          
+          setIsResourceFileModalOpen(false);
+          setResourceFileUrlDraft("");
+          setResourceFileLabelDraft("");
+        }
+        return (
+          <div className="overlay">
+            <div className="dialog">
+              <div className="dialog-title">Add resource file</div>
+              <label className="field">
+                <span className="field-label">Label</span>
+                <input className="field-input" value={resourceFileLabelDraft} maxLength={50} onChange={(event) => setResourceFileLabelDraft(event.target.value)} placeholder="e.g., Download PDF, View Document" />
+              </label>
+              <label className="field" style={{ marginTop: 12 }}>
+                <span className="field-label">File URL</span>
+                <input className="field-input" value={resourceFileUrlDraft} onChange={(event) => setResourceFileUrlDraft(event.target.value)} placeholder="https://" />
+              </label>
+              <div className="video-dropzone" onClick={() => resourceFileInputRef.current?.click()}>
+                <div className="video-dropzone-icon">⬆</div>
+                <div className="video-dropzone-text-main">Drag and drop file here</div>
+                <div className="video-dropzone-text-sub">or select file</div>
+              </div>
+              <input
+                ref={resourceFileInputRef}
+                type="file"
+                style={{ display: "none" }}
+                onChange={async (event) => {
+                  const file = event.target.files?.[0];
+                  if (!file) return;
+                  
+                  // Auto-fill label with filename if empty
+                  if (!resourceFileLabelDraft.trim()) {
+                    setResourceFileLabelDraft(file.name);
+                  }
+                  
+                  const formData = new FormData();
+                  formData.append('file', file);
+                  
+                  try {
+                    const response = await fetch('/api/upload-image', {
+                      method: 'POST',
+                      body: formData
+                    });
+                    
+                    if (response.ok) {
+                      const data = await response.json();
+                      setResourceFileUrlDraft(data.url);
+                    } else {
+                      alert('Failed to upload file');
+                    }
+                  } catch (error) {
+                    console.error('Upload error:', error);
+                    alert('Failed to upload file');
+                  }
+                }}
+              />
+              <div className="dialog-footer">
+                <div />
+                <div className="dialog-actions">
+                  <button type="button" className="btn-secondary btn-cancel" onClick={() => setIsResourceFileModalOpen(false)}>
+                    CANCEL
+                  </button>
+                  <button type="button" className="btn-primary btn-success" disabled={!resourceFileLabelDraft.trim() || !resourceFileUrlDraft.trim()} onClick={handleAddResourceFile}>
+                    ADD
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+      {isPinPostModalOpen && selectedCourse && (() => {
+        const course = selectedCourse as Course;
+        const pages = course.pages ?? [];
+        const activePage =
+          (activePageId ? pages.find((page) => page.id === activePageId) : undefined) ??
+          (pages.length > 0 ? pages[pages.length - 1] : undefined) ??
+          undefined;
+        if (!activePage) {
+          return null;
+        }
+        const pageForPost = activePage as CoursePage;
+        function handlePinPost() {
+          const trimmed = pinPostUrlDraft.trim();
+          if (!trimmed) {
+            return;
+          }
+          
+          const nextPages = pages.map((page) => 
+            page.id === pageForPost.id 
+              ? { ...page, pinnedCommunityPostUrl: trimmed } 
+              : page
+          );
+          updateCourse({ ...(course as Course), pages: nextPages });
+          
+          setIsPinPostModalOpen(false);
+          setPinPostUrlDraft("");
+        }
+        return (
+          <div className="overlay">
+            <div className="dialog">
+              <div className="dialog-title">Pin community post</div>
+              <label className="field">
+                <span className="field-label">Community Post URL</span>
+                <input className="field-input" value={pinPostUrlDraft} onChange={(event) => setPinPostUrlDraft(event.target.value)} placeholder="https://" />
+              </label>
+              <div className="dialog-footer">
+                <div />
+                <div className="dialog-actions">
+                  <button type="button" className="btn-secondary btn-cancel" onClick={() => setIsPinPostModalOpen(false)}>
+                    CANCEL
+                  </button>
+                  <button type="button" className="btn-primary btn-success" disabled={!pinPostUrlDraft.trim()} onClick={handlePinPost}>
+                    PIN
                   </button>
                 </div>
               </div>
@@ -1370,10 +1552,9 @@ export function CourseManagement(props: CourseEditorProps) {
                                               type="button"
                                               className="course-page-menu-item"
                                               onClick={() => {
-                                                const nextPages = pages.map((page) =>
-                                                  page.id === activePage.id ? { ...page, fileUrls: [...page.fileUrls, ""] } : page
-                                                );
-                                                updateCourse({ ...selectedCourse, pages: nextPages });
+                                                setResourceFileUrlDraft("");
+                                                setResourceFileLabelDraft("");
+                                                setIsResourceFileModalOpen(true);
                                                 setIsAddMenuOpen(false);
                                               }}
                                             >
@@ -1384,10 +1565,8 @@ export function CourseManagement(props: CourseEditorProps) {
                                               type="button"
                                               className="course-page-menu-item"
                                               onClick={() => {
-                                                const nextPages = pages.map((page) =>
-                                                  page.id === activePage.id ? { ...page, pinnedCommunityPostUrl: page.pinnedCommunityPostUrl ?? "" } : page
-                                                );
-                                                updateCourse({ ...selectedCourse, pages: nextPages });
+                                                setPinPostUrlDraft("");
+                                                setIsPinPostModalOpen(true);
                                                 setIsAddMenuOpen(false);
                                               }}
                                             >
