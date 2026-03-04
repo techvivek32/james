@@ -1,7 +1,47 @@
+import { useState, useEffect } from "react";
 import { DashboardCard } from "../../components/DashboardCard";
 import { UserProfile } from "../../types";
 
 export function ManagerDashboard(props: { teamMembers: UserProfile[] }) {
+  const [teamActuals, setTeamActuals] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function fetchTeamActuals() {
+      try {
+        // Fetch actuals for all team members
+        const actualsPromises = props.teamMembers.map(member =>
+          fetch(`/api/business-plan?userId=${member.id}`)
+            .then(r => r.json())
+            .then(data => {
+              const userPlan = data.find((p: any) => p.userId === member.id);
+              return userPlan?.actuals || {
+                incomeActual: 0,
+                dealsActual: 0,
+                claimsActual: 0,
+                inspectionsActual: 0,
+                convosActual: 0,
+                doorsActual: 0
+              };
+            })
+        );
+        
+        const actuals = await Promise.all(actualsPromises);
+        setTeamActuals(actuals);
+      } catch (error) {
+        console.error('Failed to fetch team actuals:', error);
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    if (props.teamMembers.length > 0) {
+      fetchTeamActuals();
+    } else {
+      setLoading(false);
+    }
+  }, [props.teamMembers]);
+
   const repCount = props.teamMembers.length;
   const totals = props.teamMembers.reduce(
     (acc, member) => {
@@ -26,19 +66,37 @@ export function ManagerDashboard(props: { teamMembers: UserProfile[] }) {
   const claimsNeeded = Math.ceil(totals.dealsNeeded * 1.2);
   const convosNeeded = Math.ceil(totals.inspectionsNeeded * 2.5);
 
-  const incomeActual = repCount * 84000;
-  const dealsActual = repCount * 6;
-  const claimsActual = repCount * 8;
-  const inspectionsActual = repCount * 32;
-  const convosActual = repCount * 85;
-  const doorsActual = repCount * 420;
+  // Calculate team actuals from real data
+  const actualTotals = teamActuals.reduce(
+    (acc, actuals) => {
+      acc.incomeActual += actuals.incomeActual || 0;
+      acc.dealsActual += actuals.dealsActual || 0;
+      acc.claimsActual += actuals.claimsActual || 0;
+      acc.inspectionsActual += actuals.inspectionsActual || 0;
+      acc.convosActual += actuals.convosActual || 0;
+      acc.doorsActual += actuals.doorsActual || 0;
+      return acc;
+    },
+    {
+      incomeActual: 0,
+      dealsActual: 0,
+      claimsActual: 0,
+      inspectionsActual: 0,
+      convosActual: 0,
+      doorsActual: 0
+    }
+  );
 
-  const incomeDelta = incomeActual - totals.incomeGoal;
-  const dealsDelta = dealsActual - totals.dealsNeeded;
-  const claimsDelta = claimsActual - claimsNeeded;
-  const inspectionsDelta = inspectionsActual - totals.inspectionsNeeded;
-  const convosDelta = convosActual - convosNeeded;
-  const doorsDelta = doorsActual - totals.doorsNeeded;
+  const incomeDelta = actualTotals.incomeActual - totals.incomeGoal;
+  const dealsDelta = actualTotals.dealsActual - totals.dealsNeeded;
+  const claimsDelta = actualTotals.claimsActual - claimsNeeded;
+  const inspectionsDelta = actualTotals.inspectionsActual - totals.inspectionsNeeded;
+  const convosDelta = actualTotals.convosActual - convosNeeded;
+  const doorsDelta = actualTotals.doorsActual - totals.doorsNeeded;
+
+  if (loading) {
+    return <div style={{ padding: 24 }}>Loading team data...</div>;
+  }
 
   return (
     <div className="sales-dashboard">
@@ -81,27 +139,27 @@ export function ManagerDashboard(props: { teamMembers: UserProfile[] }) {
       <div className="grid grid-4">
         <DashboardCard
           title="Income Actual"
-          value={`$${incomeActual.toLocaleString()}`}
+          value={`$${actualTotals.incomeActual.toLocaleString()}`}
         />
         <DashboardCard
           title="Deals Actual"
-          value={dealsActual.toLocaleString()}
+          value={actualTotals.dealsActual.toLocaleString()}
         />
         <DashboardCard
           title="Claims Actual"
-          value={claimsActual.toLocaleString()}
+          value={actualTotals.claimsActual.toLocaleString()}
         />
         <DashboardCard
           title="Inspections Actual"
-          value={inspectionsActual.toLocaleString()}
+          value={actualTotals.inspectionsActual.toLocaleString()}
         />
         <DashboardCard
           title="Convos Actual"
-          value={convosActual.toLocaleString()}
+          value={actualTotals.convosActual.toLocaleString()}
         />
         <DashboardCard
           title="Doors Actual"
-          value={doorsActual.toLocaleString()}
+          value={actualTotals.doorsActual.toLocaleString()}
         />
       </div>
       <div className="sales-plan-heading">

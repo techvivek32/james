@@ -20,7 +20,7 @@ export function MarketingLayout({ children, currentView }: MarketingLayoutProps)
       isSidebarCollapsed={isSidebarCollapsed}
       header={
         <Header
-          title="Unified Sales & Marketing OS"
+          title="Sales & Marketing Operating System"
           subtitle="Marketing view"
           userName={user?.name ?? "Marketing"}
           roleLabel="Marketing"

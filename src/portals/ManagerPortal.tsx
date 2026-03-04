@@ -1889,7 +1889,7 @@ export function ManagerPortal(props: ManagerPortalProps) {
       }
       header={
         <Header
-          title="Unified Sales & Marketing OS"
+          title="Sales & Marketing Operating System"
           subtitle="Manager view"
           userName={props.currentUser.name}
           roleLabel="Manager"

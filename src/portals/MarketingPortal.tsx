@@ -119,7 +119,7 @@ export function MarketingPortal(props: MarketingPortalProps) {
       }
       header={
         <Header
-          title="Unified Sales & Marketing OS"
+          title="Sales & Marketing Operating System"
           subtitle="Marketing view"
           userName={props.currentUser.name}
           roleLabel="Marketing"
