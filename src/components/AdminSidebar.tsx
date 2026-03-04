@@ -5,12 +5,12 @@ const sidebarItems = [
   { id: "dashboard", label: "Dashboard" },
   { id: "userManagement", label: "User Management" },
   { id: "roleHierarchy", label: "Role & Hierarchy Manager" },
-  { id: "businessUnits", label: "Business Units" },
+  { id: "businessUnits", label: "Sales Business Plan" },
   { id: "courseManagement", label: "Course Management" },
   { id: "materialsLibrary", label: "Marketing Materials Library" },
   { id: "aiBots", label: "AI Bot Management" },
   { id: "webTemplates", label: "Web Page Approval" },
-  { id: "webText", label: "Web Text" },
+  { id: "webText", label: "Web Page Text" },
   { id: "appsTools", label: "Apps/Tool" },
   { id: "socialMediaMetrics", label: "Social Media Metrics" }
 ];
