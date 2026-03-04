@@ -102,7 +102,34 @@ export function AiChatPanel() {
   async function saveChatHistory() {
     if (!user?.id || messages.length === 0) return;
 
-    const title = messages[0]?.text.substring(0, 50) || "New Chat";
+    // Generate smart title using AI (like ChatGPT)
+    let title = "New Chat";
+    
+    if (messages.length >= 2) {
+      try {
+        const titleResponse = await fetch("/api/generate-chat-title", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            firstMessage: messages[0]?.text,
+            secondMessage: messages[1]?.text
+          })
+        });
+        
+        if (titleResponse.ok) {
+          const titleData = await titleResponse.json();
+          title = titleData.title;
+        } else {
+          // Fallback to first message
+          title = messages[0]?.text.substring(0, 50) || "New Chat";
+        }
+      } catch (error) {
+        console.error("Failed to generate title:", error);
+        title = messages[0]?.text.substring(0, 50) || "New Chat";
+      }
+    } else {
+      title = messages[0]?.text.substring(0, 50) || "New Chat";
+    }
     
     try {
       const response = await fetch("/api/chat-history", {
@@ -271,7 +298,7 @@ export function AiChatPanel() {
             onClick={startNewChat}
             style={{
               padding: '6px 12px',
-              backgroundColor: '#dc2626',
+              backgroundColor: '#1f2937',
               color: 'white',
               border: 'none',
               borderRadius: '8px',
@@ -293,12 +320,12 @@ export function AiChatPanel() {
             <div
               key={chat.chatId}
               style={{
-                padding: '12px',
-                marginBottom: '8px',
+                padding: '10px',
+                marginBottom: '6px',
                 backgroundColor: chat.chatId === currentChatId ? '#ffffff' : 'transparent',
                 borderRadius: '8px',
                 cursor: 'pointer',
-                border: chat.chatId === currentChatId ? '1px solid #dc2626' : '1px solid transparent',
+                border: chat.chatId === currentChatId ? '1px solid #1f2937' : '1px solid transparent',
                 transition: 'all 0.2s',
                 position: 'relative',
                 display: 'flex',
@@ -310,7 +337,7 @@ export function AiChatPanel() {
             >
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{
-                  fontSize: '14px',
+                  fontSize: '13px',
                   fontWeight: 500,
                   color: '#1f2937',
                   overflow: 'hidden',
@@ -320,9 +347,9 @@ export function AiChatPanel() {
                   {chat.title}
                 </div>
                 <div style={{
-                  fontSize: '12px',
+                  fontSize: '11px',
                   color: '#6b7280',
-                  marginTop: '4px'
+                  marginTop: '2px'
                 }}>
                   {chat.messages.length} messages
                 </div>
@@ -439,7 +466,7 @@ export function AiChatPanel() {
                     maxWidth: '65%',
                     padding: '12px 16px',
                     borderRadius: '18px',
-                    backgroundColor: message.role === "user" ? '#dc2626' : '#f3f4f6',
+                    backgroundColor: message.role === "user" ? '#1f2937' : '#f3f4f6',
                     color: message.role === "user" ? '#ffffff' : '#1f2937',
                     wordWrap: 'break-word',
                     boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
@@ -720,7 +747,7 @@ export function AiChatPanel() {
               height: '36px',
               borderRadius: '50%',
               border: 'none',
-              backgroundColor: (input.trim() || attachments.length > 0) && !isLoading ? '#dc2626' : '#d1d5db',
+              backgroundColor: (input.trim() || attachments.length > 0) && !isLoading ? '#1f2937' : '#d1d5db',
               color: '#ffffff',
               cursor: (input.trim() || attachments.length > 0) && !isLoading ? 'pointer' : 'not-allowed',
               display: 'flex',
