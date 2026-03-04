@@ -15,11 +15,15 @@ type SocialMetric = {
 export function AdminDashboard(props: { users: UserProfile[]; courses: Course[] }) {
   const [showSocialDetails, setShowSocialDetails] = useState(true);
   const [socialMetrics, setSocialMetrics] = useState<SocialMetric[]>([]);
+  const [courseProgress, setCourseProgress] = useState<any[]>([]);
+  const [botStats, setBotStats] = useState<any>({ totalBots: 0, totalSessions: 0, totalMessages: 0 });
   const users = props.users;
   const courses = props.courses;
 
   useEffect(() => {
     loadSocialMetrics();
+    loadCourseProgress();
+    loadBotStats();
   }, []);
 
   async function loadSocialMetrics() {
@@ -38,48 +42,70 @@ export function AdminDashboard(props: { users: UserProfile[]; courses: Course[] 
     }
   }
 
+  async function loadCourseProgress() {
+    try {
+      const res = await fetch("/api/course-progress");
+      if (res.ok) {
+        const data = await res.json();
+        setCourseProgress(data);
+      }
+    } catch (error) {
+      console.error("Failed to load course progress:", error);
+    }
+  }
+
+  async function loadBotStats() {
+    try {
+      const res = await fetch("/api/bot-stats");
+      if (res.ok) {
+        const data = await res.json();
+        setBotStats(data);
+      }
+    } catch (error) {
+      console.error("Failed to load bot stats:", error);
+    }
+  }
+
   const totalSalesReps = users.filter((user) => user.role === "sales").length;
   const totalManagers = users.filter((user) => user.role === "manager").length;
 
+  // Real business plan data from users
   const businessPlans = users
     .filter((user) => !!user.businessPlan)
     .map((user) => user.businessPlan!);
 
   const totalRevenue = businessPlans.reduce(
-    (sum, plan) => sum + (plan.targetRevenue || 0),
+    (sum, plan) => sum + (plan.revenueGoal || 0),
     0
   );
-  const totalDays = businessPlans.reduce(
-    (sum, plan) => sum + (plan.daysToClose || 0),
-    0
-  );
-  const avgDays = businessPlans.length > 0 ? Math.round(totalDays / businessPlans.length) : 0;
+  
+  // Calculate average days from business plans
+  const plansWithDays = businessPlans.filter(plan => plan.daysPerWeek);
+  const avgDays = plansWithDays.length > 0 
+    ? Math.round(plansWithDays.reduce((sum, plan) => sum + (plan.daysPerWeek || 0), 0) / plansWithDays.length)
+    : 0;
 
   const publishedCourses = courses.filter((course) => course.status !== "draft");
 
-  function getUserCourseCompletion(user: UserProfile, course: Course) {
-    const userCode = (user.id.charCodeAt(0) || 0) + (user.name.charCodeAt(0) || 0);
-    const courseCode = course.id.charCodeAt(0) || 0;
-    const raw = (userCode * 7 + courseCode * 11) % 101;
-    return raw;
+  // Calculate real course completion from user progress data
+  function getCourseCompletion(courseId: string) {
+    const progressForCourse = courseProgress.filter(p => p.courseId === courseId);
+    if (progressForCourse.length === 0) return 0;
+    const totalCompletion = progressForCourse.reduce((sum, p) => sum + (p.completionPercentage || 0), 0);
+    return Math.round(totalCompletion / progressForCourse.length);
   }
 
-  const completionValues: number[] = [];
-  users.forEach((user) => {
-    if (user.role !== "sales" && user.role !== "manager") return;
-    publishedCourses.forEach((course) => {
-      completionValues.push(getUserCourseCompletion(user, course));
-    });
-  });
-
+  // Calculate overall completion from all user progress
+  const allCompletionValues = courseProgress.map(p => p.completionPercentage || 0);
   const totalCourseCompletionPercentage =
-    completionValues.length > 0
-      ? Math.round(completionValues.reduce((sum, value) => sum + value, 0) / completionValues.length)
+    allCompletionValues.length > 0
+      ? Math.round(allCompletionValues.reduce((sum, value) => sum + value, 0) / allCompletionValues.length)
       : 0;
 
-  const totalBots = 3;
-  const totalChatSessions = 1247;
-  const totalBotUpdates = 18;
+  // Real bot stats - count from actual chat sessions in database
+  const totalBots = botStats.totalBots || 0;
+  const totalChatSessions = botStats.totalSessions || 0;
+  const totalBotUpdates = botStats.totalMessages || 0;
 
   // Use real data from database
   const socialPlatforms = socialMetrics.map(metric => ({
@@ -139,13 +165,7 @@ export function AdminDashboard(props: { users: UserProfile[]; courses: Course[] 
               description="Across all trainings"
             />
             {publishedCourses.map((course) => {
-              const courseCompletions = users
-                .filter((u) => u.role === "sales" || u.role === "manager")
-                .map((u) => getUserCourseCompletion(u, course));
-              const avgCompletion =
-                courseCompletions.length > 0
-                  ? Math.round(courseCompletions.reduce((sum, val) => sum + val, 0) / courseCompletions.length)
-                  : 0;
+              const avgCompletion = getCourseCompletion(course.id);
               return (
                 <DashboardCard
                   key={course.id}
