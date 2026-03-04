@@ -100,7 +100,7 @@ const LoginPage: NextPage = () => {
             {isLoading ? "Signing In..." : "Sign In"}
           </button>
           <div className="login-links" style={{marginTop: '12px'}}>
-            <a href="#" className="login-link">Register</a>
+            <a href="/register" className="login-link">Register</a>
           </div>
         </form>
       </div>
