@@ -9,7 +9,6 @@ const sidebarItems = [
   { id: "materials", label: "Marketing Materials" },
   { id: "aiChat", label: "Jay Miller's Clone" },
   { id: "webPage", label: "My Web Page" },
-  { id: "businessCards", label: "Business Cards" },
   { id: "apps-tools", label: "Apps & Tools" }
 ];
 
