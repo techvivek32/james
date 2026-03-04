@@ -1,11 +1,12 @@
-import { useRef, useState } from "react";
+import { useRef, useState, useEffect } from "react";
 
 type AppToolItem = {
-  id: string;
+  _id: string;
   title: string;
   imageUrl: string;
   description: string;
   link: string;
+  category: 'apps' | 'tools' | 'other';
 };
 
 export function AppsToolManagement() {
@@ -17,31 +18,79 @@ export function AppsToolManagement() {
   const [newImageUrl, setNewImageUrl] = useState("");
   const [newDescription, setNewDescription] = useState("");
   const [newLink, setNewLink] = useState("");
+  const [loading, setLoading] = useState(true);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
-  function createItem(type: "apps" | "tools" | "other") {
-    if (!newTitle.trim()) return;
-    const newItem: AppToolItem = {
-      id: `${type}-${Date.now()}`,
-      title: newTitle,
-      imageUrl: newImageUrl,
-      description: newDescription,
-      link: newLink
-    };
-    if (type === "apps") setApps([...apps, newItem]);
-    if (type === "tools") setTools([...tools, newItem]);
-    if (type === "other") setOther([...other, newItem]);
-    setIsCreating(null);
-    setNewTitle("");
-    setNewImageUrl("");
-    setNewDescription("");
-    setNewLink("");
+  useEffect(() => {
+    fetchAppTools();
+  }, []);
+
+  async function fetchAppTools() {
+    try {
+      const response = await fetch('/api/apps-tools');
+      if (response.ok) {
+        const data = await response.json();
+        setApps(data.filter((item: AppToolItem) => item.category === 'apps'));
+        setTools(data.filter((item: AppToolItem) => item.category === 'tools'));
+        setOther(data.filter((item: AppToolItem) => item.category === 'other'));
+      }
+    } catch (error) {
+      console.error('Error fetching apps/tools:', error);
+    } finally {
+      setLoading(false);
+    }
   }
 
-  function deleteItem(type: "apps" | "tools" | "other", id: string) {
-    if (type === "apps") setApps(apps.filter(item => item.id !== id));
-    if (type === "tools") setTools(tools.filter(item => item.id !== id));
-    if (type === "other") setOther(other.filter(item => item.id !== id));
+  async function createItem(type: "apps" | "tools" | "other") {
+    if (!newTitle.trim()) return;
+    
+    try {
+      const response = await fetch('/api/apps-tools', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: newTitle,
+          imageUrl: newImageUrl,
+          description: newDescription,
+          link: newLink,
+          category: type
+        })
+      });
+
+      if (response.ok) {
+        const newItem = await response.json();
+        if (type === "apps") setApps([...apps, newItem]);
+        if (type === "tools") setTools([...tools, newItem]);
+        if (type === "other") setOther([...other, newItem]);
+        setIsCreating(null);
+        setNewTitle("");
+        setNewImageUrl("");
+        setNewDescription("");
+        setNewLink("");
+      }
+    } catch (error) {
+      console.error('Error creating app/tool:', error);
+      alert('Failed to create app/tool');
+    }
+  }
+
+  async function deleteItem(type: "apps" | "tools" | "other", id: string) {
+    if (!confirm('Are you sure you want to delete this item?')) return;
+
+    try {
+      const response = await fetch(`/api/apps-tools/${id}`, {
+        method: 'DELETE'
+      });
+
+      if (response.ok) {
+        if (type === "apps") setApps(apps.filter(item => item._id !== id));
+        if (type === "tools") setTools(tools.filter(item => item._id !== id));
+        if (type === "other") setOther(other.filter(item => item._id !== id));
+      }
+    } catch (error) {
+      console.error('Error deleting app/tool:', error);
+      alert('Failed to delete app/tool');
+    }
   }
 
   function renderSection(title: string, items: AppToolItem[], type: "apps" | "tools" | "other") {
@@ -100,7 +149,7 @@ export function AppsToolManagement() {
           ) : (
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: 16 }}>
               {items.map((item) => (
-                <div key={item.id} className="card" style={{ padding: 0, overflow: "hidden" }}>
+                <div key={item._id} className="card" style={{ padding: 0, overflow: "hidden" }}>
                   {item.imageUrl && (
                     <div style={{ width: "100%", height: 180, backgroundImage: `url(${item.imageUrl})`, backgroundSize: "cover", backgroundPosition: "center" }} />
                   )}
@@ -113,7 +162,7 @@ export function AppsToolManagement() {
                       </a>
                     )}
                     <div style={{ marginTop: 12 }}>
-                      <button type="button" className="btn-ghost btn-danger btn-small" onClick={() => deleteItem(type, item.id)}>Delete</button>
+                      <button type="button" className="btn-ghost btn-danger btn-small" onClick={() => deleteItem(type, item._id)}>Delete</button>
                     </div>
                   </div>
                 </div>
@@ -123,6 +172,10 @@ export function AppsToolManagement() {
         </div>
       </div>
     );
+  }
+
+  if (loading) {
+    return <div style={{ padding: 24, textAlign: 'center' }}>Loading...</div>;
   }
 
   return (

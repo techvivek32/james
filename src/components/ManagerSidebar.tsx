@@ -8,7 +8,8 @@ const sidebarItems = [
   { id: "training", label: "Training Center" },
   { id: "onlineTraining", label: "Online Training" },
   { id: "taskTracker", label: "Task Tracker" },
-  { id: "web-templates", label: "Web Page Approvals" }
+  { id: "web-templates", label: "Web Page Approvals" },
+  { id: "apps-tools", label: "Apps & Tools" }
 ];
 
 type ManagerSidebarProps = {

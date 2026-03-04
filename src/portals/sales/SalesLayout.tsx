@@ -4,7 +4,7 @@ import { SalesSidebar } from "../../components/SalesSidebar";
 import { Header } from "../../components/Header";
 import { useAuth } from "../../contexts/AuthContext";
 
-type SalesViewId = "dashboard" | "profile" | "plan" | "training" | "materials" | "aiChat" | "webPage" | "businessCards";
+type SalesViewId = "dashboard" | "profile" | "plan" | "training" | "materials" | "aiChat" | "webPage" | "businessCards" | "apps-tools";
 
 type SalesLayoutProps = {
   children: React.ReactNode;
