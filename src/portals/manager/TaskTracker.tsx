@@ -16,6 +16,8 @@ export function TaskTracker(props: { teamMembers: UserProfile[]; courses: Course
       {
         profile: boolean;
         plan: boolean;
+        training: boolean;
+        webPage: boolean;
         modules: Record<string, boolean>;
       }
     >
@@ -23,10 +25,17 @@ export function TaskTracker(props: { teamMembers: UserProfile[]; courses: Course
   const [tasks, setTasks] = useState<AssignedTask[]>([]);
 
   function getProfileCompletion(member: UserProfile) {
-    const hasHeadshot =
-      typeof member.headshotUrl === "string" &&
-      member.headshotUrl.trim().length > 0;
-    return hasHeadshot ? 100 : 75;
+    let score = 0;
+    let total = 5;
+    
+    // Check basic fields
+    if (member.name && member.name.trim().length > 0) score++;
+    if (member.email && member.email.trim().length > 0) score++;
+    if (member.headshotUrl && member.headshotUrl.trim().length > 0) score++;
+    if (member.phone && member.phone.trim().length > 0) score++;
+    if (member.territory && member.territory.trim().length > 0) score++;
+    
+    return Math.round((score / total) * 100);
   }
 
   function getBusinessPlanCompletion(member: UserProfile) {
@@ -37,7 +46,50 @@ export function TaskTracker(props: { teamMembers: UserProfile[]; courses: Course
     if (plan.committed) {
       return 100;
     }
-    return 75;
+    
+    let score = 0;
+    let total = 6;
+    
+    if (plan.revenueGoal && plan.revenueGoal > 0) score++;
+    if (plan.dealsPerYear && plan.dealsPerYear > 0) score++;
+    if (plan.inspectionsNeeded && plan.inspectionsNeeded > 0) score++;
+    if (plan.doorsPerYear && plan.doorsPerYear > 0) score++;
+    if (plan.avgDealSize && plan.avgDealSize > 0) score++;
+    if (plan.closeRate && plan.closeRate > 0) score++;
+    
+    return Math.round((score / total) * 100);
+  }
+
+  function getTrainingCompletion(member: UserProfile) {
+    // Calculate based on course progress
+    if (!member.courseProgress || member.courseProgress.length === 0) {
+      return 0;
+    }
+    
+    const totalProgress = member.courseProgress.reduce((sum, progress) => {
+      return sum + (progress.progress || 0);
+    }, 0);
+    
+    return Math.round(totalProgress / member.courseProgress.length);
+  }
+
+  function getWebPageCompletion(member: UserProfile) {
+    let score = 0;
+    let total = 4;
+    
+    // Check if user has public profile settings configured
+    if (member.publicProfile) {
+      if (member.publicProfile.showHeadshot) score++;
+      if (member.publicProfile.showEmail || member.publicProfile.showPhone) score++;
+    }
+    
+    // Check if user has username set
+    if (member.username && member.username.trim().length > 0) score++;
+    
+    // Check if user has headshot for web page
+    if (member.headshotUrl && member.headshotUrl.trim().length > 0) score++;
+    
+    return Math.round((score / total) * 100);
   }
 
   function getModuleCompletion(_member: UserProfile, _course: Course) {
@@ -46,7 +98,7 @@ export function TaskTracker(props: { teamMembers: UserProfile[]; courses: Course
 
   function toggleStage(
     userId: string,
-    stage: "profile" | "plan" | "module",
+    stage: "profile" | "plan" | "training" | "webPage" | "module",
     moduleId?: string
   ) {
     setSelection((prev) => {
@@ -54,6 +106,8 @@ export function TaskTracker(props: { teamMembers: UserProfile[]; courses: Course
         prev[userId] ?? {
           profile: false,
           plan: false,
+          training: false,
+          webPage: false,
           modules: {}
         };
       const nextModules = { ...existing.modules };
@@ -63,6 +117,8 @@ export function TaskTracker(props: { teamMembers: UserProfile[]; courses: Course
       const next = {
         profile: stage === "profile" ? !existing.profile : existing.profile,
         plan: stage === "plan" ? !existing.plan : existing.plan,
+        training: stage === "training" ? !existing.training : existing.training,
+        webPage: stage === "webPage" ? !existing.webPage : existing.webPage,
         modules: nextModules
       };
       return {
@@ -103,6 +159,28 @@ export function TaskTracker(props: { teamMembers: UserProfile[]; courses: Course
           .slice(2, 8)}`,
         userId: member.id,
         label: "Commit business plan",
+        status: "open"
+      });
+    }
+
+    if (stages.training) {
+      newTasks.push({
+        id: `task-${member.id}-training-${Date.now()}-${Math.random()
+          .toString(36)
+          .slice(2, 8)}`,
+        userId: member.id,
+        label: "Complete training courses",
+        status: "open"
+      });
+    }
+
+    if (stages.webPage) {
+      newTasks.push({
+        id: `task-${member.id}-webpage-${Date.now()}-${Math.random()
+          .toString(36)
+          .slice(2, 8)}`,
+        userId: member.id,
+        label: "Complete web page setup",
         status: "open"
       });
     }
@@ -180,10 +258,8 @@ export function TaskTracker(props: { teamMembers: UserProfile[]; courses: Course
               <div
                 style={{
                   display: "grid",
-                  gridTemplateColumns: `minmax(0, 180px) repeat(${
-                    3 + props.courses.length
-                  }, minmax(0, 140px))`,
-                  columnGap: 8,
+                  gridTemplateColumns: `minmax(0, 180px) repeat(4, minmax(0, 160px)) minmax(0, 100px)`,
+                  columnGap: 16,
                   rowGap: 8,
                   fontSize: 12,
                   fontWeight: 600,
@@ -193,17 +269,19 @@ export function TaskTracker(props: { teamMembers: UserProfile[]; courses: Course
                   color: "#6b7280"
                 }}
               >
-                <div>Rep</div>
+                <div>Sales Rep</div>
                 <div>Profile</div>
                 <div>Business Plan</div>
-                {props.courses.map((course) => (
-                  <div key={course.id}>{course.title}</div>
-                ))}
+                <div>Training Center</div>
+                <div>Web Page</div>
                 <div style={{ textAlign: "right" }}>Actions</div>
               </div>
               {props.teamMembers.map((member, rowIndex) => {
                 const profilePct = getProfileCompletion(member);
                 const planPct = getBusinessPlanCompletion(member);
+                const trainingPct = getTrainingCompletion(member);
+                const webPagePct = getWebPageCompletion(member);
+                
                 const selectionForMember = selection[member.id];
                 const hasModuleSelection = selectionForMember
                   ? Object.values(selectionForMember.modules).some(Boolean)
@@ -211,19 +289,20 @@ export function TaskTracker(props: { teamMembers: UserProfile[]; courses: Course
                 const hasAnySelection =
                   !!selectionForMember?.profile ||
                   !!selectionForMember?.plan ||
+                  !!selectionForMember?.training ||
+                  !!selectionForMember?.webPage ||
                   hasModuleSelection;
+                  
                 return (
                   <div
                     key={member.id}
                     style={{
                       display: "grid",
-                      gridTemplateColumns: `minmax(0, 180px) repeat(${
-                        3 + props.courses.length
-                      }, minmax(0, 140px))`,
-                      columnGap: 8,
+                      gridTemplateColumns: `minmax(0, 180px) repeat(4, minmax(0, 160px)) minmax(0, 100px)`,
+                      columnGap: 16,
                       rowGap: 4,
                       alignItems: "center",
-                      padding: "8px 0",
+                      padding: "12px 0",
                       borderTop:
                         rowIndex === 0
                           ? "1px solid #e5e7eb"
@@ -233,48 +312,80 @@ export function TaskTracker(props: { teamMembers: UserProfile[]; courses: Course
                     }}
                   >
                     <div>
-                      <div style={{ fontSize: 13, fontWeight: 500 }}>
+                      <div style={{ fontSize: 14, fontWeight: 600 }}>
                         {member.name}
                       </div>
+                      <div style={{ fontSize: 11, color: "#6b7280", marginTop: 2 }}>
+                        {member.email}
+                      </div>
                       <div style={{ fontSize: 11, color: "#6b7280" }}>
-                        {member.role.toUpperCase()} •{" "}
                         {member.territory ?? "No territory"}
                       </div>
                     </div>
+                    
+                    {/* Profile Progress */}
                     <div>
-                      <div style={{ fontSize: 12 }}>
+                      <div style={{ fontSize: 11, color: "#6b7280", marginBottom: 4 }}>
                         {profilePct}% complete
+                      </div>
+                      <div style={{
+                        width: "100%",
+                        height: 8,
+                        backgroundColor: "#e5e7eb",
+                        borderRadius: 4,
+                        overflow: "hidden"
+                      }}>
+                        <div style={{
+                          width: `${profilePct}%`,
+                          height: "100%",
+                          backgroundColor: profilePct === 100 ? "#10b981" : profilePct >= 50 ? "#3b82f6" : "#f59e0b",
+                          transition: "width 0.3s ease"
+                        }} />
                       </div>
                       <label
                         style={{
                           display: "flex",
                           alignItems: "center",
                           gap: 4,
-                          marginTop: 4,
-                          fontSize: 11
+                          marginTop: 6,
+                          fontSize: 10
                         }}
                       >
                         <input
                           type="checkbox"
                           checked={selection[member.id]?.profile ?? false}
-                          onChange={() =>
-                            toggleStage(member.id, "profile")
-                          }
+                          onChange={() => toggleStage(member.id, "profile")}
                         />
-                        <span>Assign follow-up</span>
+                        <span>Assign task</span>
                       </label>
                     </div>
+                    
+                    {/* Business Plan Progress */}
                     <div>
-                      <div style={{ fontSize: 12 }}>
+                      <div style={{ fontSize: 11, color: "#6b7280", marginBottom: 4 }}>
                         {planPct}% complete
+                      </div>
+                      <div style={{
+                        width: "100%",
+                        height: 8,
+                        backgroundColor: "#e5e7eb",
+                        borderRadius: 4,
+                        overflow: "hidden"
+                      }}>
+                        <div style={{
+                          width: `${planPct}%`,
+                          height: "100%",
+                          backgroundColor: planPct === 100 ? "#10b981" : planPct >= 50 ? "#3b82f6" : "#f59e0b",
+                          transition: "width 0.3s ease"
+                        }} />
                       </div>
                       <label
                         style={{
                           display: "flex",
                           alignItems: "center",
                           gap: 4,
-                          marginTop: 4,
-                          fontSize: 11
+                          marginTop: 6,
+                          fontSize: 10
                         }}
                       >
                         <input
@@ -282,42 +393,84 @@ export function TaskTracker(props: { teamMembers: UserProfile[]; courses: Course
                           checked={selection[member.id]?.plan ?? false}
                           onChange={() => toggleStage(member.id, "plan")}
                         />
-                        <span>Assign follow-up</span>
+                        <span>Assign task</span>
                       </label>
                     </div>
-                    {props.courses.map((course) => {
-                      const completionPct = getModuleCompletion(
-                        member,
-                        course
-                      );
-                      const isChecked =
-                        selection[member.id]?.modules?.[course.id] ?? false;
-                      return (
-                        <div key={course.id}>
-                          <div style={{ fontSize: 12 }}>
-                            {completionPct}% complete
-                          </div>
-                          <label
-                            style={{
-                              display: "flex",
-                              alignItems: "center",
-                              gap: 4,
-                              marginTop: 4,
-                              fontSize: 11
-                            }}
-                          >
-                            <input
-                              type="checkbox"
-                              checked={isChecked}
-                              onChange={() =>
-                                toggleStage(member.id, "module", course.id)
-                              }
-                            />
-                            <span>Assign task</span>
-                          </label>
-                        </div>
-                      );
-                    })}
+                    
+                    {/* Training Center Progress */}
+                    <div>
+                      <div style={{ fontSize: 11, color: "#6b7280", marginBottom: 4 }}>
+                        {trainingPct}% complete
+                      </div>
+                      <div style={{
+                        width: "100%",
+                        height: 8,
+                        backgroundColor: "#e5e7eb",
+                        borderRadius: 4,
+                        overflow: "hidden"
+                      }}>
+                        <div style={{
+                          width: `${trainingPct}%`,
+                          height: "100%",
+                          backgroundColor: trainingPct === 100 ? "#10b981" : trainingPct >= 50 ? "#3b82f6" : "#f59e0b",
+                          transition: "width 0.3s ease"
+                        }} />
+                      </div>
+                      <label
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 4,
+                          marginTop: 6,
+                          fontSize: 10
+                        }}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={selection[member.id]?.training ?? false}
+                          onChange={() => toggleStage(member.id, "training")}
+                        />
+                        <span>Assign task</span>
+                      </label>
+                    </div>
+                    
+                    {/* Web Page Progress */}
+                    <div>
+                      <div style={{ fontSize: 11, color: "#6b7280", marginBottom: 4 }}>
+                        {webPagePct}% complete
+                      </div>
+                      <div style={{
+                        width: "100%",
+                        height: 8,
+                        backgroundColor: "#e5e7eb",
+                        borderRadius: 4,
+                        overflow: "hidden"
+                      }}>
+                        <div style={{
+                          width: `${webPagePct}%`,
+                          height: "100%",
+                          backgroundColor: webPagePct === 100 ? "#10b981" : webPagePct >= 50 ? "#3b82f6" : "#f59e0b",
+                          transition: "width 0.3s ease"
+                        }} />
+                      </div>
+                      <label
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 4,
+                          marginTop: 6,
+                          fontSize: 10
+                        }}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={selection[member.id]?.webPage ?? false}
+                          onChange={() => toggleStage(member.id, "webPage")}
+                        />
+                        <span>Assign task</span>
+                      </label>
+                    </div>
+                    
                     <div style={{ textAlign: "right" }}>
                       <button
                         type="button"
