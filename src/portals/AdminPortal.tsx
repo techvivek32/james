@@ -10,7 +10,8 @@ import {
   CourseFolder,
   CoursePage,
   FeatureToggles,
-  UserProfile
+  UserProfile,
+  UserRole
 } from "../types";
 import headerLogo from "../../ref. images/ChatGPT_Image_Feb_23__2026__07_00_52_PM-removebg-preview.png";
 import footerImage from "../../ref. images/image.png";
@@ -447,11 +448,25 @@ function UserManagement(props: UserEditorProps) {
 
   const selectedUser = draftUsers.find((u) => u.id === selectedUserId);
   const showManagerField = selectedUser?.role === "sales";
-  const visibleToggleKeys = selectedUser
-    ? featureToggleKeysByRole[selectedUser.role].filter(
-        (key) => key in selectedUser.featureToggles
-      )
-    : [];
+  
+  // Get all roles for the user (including primary role and additional roles)
+  const userRoles = selectedUser ? [selectedUser.role, ...(selectedUser.roles || [])] : [];
+  const uniqueRoles = [...new Set(userRoles)];
+  
+  // Get toggles grouped by role
+  const togglesByRole = uniqueRoles.map(role => ({
+    role,
+    keys: featureToggleKeysByRole[role].filter(
+      (key) => selectedUser && key in selectedUser.featureToggles
+    )
+  }));
+
+  const roleLabels: Record<UserRole, string> = {
+    admin: "Admin Panel",
+    manager: "Manager Panel",
+    sales: "Sales Panel",
+    marketing: "Marketing Panel"
+  };
 
   useEffect(() => {
     const current = draftUsers.find((u) => u.id === selectedUserId);
@@ -998,30 +1013,37 @@ function UserManagement(props: UserEditorProps) {
             <div style={{ marginTop: 40 }}></div>
             <div className="panel-section">
               <div className="panel-section-title">Feature Toggles</div>
-              <div className="toggle-grid">
-                {visibleToggleKeys.map((key) => {
-                  const enabled = selectedUser.featureToggles[key];
-                  const label = featureToggleLabels[key] || key
-                    .replace(/([A-Z])/g, " $1")
-                    .replace(/^./, (str) => str.toUpperCase())
-                    .replace(/ai/gi, "AI")
-                    .trim();
-                  return (
-                    <label key={key} className="toggle-item">
-                      <input
-                        type="checkbox"
-                        checked={enabled}
-                        onChange={(e) =>
-                          updateFeatureToggles(selectedUser, {
-                            [key]: e.target.checked
-                          } as Partial<FeatureToggles>)
-                        }
-                      />
-                      <span className="toggle-label">{label}</span>
-                    </label>
-                  );
-                })}
-              </div>
+              {togglesByRole.map(({ role, keys }) => (
+                <div key={role} style={{ marginBottom: 24 }}>
+                  <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 12, color: "#666" }}>
+                    {roleLabels[role]}
+                  </div>
+                  <div className="toggle-grid">
+                    {keys.map((key) => {
+                      const enabled = selectedUser.featureToggles[key];
+                      const label = featureToggleLabels[key] || key
+                        .replace(/([A-Z])/g, " $1")
+                        .replace(/^./, (str) => str.toUpperCase())
+                        .replace(/ai/gi, "AI")
+                        .trim();
+                      return (
+                        <label key={key} className="toggle-item">
+                          <input
+                            type="checkbox"
+                            checked={enabled}
+                            onChange={(e) =>
+                              updateFeatureToggles(selectedUser, {
+                                [key]: e.target.checked
+                              } as Partial<FeatureToggles>)
+                            }
+                          />
+                          <span className="toggle-label">{label}</span>
+                        </label>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
         ) : (
