@@ -1,4 +1,5 @@
 import { useState, ChangeEvent, useRef, useEffect } from "react";
+import { useAuth } from "../../contexts/AuthContext";
 
 type AiMessage = {
   id: number;
@@ -11,7 +12,16 @@ type AiMessage = {
   }>;
 };
 
+type ChatHistory = {
+  chatId: string;
+  title: string;
+  messages: AiMessage[];
+  createdAt: Date;
+  updatedAt: Date;
+};
+
 export function AiChatPanel() {
+  const { user } = useAuth();
   const [input, setInput] = useState("");
   const [messages, setMessages] = useState<AiMessage[]>([]);
   const [nextId, setNextId] = useState(1);
@@ -22,6 +32,9 @@ export function AiChatPanel() {
     url: string;
   }>>([]);
   const [showAttachMenu, setShowAttachMenu] = useState(false);
+  const [chatHistory, setChatHistory] = useState<ChatHistory[]>([]);
+  const [currentChatId, setCurrentChatId] = useState<string>(`chat-${Date.now()}`);
+  const [showHistory, setShowHistory] = useState(true);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
@@ -31,6 +44,117 @@ export function AiChatPanel() {
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
+
+  useEffect(() => {
+    if (user?.id) {
+      loadChatHistory();
+    }
+  }, [user?.id]);
+
+  useEffect(() => {
+    if (messages.length > 0 && user?.id) {
+      saveChatHistory();
+    }
+  }, [messages]);
+
+  // Auto-save on page close/refresh
+  useEffect(() => {
+    const handleBeforeUnload = () => {
+      if (messages.length > 0 && user?.id) {
+        // Use sendBeacon for reliable save on page unload
+        const data = JSON.stringify({
+          userId: user.id,
+          chatId: currentChatId,
+          title: messages[0]?.text.substring(0, 50) || "New Chat",
+          messages
+        });
+        navigator.sendBeacon('/api/chat-history', data);
+      }
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [messages, user?.id, currentChatId]);
+
+  async function loadChatHistory() {
+    try {
+      const res = await fetch(`/api/chat-history?userId=${user?.id}`);
+      if (res.ok) {
+        const data = await res.json();
+        console.log("Loaded chat history:", data.length, "chats");
+        setChatHistory(data);
+        
+        // Load the most recent chat automatically (like ChatGPT)
+        if (data.length > 0 && messages.length === 0) {
+          const mostRecentChat = data[0];
+          setMessages(mostRecentChat.messages);
+          setCurrentChatId(mostRecentChat.chatId);
+          setNextId(Math.max(...mostRecentChat.messages.map((m: AiMessage) => m.id), 0) + 1);
+        }
+      } else {
+        console.error("Failed to load chat history:", await res.text());
+      }
+    } catch (error) {
+      console.error("Failed to load chat history:", error);
+    }
+  }
+
+  async function saveChatHistory() {
+    if (!user?.id || messages.length === 0) return;
+
+    const title = messages[0]?.text.substring(0, 50) || "New Chat";
+    
+    try {
+      const response = await fetch("/api/chat-history", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          userId: user.id,
+          chatId: currentChatId,
+          title,
+          messages
+        })
+      });
+      
+      if (response.ok) {
+        console.log("Chat saved successfully");
+        loadChatHistory();
+      } else {
+        console.error("Failed to save chat:", await response.text());
+      }
+    } catch (error) {
+      console.error("Failed to save chat history:", error);
+    }
+  }
+
+  async function deleteChat(chatId: string) {
+    try {
+      await fetch("/api/chat-history", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ chatId, userId: user?.id })
+      });
+      loadChatHistory();
+      if (chatId === currentChatId) {
+        startNewChat();
+      }
+    } catch (error) {
+      console.error("Failed to delete chat:", error);
+    }
+  }
+
+  function loadChat(chat: ChatHistory) {
+    setMessages(chat.messages);
+    setCurrentChatId(chat.chatId);
+    setNextId(Math.max(...chat.messages.map(m => m.id), 0) + 1);
+  }
+
+  function startNewChat() {
+    setMessages([]);
+    setCurrentChatId(`chat-${Date.now()}`);
+    setNextId(1);
+    setAttachments([]);
+  }
 
   function pushMessage(role: AiMessage["role"], text: string, attachments?: AiMessage["attachments"]) {
     setMessages((prev) => [...prev, { id: nextId, role, text, attachments }]);
@@ -121,19 +245,153 @@ export function AiChatPanel() {
     <div style={{
       height: 'calc(100vh - 60px)',
       display: 'flex',
-      flexDirection: 'column',
       backgroundColor: '#ffffff',
       maxWidth: '100%',
       margin: '0 auto'
     }}>
-      {/* Messages Area */}
+      {/* Chat History Sidebar */}
+      <div style={{
+        width: showHistory ? '280px' : '0',
+        borderRight: showHistory ? '1px solid #e5e7eb' : 'none',
+        display: 'flex',
+        flexDirection: 'column',
+        backgroundColor: '#f9fafb',
+        transition: 'width 0.3s',
+        overflow: 'hidden'
+      }}>
+        <div style={{
+          padding: '16px',
+          borderBottom: '1px solid #e5e7eb',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center'
+        }}>
+          <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 600 }}>Chat History</h3>
+          <button
+            onClick={startNewChat}
+            style={{
+              padding: '6px 12px',
+              backgroundColor: '#dc2626',
+              color: 'white',
+              border: 'none',
+              borderRadius: '8px',
+              cursor: 'pointer',
+              fontSize: '13px',
+              fontWeight: 500
+            }}
+          >
+            + New
+          </button>
+        </div>
+        
+        <div style={{
+          flex: 1,
+          overflowY: 'auto',
+          padding: '8px'
+        }}>
+          {chatHistory.map((chat) => (
+            <div
+              key={chat.chatId}
+              style={{
+                padding: '12px',
+                marginBottom: '8px',
+                backgroundColor: chat.chatId === currentChatId ? '#ffffff' : 'transparent',
+                borderRadius: '8px',
+                cursor: 'pointer',
+                border: chat.chatId === currentChatId ? '1px solid #dc2626' : '1px solid transparent',
+                transition: 'all 0.2s',
+                position: 'relative',
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'flex-start',
+                gap: '8px'
+              }}
+              onClick={() => loadChat(chat)}
+            >
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{
+                  fontSize: '14px',
+                  fontWeight: 500,
+                  color: '#1f2937',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  whiteSpace: 'nowrap'
+                }}>
+                  {chat.title}
+                </div>
+                <div style={{
+                  fontSize: '12px',
+                  color: '#6b7280',
+                  marginTop: '4px'
+                }}>
+                  {chat.messages.length} messages
+                </div>
+              </div>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  deleteChat(chat.chatId);
+                }}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  color: '#ef4444',
+                  cursor: 'pointer',
+                  fontSize: '18px',
+                  padding: '0 4px',
+                  flexShrink: 0
+                }}
+              >
+                🗑️
+              </button>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Main Chat Area */}
       <div style={{
         flex: 1,
-        overflowY: 'auto',
-        padding: '24px',
         display: 'flex',
         flexDirection: 'column'
       }}>
+        {/* Toggle History Button */}
+        <div style={{
+          padding: '12px 24px',
+          borderBottom: '1px solid #e5e7eb',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '12px'
+        }}>
+          <button
+            onClick={() => setShowHistory(!showHistory)}
+            style={{
+              background: 'none',
+              border: '1px solid #e5e7eb',
+              borderRadius: '8px',
+              padding: '6px 12px',
+              cursor: 'pointer',
+              fontSize: '14px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px'
+            }}
+          >
+            {showHistory ? '◀' : '▶'} {showHistory ? 'Hide' : 'Show'} History
+          </button>
+        </div>
+
+        {/* Messages Area */}
+        <div style={{
+          flex: 1,
+          overflowY: 'auto',
+          padding: '24px',
+          display: 'flex',
+          flexDirection: 'column',
+          maxWidth: '800px',
+          margin: '0 auto',
+          width: '100%'
+        }}>
         {messages.length === 0 ? (
           <div style={{
             flex: 1,
@@ -178,7 +436,7 @@ export function AiChatPanel() {
               >
                 <div
                   style={{
-                    maxWidth: '70%',
+                    maxWidth: '65%',
                     padding: '12px 16px',
                     borderRadius: '18px',
                     backgroundColor: message.role === "user" ? '#dc2626' : '#f3f4f6',
@@ -267,11 +525,12 @@ export function AiChatPanel() {
         {/* Attachments Preview */}
         {attachments.length > 0 && (
           <div style={{
-            maxWidth: '900px',
+            maxWidth: '800px',
             margin: '0 auto 12px',
             display: 'flex',
             gap: '8px',
-            flexWrap: 'wrap'
+            flexWrap: 'wrap',
+            width: '100%'
           }}>
             {attachments.map((att, idx) => (
               <div key={idx} style={{
@@ -311,8 +570,9 @@ export function AiChatPanel() {
         )}
         
         <div style={{
-          maxWidth: '900px',
+          maxWidth: '800px',
           margin: '0 auto',
+          width: '100%',
           display: 'flex',
           alignItems: 'flex-end',
           gap: '12px',
@@ -498,6 +758,7 @@ export function AiChatPanel() {
           onChange={(e) => handleFileChange(e, 'document')}
         />
       </div>
+    </div>
     </div>
   );
 }
