@@ -107,7 +107,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
               type: 'url',
               url: link.href,
               title: link.label || 'Resource Link',
-              description: `Resource from ${course.title} - ${page.title}`
+              description: `Link from ${page.title}`
             });
           }
         }
@@ -118,17 +118,19 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           for (const fileUrl of page.fileUrls) {
             const isImage = /\.(jpg|jpeg|png|gif|webp|svg)$/i.test(fileUrl);
             const isVideo = /\.(mp4|webm|ogg|mov)$/i.test(fileUrl);
-            console.log(`[SYNC]       File: ${fileUrl} (${isImage ? 'image' : isVideo ? 'video' : 'url'})`);
+            const isDocument = /\.(pdf|doc|docx|xls|xlsx|ppt|pptx|txt|csv)$/i.test(fileUrl);
+            const fileName = fileUrl.split('/').pop() || 'File';
+            console.log(`[SYNC]       File: ${fileUrl} (${isImage ? 'image' : isVideo ? 'video' : isDocument ? 'document' : 'url'})`);
             
             materials.push({
               courseId: course.id,
               courseName: course.title,
               pageId: page.id,
               pageName: page.title,
-              type: isImage ? 'image' : isVideo ? 'video' : 'url',
+              type: isImage ? 'image' : isVideo ? 'video' : isDocument ? 'document' : 'url',
               url: fileUrl,
-              title: `${page.title} - File`,
-              description: `File from ${course.title}`
+              title: fileName,
+              description: `File from ${page.title}`
             });
           }
         }

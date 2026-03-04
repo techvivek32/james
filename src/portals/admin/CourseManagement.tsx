@@ -1528,6 +1528,108 @@ export function CourseManagement(props: CourseEditorProps) {
                                         }}
                                       />
                                     </div>
+                                    
+                                    {/* Display existing resources */}
+                                    {(activePage.resourceLinks && activePage.resourceLinks.length > 0) || 
+                                     (activePage.fileUrls && activePage.fileUrls.length > 0) || 
+                                     activePage.pinnedCommunityPostUrl ? (
+                                      <div style={{ marginTop: 24, padding: 16, backgroundColor: "#f9fafb", borderRadius: 8 }}>
+                                        <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 12, color: "#374151" }}>
+                                          📎 Attached Resources
+                                        </div>
+                                        
+                                        {/* Resource Links */}
+                                        {activePage.resourceLinks && activePage.resourceLinks.length > 0 && (
+                                          <div style={{ marginBottom: 16 }}>
+                                            <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 8, color: "#6b7280" }}>
+                                              Resource Links
+                                            </div>
+                                            {activePage.resourceLinks.map((link, idx) => (
+                                              <div key={idx} style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8, padding: 8, backgroundColor: "white", borderRadius: 4 }}>
+                                                <span style={{ fontSize: 16 }}>🔗</span>
+                                                <a href={link.href} target="_blank" rel="noopener noreferrer" style={{ flex: 1, color: "#3b82f6", textDecoration: "none" }}>
+                                                  {link.label}
+                                                </a>
+                                                <button
+                                                  type="button"
+                                                  className="btn-ghost btn-danger btn-small"
+                                                  onClick={() => {
+                                                    const nextLinks = activePage.resourceLinks?.filter((_, i) => i !== idx) || [];
+                                                    const nextPages = pages.map((page) => 
+                                                      page.id === activePage.id ? { ...page, resourceLinks: nextLinks } : page
+                                                    );
+                                                    updateCourse({ ...selectedCourse, pages: nextPages });
+                                                  }}
+                                                >
+                                                  Remove
+                                                </button>
+                                              </div>
+                                            ))}
+                                          </div>
+                                        )}
+                                        
+                                        {/* Resource Files */}
+                                        {activePage.fileUrls && activePage.fileUrls.length > 0 && (
+                                          <div style={{ marginBottom: 16 }}>
+                                            <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 8, color: "#6b7280" }}>
+                                              Resource Files
+                                            </div>
+                                            {activePage.fileUrls.map((fileUrl, idx) => (
+                                              <div key={idx} style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8, padding: 8, backgroundColor: "white", borderRadius: 4 }}>
+                                                <span style={{ fontSize: 16 }}>📎</span>
+                                                <a href={fileUrl} target="_blank" rel="noopener noreferrer" style={{ flex: 1, color: "#3b82f6", textDecoration: "none" }}>
+                                                  {fileUrl.split('/').pop() || fileUrl}
+                                                </a>
+                                                <a href={fileUrl} download className="btn-secondary btn-small" style={{ textDecoration: "none" }}>
+                                                  Download
+                                                </a>
+                                                <button
+                                                  type="button"
+                                                  className="btn-ghost btn-danger btn-small"
+                                                  onClick={() => {
+                                                    const nextFiles = activePage.fileUrls?.filter((_, i) => i !== idx) || [];
+                                                    const nextPages = pages.map((page) => 
+                                                      page.id === activePage.id ? { ...page, fileUrls: nextFiles } : page
+                                                    );
+                                                    updateCourse({ ...selectedCourse, pages: nextPages });
+                                                  }}
+                                                >
+                                                  Remove
+                                                </button>
+                                              </div>
+                                            ))}
+                                          </div>
+                                        )}
+                                        
+                                        {/* Pinned Community Post */}
+                                        {activePage.pinnedCommunityPostUrl && (
+                                          <div>
+                                            <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 8, color: "#6b7280" }}>
+                                              Pinned Community Post
+                                            </div>
+                                            <div style={{ display: "flex", alignItems: "center", gap: 8, padding: 8, backgroundColor: "white", borderRadius: 4 }}>
+                                              <span style={{ fontSize: 16 }}>📌</span>
+                                              <a href={activePage.pinnedCommunityPostUrl} target="_blank" rel="noopener noreferrer" style={{ flex: 1, color: "#3b82f6", textDecoration: "none" }}>
+                                                {activePage.pinnedCommunityPostUrl}
+                                              </a>
+                                              <button
+                                                type="button"
+                                                className="btn-ghost btn-danger btn-small"
+                                                onClick={() => {
+                                                  const nextPages = pages.map((page) => 
+                                                    page.id === activePage.id ? { ...page, pinnedCommunityPostUrl: "" } : page
+                                                  );
+                                                  updateCourse({ ...selectedCourse, pages: nextPages });
+                                                }}
+                                              >
+                                                Remove
+                                              </button>
+                                            </div>
+                                          </div>
+                                        )}
+                                      </div>
+                                    ) : null}
+                                    
                                     <div className="course-page-footer">
                                       <div className="course-page-add">
                                         <button type="button" className="course-page-add-button" onClick={() => setIsAddMenuOpen(!isAddMenuOpen)}>

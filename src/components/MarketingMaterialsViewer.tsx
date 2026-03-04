@@ -6,7 +6,7 @@ type Material = {
   courseName: string;
   pageId: string;
   pageName: string;
-  type: 'image' | 'video' | 'url';
+  type: 'image' | 'video' | 'url' | 'document';
   url: string;
   title?: string;
   description?: string;
@@ -35,6 +35,7 @@ export function MarketingMaterialsViewer() {
   const [materials, setMaterials] = useState<Material[]>([]);
   const [courses, setCourses] = useState<Course[]>([]);
   const [loading, setLoading] = useState(true);
+  const [syncing, setSyncing] = useState(false);
   const [selectedCourseId, setSelectedCourseId] = useState<string | null>(null);
   const [selectedPageId, setSelectedPageId] = useState<string | null>(null);
 
@@ -63,6 +64,27 @@ export function MarketingMaterialsViewer() {
       console.error('Error fetching data:', error);
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function syncMaterials() {
+    setSyncing(true);
+    try {
+      const response = await fetch('/api/marketing-materials/sync', {
+        method: 'POST'
+      });
+      
+      if (response.ok) {
+        await fetchData();
+        alert('Materials synced successfully!');
+      } else {
+        alert('Failed to sync materials');
+      }
+    } catch (error) {
+      console.error('Error syncing materials:', error);
+      alert('Failed to sync materials');
+    } finally {
+      setSyncing(false);
     }
   }
 
@@ -107,7 +129,17 @@ export function MarketingMaterialsViewer() {
     return (
       <div className="panel">
         <div className="panel-header">
-          <span>Courses</span>
+          <div className="panel-header-row">
+            <span>Courses</span>
+            <button 
+              type="button" 
+              className="btn-primary btn-small" 
+              onClick={syncMaterials}
+              disabled={syncing}
+            >
+              {syncing ? 'Syncing...' : '🔄 Sync Materials'}
+            </button>
+          </div>
         </div>
         <div className="panel-body">
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: 16 }}>
@@ -196,21 +228,51 @@ export function MarketingMaterialsViewer() {
                       <video src={material.url} controls style={{ width: "100%", height: "100%", objectFit: "contain" }} />
                     </div>
                   )}
+                  {material.type === 'document' && (
+                    <div style={{ width: "100%", height: 180, backgroundColor: "#f3f4f6", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 8 }}>
+                      <div style={{ fontSize: 48 }}>📄</div>
+                      <div style={{ fontSize: 12, color: "#6b7280", fontWeight: 600 }}>
+                        {material.url.split('.').pop()?.toUpperCase()}
+                      </div>
+                    </div>
+                  )}
+                  {material.type === 'url' && (
+                    <div style={{ width: "100%", height: 180, backgroundColor: "#f3f4f6", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                      <div style={{ fontSize: 48 }}>🔗</div>
+                    </div>
+                  )}
                   <div style={{ padding: 16 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-                      <span style={{ fontSize: 12, padding: '2px 8px', backgroundColor: '#e5e7eb', borderRadius: 4 }}>
-                        {material.type.toUpperCase()}
+                      <span style={{ fontSize: 12, padding: '2px 8px', backgroundColor: '#e5e7eb', borderRadius: 4, fontWeight: 600 }}>
+                        {material.type === 'url' ? 'LINK' : material.type === 'document' ? 'DOCUMENT' : material.type.toUpperCase()}
                       </span>
                     </div>
                     {material.title && <div className="card-title" style={{ marginBottom: 8 }}>{material.title}</div>}
                     {material.description && <div className="card-description" style={{ marginBottom: 12, fontSize: 13 }}>{material.description}</div>}
-                    <div style={{ display: 'flex', gap: 8 }}>
-                      <a href={material.url} target="_blank" rel="noopener noreferrer" className="btn-primary btn-small" style={{ display: 'inline-block', textDecoration: 'none' }}>
-                        View
-                      </a>
-                      <a href={material.url} download className="btn-secondary btn-small" style={{ display: 'inline-block', textDecoration: 'none' }}>
-                        Download
-                      </a>
+                    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                      {material.type === 'url' ? (
+                        <a href={material.url} target="_blank" rel="noopener noreferrer" className="btn-primary btn-small" style={{ display: 'inline-block', textDecoration: 'none' }}>
+                          Open Link
+                        </a>
+                      ) : material.type === 'document' ? (
+                        <>
+                          <a href={material.url} target="_blank" rel="noopener noreferrer" className="btn-secondary btn-small" style={{ display: 'inline-block', textDecoration: 'none' }}>
+                            Preview
+                          </a>
+                          <a href={material.url} download className="btn-primary btn-small" style={{ display: 'inline-block', textDecoration: 'none' }}>
+                            📥 Download
+                          </a>
+                        </>
+                      ) : (
+                        <>
+                          <a href={material.url} target="_blank" rel="noopener noreferrer" className="btn-primary btn-small" style={{ display: 'inline-block', textDecoration: 'none' }}>
+                            View
+                          </a>
+                          <a href={material.url} download className="btn-secondary btn-small" style={{ display: 'inline-block', textDecoration: 'none' }}>
+                            📥 Download
+                          </a>
+                        </>
+                      )}
                     </div>
                   </div>
                 </div>
