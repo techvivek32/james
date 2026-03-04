@@ -4,7 +4,7 @@ import { Sidebar } from "./Sidebar";
 const sidebarItems = [
   { id: "dashboard", label: "Dashboard" },
   { id: "team", label: "My Team" },
-  { id: "plans", label: "Team Plans" },
+  { id: "plans", label: "Team Business Plans" },
   { id: "training", label: "Training Center" },
   { id: "onlineTraining", label: "Online Training" },
   { id: "taskTracker", label: "Task Tracker" },
