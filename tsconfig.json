@@ -17,5 +17,5 @@
     "types": ["@types/node", "@types/react", "@types/react-dom"]
   },
   "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx"],
-  "exclude": ["node_modules"]
+  "exclude": ["node_modules", "seed.ts", "seed.js", "*.js", "test-*.js"]
 }

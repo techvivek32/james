@@ -16,7 +16,9 @@ type AdminViewId =
   | "approvalWorkflows"
   | "aiBots"
   | "webTemplates"
-  | "appsTools";
+  | "appsTools"
+  | "socialMediaMetrics"
+  | "webText";
 
 type AdminLayoutProps = {
   children: React.ReactNode;

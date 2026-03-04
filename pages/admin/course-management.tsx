@@ -67,7 +67,7 @@ const CourseManagementPage: NextPage = () => {
     console.log("Saving courses to API:");
     cleanedCourses.forEach(c => {
       console.log(`Course ${c.id}: ${c.pages?.length || 0} pages`);
-      c.pages?.forEach(p => {
+      c.pages?.forEach((p: any) => {
         if (p.isQuiz) {
           console.log(`  - Quiz: ${p.title}, questions: ${p.quizQuestions?.length || 0}`);
         }

@@ -65,7 +65,7 @@ export default async function handler(
   console.log("After save - courses in DB:");
   nextCourses.forEach(c => {
     console.log(`  Course ${c.id}: ${c.pages?.length || 0} pages`);
-    c.pages?.forEach(p => {
+    c.pages?.forEach((p: any) => {
       if (p.isQuiz) {
         console.log(`    - Quiz: ${p.title}, questions: ${p.quizQuestions?.length || 0}`);
       }

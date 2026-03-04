@@ -13,7 +13,11 @@ export default async function handler(
       const { userId, courseId } = req.query;
 
       // Get user progress from database
-      const userProgressCollection = mongoose.connection.db.collection('userprogresses');
+      const db = mongoose.connection.db;
+      if (!db) {
+        return res.status(500).json({ error: "Database not available" });
+      }
+      const userProgressCollection = db.collection('userprogresses');
       
       if (userId && courseId) {
         // Get specific user's progress for a course

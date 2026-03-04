@@ -69,11 +69,11 @@ function AdminDashboard(props: { users: UserProfile[]; courses: Course[] }) {
     .map((user) => user.businessPlan!);
 
   const totalRevenue = businessPlans.reduce(
-    (sum, plan) => sum + (plan.targetRevenue || 0),
+    (sum, plan) => sum + ((plan as any).targetRevenue || plan.revenueGoal || 0),
     0
   );
   const totalDays = businessPlans.reduce(
-    (sum, plan) => sum + (plan.daysToClose || 0),
+    (sum, plan) => sum + ((plan as any).daysToClose || plan.daysPerWeek || 0),
     0
   );
   const avgDays = businessPlans.length > 0 ? Math.round(totalDays / businessPlans.length) : 0;
@@ -3776,11 +3776,11 @@ function BusinessUnitsManager(props: { users: UserProfile[] }) {
                     <div className="grid grid-4">
                       <DashboardCard
                         title="Target Revenue"
-                        value={`$${(manager.businessPlan.targetRevenue || 0).toLocaleString()}`}
+                        value={`$${((manager.businessPlan as any).targetRevenue || manager.businessPlan.revenueGoal || 0).toLocaleString()}`}
                       />
                       <DashboardCard
                         title="Days to Close"
-                        value={(manager.businessPlan.daysToClose || 0).toString()}
+                        value={((manager.businessPlan as any).daysToClose || manager.businessPlan.daysPerWeek || 0).toString()}
                       />
                     </div>
                   </div>
@@ -3795,11 +3795,11 @@ function BusinessUnitsManager(props: { users: UserProfile[] }) {
                         <div className="grid grid-4">
                           <DashboardCard
                             title="Target Revenue"
-                            value={`$${(member.businessPlan.targetRevenue || 0).toLocaleString()}`}
+                            value={`$${((member.businessPlan as any).targetRevenue || member.businessPlan.revenueGoal || 0).toLocaleString()}`}
                           />
                           <DashboardCard
                             title="Days to Close"
-                            value={(member.businessPlan.daysToClose || 0).toString()}
+                            value={((member.businessPlan as any).daysToClose || member.businessPlan.daysPerWeek || 0).toString()}
                           />
                         </div>
                       ) : (

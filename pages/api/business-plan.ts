@@ -11,6 +11,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     try {
       await connectMongo();
       const db = mongoose.connection.db;
+      if (!db) {
+        return res.status(500).json({ error: "Database not available" });
+      }
       
       const result = await db.collection('businessPlans').updateOne(
         { userId },
@@ -38,7 +41,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       const usersResponse = await fetch('http://localhost:3000/api/users');
       const users = await usersResponse.json();
       
-      console.log('All users:', users.map(u => ({ name: u.name, id: u.id, role: u.role, managerId: u.managerId })));
+      console.log('All users:', users.map((u: any) => ({ name: u.name, id: u.id, role: u.role, managerId: u.managerId })));
       
       // Get business plans from database only
       let allBusinessPlans = [];
@@ -46,24 +49,27 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       try {
         await connectMongo();
         const db = mongoose.connection.db;
+        if (!db) {
+          throw new Error("Database not available");
+        }
         const dbPlans = await db.collection('businessPlans').find({}).toArray();
         console.log('Loaded plans from database:', dbPlans.length);
         allBusinessPlans = dbPlans;
       } catch (dbError) {
-        console.error('Database error:', dbError.message);
+        console.error('Database error:', dbError instanceof Error ? dbError.message : dbError);
         res.status(500).json({ error: 'Failed to load business plans from database' });
         return;
       }
       
       // If requesting specific user's plan
       if (userId) {
-        const user = users.find(u => u.id === userId);
+        const user = users.find((u: any) => u.id === userId);
         if (!user) {
           res.status(404).json({ error: 'User not found' });
           return;
         }
         
-        const plan = allBusinessPlans.find(p => p.userId === userId);
+        const plan = allBusinessPlans.find((p: any) => p.userId === userId);
         const result = [{
           userId: user.id,
           userName: user.name,
@@ -79,17 +85,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       }
       
       // Filter sales users by manager (existing logic)
-      const salesUsers = users.filter(user => 
+      const salesUsers = users.filter((user: any) => 
         user.role === 'sales' && 
         (managerId ? user.managerId === managerId : true)
       );
       
-      console.log('Filtered sales users:', salesUsers.map(u => ({ name: u.name, id: u.id, managerId: u.managerId })));
+      console.log('Filtered sales users:', salesUsers.map((u: any) => ({ name: u.name, id: u.id, managerId: u.managerId })));
       
       // Combine user data with business plans
-      const plansWithUsers = salesUsers.map(user => {
-        const plan = allBusinessPlans.find(p => p.userId === user.id);
-        console.log(`Matching user ${user.name} (${user.id}) with plans:`, allBusinessPlans.map(p => p.userId));
+      const plansWithUsers = salesUsers.map((user: any) => {
+        const plan = allBusinessPlans.find((p: any) => p.userId === user.id);
+        console.log(`Matching user ${user.name} (${user.id}) with plans:`, allBusinessPlans.map((p: any) => p.userId));
         console.log(`Found plan for ${user.name}:`, !!plan);
         
         return {
@@ -106,7 +112,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       res.status(200).json(plansWithUsers);
     } catch (error) {
       console.error('Business plans fetch error:', error);
-      res.status(500).json({ error: 'Failed to fetch business plans: ' + error.message });
+      res.status(500).json({ error: 'Failed to fetch business plans: ' + (error instanceof Error ? error.message : 'Unknown error') });
     }
   } else {
     res.setHeader('Allow', ['POST', 'GET']);

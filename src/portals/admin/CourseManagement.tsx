@@ -138,7 +138,7 @@ export function CourseManagement(props: CourseEditorProps) {
       ...course,
       pages: [...pages, newPage]
     };
-    console.log("Adding page to course:", { courseId: course.id, newPage, totalPages: nextCourse.pages.length });
+    console.log("Adding page to course:", { courseId: course.id, newPage, totalPages: nextCourse.pages?.length || 0 });
     updateCourse(nextCourse);
     setDetailSection("pages");
     setActivePageId(newPage.id);

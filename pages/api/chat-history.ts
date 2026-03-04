@@ -4,7 +4,13 @@ import { connectMongo } from "../../src/lib/mongodb";
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
     const mongoose = await connectMongo();
+    if (!mongoose) {
+      return res.status(500).json({ error: "Database connection failed" });
+    }
     const db = mongoose.connection.db;
+    if (!db) {
+      return res.status(500).json({ error: "Database not available" });
+    }
     const collection = db.collection("chatHistory");
 
     if (req.method === "GET") {

@@ -58,23 +58,24 @@ export function TaskTracker(props: { teamMembers: UserProfile[]; courses: Course
     if (plan.dealsPerYear && plan.dealsPerYear > 0) score++;
     if (plan.inspectionsNeeded && plan.inspectionsNeeded > 0) score++;
     if (plan.doorsPerYear && plan.doorsPerYear > 0) score++;
-    if (plan.avgDealSize && plan.avgDealSize > 0) score++;
-    if (plan.closeRate && plan.closeRate > 0) score++;
+    if ((plan as any).avgDealSize && (plan as any).avgDealSize > 0) score++;
+    if ((plan as any).closeRate && (plan as any).closeRate > 0) score++;
     
     return Math.round((score / total) * 100);
   }
 
   function getTrainingCompletion(member: UserProfile) {
     // Calculate based on course progress
-    if (!member.courseProgress || member.courseProgress.length === 0) {
+    const courseProgress = (member as any).courseProgress;
+    if (!courseProgress || courseProgress.length === 0) {
       return 0;
     }
     
-    const totalProgress = member.courseProgress.reduce((sum, progress) => {
+    const totalProgress = courseProgress.reduce((sum: number, progress: any) => {
       return sum + (progress.progress || 0);
     }, 0);
     
-    return Math.round(totalProgress / member.courseProgress.length);
+    return Math.round(totalProgress / courseProgress.length);
   }
 
   function getWebPageCompletion(member: UserProfile) {
@@ -88,7 +89,7 @@ export function TaskTracker(props: { teamMembers: UserProfile[]; courses: Course
     }
     
     // Check if user has username set
-    if (member.username && member.username.trim().length > 0) score++;
+    if ((member as any).username && (member as any).username.trim().length > 0) score++;
     
     // Check if user has headshot for web page
     if (member.headshotUrl && member.headshotUrl.trim().length > 0) score++;

@@ -230,7 +230,7 @@ export function UserManagement(props: UserEditorProps) {
         user.strengths || "",
         user.weaknesses || ""
       ];
-      const toggleData = toggleKeys.map(k => user.featureToggles[k] ? "TRUE" : "FALSE");
+      const toggleData = toggleKeys.map(k => (user.featureToggles as any)[k] ? "TRUE" : "FALSE");
       return [...baseData, ...toggleData];
     });
     

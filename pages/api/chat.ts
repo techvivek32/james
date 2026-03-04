@@ -48,7 +48,7 @@ Users can ask questions about the video content, key points discussed, or reques
     const courseContext = allPages && allPages.length > 0 ? `
 
 FULL COURSE CONTEXT (${courseTitle || 'Course'}):
-${allPages.map((page, index) => `
+${allPages.map((page: any, index: number) => `
 Lesson ${index + 1}: ${page.title}
 Content: ${page.body || 'No content'}
 ${page.videoUrl ? `Video: ${page.videoUrl}` : ''}`).join('\n')}` : '';

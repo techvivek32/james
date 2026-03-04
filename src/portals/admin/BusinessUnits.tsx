@@ -77,7 +77,7 @@ export function BusinessUnitsManager(props: { users: UserProfile[] }) {
           type: 'plan_updated',
           title: 'Team Member Plan Updated',
           message: `Admin updated ${editingUser.name}'s business plan. ${changeMessage}`,
-          metadata: { updatedBy: 'admin', targetUser: editingUser.id }
+          metadata: { updatedBy: 'admin', businessPlan: editingUser.businessPlan as any }
         });
       }
 

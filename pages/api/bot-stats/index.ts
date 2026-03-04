@@ -11,7 +11,11 @@ export default async function handler(
   if (req.method === "GET") {
     try {
       // Count real chat sessions from chatHistory collection
-      const chatHistories = await mongoose.connection.db.collection('chatHistory').find().toArray();
+      const db = mongoose.connection.db;
+      if (!db) {
+        return res.status(500).json({ error: "Database not available" });
+      }
+      const chatHistories = await db.collection('chatHistory').find().toArray();
       
       // Count unique users who have chat sessions
       const uniqueUsers = new Set(chatHistories.map(chat => chat.userId));
@@ -22,7 +26,7 @@ export default async function handler(
       }, 0);
 
       // Count lesson chats
-      const lessonChats = await mongoose.connection.db.collection('lessonChatHistory').find().toArray();
+      const lessonChats = await db.collection('lessonChatHistory').find().toArray();
       const lessonMessages = lessonChats.reduce((sum, chat) => {
         return sum + (chat.messages?.length || 0);
       }, 0);

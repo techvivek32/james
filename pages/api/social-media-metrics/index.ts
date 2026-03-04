@@ -77,7 +77,7 @@ export default async function handler(
       res.status(200).json({ message: "Metrics updated successfully" });
     } catch (error) {
       console.error("Failed to update metrics:", error);
-      res.status(500).json({ error: "Failed to update metrics", details: error.message });
+      res.status(500).json({ error: "Failed to update metrics", details: error instanceof Error ? error.message : 'Unknown error' });
     }
   } else {
     res.setHeader("Allow", ["GET", "POST", "PUT"]);
