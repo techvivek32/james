@@ -30,10 +30,18 @@ export default async function handler(
 
   console.log("Bulk save - Received courses:");
   courses.forEach(c => {
-    console.log(`  Course ${c.id}: ${c.pages?.length || 0} pages`);
-    c.pages?.forEach(p => {
+    console.log(`  Course ${c.id}: ${c.title}`);
+    console.log(`    - Status: ${c.status}`);
+    console.log(`    - Pages: ${c.pages?.length || 0}`);
+    c.pages?.forEach((p: any) => {
+      console.log(`      - Page: ${p.title} (${p.id})`);
+      console.log(`        - Status: ${p.status}`);
+      console.log(`        - Video URL: ${p.videoUrl || 'none'}`);
+      console.log(`        - Resource Links: ${p.resourceLinks?.length || 0}`);
+      console.log(`        - File URLs: ${p.fileUrls?.length || 0}`);
+      console.log(`        - Body length: ${p.body?.length || 0}`);
       if (p.isQuiz) {
-        console.log(`    - Quiz: ${p.title}, questions: ${p.quizQuestions?.length || 0}`);
+        console.log(`        - Quiz questions: ${p.quizQuestions?.length || 0}`);
       }
     });
   });

@@ -1,6 +1,6 @@
 import type { NextPage } from "next";
 import { SalesLayout } from "../../src/portals/sales/SalesLayout";
-import { MarketingMaterials } from "../../src/portals/sales/MarketingMaterials";
+import { MarketingMaterialsViewer } from "../../src/components/MarketingMaterialsViewer";
 import { useAuth } from "../../src/contexts/AuthContext";
 
 const Materials: NextPage = () => {
@@ -12,7 +12,10 @@ const Materials: NextPage = () => {
 
   return (
     <SalesLayout currentView="materials" userName={user.name} userId={user.id}>
-      <MarketingMaterials />
+      <div className="page-header">
+        <h1 className="page-title">Marketing Materials</h1>
+      </div>
+      <MarketingMaterialsViewer />
     </SalesLayout>
   );
 };

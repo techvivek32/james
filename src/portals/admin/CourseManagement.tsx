@@ -44,6 +44,12 @@ export function CourseManagement(props: CourseEditorProps) {
       const course = props.courses.find((c) => c.id === selectedCourseId);
       const page = course?.pages?.find((p) => p.id === activePageId);
       if (page && bodyInputRef.current.innerHTML !== page.body) {
+        console.log('[CourseManagement] Loading page body:', {
+          pageId: page.id,
+          pageTitle: page.title,
+          bodyLength: page.body?.length || 0,
+          bodyPreview: page.body?.substring(0, 200)
+        });
         bodyInputRef.current.innerHTML = page.body || "";
       }
     }
@@ -308,13 +314,26 @@ export function CourseManagement(props: CourseEditorProps) {
               bodyInputRef.current.innerHTML += imageHtml + '<p><br></p>';
             }
             
+            // Wait longer to ensure DOM is updated
             setTimeout(() => {
               if (bodyInputRef.current) {
                 const nextBody = bodyInputRef.current.innerHTML;
-                const nextPages = pages.map((page) => (page.id === pageForImage.id ? { ...page, body: nextBody } : page));
+                console.log('[Image] Saving body:', {
+                  bodyLength: nextBody.length,
+                  hasImage: nextBody.includes('<img'),
+                  imageUrl: trimmed,
+                  bodyPreview: nextBody.substring(0, 200)
+                });
+                // ALSO save to fileUrls array for marketing materials sync
+                const existingFiles = pageForImage.fileUrls || [];
+                const nextPages = pages.map((page) => 
+                  page.id === pageForImage.id 
+                    ? { ...page, body: nextBody, fileUrls: [...existingFiles, trimmed] } 
+                    : page
+                );
                 updateCourse({ ...(course as Course), pages: nextPages });
               }
-            }, 0);
+            }, 100); // Increased timeout
           }
           
           setIsImageModalOpen(false);
@@ -338,14 +357,30 @@ export function CourseManagement(props: CourseEditorProps) {
                 type="file"
                 accept="image/*"
                 style={{ display: "none" }}
-                onChange={(event) => {
+                onChange={async (event) => {
                   const file = event.target.files?.[0];
                   if (!file) return;
-                  const reader = new FileReader();
-                  reader.onloadend = () => {
-                    setImageUrlDraft(reader.result as string);
-                  };
-                  reader.readAsDataURL(file);
+                  
+                  // Upload to server instead of base64
+                  const formData = new FormData();
+                  formData.append('file', file);
+                  
+                  try {
+                    const response = await fetch('/api/upload-image', {
+                      method: 'POST',
+                      body: formData
+                    });
+                    
+                    if (response.ok) {
+                      const data = await response.json();
+                      setImageUrlDraft(data.url); // This will be /uploads/filename.jpg
+                    } else {
+                      alert('Failed to upload image');
+                    }
+                  } catch (error) {
+                    console.error('Upload error:', error);
+                    alert('Failed to upload image');
+                  }
                 }}
               />
               <div className="dialog-footer">
@@ -406,7 +441,13 @@ export function CourseManagement(props: CourseEditorProps) {
             setTimeout(() => {
               if (bodyInputRef.current) {
                 const nextBody = bodyInputRef.current.innerHTML;
-                const nextPages = pages.map((page) => (page.id === pageForLink.id ? { ...page, body: nextBody } : page));
+                // ALSO save to resourceLinks array for marketing materials sync
+                const existingLinks = pageForLink.resourceLinks || [];
+                const nextPages = pages.map((page) => 
+                  page.id === pageForLink.id 
+                    ? { ...page, body: nextBody, resourceLinks: [...existingLinks, { label, href }] } 
+                    : page
+                );
                 updateCourse({ ...(course as Course), pages: nextPages });
               }
             }, 0);
@@ -461,6 +502,7 @@ export function CourseManagement(props: CourseEditorProps) {
           }
           
           const isYouTube = trimmed.includes("youtube.com") || trimmed.includes("youtu.be");
+          const isUploadedFile = trimmed.startsWith("/uploads/");
           let videoHtml = "";
           
           if (isYouTube) {
@@ -469,9 +511,11 @@ export function CourseManagement(props: CourseEditorProps) {
             if (videoId) {
               videoHtml = `<div contenteditable="false" style="margin: 16px 0; width: 100%; aspect-ratio: 16/9; background: #000; border-radius: 12px; overflow: hidden;"><iframe src="https://www.youtube.com/embed/${videoId}" style="width: 100%; height: 100%; border: none;" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe></div>`;
             }
-          } else if (trimmed.startsWith("data:video")) {
-            videoHtml = `<div contenteditable="false" style="margin: 16px 0; width: 100%; aspect-ratio: 16/9; background: #000; border-radius: 12px; overflow: hidden;"><video controls style="width: 100%; height: 100%; object-fit: contain;"><source src="${trimmed}"></video></div>`;
+          } else if (isUploadedFile) {
+            // Uploaded file from /uploads/ folder
+            videoHtml = `<div contenteditable="false" style="margin: 16px 0; width: 100%; aspect-ratio: 16/9; background: #000; border-radius: 12px; overflow: hidden;"><video controls src="${trimmed}" style="width: 100%; height: 100%; object-fit: contain;"></video></div>`;
           } else {
+            // External URL
             videoHtml = `<div contenteditable="false" style="margin: 16px 0; width: 100%; aspect-ratio: 16/9; background: #000; border-radius: 12px; overflow: hidden;"><video controls src="${trimmed}" style="width: 100%; height: 100%; object-fit: contain;"></video></div>`;
           }
           
@@ -497,13 +541,25 @@ export function CourseManagement(props: CourseEditorProps) {
               bodyInputRef.current.innerHTML += videoHtml + '<p><br></p>';
             }
             
+            // Wait longer to ensure DOM is updated
             setTimeout(() => {
               if (bodyInputRef.current) {
                 const nextBody = bodyInputRef.current.innerHTML;
-                const nextPages = pages.map((page) => (page.id === pageForVideo.id ? { ...page, body: nextBody } : page));
+                console.log('[Video] Saving body:', {
+                  bodyLength: nextBody.length,
+                  hasVideo: nextBody.includes('<video') || nextBody.includes('<iframe'),
+                  videoUrl: trimmed,
+                  bodyPreview: nextBody.substring(0, 200)
+                });
+                // ALSO save to videoUrl field for marketing materials sync
+                const nextPages = pages.map((page) => 
+                  page.id === pageForVideo.id 
+                    ? { ...page, body: nextBody, videoUrl: trimmed } 
+                    : page
+                );
                 updateCourse({ ...(course as Course), pages: nextPages });
               }
-            }, 0);
+            }, 100); // Increased timeout
           }
           
           setIsVideoModalOpen(false);
@@ -527,14 +583,30 @@ export function CourseManagement(props: CourseEditorProps) {
                 type="file"
                 accept="video/*"
                 style={{ display: "none" }}
-                onChange={(event) => {
+                onChange={async (event) => {
                   const file = event.target.files?.[0];
                   if (!file) return;
-                  const reader = new FileReader();
-                  reader.onloadend = () => {
-                    setVideoUrlDraft(reader.result as string);
-                  };
-                  reader.readAsDataURL(file);
+                  
+                  // Upload to server instead of base64
+                  const formData = new FormData();
+                  formData.append('file', file);
+                  
+                  try {
+                    const response = await fetch('/api/upload-image', {
+                      method: 'POST',
+                      body: formData
+                    });
+                    
+                    if (response.ok) {
+                      const data = await response.json();
+                      setVideoUrlDraft(data.url); // This will be /uploads/filename.mp4
+                    } else {
+                      alert('Failed to upload video');
+                    }
+                  } catch (error) {
+                    console.error('Upload error:', error);
+                    alert('Failed to upload video');
+                  }
                 }}
               />
               <div className="dialog-footer">

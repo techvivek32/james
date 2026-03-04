@@ -1,14 +1,14 @@
 import type { NextPage } from "next";
 import { MarketingLayout } from "../../src/portals/marketing/MarketingLayout";
-import { Placeholder } from "../../src/portals/marketing/Placeholder";
+import { MarketingMaterialsViewer } from "../../src/components/MarketingMaterialsViewer";
 
 const AssetsPage: NextPage = () => {
   return (
     <MarketingLayout currentView="assets">
-      <Placeholder
-        title="Asset Library"
-        description="Manage campaign assets, evergreen content, and field resources."
-      />
+      <div className="page-header">
+        <h1 className="page-title">Marketing Assets</h1>
+      </div>
+      <MarketingMaterialsViewer />
     </MarketingLayout>
   );
 };
