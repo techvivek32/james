@@ -416,7 +416,7 @@ export function UserManagement(props: UserEditorProps) {
                 <input className="field-input" value={selectedUser.email} onChange={(e) => updateUser({ ...selectedUser, email: e.target.value })} />
               </label>
               <label className="field">
-                <span className="field-label">Password (leave blank to keep current)</span>
+                <span className="field-label">Reset Password</span>
                 <div className="field-input" style={{ display: "flex", alignItems: "center", gap: 8, paddingRight: 8 }}>
                   <input type={showPassword ? "text" : "password"} value={selectedUser.password ?? ""} onChange={(e) => updateUser({ ...selectedUser, password: e.target.value })} placeholder="Set a login password" style={{ border: "none", outline: "none", background: "transparent", flex: 1, minWidth: 0 }} />
                   <button type="button" className="btn-ghost btn-small" onClick={() => setShowPassword((prev) => !prev)} aria-label={showPassword ? "Hide password" : "Show password"} style={{ padding: 4 }}>

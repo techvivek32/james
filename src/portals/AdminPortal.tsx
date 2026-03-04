@@ -737,7 +737,7 @@ function UserManagement(props: UserEditorProps) {
                 />
               </label>
               <label className="field">
-                <span className="field-label">Password (leave blank to keep current)</span>
+                <span className="field-label">Reset Password</span>
                 <div
                   className="field-input"
                   style={{
