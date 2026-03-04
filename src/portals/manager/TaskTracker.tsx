@@ -23,6 +23,10 @@ export function TaskTracker(props: { teamMembers: UserProfile[]; courses: Course
     >
   >({});
   const [tasks, setTasks] = useState<AssignedTask[]>([]);
+  const [showAssignWorkModal, setShowAssignWorkModal] = useState(false);
+  const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
+  const [workName, setWorkName] = useState("");
+  const [workDescription, setWorkDescription] = useState("");
 
   function getProfileCompletion(member: UserProfile) {
     let score = 0;
@@ -219,6 +223,72 @@ export function TaskTracker(props: { teamMembers: UserProfile[]; courses: Course
         task.id === taskId ? { ...task, status: "completed" } : task
       )
     );
+  }
+
+  function openAssignWorkModal(userId: string) {
+    setSelectedUserId(userId);
+    setWorkName("");
+    setWorkDescription("");
+    setShowAssignWorkModal(true);
+  }
+
+  function closeAssignWorkModal() {
+    setShowAssignWorkModal(false);
+    setSelectedUserId(null);
+    setWorkName("");
+    setWorkDescription("");
+  }
+
+  async function handleAssignWork() {
+    if (!selectedUserId || !workName.trim()) {
+      alert("Please enter a task name");
+      return;
+    }
+
+    const member = props.teamMembers.find((m) => m.id === selectedUserId);
+    if (!member) {
+      return;
+    }
+
+    try {
+      // Create notification for the user
+      const response = await fetch("/api/notifications", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          userId: selectedUserId,
+          type: "task",
+          title: "New Work Assigned",
+          message: `${workName}${workDescription.trim() ? ': ' + workDescription : ''}`,
+          metadata: {
+            taskName: workName,
+            taskDescription: workDescription,
+            assignedBy: "Manager"
+          }
+        })
+      });
+
+      if (response.ok) {
+        // Add task to local state
+        const newTask: AssignedTask = {
+          id: `task-${selectedUserId}-custom-${Date.now()}-${Math.random()
+            .toString(36)
+            .slice(2, 8)}`,
+          userId: selectedUserId,
+          label: workDescription.trim() ? `${workName} - ${workDescription}` : workName,
+          status: "open"
+        };
+
+        setTasks((prev) => [...prev, newTask]);
+        closeAssignWorkModal();
+        alert(`Work assigned to ${member.name} successfully! They will receive a notification.`);
+      } else {
+        alert("Failed to send notification");
+      }
+    } catch (error) {
+      console.error("Error assigning work:", error);
+      alert("Failed to assign work");
+    }
   }
 
   const totalAssigned = tasks.length;
@@ -472,14 +542,24 @@ export function TaskTracker(props: { teamMembers: UserProfile[]; courses: Course
                     </div>
                     
                     <div style={{ textAlign: "right" }}>
-                      <button
-                        type="button"
-                        className="btn-primary btn-success btn-small"
-                        disabled={!hasAnySelection}
-                        onClick={() => assignTasksForMember(member.id)}
-                      >
-                        Assign
-                      </button>
+                      <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
+                        <button
+                          type="button"
+                          className="btn-primary btn-success btn-small"
+                          disabled={!hasAnySelection}
+                          onClick={() => assignTasksForMember(member.id)}
+                        >
+                          Assign
+                        </button>
+                        <button
+                          type="button"
+                          className="btn-primary btn-small"
+                          onClick={() => openAssignWorkModal(member.id)}
+                          style={{ backgroundColor: "#3b82f6", borderColor: "#3b82f6" }}
+                        >
+                          Assign Work
+                        </button>
+                      </div>
                     </div>
                   </div>
                 );
@@ -531,6 +611,106 @@ export function TaskTracker(props: { teamMembers: UserProfile[]; courses: Course
                   </div>
                 );
               })}
+            </div>
+          </div>
+        </div>
+      )}
+      
+      {/* Assign Work Modal */}
+      {showAssignWorkModal && (
+        <div
+          style={{
+            position: "fixed",
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: "rgba(0, 0, 0, 0.5)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            zIndex: 1000
+          }}
+          onClick={closeAssignWorkModal}
+        >
+          <div
+            style={{
+              backgroundColor: "white",
+              borderRadius: 8,
+              padding: 24,
+              width: "90%",
+              maxWidth: 500,
+              boxShadow: "0 4px 6px rgba(0, 0, 0, 0.1)"
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 style={{ margin: "0 0 16px 0", fontSize: 18, fontWeight: 600 }}>
+              Assign Work
+            </h3>
+            
+            <div style={{ marginBottom: 16 }}>
+              <label style={{ display: "block", marginBottom: 4, fontSize: 13, fontWeight: 500 }}>
+                Assign to:
+              </label>
+              <div style={{ fontSize: 14, color: "#6b7280" }}>
+                {props.teamMembers.find((m) => m.id === selectedUserId)?.name}
+              </div>
+            </div>
+            
+            <div style={{ marginBottom: 16 }}>
+              <label style={{ display: "block", marginBottom: 4, fontSize: 13, fontWeight: 500 }}>
+                Task Name <span style={{ color: "#ef4444" }}>*</span>
+              </label>
+              <input
+                type="text"
+                value={workName}
+                onChange={(e) => setWorkName(e.target.value)}
+                placeholder="Enter task name"
+                style={{
+                  width: "100%",
+                  padding: "8px 12px",
+                  border: "1px solid #d1d5db",
+                  borderRadius: 4,
+                  fontSize: 14
+                }}
+              />
+            </div>
+            
+            <div style={{ marginBottom: 24 }}>
+              <label style={{ display: "block", marginBottom: 4, fontSize: 13, fontWeight: 500 }}>
+                Description
+              </label>
+              <textarea
+                value={workDescription}
+                onChange={(e) => setWorkDescription(e.target.value)}
+                placeholder="Enter task description (optional)"
+                rows={4}
+                style={{
+                  width: "100%",
+                  padding: "8px 12px",
+                  border: "1px solid #d1d5db",
+                  borderRadius: 4,
+                  fontSize: 14,
+                  resize: "vertical"
+                }}
+              />
+            </div>
+            
+            <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
+              <button
+                type="button"
+                className="btn-secondary"
+                onClick={closeAssignWorkModal}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="btn-primary btn-success"
+                onClick={handleAssignWork}
+              >
+                Assign Work
+              </button>
             </div>
           </div>
         </div>
