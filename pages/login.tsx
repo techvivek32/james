@@ -93,7 +93,7 @@ const LoginPage: NextPage = () => {
               </button>
             </div>
             <div className="login-links" style={{marginTop: '4px', justifyContent: 'flex-start'}}>
-              <a href="#" className="login-link">Forgot Password</a>
+              <a href="/forgot-password" className="login-link">Forgot Password</a>
             </div>
           </label>
           <button className="btn-primary" type="submit" disabled={isLoading}>
