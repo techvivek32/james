@@ -12,9 +12,16 @@ type Material = {
   description?: string;
 };
 
+type Course = {
+  id: string;
+  title: string;
+  coverImageUrl?: string;
+};
+
 type GroupedMaterials = {
   [courseId: string]: {
     courseName: string;
+    courseImage?: string;
     pages: {
       [pageId: string]: {
         pageName: string;
@@ -26,23 +33,34 @@ type GroupedMaterials = {
 
 export function MarketingMaterialsViewer() {
   const [materials, setMaterials] = useState<Material[]>([]);
+  const [courses, setCourses] = useState<Course[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedCourseId, setSelectedCourseId] = useState<string | null>(null);
   const [selectedPageId, setSelectedPageId] = useState<string | null>(null);
 
   useEffect(() => {
-    fetchMaterials();
+    fetchData();
   }, []);
 
-  async function fetchMaterials() {
+  async function fetchData() {
     try {
-      const response = await fetch('/api/marketing-materials');
-      if (response.ok) {
-        const data = await response.json();
-        setMaterials(data);
+      // Fetch both materials and courses
+      const [materialsRes, coursesRes] = await Promise.all([
+        fetch('/api/marketing-materials'),
+        fetch('/api/courses')
+      ]);
+      
+      if (materialsRes.ok) {
+        const materialsData = await materialsRes.json();
+        setMaterials(materialsData);
+      }
+      
+      if (coursesRes.ok) {
+        const coursesData = await coursesRes.json();
+        setCourses(coursesData);
       }
     } catch (error) {
-      console.error('Error fetching marketing materials:', error);
+      console.error('Error fetching data:', error);
     } finally {
       setLoading(false);
     }
@@ -50,8 +68,11 @@ export function MarketingMaterialsViewer() {
 
   const groupedMaterials: GroupedMaterials = materials.reduce((acc, material) => {
     if (!acc[material.courseId]) {
+      // Find course image
+      const course = courses.find(c => c.id === material.courseId);
       acc[material.courseId] = {
         courseName: material.courseName,
+        courseImage: course?.coverImageUrl,
         pages: {}
       };
     }
@@ -95,10 +116,15 @@ export function MarketingMaterialsViewer() {
               const materialCount = Object.values(course.pages).reduce((sum, page) => sum + page.materials.length, 0);
               
               return (
-                <div key={courseId} className="card" style={{ cursor: 'pointer' }} onClick={() => setSelectedCourseId(courseId)}>
-                  <div className="card-title">{course.courseName}</div>
-                  <div className="card-description" style={{ marginTop: 8, fontSize: 13 }}>
-                    {pageCount} page{pageCount !== 1 ? 's' : ''} • {materialCount} material{materialCount !== 1 ? 's' : ''}
+                <div key={courseId} className="card" style={{ padding: 0, overflow: 'hidden', cursor: 'pointer' }} onClick={() => setSelectedCourseId(courseId)}>
+                  {course.courseImage && (
+                    <div style={{ width: "100%", height: 180, backgroundImage: `url(${course.courseImage})`, backgroundSize: "cover", backgroundPosition: "center" }} />
+                  )}
+                  <div style={{ padding: 16 }}>
+                    <div className="card-title">{course.courseName}</div>
+                    <div className="card-description" style={{ marginTop: 8, fontSize: 13 }}>
+                      {pageCount} page{pageCount !== 1 ? 's' : ''} • {materialCount} material{materialCount !== 1 ? 's' : ''}
+                    </div>
                   </div>
                 </div>
               );
@@ -178,9 +204,14 @@ export function MarketingMaterialsViewer() {
                     </div>
                     {material.title && <div className="card-title" style={{ marginBottom: 8 }}>{material.title}</div>}
                     {material.description && <div className="card-description" style={{ marginBottom: 12, fontSize: 13 }}>{material.description}</div>}
-                    <a href={material.url} target="_blank" rel="noopener noreferrer" className="btn-primary btn-small" style={{ display: 'inline-block', textDecoration: 'none' }}>
-                      View
-                    </a>
+                    <div style={{ display: 'flex', gap: 8 }}>
+                      <a href={material.url} target="_blank" rel="noopener noreferrer" className="btn-primary btn-small" style={{ display: 'inline-block', textDecoration: 'none' }}>
+                        View
+                      </a>
+                      <a href={material.url} download className="btn-secondary btn-small" style={{ display: 'inline-block', textDecoration: 'none' }}>
+                        Download
+                      </a>
+                    </div>
                   </div>
                 </div>
               ))}
