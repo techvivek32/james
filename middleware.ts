@@ -19,8 +19,9 @@ export function middleware(request: NextRequest) {
   // Extract subdomain (e.g., "jett" from "jett.localhost:3000")
   const parts = hostname.split('.');
   
-  // Check if there's a subdomain (more than just "localhost:3000")
-  if (parts.length >= 2 && parts[0] !== 'localhost' && !parts[0].includes(':')) {
+  // Check if there's a subdomain (more than just "localhost:3000" or "millerstorm.tech")
+  // Only rewrite if there's a subdomain before the main domain
+  if (parts.length >= 3 && parts[0] !== 'www' && !parts[0].includes(':')) {
     const subdomain = parts[0];
     
     // Rewrite to /[username] route
