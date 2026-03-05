@@ -326,18 +326,46 @@ export function AdminDashboard(props: { users: UserProfile[]; courses: Course[] 
           className="panel"
           style={{ 
             marginBottom: 16,
-            cursor: "move",
             opacity: draggedItem === section.id ? 0.5 : 1,
             transition: "opacity 0.2s ease"
           }}
-          draggable
-          onDragStart={(e) => handleDragStart(e, section.id)}
           onDragOver={handleDragOver}
           onDrop={(e) => handleDrop(e, section.id)}
         >
           <div className="panel-header">
             <div className="panel-header-row">
-              <span>🔄 {section.title}</span>
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <button
+                  type="button"
+                  style={{
+                    width: 24,
+                    height: 24,
+                    borderRadius: "50%",
+                    border: "2px solid #6b7280",
+                    backgroundColor: "#f9fafb",
+                    cursor: "move",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    fontSize: 12,
+                    color: "#6b7280",
+                    transition: "all 0.2s ease"
+                  }}
+                  draggable
+                  onDragStart={(e) => handleDragStart(e, section.id)}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.backgroundColor = "#e5e7eb";
+                    e.currentTarget.style.borderColor = "#374151";
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.backgroundColor = "#f9fafb";
+                    e.currentTarget.style.borderColor = "#6b7280";
+                  }}
+                >
+                  ⋮⋮
+                </button>
+                <span>{section.title}</span>
+              </div>
               {section.id === "social-media" && (
                 <div style={{ display: "flex", gap: 8 }}>
                   <button
