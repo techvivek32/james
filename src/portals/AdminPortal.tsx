@@ -3050,7 +3050,7 @@ function CourseManagement(props: CourseEditorProps) {
                                                           ...page,
                                                           fileUrls: [
                                                             ...page.fileUrls,
-                                                            ""
+                                                            { label: "", href: "" }
                                                           ]
                                                         }
                                                       : page

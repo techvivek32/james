@@ -29,7 +29,7 @@ const coursePageSchema = new Schema(
     transcript: String,
     pinnedCommunityPostUrl: String,
     resourceLinks: [lessonLinkSchema],
-    fileUrls: [String],
+    fileUrls: [lessonLinkSchema],
     isQuiz: Boolean,
     quizQuestions: [quizQuestionSchema]
   },

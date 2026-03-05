@@ -825,9 +825,10 @@ export function CourseManagement(props: CourseEditorProps) {
                 });
                 // ALSO save to fileUrls array for marketing materials sync
                 const existingFiles = pageForImage.fileUrls || [];
+                const fileName = trimmed.split('/').pop() || 'Image';
                 const nextPages = pages.map((page) => 
                   page.id === pageForImage.id 
-                    ? { ...page, body: nextBody, fileUrls: [...existingFiles, trimmed] } 
+                    ? { ...page, body: nextBody, fileUrls: [...existingFiles, { label: fileName, href: trimmed }] } 
                     : page
                 );
                 updateCourse({ ...(course as Course), pages: nextPages });
@@ -2381,7 +2382,7 @@ export function CourseManagement(props: CourseEditorProps) {
                                             </div>
                                           ))}
                                           {activePage.fileUrls?.map((fileUrl, idx) => {
-                                            const fileData = typeof fileUrl === 'string' ? { label: fileUrl.split('/').pop() || '', href: fileUrl } : fileUrl;
+                                            const fileData = fileUrl;
                                             return (
                                             <div
                                               key={idx}

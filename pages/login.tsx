@@ -40,7 +40,9 @@ const LoginPage: NextPage = () => {
         <div className="login-title">
           The Miller Storm Operating System
         </div>
-        <div className="login-subtitle">Sign in</div>
+        <div className="login-subtitle" style={{ fontSize: '14px', color: '#6b7280', marginTop: '8px' }}>
+          powered by Genesis, everything- it starts here
+        </div>
         <form className="login-form" onSubmit={handleSubmit}>
           {error && <div className="form-error">{error}</div>}
           <label className="field">

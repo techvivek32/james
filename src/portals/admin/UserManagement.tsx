@@ -202,7 +202,19 @@ export function UserManagement(props: UserEditorProps) {
       businessCards: true,
       assets: true,
       approvals: true,
-      socialMetrics: true
+      socialMetrics: true,
+      featureToggles: true,
+      systemSettings: true,
+      teamBusinessPlans: true,
+      teamFunnelMetrics: true,
+      teamTraining: true,
+      aiAssistant: true,
+      businessPlan: true,
+      trainingCenter: true,
+      marketingMaterials: true,
+      repWebPage: true,
+      assetLibrary: true,
+      contentApprovals: true
     };
     const newUser: UserProfile = {
       id: `user-${Date.now()}`,

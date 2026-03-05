@@ -129,7 +129,7 @@ export type CoursePage = {
   transcript?: string;
   pinnedCommunityPostUrl?: string;
   resourceLinks: LessonLink[];
-  fileUrls: string[];
+  fileUrls: LessonLink[];
   isQuiz?: boolean;
   quizQuestions?: QuizQuestion[];
 };

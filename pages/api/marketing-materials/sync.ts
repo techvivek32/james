@@ -115,11 +115,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         // Extract file URLs
         if (page.fileUrls && page.fileUrls.length > 0) {
           console.log(`[SYNC]     Found ${page.fileUrls.length} file URLs`);
-          for (const fileUrl of page.fileUrls) {
+          for (const fileItem of page.fileUrls) {
+            const fileUrl = typeof fileItem === 'string' ? fileItem : fileItem.href;
+            const fileLabel = typeof fileItem === 'string' ? fileItem.split('/').pop() || 'File' : fileItem.label;
             const isImage = /\.(jpg|jpeg|png|gif|webp|svg)$/i.test(fileUrl);
             const isVideo = /\.(mp4|webm|ogg|mov)$/i.test(fileUrl);
             const isDocument = /\.(pdf|doc|docx|xls|xlsx|ppt|pptx|txt|csv)$/i.test(fileUrl);
-            const fileName = fileUrl.split('/').pop() || 'File';
             console.log(`[SYNC]       File: ${fileUrl} (${isImage ? 'image' : isVideo ? 'video' : isDocument ? 'document' : 'url'})`);
             
             materials.push({
@@ -129,7 +130,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
               pageName: page.title,
               type: isImage ? 'image' : isVideo ? 'video' : isDocument ? 'document' : 'url',
               url: fileUrl,
-              title: fileName,
+              title: fileLabel,
               description: `File from ${page.title}`
             });
           }
