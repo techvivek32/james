@@ -7,6 +7,21 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   const { id } = req.query;
 
+  if (req.method === 'GET') {
+    try {
+      const appTool = await AppTool.findById(id);
+
+      if (!appTool) {
+        return res.status(404).json({ error: 'App/Tool not found' });
+      }
+
+      return res.status(200).json(appTool);
+    } catch (error) {
+      console.error('Error fetching app/tool:', error);
+      return res.status(500).json({ error: 'Failed to fetch app/tool' });
+    }
+  }
+
   if (req.method === 'PUT') {
     try {
       const { title, imageUrl, description, link, webLink, appStoreLink, playStoreLink, category } = req.body;

@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import Link from "next/link";
 
 type AppToolItem = {
   _id: string;
@@ -6,6 +7,9 @@ type AppToolItem = {
   imageUrl: string;
   description: string;
   link: string;
+  webLink?: string;
+  appStoreLink?: string;
+  playStoreLink?: string;
   category: 'apps' | 'tools' | 'other';
 };
 
@@ -46,20 +50,16 @@ export function AppsToolsViewer() {
         <div className="panel-body">
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: 16 }}>
             {items.map((item) => (
-              <div key={item._id} className="card" style={{ padding: 0, overflow: "hidden" }}>
-                {item.imageUrl && (
-                  <div style={{ width: "100%", height: 180, backgroundImage: `url(${item.imageUrl})`, backgroundSize: "cover", backgroundPosition: "center" }} />
-                )}
-                <div style={{ padding: 16 }}>
-                  <div className="card-title" style={{ marginBottom: 8 }}>{item.title}</div>
-                  <div className="card-description" style={{ marginBottom: 12, fontSize: 13 }}>{item.description}</div>
-                  {item.link && (
-                    <a href={item.link} target="_blank" rel="noopener noreferrer" className="btn-primary btn-small" style={{ display: 'inline-block', textDecoration: 'none' }}>
-                      Open
-                    </a>
+              <Link key={item._id} href={`/sales/apps-tools/${item._id}`} style={{ textDecoration: 'none', color: 'inherit' }}>
+                <div className="card" style={{ padding: 0, overflow: "hidden", cursor: "pointer", transition: "transform 0.2s", ":hover": { transform: "scale(1.02)" } }}>
+                  {item.imageUrl && (
+                    <div style={{ width: "100%", height: 180, backgroundImage: `url(${item.imageUrl})`, backgroundSize: "cover", backgroundPosition: "center" }} />
                   )}
+                  <div style={{ padding: 16, textAlign: "center" }}>
+                    <div className="card-title" style={{ marginBottom: 0, fontSize: 16, fontWeight: 600 }}>{item.title}</div>
+                  </div>
                 </div>
-              </div>
+              </Link>
             ))}
           </div>
         </div>
