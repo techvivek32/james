@@ -138,9 +138,11 @@ export function SocialMediaCharts({ platforms }: SocialMediaChartsProps) {
       </div>
 
       {/* Chart Title */}
-      <div style={{ fontSize: 14, fontWeight: 600, color: "#111827", marginBottom: 12 }}>
-        {getMetricLabel()}
-      </div>
+      {isChartVisible && (
+        <div style={{ fontSize: 14, fontWeight: 600, color: "#111827", marginBottom: 12 }}>
+          {getMetricLabel()}
+        </div>
+      )}
 
       {/* Pie Chart */}
       {isChartVisible && (
