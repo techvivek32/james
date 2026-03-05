@@ -17,7 +17,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   if (req.method === 'POST') {
     try {
-      const { title, imageUrl, description, link, category } = req.body;
+      const { title, imageUrl, description, link, webLink, appStoreLink, playStoreLink, category } = req.body;
 
       if (!title || !category) {
         return res.status(400).json({ error: 'Title and category are required' });
@@ -28,6 +28,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         imageUrl: imageUrl || '',
         description: description || '',
         link: link || '',
+        webLink: webLink || '',
+        appStoreLink: appStoreLink || '',
+        playStoreLink: playStoreLink || '',
         category
       });
 

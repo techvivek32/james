@@ -9,11 +9,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   if (req.method === 'PUT') {
     try {
-      const { title, imageUrl, description, link, category } = req.body;
+      const { title, imageUrl, description, link, webLink, appStoreLink, playStoreLink, category } = req.body;
 
       const appTool = await AppTool.findByIdAndUpdate(
         id,
-        { title, imageUrl, description, link, category },
+        { title, imageUrl, description, link, webLink, appStoreLink, playStoreLink, category },
         { new: true, runValidators: true }
       );
 
