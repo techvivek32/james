@@ -4,9 +4,9 @@ import mongoose from 'mongoose';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method === 'POST') {
-    const { userId, businessPlan } = req.body;
+    const { userId, businessPlan, actuals } = req.body;
 
-    console.log('💾 Saving business plan to database:', { userId, businessPlan });
+    console.log('💾 Saving to database:', { userId, businessPlan, actuals });
 
     try {
       await connectMongo();
@@ -15,15 +15,22 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         return res.status(500).json({ error: "Database not available" });
       }
       
+      const updateData: any = {
+        userId,
+        updatedAt: new Date()
+      };
+      
+      if (businessPlan) {
+        updateData.businessPlan = businessPlan;
+      }
+      
+      if (actuals) {
+        updateData.actuals = actuals;
+      }
+      
       const result = await db.collection('businessPlans').updateOne(
         { userId },
-        { 
-          $set: { 
-            userId,
-            businessPlan,
-            updatedAt: new Date()
-          }
-        },
+        { $set: updateData },
         { upsert: true }
       );
 
@@ -31,14 +38,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       res.status(200).json({ success: true });
     } catch (error) {
       console.error('❌ Database save error:', error);
-      res.status(500).json({ error: 'Failed to save business plan to database' });
+      res.status(500).json({ error: 'Failed to save to database' });
     }
   } else if (req.method === 'GET') {
     const { managerId, userId } = req.query;
     
     try {
       // Get users from existing API
-      const usersResponse = await fetch('http://localhost:3000/api/users');
+      const usersResponse = await fetch(`http://localhost:6789/api/users`);
       const users = await usersResponse.json();
       
       console.log('All users:', users.map((u: any) => ({ name: u.name, id: u.id, role: u.role, managerId: u.managerId })));
@@ -76,6 +83,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           userRole: user.role,
           managerId: user.managerId,
           businessPlan: plan?.businessPlan || null,
+          actuals: plan?.actuals || null,
           updatedAt: plan?.updatedAt || null
         }];
         
@@ -104,6 +112,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           userRole: user.role,
           managerId: user.managerId,
           businessPlan: plan?.businessPlan || null,
+          actuals: plan?.actuals || null,
           updatedAt: plan ? new Date() : null
         };
       });

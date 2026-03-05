@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { DashboardCard } from "../../components/DashboardCard";
 import { UserProfile } from "../../types";
 
@@ -6,21 +6,46 @@ export function SalesDashboard(props: { profile: UserProfile }) {
   const plan = props.profile.businessPlan;
   const incomeGoal = plan?.revenueGoal ?? 0;
   const dealsNeeded = plan?.dealsPerYear ?? 0;
-  const claimsNeeded = Math.ceil(dealsNeeded * 1.2);
+  const claimsNeeded = dealsNeeded; // 1:1 ratio from inspections to claims
   const inspectionsNeeded = plan?.inspectionsNeeded ?? 0;
-  const convosNeeded = Math.ceil(inspectionsNeeded * 2.5);
+  const conversationsNeeded = Math.ceil(inspectionsNeeded / 0.30); // 30% conversion rate
   const doorsNeeded = plan?.doorsPerYear ?? 0;
   const locationFromPlan =
     plan && plan.territories.length > 0 ? plan.territories[0] : undefined;
   const location = props.profile.territory ?? locationFromPlan ?? "";
 
   const [isEditing, setIsEditing] = useState(false);
-  const [incomeActual, setIncomeActual] = useState(84000);
-  const [dealsActual, setDealsActual] = useState(6);
-  const [claimsActual, setClaimsActual] = useState(8);
-  const [inspectionsActual, setInspectionsActual] = useState(32);
-  const [convosActual, setConvosActual] = useState(85);
-  const [doorsActual, setDoorsActual] = useState(420);
+  const [incomeActual, setIncomeActual] = useState(0);
+  const [dealsActual, setDealsActual] = useState(0);
+  const [claimsActual, setClaimsActual] = useState(0);
+  const [inspectionsActual, setInspectionsActual] = useState(0);
+  const [conversationsActual, setConversationsActual] = useState(0);
+  const [doorsActual, setDoorsActual] = useState(0);
+
+  // Load actuals from database
+  useEffect(() => {
+    async function loadActuals() {
+      try {
+        const response = await fetch(`/api/business-plan?userId=${props.profile.id}`);
+        if (response.ok) {
+          const data = await response.json();
+          const userPlan = data.find((plan: any) => plan.userId === props.profile.id);
+          if (userPlan?.actuals) {
+            setIncomeActual(userPlan.actuals.incomeActual || 0);
+            setDealsActual(userPlan.actuals.dealsActual || 0);
+            setClaimsActual(userPlan.actuals.claimsActual || 0);
+            setInspectionsActual(userPlan.actuals.inspectionsActual || 0);
+            setConversationsActual(userPlan.actuals.conversationsActual || 0);
+            setDoorsActual(userPlan.actuals.doorsActual || 0);
+          }
+        }
+      } catch (error) {
+        console.error('Failed to load actuals:', error);
+      }
+    }
+    
+    loadActuals();
+  }, [props.profile.id]);
 
   async function handleSave() {
     try {
@@ -35,7 +60,7 @@ export function SalesDashboard(props: { profile: UserProfile }) {
             dealsActual,
             claimsActual,
             inspectionsActual,
-            convosActual,
+            conversationsActual,
             doorsActual
           }
         })
@@ -53,7 +78,7 @@ export function SalesDashboard(props: { profile: UserProfile }) {
   const dealsDelta = dealsActual - dealsNeeded;
   const claimsDelta = claimsActual - claimsNeeded;
   const inspectionsDelta = inspectionsActual - inspectionsNeeded;
-  const convosDelta = convosActual - convosNeeded;
+  const conversationsDelta = conversationsActual - conversationsNeeded;
   const doorsDelta = doorsActual - doorsNeeded;
 
   const comparisonItems = [
@@ -86,10 +111,10 @@ export function SalesDashboard(props: { profile: UserProfile }) {
       format: (value: number) => value.toLocaleString()
     },
     {
-      id: "convos",
-      label: "Convos",
-      goal: convosNeeded,
-      actual: convosActual,
+      id: "conversations",
+      label: "Conversations",
+      goal: conversationsNeeded,
+      actual: conversationsActual,
       format: (value: number) => value.toLocaleString()
     },
     {
@@ -102,7 +127,12 @@ export function SalesDashboard(props: { profile: UserProfile }) {
   ];
 
   const maxComparisonValue = Math.max(
-    ...comparisonItems.map((item) => Math.max(item.goal, item.actual))
+    incomeGoal, incomeActual,
+    dealsNeeded, dealsActual,
+    claimsNeeded, claimsActual,
+    inspectionsNeeded, inspectionsActual,
+    conversationsNeeded, conversationsActual,
+    doorsNeeded, doorsActual
   );
 
   return (
@@ -138,8 +168,8 @@ export function SalesDashboard(props: { profile: UserProfile }) {
           value={inspectionsNeeded.toLocaleString()}
         />
         <DashboardCard
-          title="Convos Needed"
-          value={convosNeeded.toLocaleString()}
+          title="Conversations Needed"
+          value={conversationsNeeded.toLocaleString()}
         />
         <DashboardCard
           title="Doors Needed"
@@ -177,7 +207,7 @@ export function SalesDashboard(props: { profile: UserProfile }) {
                 className="field-input" 
                 value={incomeActual} 
                 onChange={(e) => setIncomeActual(Number(e.target.value))}
-                style={{ marginTop: 8 }}
+                style={{ marginTop: 8, width: '100%', boxSizing: 'border-box' }}
               />
             </div>
             <div className="card">
@@ -187,7 +217,7 @@ export function SalesDashboard(props: { profile: UserProfile }) {
                 className="field-input" 
                 value={dealsActual} 
                 onChange={(e) => setDealsActual(Number(e.target.value))}
-                style={{ marginTop: 8 }}
+                style={{ marginTop: 8, width: '100%', boxSizing: 'border-box' }}
               />
             </div>
             <div className="card">
@@ -197,7 +227,7 @@ export function SalesDashboard(props: { profile: UserProfile }) {
                 className="field-input" 
                 value={claimsActual} 
                 onChange={(e) => setClaimsActual(Number(e.target.value))}
-                style={{ marginTop: 8 }}
+                style={{ marginTop: 8, width: '100%', boxSizing: 'border-box' }}
               />
             </div>
             <div className="card">
@@ -207,17 +237,17 @@ export function SalesDashboard(props: { profile: UserProfile }) {
                 className="field-input" 
                 value={inspectionsActual} 
                 onChange={(e) => setInspectionsActual(Number(e.target.value))}
-                style={{ marginTop: 8 }}
+                style={{ marginTop: 8, width: '100%', boxSizing: 'border-box' }}
               />
             </div>
             <div className="card">
-              <div className="card-title">Convos Actual</div>
+              <div className="card-title">Conversations Actual</div>
               <input 
                 type="number" 
                 className="field-input" 
-                value={convosActual} 
-                onChange={(e) => setConvosActual(Number(e.target.value))}
-                style={{ marginTop: 8 }}
+                value={conversationsActual} 
+                onChange={(e) => setConversationsActual(Number(e.target.value))}
+                style={{ marginTop: 8, width: '100%', boxSizing: 'border-box' }}
               />
             </div>
             <div className="card">
@@ -227,7 +257,7 @@ export function SalesDashboard(props: { profile: UserProfile }) {
                 className="field-input" 
                 value={doorsActual} 
                 onChange={(e) => setDoorsActual(Number(e.target.value))}
-                style={{ marginTop: 8 }}
+                style={{ marginTop: 8, width: '100%', boxSizing: 'border-box' }}
               />
             </div>
           </>
@@ -247,8 +277,8 @@ export function SalesDashboard(props: { profile: UserProfile }) {
               value={inspectionsActual.toLocaleString()}
             />
             <DashboardCard
-              title="Convos Actual"
-              value={convosActual.toLocaleString()}
+              title="Conversations Actual"
+              value={conversationsActual.toLocaleString()}
             />
             <DashboardCard
               title="Doors Actual"
@@ -280,8 +310,8 @@ export function SalesDashboard(props: { profile: UserProfile }) {
           value={inspectionsDelta.toLocaleString()}
         />
         <DashboardCard
-          title="Convos Delta"
-          value={convosDelta.toLocaleString()}
+          title="Conversations Delta"
+          value={conversationsDelta.toLocaleString()}
         />
         <DashboardCard
           title="Doors Delta"
@@ -292,14 +322,7 @@ export function SalesDashboard(props: { profile: UserProfile }) {
         <div className="sales-chart-header">Monthly Reports & Analysis</div>
         <div className="sales-chart-body">
           {comparisonItems.map((item) => {
-            const goalWidth =
-              maxComparisonValue > 0
-                ? (item.goal / maxComparisonValue) * 100
-                : 0;
-            const actualWidth =
-              maxComparisonValue > 0
-                ? (item.actual / maxComparisonValue) * 100
-                : 0;
+            const progressPercentage = item.goal > 0 ? Math.min((item.actual / item.goal) * 100, 100) : 0;
 
             return (
               <div key={item.id} className="sales-chart-row">
@@ -314,11 +337,11 @@ export function SalesDashboard(props: { profile: UserProfile }) {
                   <div className="sales-chart-bar-bg">
                     <div
                       className="sales-chart-bar-fill"
-                      style={{ width: `${goalWidth}%` }}
+                      style={{ width: `${progressPercentage}%` }}
                     />
                     <div
                       className="sales-chart-runner"
-                      style={{ left: `${actualWidth}%` }}
+                      style={{ left: `${progressPercentage}%` }}
                     />
                   </div>
                   <div className="sales-chart-side sales-chart-side-actual">
