@@ -51,6 +51,9 @@ export function CourseManagement(props: CourseEditorProps) {
   const [dragOverPosition, setDragOverPosition] = useState<'above' | 'below' | null>(null);
   const [draggedFolderId, setDraggedFolderId] = useState<string | null>(null);
   const [editingLessonId, setEditingLessonId] = useState<string | null>(null);
+  const [openResourceMenuId, setOpenResourceMenuId] = useState<string | null>(null);
+  const [editingResourceIndex, setEditingResourceIndex] = useState<number | null>(null);
+  const [editingResourceType, setEditingResourceType] = useState<'link' | 'file' | null>(null);
 
   // Add drag and drop styles
   const dragStyles = `
@@ -220,6 +223,29 @@ export function CourseManagement(props: CourseEditorProps) {
       setHasChanges(false);
     }
     setViewMode("grid");
+  }
+
+  function getResourceIcon(url: string) {
+    const lower = url.toLowerCase();
+    if (lower.includes('.mp4') || lower.includes('.mov') || lower.includes('.avi') || lower.includes('.webm') || lower.includes('youtube.com') || lower.includes('youtu.be') || lower.includes('vimeo.com')) {
+      return '🎥';
+    }
+    if (lower.includes('.jpg') || lower.includes('.jpeg') || lower.includes('.png') || lower.includes('.gif') || lower.includes('.svg') || lower.includes('.webp')) {
+      return '🖼️';
+    }
+    if (lower.includes('.pdf')) {
+      return '📄';
+    }
+    if (lower.includes('.doc') || lower.includes('.docx') || lower.includes('.txt')) {
+      return '📝';
+    }
+    if (lower.includes('.xls') || lower.includes('.xlsx') || lower.includes('.csv')) {
+      return '📊';
+    }
+    if (lower.includes('.zip') || lower.includes('.rar') || lower.includes('.7z')) {
+      return '📦';
+    }
+    return '🔗';
   }
 
   function createCourse() {
@@ -682,41 +708,28 @@ export function CourseManagement(props: CourseEditorProps) {
             return;
           }
           
-          const linkHtml = `<a href="${href}" target="_blank" rel="noopener noreferrer" style="color: #3b82f6; text-decoration: underline; cursor: pointer;">${label}</a>`;
-          
-          if (bodyInputRef.current) {
-            bodyInputRef.current.focus();
-            const selection = window.getSelection();
-            if (selection && selection.rangeCount > 0) {
-              const range = selection.getRangeAt(0);
-              range.deleteContents();
-              const tempDiv = document.createElement("div");
-              tempDiv.innerHTML = linkHtml;
-              const linkNode = tempDiv.firstChild!;
-              range.insertNode(linkNode);
-              
-              const newRange = document.createRange();
-              newRange.setStartAfter(linkNode);
-              newRange.collapse(true);
-              selection.removeAllRanges();
-              selection.addRange(newRange);
-            } else {
-              bodyInputRef.current.innerHTML += linkHtml;
-            }
-            
-            setTimeout(() => {
-              if (bodyInputRef.current) {
-                const nextBody = bodyInputRef.current.innerHTML;
-                // ALSO save to resourceLinks array for marketing materials sync
-                const existingLinks = pageForLink.resourceLinks || [];
-                const nextPages = pages.map((page) => 
-                  page.id === pageForLink.id 
-                    ? { ...page, body: nextBody, resourceLinks: [...existingLinks, { label, href }] } 
-                    : page
-                );
-                updateCourse({ ...(course as Course), pages: nextPages });
-              }
-            }, 0);
+          // Check if we're editing an existing resource
+          if (editingResourceIndex !== null && editingResourceType === 'link') {
+            // Update existing resource
+            const links = [...(pageForLink.resourceLinks || [])];
+            links[editingResourceIndex] = { label, href };
+            const nextPages = pages.map((page) => 
+              page.id === pageForLink.id 
+                ? { ...page, resourceLinks: links } 
+                : page
+            );
+            updateCourse({ ...(course as Course), pages: nextPages });
+            setEditingResourceIndex(null);
+            setEditingResourceType(null);
+          } else {
+            // Add new resource to resourceLinks array only
+            const existingLinks = pageForLink.resourceLinks || [];
+            const nextPages = pages.map((page) => 
+              page.id === pageForLink.id 
+                ? { ...page, resourceLinks: [...existingLinks, { label, href }] } 
+                : page
+            );
+            updateCourse({ ...(course as Course), pages: nextPages });
           }
           
           setIsLinkModalOpen(false);
@@ -768,42 +781,28 @@ export function CourseManagement(props: CourseEditorProps) {
             return;
           }
           
-          // Create a downloadable link in the page body
-          const linkHtml = `<a href="${href}" download target="_blank" rel="noopener noreferrer" style="display: inline-flex; align-items: center; gap: 8px; color: #3b82f6; text-decoration: underline; cursor: pointer;">📎 ${label}</a>`;
-          
-          if (bodyInputRef.current) {
-            bodyInputRef.current.focus();
-            const selection = window.getSelection();
-            if (selection && selection.rangeCount > 0) {
-              const range = selection.getRangeAt(0);
-              range.deleteContents();
-              const tempDiv = document.createElement("div");
-              tempDiv.innerHTML = linkHtml;
-              const linkNode = tempDiv.firstChild!;
-              range.insertNode(linkNode);
-              
-              const newRange = document.createRange();
-              newRange.setStartAfter(linkNode);
-              newRange.collapse(true);
-              selection.removeAllRanges();
-              selection.addRange(newRange);
-            } else {
-              bodyInputRef.current.innerHTML += linkHtml;
-            }
-            
-            setTimeout(() => {
-              if (bodyInputRef.current) {
-                const nextBody = bodyInputRef.current.innerHTML;
-                // Save to fileUrls array
-                const existingFiles = pageForFile.fileUrls || [];
-                const nextPages = pages.map((page) => 
-                  page.id === pageForFile.id 
-                    ? { ...page, body: nextBody, fileUrls: [...existingFiles, href] } 
-                    : page
-                );
-                updateCourse({ ...(course as Course), pages: nextPages });
-              }
-            }, 0);
+          // Check if we're editing an existing resource file
+          if (editingResourceIndex !== null && editingResourceType === 'file') {
+            // Update existing file
+            const files = [...(pageForFile.fileUrls || [])];
+            files[editingResourceIndex] = { label, href };
+            const nextPages = pages.map((page) => 
+              page.id === pageForFile.id 
+                ? { ...page, fileUrls: files } 
+                : page
+            );
+            updateCourse({ ...(course as Course), pages: nextPages });
+            setEditingResourceIndex(null);
+            setEditingResourceType(null);
+          } else {
+            // Add to fileUrls array only
+            const existingFiles = pageForFile.fileUrls || [];
+            const nextPages = pages.map((page) => 
+              page.id === pageForFile.id 
+                ? { ...page, fileUrls: [...existingFiles, { label, href }] } 
+                : page
+            );
+            updateCourse({ ...(course as Course), pages: nextPages });
           }
           
           setIsResourceFileModalOpen(false);
@@ -1967,104 +1966,190 @@ export function CourseManagement(props: CourseEditorProps) {
                                       />
                                     </div>
                                     
-                                    {/* Display existing resources */}
-                                    {(activePage.resourceLinks && activePage.resourceLinks.length > 0) || 
-                                     (activePage.fileUrls && activePage.fileUrls.length > 0) || 
-                                     activePage.pinnedCommunityPostUrl ? (
-                                      <div style={{ marginTop: 24, padding: 16, backgroundColor: "#f9fafb", borderRadius: 8 }}>
-                                        <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 12, color: "#374151" }}>
-                                          📎 Attached Resources
+                                    {(activePage.resourceLinks && activePage.resourceLinks.length > 0) || (activePage.fileUrls && activePage.fileUrls.length > 0) ? (
+                                      <div style={{ marginTop: 24 }}>
+                                        <h3 style={{ fontSize: 16, fontWeight: 600, marginBottom: 12 }}>Resources</h3>
+                                        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                                          {activePage.resourceLinks?.map((link, idx) => (
+                                            <div
+                                              key={idx}
+                                              style={{
+                                                display: "flex",
+                                                alignItems: "center",
+                                                gap: 8,
+                                                padding: "8px 12px",
+                                                backgroundColor: "#f9fafb",
+                                                borderRadius: 6,
+                                                position: "relative"
+                                              }}
+                                            >
+                                              <div style={{ width: 24, height: 24, backgroundColor: "#ef4444", borderRadius: 4, display: "flex", alignItems: "center", justifyContent: "center", color: "white", fontSize: 16 }}>{getResourceIcon(link.href)}</div>
+                                              <a href={link.href} target="_blank" rel="noopener noreferrer" style={{ flex: 1, textDecoration: "none", color: "#111827", fontSize: 14 }}>{link.label}</a>
+                                              {editingLessonId === activePage.id && (
+                                                <button
+                                                  type="button"
+                                                  style={{ background: "none", border: "none", cursor: "pointer", padding: 4, fontSize: 16 }}
+                                                  onClick={() => setOpenResourceMenuId(openResourceMenuId === `link-${idx}` ? null : `link-${idx}`)}
+                                                >
+                                                  ⋯
+                                                </button>
+                                              )}
+                                              {openResourceMenuId === `link-${idx}` && (
+                                                <div className="course-page-menu" style={{ right: 0, top: "100%", marginTop: 4 }}>
+                                                  <button
+                                                    type="button"
+                                                    className="course-page-menu-item"
+                                                    onClick={() => {
+                                                      setEditingResourceIndex(idx);
+                                                      setEditingResourceType('link');
+                                                      setLinkLabelDraft(link.label);
+                                                      setLinkUrlDraft(link.href);
+                                                      setIsLinkModalOpen(true);
+                                                      setOpenResourceMenuId(null);
+                                                    }}
+                                                  >
+                                                    Edit
+                                                  </button>
+                                                  <button
+                                                    type="button"
+                                                    className="course-page-menu-item"
+                                                    disabled={idx === 0}
+                                                    onClick={() => {
+                                                      if (idx > 0) {
+                                                        const links = [...(activePage.resourceLinks || [])];
+                                                        [links[idx - 1], links[idx]] = [links[idx], links[idx - 1]];
+                                                        const nextPages = pages.map((page) => page.id === activePage.id ? { ...page, resourceLinks: links } : page);
+                                                        updateCourse({ ...selectedCourse, pages: nextPages });
+                                                      }
+                                                      setOpenResourceMenuId(null);
+                                                    }}
+                                                  >
+                                                    Move up
+                                                  </button>
+                                                  <button
+                                                    type="button"
+                                                    className="course-page-menu-item"
+                                                    disabled={idx === (activePage.resourceLinks?.length || 0) - 1}
+                                                    onClick={() => {
+                                                      const links = [...(activePage.resourceLinks || [])];
+                                                      if (idx < links.length - 1) {
+                                                        [links[idx], links[idx + 1]] = [links[idx + 1], links[idx]];
+                                                        const nextPages = pages.map((page) => page.id === activePage.id ? { ...page, resourceLinks: links } : page);
+                                                        updateCourse({ ...selectedCourse, pages: nextPages });
+                                                      }
+                                                      setOpenResourceMenuId(null);
+                                                    }}
+                                                  >
+                                                    Move down
+                                                  </button>
+                                                  <button
+                                                    type="button"
+                                                    className="course-page-menu-item course-page-menu-item-danger"
+                                                    onClick={() => {
+                                                      const links = (activePage.resourceLinks || []).filter((_, i) => i !== idx);
+                                                      const nextPages = pages.map((page) => page.id === activePage.id ? { ...page, resourceLinks: links } : page);
+                                                      updateCourse({ ...selectedCourse, pages: nextPages });
+                                                      setOpenResourceMenuId(null);
+                                                    }}
+                                                  >
+                                                    Delete
+                                                  </button>
+                                                </div>
+                                              )}
+                                            </div>
+                                          ))}
+                                          {activePage.fileUrls?.map((fileUrl, idx) => {
+                                            const fileData = typeof fileUrl === 'string' ? { label: fileUrl.split('/').pop() || '', href: fileUrl } : fileUrl;
+                                            return (
+                                            <div
+                                              key={idx}
+                                              style={{
+                                                display: "flex",
+                                                alignItems: "center",
+                                                gap: 8,
+                                                padding: "8px 12px",
+                                                backgroundColor: "#f9fafb",
+                                                borderRadius: 6,
+                                                position: "relative"
+                                              }}
+                                            >
+                                              <div style={{ width: 24, height: 24, backgroundColor: "#ef4444", borderRadius: 4, display: "flex", alignItems: "center", justifyContent: "center", color: "white", fontSize: 16 }}>{getResourceIcon(fileData.href)}</div>
+                                              <a href={fileData.href} target="_blank" rel="noopener noreferrer" download style={{ flex: 1, textDecoration: "none", color: "#111827", fontSize: 14 }}>{fileData.label}</a>
+                                              {editingLessonId === activePage.id && (
+                                                <button
+                                                  type="button"
+                                                  style={{ background: "none", border: "none", cursor: "pointer", padding: 4, fontSize: 16 }}
+                                                  onClick={() => setOpenResourceMenuId(openResourceMenuId === `file-${idx}` ? null : `file-${idx}`)}
+                                                >
+                                                  ⋯
+                                                </button>
+                                              )}
+                                              {openResourceMenuId === `file-${idx}` && (
+                                                <div className="course-page-menu" style={{ right: 0, top: "100%", marginTop: 4 }}>
+                                                  <button
+                                                    type="button"
+                                                    className="course-page-menu-item"
+                                                    onClick={() => {
+                                                      setEditingResourceIndex(idx);
+                                                      setEditingResourceType('file');
+                                                      setResourceFileLabelDraft(fileData.label);
+                                                      setResourceFileUrlDraft(fileData.href);
+                                                      setIsResourceFileModalOpen(true);
+                                                      setOpenResourceMenuId(null);
+                                                    }}
+                                                  >
+                                                    Edit
+                                                  </button>
+                                                  <button
+                                                    type="button"
+                                                    className="course-page-menu-item"
+                                                    disabled={idx === 0}
+                                                    onClick={() => {
+                                                      if (idx > 0) {
+                                                        const files = [...(activePage.fileUrls || [])];
+                                                        [files[idx - 1], files[idx]] = [files[idx], files[idx - 1]];
+                                                        const nextPages = pages.map((page) => page.id === activePage.id ? { ...page, fileUrls: files } : page);
+                                                        updateCourse({ ...selectedCourse, pages: nextPages });
+                                                      }
+                                                      setOpenResourceMenuId(null);
+                                                    }}
+                                                  >
+                                                    Move up
+                                                  </button>
+                                                  <button
+                                                    type="button"
+                                                    className="course-page-menu-item"
+                                                    disabled={idx === (activePage.fileUrls?.length || 0) - 1}
+                                                    onClick={() => {
+                                                      const files = [...(activePage.fileUrls || [])];
+                                                      if (idx < files.length - 1) {
+                                                        [files[idx], files[idx + 1]] = [files[idx + 1], files[idx]];
+                                                        const nextPages = pages.map((page) => page.id === activePage.id ? { ...page, fileUrls: files } : page);
+                                                        updateCourse({ ...selectedCourse, pages: nextPages });
+                                                      }
+                                                      setOpenResourceMenuId(null);
+                                                    }}
+                                                  >
+                                                    Move down
+                                                  </button>
+                                                  <button
+                                                    type="button"
+                                                    className="course-page-menu-item course-page-menu-item-danger"
+                                                    onClick={() => {
+                                                      const files = (activePage.fileUrls || []).filter((_, i) => i !== idx);
+                                                      const nextPages = pages.map((page) => page.id === activePage.id ? { ...page, fileUrls: files } : page);
+                                                      updateCourse({ ...selectedCourse, pages: nextPages });
+                                                      setOpenResourceMenuId(null);
+                                                    }}
+                                                  >
+                                                    Delete
+                                                  </button>
+                                                </div>
+                                              )}
+                                            </div>
+                                            );
+                                          })}
                                         </div>
-                                        
-                                        {/* Resource Links */}
-                                        {activePage.resourceLinks && activePage.resourceLinks.length > 0 && (
-                                          <div style={{ marginBottom: 16 }}>
-                                            <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 8, color: "#6b7280" }}>
-                                              Resource Links
-                                            </div>
-                                            {activePage.resourceLinks.map((link, idx) => (
-                                              <div key={idx} style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8, padding: 8, backgroundColor: "white", borderRadius: 4 }}>
-                                                <span style={{ fontSize: 16 }}>🔗</span>
-                                                <a href={link.href} target="_blank" rel="noopener noreferrer" style={{ flex: 1, color: "#3b82f6", textDecoration: "none" }}>
-                                                  {link.label}
-                                                </a>
-                                                <button
-                                                  type="button"
-                                                  className="btn-ghost btn-danger btn-small"
-                                                  onClick={() => {
-                                                    const nextLinks = activePage.resourceLinks?.filter((_, i) => i !== idx) || [];
-                                                    const nextPages = pages.map((page) => 
-                                                      page.id === activePage.id ? { ...page, resourceLinks: nextLinks } : page
-                                                    );
-                                                    updateCourse({ ...selectedCourse, pages: nextPages });
-                                                  }}
-                                                >
-                                                  Remove
-                                                </button>
-                                              </div>
-                                            ))}
-                                          </div>
-                                        )}
-                                        
-                                        {/* Resource Files */}
-                                        {activePage.fileUrls && activePage.fileUrls.length > 0 && (
-                                          <div style={{ marginBottom: 16 }}>
-                                            <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 8, color: "#6b7280" }}>
-                                              Resource Files
-                                            </div>
-                                            {activePage.fileUrls.map((fileUrl, idx) => (
-                                              <div key={idx} style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8, padding: 8, backgroundColor: "white", borderRadius: 4 }}>
-                                                <span style={{ fontSize: 16 }}>📎</span>
-                                                <a href={fileUrl} target="_blank" rel="noopener noreferrer" style={{ flex: 1, color: "#3b82f6", textDecoration: "none" }}>
-                                                  {fileUrl.split('/').pop() || fileUrl}
-                                                </a>
-                                                <a href={fileUrl} download className="btn-secondary btn-small" style={{ textDecoration: "none" }}>
-                                                  Download
-                                                </a>
-                                                <button
-                                                  type="button"
-                                                  className="btn-ghost btn-danger btn-small"
-                                                  onClick={() => {
-                                                    const nextFiles = activePage.fileUrls?.filter((_, i) => i !== idx) || [];
-                                                    const nextPages = pages.map((page) => 
-                                                      page.id === activePage.id ? { ...page, fileUrls: nextFiles } : page
-                                                    );
-                                                    updateCourse({ ...selectedCourse, pages: nextPages });
-                                                  }}
-                                                >
-                                                  Remove
-                                                </button>
-                                              </div>
-                                            ))}
-                                          </div>
-                                        )}
-                                        
-                                        {/* Pinned Community Post */}
-                                        {activePage.pinnedCommunityPostUrl && (
-                                          <div>
-                                            <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 8, color: "#6b7280" }}>
-                                              Pinned Community Post
-                                            </div>
-                                            <div style={{ display: "flex", alignItems: "center", gap: 8, padding: 8, backgroundColor: "white", borderRadius: 4 }}>
-                                              <span style={{ fontSize: 16 }}>📌</span>
-                                              <a href={activePage.pinnedCommunityPostUrl} target="_blank" rel="noopener noreferrer" style={{ flex: 1, color: "#3b82f6", textDecoration: "none" }}>
-                                                {activePage.pinnedCommunityPostUrl}
-                                              </a>
-                                              <button
-                                                type="button"
-                                                className="btn-ghost btn-danger btn-small"
-                                                onClick={() => {
-                                                  const nextPages = pages.map((page) => 
-                                                    page.id === activePage.id ? { ...page, pinnedCommunityPostUrl: "" } : page
-                                                  );
-                                                  updateCourse({ ...selectedCourse, pages: nextPages });
-                                                }}
-                                              >
-                                                Remove
-                                              </button>
-                                            </div>
-                                          </div>
-                                        )}
                                       </div>
                                     ) : null}
                                     

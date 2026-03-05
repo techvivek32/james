@@ -45,7 +45,7 @@ const courseFolderSchema = new Schema(
   { _id: false }
 );
 
-const courseSchema = new Schema(
+  const courseSchema = new Schema(
   {
     id: { type: String, required: true, unique: true },
     title: { type: String, required: true },
