@@ -316,6 +316,10 @@ body {
   padding: 16px 18px;
   box-shadow: 0 10px 20px rgba(15, 23, 42, 0.04);
   border: 1px solid #e2e8f0;
+  height: 100px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
 }
 
 .card-row {

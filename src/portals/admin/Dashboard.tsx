@@ -23,6 +23,7 @@ export function AdminDashboard(props: { users: UserProfile[]; courses: Course[] 
   const [socialMetrics, setSocialMetrics] = useState<SocialMetric[]>([]);
   const [courseProgress, setCourseProgress] = useState<any[]>([]);
   const [botStats, setBotStats] = useState<any>({ totalBots: 0, totalSessions: 0, totalMessages: 0 });
+  const [businessPlans, setBusinessPlans] = useState<any[]>([]);
   const [draggedItem, setDraggedItem] = useState<string | null>(null);
   const [sections, setSections] = useState<DashboardSection[]>([]);
   const users = props.users;
@@ -32,11 +33,12 @@ export function AdminDashboard(props: { users: UserProfile[]; courses: Course[] 
     loadSocialMetrics();
     loadCourseProgress();
     loadBotStats();
+    loadBusinessPlans();
   }, []);
 
   useEffect(() => {
     initializeSections();
-  }, [socialMetrics, courseProgress, botStats, users, courses, showSocialDetails]);
+  }, [socialMetrics, courseProgress, botStats, businessPlans, users, courses, showSocialDetails]);
 
   useEffect(() => {
     // Save section order to localStorage whenever sections change
@@ -70,6 +72,18 @@ export function AdminDashboard(props: { users: UserProfile[]; courses: Course[] 
     }
   }
 
+  async function loadBusinessPlans() {
+    try {
+      const res = await fetch("/api/business-plans");
+      if (res.ok) {
+        const data = await res.json();
+        setBusinessPlans(data);
+      }
+    } catch (error) {
+      console.error("Failed to load business plans:", error);
+    }
+  }
+
   async function loadBotStats() {
     try {
       const res = await fetch("/api/bot-stats");
@@ -85,14 +99,14 @@ export function AdminDashboard(props: { users: UserProfile[]; courses: Course[] 
   const totalSalesReps = users.filter((user) => user.role === "sales").length;
   const totalManagers = users.filter((user) => user.role === "manager").length;
 
-  const businessPlans = users
-    .filter((user) => !!user.businessPlan)
-    .map((user) => user.businessPlan!);
-
-  const totalRevenue = businessPlans.reduce(
-    (sum, plan) => sum + (plan.revenueGoal || 0),
-    0
-  );
+  // Business Plan calculations from separate collection
+  const totalIncomeGoal = businessPlans.reduce((sum, plan) => sum + (plan.revenueGoal || 0), 0);
+  const totalMonthlyDeals = businessPlans.reduce((sum, plan) => sum + (plan.dealsPerMonth || 0), 0);
+  const totalYearlyDeals = businessPlans.reduce((sum, plan) => sum + (plan.dealsPerYear || 0), 0);
+  const totalInspections = businessPlans.reduce((sum, plan) => sum + (plan.inspectionsNeeded || 0), 0);
+  const totalKnocks = businessPlans.reduce((sum, plan) => sum + (plan.doorsPerYear || 0), 0);
+  const totalConversations = Math.round(totalKnocks * 0.15); // Assuming 15% conversation rate
+  const totalClaims = Math.round(totalYearlyDeals * 0.8); // Assuming 80% claims rate
   
   const plansWithDays = businessPlans.filter(plan => plan.daysPerWeek);
   const avgDays = plansWithDays.length > 0 
@@ -146,10 +160,14 @@ export function AdminDashboard(props: { users: UserProfile[]; courses: Course[] 
         id: "business-plan",
         title: "Business Plan Roll-up",
         component: (
-          <div className="grid grid-4">
-            <DashboardCard title="Total Business Plans" value={businessPlans.length.toString()} />
-            <DashboardCard title="Total Revenue" value={`$${totalRevenue.toLocaleString()}`} />
-            <DashboardCard title="Avg Days to Close" value={avgDays.toString()} />
+          <div style={{ display: "flex", gap: 12, width: "100%" }}>
+            <div style={{ flex: 1 }}><DashboardCard title="Total Income Goal" value={`$${totalIncomeGoal.toLocaleString()}`} /></div>
+            <div style={{ flex: 1 }}><DashboardCard title="Monthly Forecast Deals" value={totalMonthlyDeals.toLocaleString()} /></div>
+            <div style={{ flex: 1 }}><DashboardCard title="Yearly Deals" value={totalYearlyDeals.toLocaleString()} /></div>
+            <div style={{ flex: 1 }}><DashboardCard title="Total Claims" value={totalClaims.toLocaleString()} /></div>
+            <div style={{ flex: 1 }}><DashboardCard title="Inspections" value={totalInspections.toLocaleString()} /></div>
+            <div style={{ flex: 1 }}><DashboardCard title="Conversations" value={totalConversations.toLocaleString()} /></div>
+            <div style={{ flex: 1 }}><DashboardCard title="Knocks" value={totalKnocks.toLocaleString()} /></div>
           </div>
         )
       },
