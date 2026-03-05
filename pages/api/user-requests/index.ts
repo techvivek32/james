@@ -2,6 +2,7 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import bcrypt from "bcryptjs";
 import { connectMongo } from "../../../src/lib/mongodb";
 import { UserRequestModel } from "../../../src/lib/models/UserRequest";
+import { sendEmail, generateRegistrationConfirmationEmail } from "../../../src/lib/email";
 
 export default async function handler(
   req: NextApiRequest,
@@ -60,6 +61,29 @@ export default async function handler(
         role,
         status: "pending"
       });
+
+      // Send confirmation email
+      try {
+        console.log("Attempting to send confirmation email to:", email.trim().toLowerCase());
+        
+        const emailContent = generateRegistrationConfirmationEmail(
+          name.trim(),
+          email.trim().toLowerCase(),
+          role
+        );
+        
+        const emailResult = await sendEmail({
+          to: email.trim().toLowerCase(),
+          subject: "Registration Request Received - Miller Storm OS",
+          html: emailContent.html,
+          text: emailContent.text
+        });
+        
+        console.log("Email sent successfully:", emailResult.messageId);
+      } catch (emailError: any) {
+        console.error("Failed to send confirmation email:", emailError.message || emailError);
+        // Don't fail the request if email fails
+      }
 
       res.status(201).json({ 
         message: "Registration request submitted successfully",
