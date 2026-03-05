@@ -238,3 +238,190 @@ You will receive another email once your account has been approved and is ready 
 
   return { html, text };
 }
+
+export function generateApprovalEmail(name: string, email: string, role: string, loginUrl: string) {
+  const html = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <title>Account Approved</title>
+    </head>
+    <body style="margin: 0; padding: 0; font-family: Arial, sans-serif; background-color: #f3f4f6;">
+      <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #f3f4f6; padding: 40px 0;">
+        <tr>
+          <td align="center">
+            <table width="600" cellpadding="0" cellspacing="0" style="background-color: #ffffff; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+              <tr>
+                <td style="padding: 40px 40px 20px 40px; text-align: center;">
+                  <h1 style="margin: 0; color: #111827; font-size: 24px; font-weight: 600;">
+                    Miller Storm Operating System
+                  </h1>
+                </td>
+              </tr>
+              
+              <tr>
+                <td style="padding: 20px 40px;">
+                  <div style="text-align: center; margin-bottom: 24px;">
+                    <div style="display: inline-block; padding: 12px 24px; background-color: #dcfce7; color: #166534; border-radius: 8px; font-size: 18px; font-weight: 600;">
+                      ✓ Account Approved!
+                    </div>
+                  </div>
+                  
+                  <p style="margin: 0 0 16px 0; color: #374151; font-size: 16px; line-height: 1.5;">
+                    Hi ${name},
+                  </p>
+                  <p style="margin: 0 0 16px 0; color: #374151; font-size: 16px; line-height: 1.5;">
+                    Great news! Your registration request has been <strong style="color: #16a34a;">approved</strong>.
+                  </p>
+                  
+                  <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #f9fafb; border-radius: 6px; margin: 24px 0;">
+                    <tr>
+                      <td style="padding: 20px;">
+                        <p style="margin: 0 0 12px 0; color: #6b7280; font-size: 14px; font-weight: 600;">Your Login Credentials:</p>
+                        <p style="margin: 0 0 4px 0; color: #374151; font-size: 14px;"><strong>Email:</strong> ${email}</p>
+                        <p style="margin: 0 0 4px 0; color: #374151; font-size: 14px;"><strong>Role:</strong> ${role.charAt(0).toUpperCase() + role.slice(1)}</p>
+                        <p style="margin: 0; color: #374151; font-size: 14px;"><strong>Password:</strong> The password you set during registration</p>
+                      </td>
+                    </tr>
+                  </table>
+                  
+                  <table width="100%" cellpadding="0" cellspacing="0">
+                    <tr>
+                      <td align="center" style="padding: 0 0 24px 0;">
+                        <a href="${loginUrl}" style="display: inline-block; padding: 14px 32px; background-color: #2563eb; color: #ffffff; text-decoration: none; border-radius: 6px; font-size: 16px; font-weight: 500;">
+                          Login Now
+                        </a>
+                      </td>
+                    </tr>
+                  </table>
+                  
+                  <p style="margin: 0 0 16px 0; color: #6b7280; font-size: 14px; line-height: 1.5;">
+                    Or copy and paste this link into your browser:
+                  </p>
+                  <p style="margin: 0 0 24px 0; color: #2563eb; font-size: 14px; word-break: break-all;">
+                    ${loginUrl}
+                  </p>
+                  
+                  <p style="margin: 0; color: #374151; font-size: 14px; line-height: 1.5;">
+                    Welcome to Miller Storm OS! If you have any questions, please contact your administrator.
+                  </p>
+                </td>
+              </tr>
+              
+              <tr>
+                <td style="padding: 20px 40px 40px 40px; border-top: 1px solid #e5e7eb;">
+                  <p style="margin: 0; color: #9ca3af; font-size: 12px; text-align: center;">
+                    © 2026-2027 Miller Storm. All Rights Reserved.
+                  </p>
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+      </table>
+    </body>
+    </html>
+  `;
+
+  const text = `
+Hi ${name},
+
+Great news! Your registration request has been approved.
+
+Your Login Credentials:
+- Email: ${email}
+- Role: ${role.charAt(0).toUpperCase() + role.slice(1)}
+- Password: The password you set during registration
+
+Login here: ${loginUrl}
+
+Welcome to Miller Storm OS! If you have any questions, please contact your administrator.
+
+© 2026-2027 Miller Storm. All Rights Reserved.
+  `;
+
+  return { html, text };
+}
+
+export function generateRejectionEmail(name: string, email: string, role: string, reason: string) {
+  const html = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <title>Registration Request Update</title>
+    </head>
+    <body style="margin: 0; padding: 0; font-family: Arial, sans-serif; background-color: #f3f4f6;">
+      <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #f3f4f6; padding: 40px 0;">
+        <tr>
+          <td align="center">
+            <table width="600" cellpadding="0" cellspacing="0" style="background-color: #ffffff; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+              <tr>
+                <td style="padding: 40px 40px 20px 40px; text-align: center;">
+                  <h1 style="margin: 0; color: #111827; font-size: 24px; font-weight: 600;">
+                    Miller Storm Operating System
+                  </h1>
+                </td>
+              </tr>
+              
+              <tr>
+                <td style="padding: 20px 40px;">
+                  <p style="margin: 0 0 16px 0; color: #374151; font-size: 16px; line-height: 1.5;">
+                    Hi ${name},
+                  </p>
+                  <p style="margin: 0 0 16px 0; color: #374151; font-size: 16px; line-height: 1.5;">
+                    Thank you for your interest in the Miller Storm Operating System.
+                  </p>
+                  <p style="margin: 0 0 24px 0; color: #374151; font-size: 16px; line-height: 1.5;">
+                    After careful review, we are unable to approve your registration request at this time.
+                  </p>
+                  
+                  <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #fef2f2; border-radius: 6px; margin: 24px 0;">
+                    <tr>
+                      <td style="padding: 20px;">
+                        <p style="margin: 0 0 8px 0; color: #991b1b; font-size: 14px; font-weight: 600;">Reason:</p>
+                        <p style="margin: 0; color: #7f1d1d; font-size: 14px; line-height: 1.5;">${reason}</p>
+                      </td>
+                    </tr>
+                  </table>
+                  
+                  <p style="margin: 0; color: #6b7280; font-size: 14px; line-height: 1.5;">
+                    If you have any questions or would like to discuss this decision, please contact your administrator.
+                  </p>
+                </td>
+              </tr>
+              
+              <tr>
+                <td style="padding: 20px 40px 40px 40px; border-top: 1px solid #e5e7eb;">
+                  <p style="margin: 0; color: #9ca3af; font-size: 12px; text-align: center;">
+                    © 2026-2027 Miller Storm. All Rights Reserved.
+                  </p>
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+      </table>
+    </body>
+    </html>
+  `;
+
+  const text = `
+Hi ${name},
+
+Thank you for your interest in the Miller Storm Operating System.
+
+After careful review, we are unable to approve your registration request at this time.
+
+Reason: ${reason}
+
+If you have any questions or would like to discuss this decision, please contact your administrator.
+
+© 2026-2027 Miller Storm. All Rights Reserved.
+  `;
+
+  return { html, text };
+}

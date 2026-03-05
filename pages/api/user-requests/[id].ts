@@ -2,6 +2,7 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { connectMongo } from "../../../src/lib/mongodb";
 import { UserRequestModel } from "../../../src/lib/models/UserRequest";
 import { UserModel } from "../../../src/lib/models/User";
+import { sendEmail, generateApprovalEmail, generateRejectionEmail } from "../../../src/lib/email";
 
 export default async function handler(
   req: NextApiRequest,
@@ -102,6 +103,28 @@ export default async function handler(
         userRequest.reviewedBy = reviewedBy;
         await userRequest.save();
 
+        // Send approval email
+        try {
+          const loginUrl = `http://${process.env.PRIMARY_DOMAIN || 'localhost:6789'}/login`;
+          const emailContent = generateApprovalEmail(
+            userRequest.name,
+            userRequest.email,
+            userRequest.role,
+            loginUrl
+          );
+          
+          await sendEmail({
+            to: userRequest.email,
+            subject: "Account Approved - Miller Storm OS",
+            html: emailContent.html,
+            text: emailContent.text
+          });
+          
+          console.log("Approval email sent to:", userRequest.email);
+        } catch (emailError: any) {
+          console.error("Failed to send approval email:", emailError.message || emailError);
+        }
+
         res.status(200).json({ 
           message: "User approved and created successfully",
           userId: newUser.id,
@@ -114,6 +137,27 @@ export default async function handler(
         userRequest.reviewedAt = new Date();
         userRequest.reviewedBy = reviewedBy;
         await userRequest.save();
+
+        // Send rejection email
+        try {
+          const emailContent = generateRejectionEmail(
+            userRequest.name,
+            userRequest.email,
+            userRequest.role,
+            userRequest.rejectionReason
+          );
+          
+          await sendEmail({
+            to: userRequest.email,
+            subject: "Registration Request Update - Miller Storm OS",
+            html: emailContent.html,
+            text: emailContent.text
+          });
+          
+          console.log("Rejection email sent to:", userRequest.email);
+        } catch (emailError: any) {
+          console.error("Failed to send rejection email:", emailError.message || emailError);
+        }
 
         res.status(200).json({ message: "User request rejected" });
       }
