@@ -2253,18 +2253,6 @@ export function CourseManagement(props: CourseEditorProps) {
                                             >
                                               Add resource file
                                             </button>
-                                            
-                                            <button
-                                              type="button"
-                                              className="course-page-menu-item"
-                                              onClick={() => {
-                                                setPinPostUrlDraft("");
-                                                setIsPinPostModalOpen(true);
-                                                setIsAddMenuOpen(false);
-                                              }}
-                                            >
-                                              Pin community post
-                                            </button>
                                           </div>
                                         )}
                                       </div>
