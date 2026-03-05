@@ -260,7 +260,7 @@ export function ProfilePage(props: {
         </label>
       </div>
       <div className="panel-section">
-        <div className="panel-section-title">Public Web Page Fields</div>
+        <div className="profile-title">Public Web Page Fields</div>
         <div className="toggle-grid">
           <label className="toggle-item">
             <input

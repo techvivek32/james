@@ -214,7 +214,7 @@ export function UserManagement(props: UserEditorProps) {
       weaknesses: "",
       phone: "",
       territory: "",
-      publicProfile: { showHeadshot: false, showEmail: false, showPhone: false, showStrengths: false, showWeaknesses: false, showTerritory: false },
+      publicProfile: { showHeadshot: true, showEmail: true, showPhone: true, showStrengths: true, showWeaknesses: true, showTerritory: true },
       featureToggles: allToggles
     };
     const next = [...draftUsers, newUser];
