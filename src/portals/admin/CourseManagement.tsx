@@ -54,6 +54,9 @@ export function CourseManagement(props: CourseEditorProps) {
   const [openResourceMenuId, setOpenResourceMenuId] = useState<string | null>(null);
   const [editingResourceIndex, setEditingResourceIndex] = useState<number | null>(null);
   const [editingResourceType, setEditingResourceType] = useState<'link' | 'file' | null>(null);
+  const [isChangeModuleModalOpen, setIsChangeModuleModalOpen] = useState(false);
+  const [changeModulePageId, setChangeModulePageId] = useState<string | null>(null);
+  const [selectedModuleId, setSelectedModuleId] = useState<string | undefined>(undefined);
 
   // Add drag and drop styles
   const dragStyles = `
@@ -559,6 +562,64 @@ export function CourseManagement(props: CourseEditorProps) {
                 </button>
                 <button type="button" className="btn-primary btn-success" disabled={!newFolderName.trim()} onClick={() => addFolderForCourse(selectedCourse)}>
                   {editingFolderId ? "Save" : "Add"}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+      {isChangeModuleModalOpen && selectedCourse && (
+        <div className="overlay">
+          <div className="dialog">
+            <div className="dialog-title">Change Module</div>
+            <label className="field">
+              <span className="field-label">Select Module</span>
+              <select 
+                className="field-input" 
+                value={selectedModuleId || "none"} 
+                onChange={(e) => setSelectedModuleId(e.target.value === "none" ? undefined : e.target.value)}
+              >
+                <option value="none">No Module (Course Root)</option>
+                {(selectedCourse.folders || []).map((folder) => (
+                  <option key={folder.id} value={folder.id}>
+                    {folder.title}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <div className="dialog-footer">
+              <div />
+              <div className="dialog-actions">
+                <button
+                  type="button"
+                  className="btn-secondary btn-cancel"
+                  onClick={() => {
+                    setIsChangeModuleModalOpen(false);
+                    setChangeModulePageId(null);
+                    setSelectedModuleId(undefined);
+                  }}
+                >
+                  Cancel
+                </button>
+                <button 
+                  type="button" 
+                  className="btn-primary btn-success" 
+                  onClick={() => {
+                    if (changeModulePageId) {
+                      const pages = selectedCourse.pages || [];
+                      const nextPages = pages.map((page) => 
+                        page.id === changeModulePageId 
+                          ? { ...page, folderId: selectedModuleId } 
+                          : page
+                      );
+                      updateCourse({ ...selectedCourse, pages: nextPages });
+                      setIsChangeModuleModalOpen(false);
+                      setChangeModulePageId(null);
+                      setSelectedModuleId(undefined);
+                    }
+                  }}
+                >
+                  Save
                 </button>
               </div>
             </div>
@@ -1424,7 +1485,12 @@ export function CourseManagement(props: CourseEditorProps) {
                                         >
                                           Revert to draft
                                         </button>
-                                        <button type="button" className="course-page-menu-item" onClick={() => { setOpenPageMenuId(null); }}>
+                                        <button type="button" className="course-page-menu-item" onClick={() => { 
+                                          setChangeModulePageId(page.id);
+                                          setSelectedModuleId(page.folderId);
+                                          setIsChangeModuleModalOpen(true);
+                                          setOpenPageMenuId(null); 
+                                        }}>
                                           Change Module  
                                         </button>
                                         <button
@@ -1699,7 +1765,12 @@ export function CourseManagement(props: CourseEditorProps) {
                                               >
                                                 Revert to draft
                                               </button>
-                                              <button type="button" className="course-page-menu-item" onClick={() => { setOpenPageMenuId(null); }}>
+                                              <button type="button" className="course-page-menu-item" onClick={() => { 
+                                                setChangeModulePageId(page.id);
+                                                setSelectedModuleId(page.folderId);
+                                                setIsChangeModuleModalOpen(true);
+                                                setOpenPageMenuId(null); 
+                                              }}>
                                                 Change Module  
                                               </button>
                                               <button
