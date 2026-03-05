@@ -316,6 +316,64 @@ export function ManagerOnlineTrainingPage(props: {
                         overflow: "visible"
                       }}
                     />
+                    
+                    {((activePage.resourceLinks && activePage.resourceLinks.length > 0) || (activePage.fileUrls && activePage.fileUrls.length > 0)) && (
+                      <div style={{ marginTop: 24, padding: "16px", backgroundColor: "#f9fafb", borderRadius: 8 }}>
+                        <h3 style={{ fontSize: 16, fontWeight: 600, marginBottom: 12 }}>Resources</h3>
+                        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                          {activePage.resourceLinks?.map((link, idx) => (
+                            <a
+                              key={idx}
+                              href={link.href}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              style={{
+                                display: "flex",
+                                alignItems: "center",
+                                gap: 8,
+                                padding: "8px 12px",
+                                backgroundColor: "#fff",
+                                borderRadius: 6,
+                                textDecoration: "none",
+                                color: "#111827",
+                                fontSize: 14,
+                                border: "1px solid #e5e7eb"
+                              }}
+                            >
+                              <span style={{ fontSize: 18 }}>🔗</span>
+                              <span>{link.label}</span>
+                            </a>
+                          ))}
+                          {activePage.fileUrls?.map((fileUrl, idx) => {
+                            const file = typeof fileUrl === 'string' ? { label: fileUrl.split('/').pop() || 'File', href: fileUrl } : fileUrl;
+                            return (
+                              <a
+                                key={idx}
+                                href={file.href}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                download
+                                style={{
+                                  display: "flex",
+                                  alignItems: "center",
+                                  gap: 8,
+                                  padding: "8px 12px",
+                                  backgroundColor: "#fff",
+                                  borderRadius: 6,
+                                  textDecoration: "none",
+                                  color: "#111827",
+                                  fontSize: 14,
+                                  border: "1px solid #e5e7eb"
+                                }}
+                              >
+                                <span style={{ fontSize: 18 }}>📎</span>
+                                <span>{file.label}</span>
+                              </a>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )}
                 <div style={{ padding: "16px", borderTop: "1px solid #e5e7eb", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
