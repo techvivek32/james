@@ -9,6 +9,7 @@ const UserManagementPage: NextPage = () => {
   const [users, setUsers] = useState<UserProfile[]>([]);
   const [deletedUsers, setDeletedUsers] = useState<UserProfile[]>([]);
   const [activeTab, setActiveTab] = useState<"users" | "requests">("users");
+  const [pendingCount, setPendingCount] = useState(0);
 
   useEffect(() => {
     async function loadData() {
@@ -20,6 +21,23 @@ const UserManagementPage: NextPage = () => {
       }
     }
     loadData();
+  }, []);
+
+  useEffect(() => {
+    async function loadPendingCount() {
+      try {
+        const res = await fetch("/api/user-requests");
+        if (res.ok) {
+          const requests = await res.json();
+          setPendingCount(requests.filter((r: any) => r.status === "pending").length);
+        }
+      } catch (error) {
+        console.error("Failed to load requests:", error);
+      }
+    }
+    loadPendingCount();
+    const interval = setInterval(loadPendingCount, 30000);
+    return () => clearInterval(interval);
   }, []);
 
   async function handleUsersChange(next: UserProfile[]) {
@@ -64,10 +82,27 @@ const UserManagementPage: NextPage = () => {
               borderBottom: activeTab === "requests" ? "2px solid #2563eb" : "2px solid transparent",
               background: "none",
               border: "none",
-              cursor: "pointer"
+              cursor: "pointer",
+              display: "flex",
+              alignItems: "center",
+              gap: 6
             }}
           >
             User Requests
+            {pendingCount > 0 && (
+              <span style={{
+                backgroundColor: "#dc2626",
+                color: "#ffffff",
+                fontSize: 12,
+                fontWeight: 600,
+                padding: "2px 8px",
+                borderRadius: 12,
+                minWidth: 20,
+                textAlign: "center"
+              }}>
+                {pendingCount}
+              </span>
+            )}
           </button>
         </div>
       </div>
