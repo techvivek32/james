@@ -226,72 +226,66 @@ export function AdminDashboard(props: { users: UserProfile[]; courses: Course[] 
             </div>
           ) : (
             <>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 24 }}>
-                {/* Left Side - Data Table */}
-                <div>
-                  <div className="grid grid-3" style={{ marginBottom: 16 }}>
-                    <DashboardCard title="Total Followers" value={totalFollowers.toLocaleString()} />
-                    <DashboardCard title="Posts (Last 30 Days)" value={totalPosts30d.toLocaleString()} />
-                    <DashboardCard title="Views (Last 30 Days)" value={totalViews30d.toLocaleString()} />
+              <div className="grid grid-3" style={{ marginBottom: 16 }}>
+                <DashboardCard title="Total Followers" value={totalFollowers.toLocaleString()} />
+                <DashboardCard title="Posts (Last 30 Days)" value={totalPosts30d.toLocaleString()} />
+                <DashboardCard title="Views (Last 30 Days)" value={totalViews30d.toLocaleString()} />
+              </div>
+              {showSocialDetails && (
+                <>
+                  <div
+                    style={{
+                      display: "grid",
+                      gridTemplateColumns: "1fr 1fr 1fr 1fr",
+                      gap: 12,
+                      fontSize: 12,
+                      fontWeight: 600,
+                      marginBottom: 8,
+                      padding: "12px 16px",
+                      borderBottom: "1px solid #e5e7eb",
+                      color: "#6b7280",
+                      backgroundColor: "#f9fafb"
+                    }}
+                  >
+                    <div>Platform</div>
+                    <div style={{ textAlign: "center" }}>Followers</div>
+                    <div style={{ textAlign: "center" }}>Posts</div>
+                    <div style={{ textAlign: "center" }}>Views</div>
                   </div>
-                  {showSocialDetails && (
-                    <>
-                      <div
-                        style={{
-                          display: "grid",
-                          gridTemplateColumns: "minmax(0, 180px) repeat(3, minmax(0, 120px))",
-                          columnGap: 12,
-                          rowGap: 8,
-                          fontSize: 12,
-                          fontWeight: 600,
-                          marginBottom: 8,
-                          padding: "4px 0",
-                          borderBottom: "1px solid #e5e7eb",
-                          color: "#6b7280"
-                        }}
-                      >
-                        <div>Platform</div>
-                        <div style={{ textAlign: "right" }}>Followers</div>
-                        <div style={{ textAlign: "right" }}>Posts</div>
-                        <div style={{ textAlign: "right" }}>Views</div>
+                  {socialPlatforms.map((platform, index) => (
+                    <div
+                      key={platform.id}
+                      style={{
+                        display: "grid",
+                        gridTemplateColumns: "1fr 1fr 1fr 1fr",
+                        gap: 12,
+                        alignItems: "center",
+                        padding: "12px 16px",
+                        borderBottom: "1px solid #f1f5f9",
+                        backgroundColor: index % 2 === 0 ? "#ffffff" : "#f9fafb",
+                        fontSize: 14
+                      }}
+                    >
+                      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                        <span style={{ fontSize: 18 }}>
+                          {platform.id === "instagram" && "📷"}
+                          {platform.id === "facebook" && "👥"}
+                          {platform.id === "tiktok" && "🎵"}
+                          {platform.id === "youtube" && "▶️"}
+                        </span>
+                        <span style={{ fontWeight: 500 }}>{platform.name}</span>
                       </div>
-                      {socialPlatforms.map((platform, index) => (
-                        <div
-                          key={platform.id}
-                          style={{
-                            display: "grid",
-                            gridTemplateColumns: "minmax(0, 180px) repeat(3, minmax(0, 120px))",
-                            columnGap: 12,
-                            rowGap: 8,
-                            alignItems: "center",
-                            padding: "8px 0",
-                            borderTop: index === 0 ? "1px solid #e5e7eb" : "1px solid #f1f5f9",
-                            backgroundColor: index % 2 === 0 ? "#ffffff" : "#f9fafb",
-                            fontSize: 13
-                          }}
-                        >
-                          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                            <span style={{ fontSize: 18 }}>
-                              {platform.id === "instagram" && "📷"}
-                              {platform.id === "facebook" && "👥"}
-                              {platform.id === "tiktok" && "🎵"}
-                              {platform.id === "youtube" && "▶️"}
-                            </span>
-                            <span style={{ fontWeight: 500 }}>{platform.name}</span>
-                          </div>
-                          <div style={{ textAlign: "right" }}>{platform.followers.toLocaleString()}</div>
-                          <div style={{ textAlign: "right" }}>{platform.posts30d.toLocaleString()}</div>
-                          <div style={{ textAlign: "right" }}>{platform.views30d.toLocaleString()}</div>
-                        </div>
-                      ))}
-                    </>
-                  )}
-                </div>
-
-                {/* Right Side - Charts */}
-                <div>
-                  <SocialMediaCharts platforms={socialPlatforms} />
-                </div>
+                      <div style={{ textAlign: "center", fontWeight: 500 }}>{platform.followers.toLocaleString()}</div>
+                      <div style={{ textAlign: "center", fontWeight: 500 }}>{platform.posts30d.toLocaleString()}</div>
+                      <div style={{ textAlign: "center", fontWeight: 500 }}>{platform.views30d.toLocaleString()}</div>
+                    </div>
+                  ))}
+                </>
+              )}
+              
+              {/* Charts at bottom */}
+              <div style={{ marginTop: 24 }}>
+                <SocialMediaCharts platforms={socialPlatforms} />
               </div>
             </>
           )}
