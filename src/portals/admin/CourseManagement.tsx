@@ -317,7 +317,7 @@ export function CourseManagement(props: CourseEditorProps) {
       resourceLinks: [],
       fileUrls: [],
       isQuiz: isQuiz || false,
-      quizQuestions: isQuiz ? [{ id: `q-${Date.now()}`, prompt: "", options: ["", "", "", ""], correctIndex: 0 }] : []
+      quizQuestions: isQuiz ? [{ id: `q-${Date.now()}`, prompt: "", options: ["", ""], correctIndex: 0 }] : []
     };
     const nextCourse: Course = {
       ...course,
@@ -1790,19 +1790,44 @@ export function CourseManagement(props: CourseEditorProps) {
                                               </label>
                                               {q.options.map((option, optIdx) => (
                                                 <label key={optIdx} className="field" style={{ marginTop: 12 }}>
-                                                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                                                    <input
-                                                      type="radio"
-                                                      name={`correct-${q.id}`}
-                                                      checked={q.correctIndex === optIdx}
-                                                      onChange={() => {
-                                                        const nextQuestions = [...(activePage.quizQuestions || [])];
-                                                        nextQuestions[qIdx] = { ...q, correctIndex: optIdx };
-                                                        const nextPages = pages.map((page) => (page.id === activePage.id ? { ...page, quizQuestions: nextQuestions } : page));
-                                                        updateCourse({ ...selectedCourse, pages: nextPages });
-                                                      }}
-                                                    />
-                                                    <span className="field-label" style={{ marginBottom: 0 }}>Option {optIdx + 1}</span>
+                                                  <div style={{ display: "flex", alignItems: "center", gap: 8, justifyContent: "space-between" }}>
+                                                    <div style={{ display: "flex", alignItems: "center", gap: 8, flex: 1 }}>
+                                                      <input
+                                                        type="radio"
+                                                        name={`correct-${q.id}`}
+                                                        checked={q.correctIndex === optIdx}
+                                                        onChange={() => {
+                                                          const nextQuestions = [...(activePage.quizQuestions || [])];
+                                                          nextQuestions[qIdx] = { ...q, correctIndex: optIdx };
+                                                          const nextPages = pages.map((page) => (page.id === activePage.id ? { ...page, quizQuestions: nextQuestions } : page));
+                                                          updateCourse({ ...selectedCourse, pages: nextPages });
+                                                        }}
+                                                      />
+                                                      <span className="field-label" style={{ marginBottom: 0 }}>Option {optIdx + 1}</span>
+                                                    </div>
+                                                    {q.options.length > 2 && (
+                                                      <button
+                                                        type="button"
+                                                        className="btn-ghost btn-danger btn-small"
+                                                        style={{ padding: "4px 8px", fontSize: "12px" }}
+                                                        onClick={() => {
+                                                          const nextQuestions = [...(activePage.quizQuestions || [])];
+                                                          const nextOptions = q.options.filter((_, i) => i !== optIdx);
+                                                          // Adjust correctIndex if needed
+                                                          let newCorrectIndex = q.correctIndex;
+                                                          if (q.correctIndex === optIdx) {
+                                                            newCorrectIndex = 0; // Reset to first option if deleted option was correct
+                                                          } else if (q.correctIndex > optIdx) {
+                                                            newCorrectIndex = q.correctIndex - 1; // Shift down if after deleted option
+                                                          }
+                                                          nextQuestions[qIdx] = { ...q, options: nextOptions, correctIndex: newCorrectIndex };
+                                                          const nextPages = pages.map((page) => (page.id === activePage.id ? { ...page, quizQuestions: nextQuestions } : page));
+                                                          updateCourse({ ...selectedCourse, pages: nextPages });
+                                                        }}
+                                                      >
+                                                        Remove
+                                                      </button>
+                                                    )}
                                                   </div>
                                                   <input
                                                     className="field-input"
@@ -1818,13 +1843,27 @@ export function CourseManagement(props: CourseEditorProps) {
                                                   />
                                                 </label>
                                               ))}
+                                              <button
+                                                type="button"
+                                                className="btn-secondary btn-small"
+                                                style={{ marginTop: 12 }}
+                                                onClick={() => {
+                                                  const nextQuestions = [...(activePage.quizQuestions || [])];
+                                                  const nextOptions = [...q.options, ""];
+                                                  nextQuestions[qIdx] = { ...q, options: nextOptions };
+                                                  const nextPages = pages.map((page) => (page.id === activePage.id ? { ...page, quizQuestions: nextQuestions } : page));
+                                                  updateCourse({ ...selectedCourse, pages: nextPages });
+                                                }}
+                                              >
+                                                + Add Option
+                                              </button>
                                             </div>
                                           ))}
                                           <button
                                             type="button"
                                             className="btn-secondary"
                                             onClick={() => {
-                                              const newQuestion = { id: `q-${Date.now()}`, prompt: "", options: ["", "", "", ""], correctIndex: 0 };
+                                              const newQuestion = { id: `q-${Date.now()}`, prompt: "", options: ["", ""], correctIndex: 0 };
                                               const nextQuestions = [...(activePage.quizQuestions || []), newQuestion];
                                               const nextPages = pages.map((page) => (page.id === activePage.id ? { ...page, quizQuestions: nextQuestions } : page));
                                               updateCourse({ ...selectedCourse, pages: nextPages });
