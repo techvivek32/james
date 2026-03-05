@@ -45,6 +45,100 @@ export function CourseManagement(props: CourseEditorProps) {
   const [newCourseData, setNewCourseData] = useState<Course | null>(null);
   const [hasChanges, setHasChanges] = useState(false);
   const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
+  const [draggedPageId, setDraggedPageId] = useState<string | null>(null);
+  const [dragOverFolderId, setDragOverFolderId] = useState<string | null>(null);
+  const [dragOverPageId, setDragOverPageId] = useState<string | null>(null);
+  const [dragOverPosition, setDragOverPosition] = useState<'above' | 'below' | null>(null);
+  const [draggedFolderId, setDraggedFolderId] = useState<string | null>(null);
+
+  // Add drag and drop styles
+  const dragStyles = `
+    <style>
+      .course-pages-sidebar.drag-active .course-folder-group {
+        transition: all 0.2s ease;
+      }
+      .course-folder-group.drag-over {
+        background-color: #e0f2fe !important;
+        border: 2px dashed #0ea5e9 !important;
+        border-radius: 8px;
+      }
+      .course-pages-item.dragging {
+        opacity: 0.5;
+        transform: rotate(2deg);
+      }
+    </style>
+  `;
+
+  // Inject styles
+  if (typeof document !== 'undefined' && !document.getElementById('drag-drop-styles')) {
+    const styleElement = document.createElement('style');
+    styleElement.id = 'drag-drop-styles';
+    styleElement.innerHTML = `
+      .course-pages-sidebar.drag-active .course-folder-group {
+        transition: all 0.2s ease;
+      }
+      .course-folder-group.drag-over {
+        background-color: #e0f2fe !important;
+        border: 2px dashed #0ea5e9 !important;
+        border-radius: 8px;
+      }
+      .course-folder-group.dragging {
+        opacity: 0.5;
+        transform: rotate(1deg);
+      }
+      .course-folder-group.drag-over-above::before {
+        content: '';
+        position: absolute;
+        top: -2px;
+        left: 0;
+        right: 0;
+        height: 4px;
+        background-color: #0ea5e9;
+        border-radius: 2px;
+      }
+      .course-folder-group.drag-over-below::after {
+        content: '';
+        position: absolute;
+        bottom: -2px;
+        left: 0;
+        right: 0;
+        height: 4px;
+        background-color: #0ea5e9;
+        border-radius: 2px;
+      }
+      .course-pages-item.dragging {
+        opacity: 0.5;
+        transform: rotate(2deg);
+      }
+      .course-pages-item.drag-over-above::before {
+        content: '';
+        position: absolute;
+        top: -2px;
+        left: 0;
+        right: 0;
+        height: 4px;
+        background-color: #0ea5e9;
+        border-radius: 2px;
+      }
+      .course-pages-item.drag-over-below::after {
+        content: '';
+        position: absolute;
+        bottom: -2px;
+        left: 0;
+        right: 0;
+        height: 4px;
+        background-color: #0ea5e9;
+        border-radius: 2px;
+      }
+      .course-pages-item {
+        position: relative;
+      }
+      .course-folder-group {
+        position: relative;
+      }
+    `;
+    document.head.appendChild(styleElement);
+  }
 
   const visibleCourses = props.courses;
 
@@ -208,6 +302,70 @@ export function CourseManagement(props: CourseEditorProps) {
     setActivePageId(newPage.id);
     setOpenPageMenuId(null);
     setIsCourseMenuOpen(false);
+  }
+
+  function movePageToFolder(pageId: string, targetFolderId?: string) {
+    if (!selectedCourse) return;
+    const pages = selectedCourse.pages ?? [];
+    const nextPages = pages.map((page) => 
+      page.id === pageId ? { ...page, folderId: targetFolderId } : page
+    );
+    updateCourse({ ...selectedCourse, pages: nextPages });
+  }
+
+  function reorderPages(draggedPageId: string, targetPageId: string, position: 'above' | 'below', targetFolderId?: string) {
+    if (!selectedCourse) return;
+    const pages = [...(selectedCourse.pages ?? [])];
+    const draggedIndex = pages.findIndex(p => p.id === draggedPageId);
+    const targetIndex = pages.findIndex(p => p.id === targetPageId);
+    
+    if (draggedIndex === -1 || targetIndex === -1) return;
+    
+    const draggedPage = { ...pages[draggedIndex], folderId: targetFolderId };
+    pages.splice(draggedIndex, 1);
+    
+    const newTargetIndex = draggedIndex < targetIndex ? targetIndex - 1 : targetIndex;
+    const insertIndex = position === 'above' ? newTargetIndex : newTargetIndex + 1;
+    
+    pages.splice(insertIndex, 0, draggedPage);
+    updateCourse({ ...selectedCourse, pages });
+  }
+
+  function reorderFolders(draggedFolderId: string, targetFolderId: string, position: 'above' | 'below') {
+    if (!selectedCourse) return;
+    const folders = [...(selectedCourse.folders ?? [])];
+    const draggedIndex = folders.findIndex(f => f.id === draggedFolderId);
+    const targetIndex = folders.findIndex(f => f.id === targetFolderId);
+    
+    if (draggedIndex === -1 || targetIndex === -1) return;
+    
+    const draggedFolder = folders[draggedIndex];
+    folders.splice(draggedIndex, 1);
+    
+    const newTargetIndex = draggedIndex < targetIndex ? targetIndex - 1 : targetIndex;
+    const insertIndex = position === 'above' ? newTargetIndex : newTargetIndex + 1;
+    
+    folders.splice(insertIndex, 0, draggedFolder);
+    updateCourse({ ...selectedCourse, folders });
+  }
+
+  function insertFolderAtPagePosition(draggedFolderId: string, targetPageId: string, position: 'above' | 'below') {
+    if (!selectedCourse) return;
+    const folders = [...(selectedCourse.folders ?? [])];
+    const draggedFolderIndex = folders.findIndex(f => f.id === draggedFolderId);
+    if (draggedFolderIndex === -1) return;
+    
+    const draggedFolder = folders[draggedFolderIndex];
+    folders.splice(draggedFolderIndex, 1);
+    
+    // For simplicity, just move folder to end or beginning based on position
+    if (position === 'above') {
+      folders.unshift(draggedFolder);
+    } else {
+      folders.push(draggedFolder);
+    }
+    
+    updateCourse({ ...selectedCourse, folders });
   }
 
   function addFolderForCourse(course: Course) {
@@ -1160,17 +1318,79 @@ export function CourseManagement(props: CourseEditorProps) {
                                     </div>
                                   </div>
                                 </div>
-                                <div className="course-pages-sidebar">
+                                <div 
+                                  className={`course-pages-sidebar ${draggedPageId ? 'drag-active' : ''}`}
+                                  onDragOver={(e) => {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    setDragOverFolderId(null);
+                                  }}
+                                  onDrop={(e) => {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    if (draggedPageId) {
+                                      movePageToFolder(draggedPageId, undefined);
+                                    }
+                                    setDraggedPageId(null);
+                                    setDraggedFolderId(null);
+                                    setDragOverFolderId(null);
+                                    setDragOverPageId(null);
+                                    setDragOverPosition(null);
+                                  }}
+                                >
                                 {pages.filter((page) => !page.folderId).map((page) => (
                                   <div
                                     key={page.id}
-                                    className={activePage && page.id === activePage.id ? "course-pages-item active" : "course-pages-item"}
+                                    className={`${activePage && page.id === activePage.id ? "course-pages-item active" : "course-pages-item"} ${draggedPageId === page.id ? 'dragging' : ''} ${dragOverPageId === page.id && dragOverPosition === 'above' ? 'drag-over-above' : ''} ${dragOverPageId === page.id && dragOverPosition === 'below' ? 'drag-over-below' : ''}`}
+                                    draggable
+                                    onDragStart={() => setDraggedPageId(page.id)}
+                                    onDragEnd={() => {
+                                      setDraggedPageId(null);
+                                      setDraggedFolderId(null);
+                                      setDragOverFolderId(null);
+                                      setDragOverPageId(null);
+                                      setDragOverPosition(null);
+                                    }}
+                                    onDragOver={(e) => {
+                                      e.preventDefault();
+                                      e.stopPropagation();
+                                      if (draggedPageId && draggedPageId !== page.id) {
+                                        const rect = e.currentTarget.getBoundingClientRect();
+                                        const midY = rect.top + rect.height / 2;
+                                        const position = e.clientY < midY ? 'above' : 'below';
+                                        setDragOverPageId(page.id);
+                                        setDragOverPosition(position);
+                                        setDragOverFolderId(null);
+                                      } else if (draggedFolderId) {
+                                        const rect = e.currentTarget.getBoundingClientRect();
+                                        const midY = rect.top + rect.height / 2;
+                                        const position = e.clientY < midY ? 'above' : 'below';
+                                        setDragOverPageId(page.id);
+                                        setDragOverPosition(position);
+                                        setDragOverFolderId(null);
+                                      }
+                                    }}
+                                    onDrop={(e) => {
+                                      e.preventDefault();
+                                      e.stopPropagation();
+                                      if (draggedPageId && draggedPageId !== page.id && dragOverPosition) {
+                                        reorderPages(draggedPageId, page.id, dragOverPosition, undefined);
+                                      } else if (draggedFolderId && dragOverPosition) {
+                                        insertFolderAtPagePosition(draggedFolderId, page.id, dragOverPosition);
+                                      }
+                                      setDraggedPageId(null);
+                                      setDraggedFolderId(null);
+                                      setDragOverPageId(null);
+                                      setDragOverPosition(null);
+                                      setDragOverFolderId(null);
+                                    }}
                                     onClick={() => {
                                       setActivePageId(page.id);
                                       setOpenPageMenuId(null);
                                       setIsCourseMenuOpen(false);
                                     }}
                                   >
+                                    <span style={{ cursor: "grab", marginRight: "8px" }}>⋮⋮</span>
                                     <span className="course-pages-item-title">{page.title}</span>
                                     <button
                                       type="button"
@@ -1241,7 +1461,58 @@ export function CourseManagement(props: CourseEditorProps) {
                                   const folderPages = pages.filter((page) => page.folderId === folder.id);
                                   const isCollapsed = collapsedFolders.has(folder.id);
                                   return (
-                                    <div key={folder.id} className="course-folder-group">
+                                    <div 
+                                      key={folder.id} 
+                                      className={`course-folder-group ${dragOverFolderId === folder.id ? 'drag-over' : ''} ${draggedFolderId === folder.id ? 'dragging' : ''} ${dragOverFolderId === folder.id && dragOverPosition === 'above' ? 'drag-over-above' : ''} ${dragOverFolderId === folder.id && dragOverPosition === 'below' ? 'drag-over-below' : ''}`}
+                                      draggable
+                                      onDragStart={(e) => {
+                                        if (e.target === e.currentTarget || (e.target as HTMLElement).classList.contains('course-folder-toggle') || (e.target as HTMLElement).classList.contains('course-folder-title')) {
+                                          setDraggedFolderId(folder.id);
+                                        } else {
+                                          e.preventDefault();
+                                        }
+                                      }}
+                                      onDragEnd={() => {
+                                        setDraggedFolderId(null);
+                                        setDragOverFolderId(null);
+                                        setDragOverPageId(null);
+                                        setDragOverPosition(null);
+                                      }}
+                                      onDragOver={(e) => {
+                                        e.preventDefault();
+                                        e.stopPropagation();
+                                        if (draggedPageId) {
+                                          setDragOverFolderId(folder.id);
+                                        } else if (draggedFolderId && draggedFolderId !== folder.id) {
+                                          const rect = e.currentTarget.getBoundingClientRect();
+                                          const midY = rect.top + rect.height / 2;
+                                          const position = e.clientY < midY ? 'above' : 'below';
+                                          setDragOverFolderId(folder.id);
+                                          setDragOverPosition(position);
+                                        }
+                                      }}
+                                      onDragLeave={(e) => {
+                                        e.preventDefault();
+                                        e.stopPropagation();
+                                        if (!draggedFolderId) {
+                                          setDragOverFolderId(null);
+                                        }
+                                      }}
+                                      onDrop={(e) => {
+                                        e.preventDefault();
+                                        e.stopPropagation();
+                                        if (draggedPageId) {
+                                          movePageToFolder(draggedPageId, folder.id);
+                                        } else if (draggedFolderId && draggedFolderId !== folder.id && dragOverPosition) {
+                                          reorderFolders(draggedFolderId, folder.id, dragOverPosition);
+                                        }
+                                        setDraggedPageId(null);
+                                        setDraggedFolderId(null);
+                                        setDragOverFolderId(null);
+                                        setDragOverPageId(null);
+                                        setDragOverPosition(null);
+                                      }}
+                                    >
                                       <div className="course-folder-item">
                                         <button 
                                           type="button" 
@@ -1349,13 +1620,47 @@ export function CourseManagement(props: CourseEditorProps) {
                                       {!isCollapsed && folderPages.map((page) => (
                                         <div
                                           key={page.id}
-                                          className={activePage && page.id === activePage.id ? "course-pages-item course-pages-item-child active" : "course-pages-item course-pages-item-child"}
+                                          className={`${activePage && page.id === activePage.id ? "course-pages-item course-pages-item-child active" : "course-pages-item course-pages-item-child"} ${draggedPageId === page.id ? 'dragging' : ''} ${dragOverPageId === page.id && dragOverPosition === 'above' ? 'drag-over-above' : ''} ${dragOverPageId === page.id && dragOverPosition === 'below' ? 'drag-over-below' : ''}`}
+                                          draggable
+                                          onDragStart={() => setDraggedPageId(page.id)}
+                                          onDragEnd={() => {
+                                            setDraggedPageId(null);
+                                            setDraggedFolderId(null);
+                                            setDragOverFolderId(null);
+                                            setDragOverPageId(null);
+                                            setDragOverPosition(null);
+                                          }}
+                                          onDragOver={(e) => {
+                                            e.preventDefault();
+                                            e.stopPropagation();
+                                            if (draggedPageId && draggedPageId !== page.id) {
+                                              const rect = e.currentTarget.getBoundingClientRect();
+                                              const midY = rect.top + rect.height / 2;
+                                              const position = e.clientY < midY ? 'above' : 'below';
+                                              setDragOverPageId(page.id);
+                                              setDragOverPosition(position);
+                                              setDragOverFolderId(null);
+                                            }
+                                          }}
+                                          onDrop={(e) => {
+                                            e.preventDefault();
+                                            e.stopPropagation();
+                                            if (draggedPageId && draggedPageId !== page.id && dragOverPosition) {
+                                              reorderPages(draggedPageId, page.id, dragOverPosition, folder.id);
+                                            }
+                                            setDraggedPageId(null);
+                                            setDraggedFolderId(null);
+                                            setDragOverPageId(null);
+                                            setDragOverPosition(null);
+                                            setDragOverFolderId(null);
+                                          }}
                                           onClick={() => {
                                             setActivePageId(page.id);
                                             setOpenPageMenuId(null);
                                             setIsCourseMenuOpen(false);
                                           }}
                                         >
+                                          <span style={{ cursor: "grab", marginRight: "8px" }}>⋮⋮</span>
                                           <span className="course-pages-item-title">{page.title}</span>
                                           <button
                                             type="button"
