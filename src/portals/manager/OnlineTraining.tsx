@@ -345,7 +345,7 @@ export function ManagerOnlineTrainingPage(props: {
                             </a>
                           ))}
                           {activePage.fileUrls?.map((fileUrl, idx) => {
-                            const file = typeof fileUrl === 'string' ? { label: fileUrl.split('/').pop() || 'File', href: fileUrl } : fileUrl;
+                            const file = fileUrl;
                             return (
                               <a
                                 key={idx}
