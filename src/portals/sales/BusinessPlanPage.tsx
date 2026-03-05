@@ -18,6 +18,9 @@ export function BusinessPlanPage(props: {
   const [daysPerWeek, setDaysPerWeek] = useState(
     existingPlan?.daysPerWeek ?? 5
   );
+  const [averageIncomePerDeal, setAverageIncomePerDeal] = useState(
+    existingPlan?.averageDealSize ?? 12000
+  );
   const [committed, setCommitted] = useState(false);
 
   // Load user's business plan from database
@@ -32,6 +35,7 @@ export function BusinessPlanPage(props: {
             setExistingPlan(userPlan.businessPlan);
             setRevenueGoal(userPlan.businessPlan.revenueGoal || 100000);
             setDaysPerWeek(userPlan.businessPlan.daysPerWeek || 5);
+            setAverageIncomePerDeal(userPlan.businessPlan.averageDealSize || 12000);
             setCommitted(userPlan.businessPlan.committed || false);
           }
         }
@@ -46,32 +50,49 @@ export function BusinessPlanPage(props: {
   }, [props.profile.id]);
 
   const metrics = useMemo(() => {
-    const averageDealSize = existingPlan?.averageDealSize ?? 12000;
-    const inspectionToDealRate = 0.4;
-    const doorsToInspectionRate = 0.08;
+    const averageDealSize = averageIncomePerDeal;
+    const knockToConversationRate = 0.10; // 10%
+    const conversationToInspectionRate = 0.30; // 30%
+    const inspectionToClaimRate = 0.50; // 50%
 
     const dealsPerYear = Math.ceil(revenueGoal / averageDealSize);
     const dealsPerMonth = Math.ceil(dealsPerYear / 12);
-    const inspectionsNeeded = Math.ceil(dealsPerYear / inspectionToDealRate);
-    const doorsPerYear = Math.ceil(inspectionsNeeded / doorsToInspectionRate);
+    const inspectionsNeeded = Math.ceil(dealsPerYear / inspectionToClaimRate);
+    const conversationsNeeded = Math.ceil(inspectionsNeeded / conversationToInspectionRate);
+    const doorsPerYear = Math.ceil(conversationsNeeded / knockToConversationRate);
     const inspectionsPerMonth = Math.ceil(inspectionsNeeded / 12);
+    const conversationsPerMonth = Math.ceil(conversationsNeeded / 12);
     const doorsPerMonth = Math.ceil(doorsPerYear / 12);
     const weeksPerYear = 52;
+    const workingDaysPerWeek = daysPerWeek;
+    const workingDaysPerYear = weeksPerYear * workingDaysPerWeek;
     const doorsPerDay =
-      daysPerWeek > 0
-        ? Math.ceil(doorsPerYear / (weeksPerYear * daysPerWeek))
+      workingDaysPerYear > 0
+        ? Math.ceil(doorsPerYear / workingDaysPerYear)
+        : 0;
+    const conversationsPerDay =
+      workingDaysPerYear > 0
+        ? Math.ceil(conversationsNeeded / workingDaysPerYear)
+        : 0;
+    const inspectionsPerDay =
+      workingDaysPerYear > 0
+        ? Math.ceil(inspectionsNeeded / workingDaysPerYear)
         : 0;
 
     return {
       dealsPerYear,
       dealsPerMonth,
       inspectionsNeeded,
+      conversationsNeeded,
       doorsPerYear,
       inspectionsPerMonth,
+      conversationsPerMonth,
       doorsPerMonth,
-      doorsPerDay
+      doorsPerDay,
+      conversationsPerDay,
+      inspectionsPerDay
     };
-  }, [existingPlan?.averageDealSize, revenueGoal, daysPerWeek]);
+  }, [averageIncomePerDeal, revenueGoal, daysPerWeek]);
 
   async function handleCommit() {
     const territoryInput = existingPlan?.territories.join(", ") ?? props.profile.territory ?? "";
@@ -84,7 +105,7 @@ export function BusinessPlanPage(props: {
       revenueGoal,
       daysPerWeek,
       territories,
-      averageDealSize: existingPlan?.averageDealSize ?? 12000,
+      averageDealSize: averageIncomePerDeal,
       dealsPerYear: metrics.dealsPerYear,
       dealsPerMonth: metrics.dealsPerMonth,
       inspectionsNeeded: metrics.inspectionsNeeded,
@@ -179,7 +200,7 @@ export function BusinessPlanPage(props: {
     <div className="business-plan">
       <div className="panel-header">My Business Plan</div>
       <div className="plan-form-row">
-        <label className="field plan-field-revenue">
+        <label className="field plan-field-days">
           <span className="field-label">Revenue Goal</span>
           <select
             className="field-input"
@@ -196,28 +217,40 @@ export function BusinessPlanPage(props: {
           </select>
         </label>
         <label className="field plan-field-days">
+          <span className="field-label">Average Income per Deal</span>
+          <input
+            className="field-input"
+            type="number"
+            min={100}
+            step={100}
+            value={averageIncomePerDeal}
+            onChange={(e: ChangeEvent<HTMLInputElement>) => {
+              const value = Number(e.target.value);
+              if (value >= 100) {
+                setAverageIncomePerDeal(value);
+              }
+            }}
+          />
+        </label>
+        <label className="field plan-field-days">
           <span className="field-label">Days per week working</span>
           <div className="plan-days-row">
-            <input
+            <select
               className="field-input"
-              type="number"
-              min={1}
-              max={7}
-              value={daysPerWeek}
-              onChange={(e: ChangeEvent<HTMLInputElement>) => {
-                const value = Number(e.target.value);
-                if (value >= 1 && value <= 7) {
+              value={daysPerWeek.toString()}
+              onChange={(e: ChangeEvent<HTMLSelectElement>) => {
+                const value = parseFloat(e.target.value);
+                if (!isNaN(value)) {
                   setDaysPerWeek(value);
-                } else if (e.target.value === '') {
-                  setDaysPerWeek(1);
                 }
               }}
-              onKeyDown={(e) => {
-                if (e.key === 'e' || e.key === 'E' || e.key === '+' || e.key === '-' || e.key === '.') {
-                  e.preventDefault();
-                }
-              }}
-            />
+            >
+              {Array.from({ length: 14 }, (_, i) => 0.5 + i * 0.5).map((days) => (
+                <option key={days} value={days.toString()}>
+                  {days}
+                </option>
+              ))}
+            </select>
             <button
               type="button"
               className="btn-primary plan-calculate-button"
@@ -241,12 +274,26 @@ export function BusinessPlanPage(props: {
           value={String(metrics.inspectionsPerMonth)}
         />
         <DashboardCard
+          title="Conversations Per Month"
+          value={String(metrics.conversationsPerMonth)}
+        />
+        <DashboardCard
           title="Doors Knocked Per month"
           value={String(metrics.doorsPerMonth)}
         />
+      </div>
+      <div className="grid grid-3 plan-metrics">
         <DashboardCard
           title="Doors To Knock Per Day"
           value={String(metrics.doorsPerDay)}
+        />
+        <DashboardCard
+          title="Conversations Per Day"
+          value={String(metrics.conversationsPerDay)}
+        />
+        <DashboardCard
+          title="Inspections Needed Per Day"
+          value={String(metrics.inspectionsPerDay)}
         />
       </div>
       <div className="panel-section plan-actions">
