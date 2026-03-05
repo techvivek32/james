@@ -1474,17 +1474,6 @@ export function CourseManagement(props: CourseEditorProps) {
                                         <button type="button" className="course-page-menu-item" onClick={() => { setActivePageId(page.id); setOpenPageMenuId(null); }}>
                                           Edit Lesson
                                         </button>
-                                        <button
-                                          type="button"
-                                          className="course-page-menu-item"
-                                          onClick={() => {
-                                            const nextPages = pages.map((p) => (p.id === page.id ? { ...p, status: "draft" as CoursePage["status"] } : p));
-                                            updateCourse({ ...selectedCourse, pages: nextPages });
-                                            setOpenPageMenuId(null);
-                                          }}
-                                        >
-                                          Revert to draft
-                                        </button>
                                         <button type="button" className="course-page-menu-item" onClick={() => { 
                                           setChangeModulePageId(page.id);
                                           setSelectedModuleId(page.folderId);
@@ -1493,22 +1482,6 @@ export function CourseManagement(props: CourseEditorProps) {
                                         }}>
                                           Change Module  
                                         </button>
-                                        <button
-                                          type="button"
-                                          className="course-page-menu-item"
-                                          onClick={() => {
-                                            const sourcePage = pages.find((p) => p.id === page.id);
-                                            if (!sourcePage) return;
-                                            const duplicatePage: CoursePage = { ...sourcePage, id: `page-${Date.now()}-copy`, title: `${sourcePage.title} copy` };
-                                            const nextPages = [...pages, duplicatePage];
-                                            updateCourse({ ...selectedCourse, pages: nextPages });
-                                            setActivePageId(duplicatePage.id);
-                                            setOpenPageMenuId(null);
-                                          }}
-                                        >
-                                          Duplicate
-                                        </button>
-                                        <div className="course-page-menu-item course-page-menu-item-muted">Drip status: Off</div>
                                         <button
                                           type="button"
                                           className="course-page-menu-item course-page-menu-item-danger"
@@ -1754,17 +1727,6 @@ export function CourseManagement(props: CourseEditorProps) {
                                               <button type="button" className="course-page-menu-item" onClick={() => { setActivePageId(page.id); setOpenPageMenuId(null); }}>
                                                 Edit Lesson
                                               </button>
-                                              <button
-                                                type="button"
-                                                className="course-page-menu-item"
-                                                onClick={() => {
-                                                  const nextPages = pages.map((p) => (p.id === page.id ? { ...p, status: "draft" as CoursePage["status"] } : p));
-                                                  updateCourse({ ...selectedCourse, pages: nextPages });
-                                                  setOpenPageMenuId(null);
-                                                }}
-                                              >
-                                                Revert to draft
-                                              </button>
                                               <button type="button" className="course-page-menu-item" onClick={() => { 
                                                 setChangeModulePageId(page.id);
                                                 setSelectedModuleId(page.folderId);
@@ -1773,22 +1735,6 @@ export function CourseManagement(props: CourseEditorProps) {
                                               }}>
                                                 Change Module  
                                               </button>
-                                              <button
-                                                type="button"
-                                                className="course-page-menu-item"
-                                                onClick={() => {
-                                                  const sourcePage = pages.find((p) => p.id === page.id);
-                                                  if (!sourcePage) return;
-                                                  const duplicatePage: CoursePage = { ...sourcePage, id: `page-${Date.now()}-copy`, title: `${sourcePage.title} copy` };
-                                                  const nextPages = [...pages, duplicatePage];
-                                                  updateCourse({ ...selectedCourse, pages: nextPages });
-                                                  setActivePageId(duplicatePage.id);
-                                                  setOpenPageMenuId(null);
-                                                }}
-                                              >
-                                                Duplicate
-                                              </button>
-                                              <div className="course-page-menu-item course-page-menu-item-muted">Drip status: Off</div>
                                               <button
                                                 type="button"
                                                 className="course-page-menu-item course-page-menu-item-danger"
