@@ -41,11 +41,14 @@ export function CourseManagement(props: CourseEditorProps) {
   const [activeFormats, setActiveFormats] = useState<Set<string>>(new Set());
   const [collapsedFolders, setCollapsedFolders] = useState<Set<string>>(new Set());
   const [originalCourse, setOriginalCourse] = useState<Course | null>(null);
+  const [isCreatingNewCourse, setIsCreatingNewCourse] = useState(false);
+  const [newCourseData, setNewCourseData] = useState<Course | null>(null);
   const [hasChanges, setHasChanges] = useState(false);
+  const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
 
   const visibleCourses = props.courses;
 
-  const selectedCourse = props.courses.find((course) => course.id === selectedCourseId);
+  const selectedCourse = isCreatingNewCourse ? newCourseData : props.courses.find((course) => course.id === selectedCourseId);
 
   // Track changes when course is selected
   useEffect(() => {
@@ -80,13 +83,26 @@ export function CourseManagement(props: CourseEditorProps) {
   }, [activePageId, selectedCourseId, props.courses]);
 
   function updateCourse(updated: Course) {
-    const next = props.courses.map((course) => (course.id === updated.id ? updated : course));
-    props.onCoursesChange(next);
+    if (isCreatingNewCourse) {
+      setNewCourseData(updated);
+    } else {
+      const next = props.courses.map((course) => (course.id === updated.id ? updated : course));
+      props.onCoursesChange(next);
+    }
   }
 
   function saveCourse() {
-    if (selectedCourse && hasChanges) {
-      // Save logic here - course is already updated in props.courses
+    if (isCreatingNewCourse && newCourseData) {
+      // Save new course
+      const next = [...props.courses, newCourseData];
+      props.onCoursesChange(next);
+      setSelectedCourseId(newCourseData.id);
+      setIsCreatingNewCourse(false);
+      setNewCourseData(null);
+      setOriginalCourse(JSON.parse(JSON.stringify(newCourseData)));
+      setHasChanges(false);
+    } else if (selectedCourse && hasChanges) {
+      // Save existing course changes
       setOriginalCourse(JSON.parse(JSON.stringify(selectedCourse)));
       setHasChanges(false);
       console.log('Course saved:', selectedCourse.title);
@@ -95,7 +111,12 @@ export function CourseManagement(props: CourseEditorProps) {
   }
 
   function cancelChanges() {
-    if (originalCourse && hasChanges) {
+    if (isCreatingNewCourse) {
+      // Cancel new course creation
+      setIsCreatingNewCourse(false);
+      setNewCourseData(null);
+      setHasChanges(false);
+    } else if (originalCourse && hasChanges) {
       // Revert to original course
       const next = props.courses.map((course) => 
         course.id === originalCourse.id ? originalCourse : course
@@ -141,11 +162,12 @@ export function CourseManagement(props: CourseEditorProps) {
       ]
     };
 
-    const next = [...props.courses, newCourse];
-    props.onCoursesChange(next);
+    setNewCourseData(newCourse);
+    setIsCreatingNewCourse(true);
     setSelectedCourseId(newCourse.id);
     setViewMode("detail");
     setDetailSection("overview");
+    setHasChanges(true);
   }
 
   function deleteCourse(id: string) {
@@ -153,11 +175,13 @@ export function CourseManagement(props: CourseEditorProps) {
     props.onCoursesChange(next);
     if (!next.length) {
       setSelectedCourseId("");
+      setViewMode("grid");
       return;
     }
     if (selectedCourseId === id) {
       setSelectedCourseId(next[0].id);
     }
+    setViewMode("grid");
   }
 
   function addPageForCourse(course: Course, folderId?: string, isQuiz?: boolean) {
@@ -222,7 +246,7 @@ export function CourseManagement(props: CourseEditorProps) {
           {props.courses.length === 0 ? (
             <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "20px", padding: "40px" }}>
               <div className="panel-empty">No courses yet.</div>
-              <button type="button" className="admin-course-card-new" onClick={() => { createCourse(); }}>
+              <button type="button" className="admin-course-card-new" style={{ width: "200px", height: "200px" }} onClick={() => { createCourse(); }}>
                 <div className="admin-course-card-new-icon">+</div>
                 <div>New course</div>
               </button>
@@ -255,6 +279,11 @@ export function CourseManagement(props: CourseEditorProps) {
                     </div>
                     <div className="training-card-body">
                       <div className="training-card-title">{course.title}{course.status === "draft" ? " (Draft)" : ""}</div>
+                      {course.description && (
+                        <div style={{ fontSize: "12px", color: "#6b7280", marginTop: "4px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                          {course.description.length > 50 ? course.description.substring(0, 50) + "..." : course.description}
+                        </div>
+                      )}
                       <div className="training-card-progress-row">
                         <div className="training-card-progress-label">0%</div>
                         <div className="training-card-progress-track">
@@ -278,6 +307,38 @@ export function CourseManagement(props: CourseEditorProps) {
 
   return (
     <div className="admin-course-management">
+      {isDeleteConfirmOpen && selectedCourse && (
+        <div className="overlay">
+          <div className="dialog">
+            <div className="dialog-title">Delete Course</div>
+            <p style={{ margin: "12px 0", fontSize: "14px", color: "#6b7280" }}>
+              Are you sure you want to delete "{selectedCourse.title}"? This action cannot be undone.
+            </p>
+            <div className="dialog-footer">
+              <div />
+              <div className="dialog-actions">
+                <button
+                  type="button"
+                  className="btn-secondary btn-cancel"
+                  onClick={() => setIsDeleteConfirmOpen(false)}
+                >
+                  No
+                </button>
+                <button
+                  type="button"
+                  className="btn-secondary btn-danger-solid"
+                  onClick={() => {
+                    deleteCourse(selectedCourse.id);
+                    setIsDeleteConfirmOpen(false);
+                  }}
+                >
+                  Yes, Delete
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
       {isFolderModalOpen && selectedCourse && (
         <div className="overlay">
           <div className="dialog">
@@ -856,7 +917,7 @@ export function CourseManagement(props: CourseEditorProps) {
                   <button type="button" className="btn-ghost btn-small" onClick={() => setViewMode("grid")}>
                     Back to courses
                   </button>
-                  <button type="button" className="btn-ghost btn-danger" onClick={() => deleteCourse(selectedCourse.id)}>
+                  <button type="button" className="btn-ghost btn-danger" onClick={() => setIsDeleteConfirmOpen(true)}>
                     Delete Course
                   </button>
                 </div>
