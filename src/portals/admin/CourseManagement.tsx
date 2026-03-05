@@ -191,10 +191,12 @@ export function CourseManagement(props: CourseEditorProps) {
       // Check if click is outside menu triggers and menus
       const isMenuTrigger = target.closest('.course-page-menu-trigger') || 
                            target.closest('.course-folder-menu-trigger') ||
-                           target.closest('.course-menu-trigger');
+                           target.closest('.course-menu-trigger') ||
+                           target.closest('.course-page-add-button');
       const isMenu = target.closest('.course-page-menu') || 
                     target.closest('.course-folder-menu') ||
-                    target.closest('.course-menu');
+                    target.closest('.course-menu') ||
+                    target.closest('.course-page-add-menu');
       
       if (!isMenuTrigger && !isMenu) {
         setOpenPageMenuId(null);
@@ -210,6 +212,13 @@ export function CourseManagement(props: CourseEditorProps) {
       document.removeEventListener('mousedown', handleClickOutside);
     };
   }, []);
+
+  // Auto-select first page when entering pages section
+  useEffect(() => {
+    if (detailSection === 'pages' && selectedCourse && selectedCourse.pages && selectedCourse.pages.length > 0 && !activePageId) {
+      setActivePageId(selectedCourse.pages[0].id);
+    }
+  }, [detailSection, selectedCourse, activePageId]);
 
   function updateCourse(updated: Course) {
     if (isCreatingNewCourse) {
@@ -257,6 +266,7 @@ export function CourseManagement(props: CourseEditorProps) {
   }
 
   function getResourceIcon(url: string) {
+    if (!url) return '🔗';
     const lower = url.toLowerCase();
     if (lower.includes('.mp4') || lower.includes('.mov') || lower.includes('.avi') || lower.includes('.webm') || lower.includes('youtube.com') || lower.includes('youtu.be') || lower.includes('vimeo.com')) {
       return '🎥';
@@ -1158,14 +1168,14 @@ export function CourseManagement(props: CourseEditorProps) {
             const match = trimmed.match(/(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/ ]{11})/);
             const videoId = match ? match[1] : "";
             if (videoId) {
-              videoHtml = `<div contenteditable="false" style="margin: 16px 0; width: 100%; aspect-ratio: 16/9; background: #000; border-radius: 12px; overflow: hidden;"><iframe src="https://www.youtube.com/embed/${videoId}" style="width: 100%; height: 100%; border: none;" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe></div>`;
+              videoHtml = `<div contenteditable="false" style="margin: 16px auto; max-width: 640px; aspect-ratio: 16/9; background: #000; border-radius: 12px; overflow: hidden;"><iframe src="https://www.youtube.com/embed/${videoId}" style="width: 100%; height: 100%; border: none;" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe></div>`;
             }
           } else if (isUploadedFile) {
             // Uploaded file from /uploads/ folder
-            videoHtml = `<div contenteditable="false" style="margin: 16px 0; width: 100%; aspect-ratio: 16/9; background: #000; border-radius: 12px; overflow: hidden;"><video controls src="${trimmed}" style="width: 100%; height: 100%; object-fit: contain;"></video></div>`;
+            videoHtml = `<div contenteditable="false" style="margin: 16px auto; max-width: 640px; aspect-ratio: 16/9; background: #000; border-radius: 12px; overflow: hidden;"><video controls src="${trimmed}" style="width: 100%; height: 100%; object-fit: contain;"></video></div>`;
           } else {
             // External URL
-            videoHtml = `<div contenteditable="false" style="margin: 16px 0; width: 100%; aspect-ratio: 16/9; background: #000; border-radius: 12px; overflow: hidden;"><video controls src="${trimmed}" style="width: 100%; height: 100%; object-fit: contain;"></video></div>`;
+            videoHtml = `<div contenteditable="false" style="margin: 16px auto; max-width: 640px; aspect-ratio: 16/9; background: #000; border-radius: 12px; overflow: hidden;"><video controls src="${trimmed}" style="width: 100%; height: 100%; object-fit: contain;"></video></div>`;
           }
           
           if (bodyInputRef.current && videoHtml) {
@@ -1393,7 +1403,13 @@ export function CourseManagement(props: CourseEditorProps) {
                         Save
                       </button>
                     </div>
-                    <button type="button" className="btn-primary btn-success" onClick={() => setDetailSection("pages")}>
+                    <button type="button" className="btn-primary btn-success" onClick={() => {
+                      setDetailSection("pages");
+                      // Set first page as active if no page is selected
+                      if (!activePageId && selectedCourse.pages && selectedCourse.pages.length > 0) {
+                        setActivePageId(selectedCourse.pages[0].id);
+                      }
+                    }}>
                       Add
                     </button>
                   </div>
@@ -2293,7 +2309,9 @@ export function CourseManagement(props: CourseEditorProps) {
                                       <div style={{ marginTop: 24 }}>
                                         <h3 style={{ fontSize: 16, fontWeight: 600, marginBottom: 12 }}>Resources</h3>
                                         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                                          {activePage.resourceLinks?.map((link, idx) => (
+                                          {activePage.resourceLinks?.map((link, idx) => {
+                                            if (!link || !link.href) return null;
+                                            return (
                                             <div
                                               key={idx}
                                               style={{
@@ -2380,9 +2398,11 @@ export function CourseManagement(props: CourseEditorProps) {
                                                 </div>
                                               )}
                                             </div>
-                                          ))}
+                                            );
+                                          })}
                                           {activePage.fileUrls?.map((fileUrl, idx) => {
                                             const fileData = fileUrl;
+                                            if (!fileData || !fileData.href) return null;
                                             return (
                                             <div
                                               key={idx}
@@ -2476,7 +2496,6 @@ export function CourseManagement(props: CourseEditorProps) {
                                       </div>
                                     ) : null}
                                     
-                                    {editingLessonId === activePage.id && (
                                     <div className="course-page-footer">
                                       <div className="course-page-add">
                                         <button type="button" className="course-page-add-button" onClick={() => setIsAddMenuOpen(!isAddMenuOpen)}>
@@ -2489,6 +2508,7 @@ export function CourseManagement(props: CourseEditorProps) {
                                               type="button"
                                               className="course-page-menu-item"
                                               onClick={() => {
+                                                console.log('Add resource link clicked');
                                                 setLinkLabelDraft("");
                                                 setLinkUrlDraft("");
                                                 setIsLinkModalOpen(true);
@@ -2501,6 +2521,7 @@ export function CourseManagement(props: CourseEditorProps) {
                                               type="button"
                                               className="course-page-menu-item"
                                               onClick={() => {
+                                                console.log('Add resource file clicked');
                                                 setResourceFileUrlDraft("");
                                                 setResourceFileLabelDraft("");
                                                 setIsResourceFileModalOpen(true);
@@ -2529,14 +2550,17 @@ export function CourseManagement(props: CourseEditorProps) {
                                           <span className="status-toggle-thumb" />
                                         </span>
                                       </button>
-                                      <button type="button" className="course-page-footer-button course-page-footer-cancel" onClick={() => setEditingLessonId(null)}>
-                                        CANCEL
-                                      </button>
-                                      <button type="button" className="course-page-footer-button course-page-footer-save" onClick={() => setEditingLessonId(null)}>
-                                        SAVE
-                                      </button>
+                                      {editingLessonId === activePage.id && (
+                                        <>
+                                          <button type="button" className="course-page-footer-button course-page-footer-cancel" onClick={() => setEditingLessonId(null)}>
+                                            CANCEL
+                                          </button>
+                                          <button type="button" className="course-page-footer-button course-page-footer-save" onClick={() => setEditingLessonId(null)}>
+                                            SAVE
+                                          </button>
+                                        </>
+                                      )}
                                     </div>
-                                    )}
                                       </>
                                     )}
                                   </>
