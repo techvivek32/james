@@ -30,6 +30,8 @@ export function UserManagement(props: UserEditorProps) {
   const [showImportConfirm, setShowImportConfirm] = useState(false);
   const [showActiveUsers, setShowActiveUsers] = useState(true);
   const [showSuspendedUsers, setShowSuspendedUsers] = useState(true);
+  const [sortBy, setSortBy] = useState<"nameAsc" | "nameDesc" | "newest" | "oldest" | "lastModified">("nameAsc");
+  const [showSortDropdown, setShowSortDropdown] = useState(false);
 
   const featureToggleKeysByRole: Record<UserProfile["role"], (keyof FeatureToggles)[]> = {
     admin: ["dashboard", "userManagement", "roleHierarchy", "businessUnits", "salesOverview", "marketingOverview", "courseManagement", "materialsLibrary", "approvalWorkflows", "aiBots", "webTemplates", "webText", "appsTools", "socialMediaMetrics"],
@@ -86,6 +88,24 @@ export function UserManagement(props: UserEditorProps) {
     manager: "Manager Panel",
     sales: "Sales Panel",
     marketing: "Marketing Panel"
+  };
+
+  const sortUsers = (users: UserProfile[]) => {
+    const sorted = [...users];
+    switch (sortBy) {
+      case "nameAsc":
+        return sorted.sort((a, b) => a.name.localeCompare(b.name));
+      case "nameDesc":
+        return sorted.sort((a, b) => b.name.localeCompare(a.name));
+      case "newest":
+        return sorted.sort((a, b) => b.id.localeCompare(a.id));
+      case "oldest":
+        return sorted.sort((a, b) => a.id.localeCompare(b.id));
+      case "lastModified":
+        return sorted;
+      default:
+        return sorted;
+    }
   };
 
   useEffect(() => {
@@ -357,6 +377,64 @@ export function UserManagement(props: UserEditorProps) {
         <div className="panel-header">
           <div className="panel-header-row">
             <span>Users</span>
+            <div style={{ position: "relative", display: "flex", alignItems: "center", gap: 8 }}>
+              <span style={{ fontSize: 14, color: "#6b7280" }}>Sort:</span>
+              <button
+                type="button"
+                className="btn-secondary btn-small"
+                onClick={() => setShowSortDropdown(!showSortDropdown)}
+                style={{ display: "flex", alignItems: "center", gap: 6 }}
+              >
+                {sortBy === "nameAsc" && "Name (A-Z)"}
+                {sortBy === "nameDesc" && "Name (Z-A)"}
+                {sortBy === "newest" && "Newest"}
+                {sortBy === "oldest" && "Oldest"}
+                {sortBy === "lastModified" && "Last Modified"}
+              </button>
+              {showSortDropdown && (
+                <div style={{
+                  position: "absolute",
+                  top: "100%",
+                  right: 0,
+                  marginTop: 4,
+                  backgroundColor: "#ffffff",
+                  border: "1px solid #e5e7eb",
+                  borderRadius: 8,
+                  boxShadow: "0 4px 6px rgba(0,0,0,0.1)",
+                  zIndex: 1000,
+                  minWidth: 180
+                }}>
+                  {[
+                    { value: "nameAsc", label: "✓ Name (A-Z)" },
+                    { value: "nameDesc", label: "Name (Z-A)" },
+                    { value: "newest", label: "Newest" },
+                    { value: "oldest", label: "Oldest" },
+                    { value: "lastModified", label: "Last Modified" }
+                  ].map((option) => (
+                    <button
+                      key={option.value}
+                      type="button"
+                      onClick={() => {
+                        setSortBy(option.value as any);
+                        setShowSortDropdown(false);
+                      }}
+                      style={{
+                        width: "100%",
+                        padding: "10px 16px",
+                        textAlign: "left",
+                        border: "none",
+                        background: sortBy === option.value ? "#f3f4f6" : "transparent",
+                        cursor: "pointer",
+                        fontSize: 14,
+                        fontWeight: sortBy === option.value ? 600 : 400
+                      }}
+                    >
+                      {sortBy === option.value ? option.label : option.label.replace("✓ ", "")}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
         </div>
         <div className="panel-body">
@@ -367,7 +445,7 @@ export function UserManagement(props: UserEditorProps) {
             </div>
             {showActiveUsers && (
               <div className="list">
-                {draftUsers.filter(u => !u.suspended).map((user) => {
+                {sortUsers(draftUsers.filter(u => !u.suspended)).map((user) => {
                   const isActive = user.id === selectedUserId;
                   return (
                     <button key={user.id} className={isActive ? "list-item active" : "list-item"} onClick={() => setSelectedUserId(user.id)}>
@@ -393,7 +471,7 @@ export function UserManagement(props: UserEditorProps) {
               </div>
               {showSuspendedUsers && (
                 <div className="list">
-                  {draftUsers.filter(u => u.suspended).map((user) => {
+                  {sortUsers(draftUsers.filter(u => u.suspended)).map((user) => {
                     const isActive = user.id === selectedUserId;
                     return (
                       <button key={user.id} className={isActive ? "list-item active" : "list-item"} onClick={() => setSelectedUserId(user.id)}>
