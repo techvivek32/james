@@ -46,13 +46,38 @@ export default async function handler(
     });
   });
 
-  const ids = courses.map((course) => course.id).filter(Boolean);
+  // Migrate fileUrls from string[] to LessonLink[] format
+  const migratedCourses = courses.map(course => {
+    if (course.pages && Array.isArray(course.pages)) {
+      course.pages = course.pages.map((page: any) => {
+        if (page.fileUrls && Array.isArray(page.fileUrls)) {
+          page.fileUrls = page.fileUrls.map((fileUrl: any) => {
+            // If it's already an object with label and href, keep it
+            if (typeof fileUrl === 'object' && fileUrl.label && fileUrl.href) {
+              return fileUrl;
+            }
+            // If it's a string, convert to object format
+            if (typeof fileUrl === 'string') {
+              const fileName = fileUrl.split('/').pop() || 'File';
+              return { label: fileName, href: fileUrl };
+            }
+            // Fallback for any other format
+            return { label: 'File', href: String(fileUrl) };
+          });
+        }
+        return page;
+      });
+    }
+    return course;
+  });
+
+  const ids = migratedCourses.map((course) => course.id).filter(Boolean);
   await CourseModel.deleteMany({
     id: { $nin: ids.length ? ids : ["__none__"] }
   });
 
   await Promise.all(
-    courses.map((course) =>
+    migratedCourses.map((course) =>
       CourseModel.findOneAndUpdate(
         { id: course.id },
         { $set: course },
