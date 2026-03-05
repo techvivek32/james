@@ -1855,7 +1855,10 @@ export function CourseManagement(props: CourseEditorProps) {
                                           <button type="button" className="course-page-footer-button course-page-footer-cancel" onClick={() => setDetailSection("overview")}>
                                             CANCEL
                                           </button>
-                                          <button type="button" className="course-page-footer-button course-page-footer-save" onClick={() => setDetailSection("overview")}>
+                                          <button type="button" className="course-page-footer-button course-page-footer-save" onClick={() => {
+                                            // Just save, don't redirect - stay on quiz page
+                                            console.log('Quiz saved:', activePage.title);
+                                          }}>
                                             SAVE
                                           </button>
                                         </div>
