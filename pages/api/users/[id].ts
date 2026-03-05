@@ -22,6 +22,19 @@ export default async function handler(
       return;
     }
     const { passwordHash, ...safeUser } = user;
+    
+    // Set default publicProfile values for new users
+    if (safeUser.publicProfile) {
+      safeUser.publicProfile = {
+        showHeadshot: safeUser.publicProfile.showHeadshot ?? true,
+        showEmail: safeUser.publicProfile.showEmail ?? true,
+        showPhone: safeUser.publicProfile.showPhone ?? true,
+        showStrengths: safeUser.publicProfile.showStrengths ?? true,
+        showWeaknesses: safeUser.publicProfile.showWeaknesses ?? true,
+        showTerritory: safeUser.publicProfile.showTerritory ?? true
+      };
+    }
+    
     res.status(200).json(safeUser);
     return;
   }

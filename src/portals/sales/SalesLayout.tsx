@@ -28,6 +28,7 @@ export function SalesLayout({ children, currentView, userName, userId }: SalesLa
           userId={userId}
           roleLabel="Sales Rep"
           onLogout={logout}
+          showProfileDropdown={true}
         />
       }
       sidebar={

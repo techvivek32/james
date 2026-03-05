@@ -3,13 +3,13 @@ import { Sidebar } from "./Sidebar";
 
 const sidebarItems = [
   { id: "dashboard", label: "My Dashboard" },
-  { id: "profile", label: "My Profile" },
   { id: "plan", label: "My Business Plan" },
   { id: "training", label: "Training Center" },
   { id: "materials", label: "Marketing Materials" },
   { id: "aiChat", label: "Jay Miller's Clone" },
   { id: "webPage", label: "My Web Page" },
-  { id: "apps-tools", label: "Apps & Tools" }
+  { id: "apps-tools", label: "Apps & Tools" },
+  { id: "profile", label: "My Profile" }
 ];
 
 type SalesSidebarProps = {

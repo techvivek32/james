@@ -1,3 +1,5 @@
+import { useState, useRef, useEffect } from "react";
+import { useRouter } from "next/router";
 import { NotificationBell } from "./NotificationBell";
 
 type HeaderProps = {
@@ -7,9 +9,24 @@ type HeaderProps = {
   roleLabel: string;
   userId?: string;
   onLogout: () => void;
+  showProfileDropdown?: boolean;
 };
 
 export function Header(props: HeaderProps) {
+  const [showDropdown, setShowDropdown] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+  const router = useRouter();
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setShowDropdown(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
   return (
     <div className="header">
       <div className="header-titles">
@@ -20,9 +37,51 @@ export function Header(props: HeaderProps) {
       </div>
       <div className="header-profile">
         {props.userId && <NotificationBell userId={props.userId} />}
-        <div className="header-user-info">
-          <span className="header-user-name">{props.userName}</span>
-          <span className="header-user-role">{props.roleLabel}</span>
+        <div className="header-user-info" style={{ position: "relative" }} ref={dropdownRef}>
+          <span 
+            className="header-user-name" 
+            onClick={() => props.showProfileDropdown && setShowDropdown(!showDropdown)}
+            style={props.showProfileDropdown ? { cursor: "pointer" } : {}}
+          >
+            {props.userName}
+          </span>
+          <span 
+            className="header-user-role"
+            onClick={() => props.showProfileDropdown && setShowDropdown(!showDropdown)}
+            style={props.showProfileDropdown ? { cursor: "pointer" } : {}}
+          >
+            {props.roleLabel}
+          </span>
+          {props.showProfileDropdown && showDropdown && (
+            <div style={{
+              position: "absolute",
+              top: "100%",
+              right: 0,
+              marginTop: "8px",
+              backgroundColor: "white",
+              border: "1px solid #e0e0e0",
+              borderRadius: "4px",
+              boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
+              minWidth: "150px",
+              zIndex: 1000
+            }}>
+              <div 
+                onClick={() => {
+                  setShowDropdown(false);
+                  router.push("/sales/profile");
+                }}
+                style={{
+                  padding: "10px 16px",
+                  cursor: "pointer",
+                  transition: "background-color 0.2s"
+                }}
+                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = "#f5f5f5"}
+                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = "white"}
+              >
+                My Profile
+              </div>
+            </div>
+          )}
         </div>
         <button className="header-logout" onClick={props.onLogout}>
           Logout
