@@ -152,7 +152,7 @@ export function CourseManagement(props: CourseEditorProps) {
       pages: [
         {
           id: `page-${Date.now()}`,
-          title: "New page",
+          title: "New Lesson",
           status: "draft",
           body: "",
           videoUrl: "",
@@ -188,7 +188,7 @@ export function CourseManagement(props: CourseEditorProps) {
     const pages = course.pages ?? [];
     const newPage: CoursePage = {
       id: `page-${Date.now()}`,
-      title: isQuiz ? "New quiz" : "New page",
+      title: isQuiz ? "New quiz" : "New Lesson",
       status: "draft",
       body: "",
       folderId,
@@ -342,7 +342,7 @@ export function CourseManagement(props: CourseEditorProps) {
       {isFolderModalOpen && selectedCourse && (
         <div className="overlay">
           <div className="dialog">
-            <div className="dialog-title">{editingFolderId ? "Edit folder" : "Add folder"}</div>
+            <div className="dialog-title">{editingFolderId ? "Edit Module  " : "Add Module  "}</div>
             <label className="field">
               <span className="field-label">Name</span>
               <input className="field-input" value={newFolderName} maxLength={50} onChange={(event) => setNewFolderName(event.target.value)} />
@@ -1037,7 +1037,7 @@ export function CourseManagement(props: CourseEditorProps) {
                   <div className="course-pages-layout">
                     {(!selectedCourse.pages || selectedCourse.pages.length === 0) &&
                     (!selectedCourse.folders || selectedCourse.folders.length === 0) ? (
-                      <div className="panel-empty">No pages yet.</div>
+                      <div className="panel-empty">No Lessons yet.</div>
                     ) : (
                       <>
                         {(() => {
@@ -1134,9 +1134,6 @@ export function CourseManagement(props: CourseEditorProps) {
                                       </button>
                                       {isCourseMenuOpen && (
                                         <div className="course-page-menu">
-                                          <button type="button" className="course-page-menu-item" onClick={() => addPageForCourse(selectedCourse)}>
-                                            Add page
-                                          </button>
                                           <button
                                             type="button"
                                             className="course-page-menu-item"
@@ -1147,7 +1144,10 @@ export function CourseManagement(props: CourseEditorProps) {
                                               setNewFolderPublished(true);
                                             }}
                                           >
-                                            Add folder
+                                            Add Module  
+                                          </button>
+                                          <button type="button" className="course-page-menu-item" onClick={() => addPageForCourse(selectedCourse)}>
+                                            Add Lesson
                                           </button>
                                         </div>
                                       )}
@@ -1186,7 +1186,7 @@ export function CourseManagement(props: CourseEditorProps) {
                                     {openPageMenuId === page.id && (
                                       <div className="course-page-menu">
                                         <button type="button" className="course-page-menu-item" onClick={() => { setActivePageId(page.id); setOpenPageMenuId(null); }}>
-                                          Edit page
+                                          Edit Lesson
                                         </button>
                                         <button
                                           type="button"
@@ -1200,7 +1200,7 @@ export function CourseManagement(props: CourseEditorProps) {
                                           Revert to draft
                                         </button>
                                         <button type="button" className="course-page-menu-item" onClick={() => { setOpenPageMenuId(null); }}>
-                                          Change folder
+                                          Change Module  
                                         </button>
                                         <button
                                           type="button"
@@ -1284,7 +1284,7 @@ export function CourseManagement(props: CourseEditorProps) {
                                                 setOpenFolderMenuId(null);
                                               }}
                                             >
-                                              Edit folder
+                                              Edit Module  
                                             </button>
                                             <button
                                               type="button"
@@ -1294,7 +1294,7 @@ export function CourseManagement(props: CourseEditorProps) {
                                                 setOpenFolderMenuId(null);
                                               }}
                                             >
-                                              Add page in folder
+                                              Add Lesson in Module  
                                             </button>
                                             <button
                                               type="button"
@@ -1324,7 +1324,7 @@ export function CourseManagement(props: CourseEditorProps) {
                                                 setOpenFolderMenuId(null);
                                               }}
                                             >
-                                              Duplicate folder
+                                              Duplicate Module  
                                             </button>
                                             <button
                                               type="button"
@@ -1341,7 +1341,7 @@ export function CourseManagement(props: CourseEditorProps) {
                                                 }
                                               }}
                                             >
-                                              Delete folder
+                                              Delete Module  
                                             </button>
                                           </div>
                                         )}
@@ -1371,7 +1371,7 @@ export function CourseManagement(props: CourseEditorProps) {
                                           {openPageMenuId === page.id && (
                                             <div className="course-page-menu">
                                               <button type="button" className="course-page-menu-item" onClick={() => { setActivePageId(page.id); setOpenPageMenuId(null); }}>
-                                                Edit page
+                                                Edit Lesson
                                               </button>
                                               <button
                                                 type="button"
@@ -1385,7 +1385,7 @@ export function CourseManagement(props: CourseEditorProps) {
                                                 Revert to draft
                                               </button>
                                               <button type="button" className="course-page-menu-item" onClick={() => { setOpenPageMenuId(null); }}>
-                                                Change folder
+                                                Change Module  
                                               </button>
                                               <button
                                                 type="button"
