@@ -134,7 +134,7 @@ export function AdminDashboard(props: { users: UserProfile[]; courses: Course[] 
     const defaultSections: DashboardSection[] = [
       {
         id: "sales-managers",
-        title: "Sales Reps & Managers",
+        title: "Team Members",
         component: (
           <div className="grid grid-4">
             <DashboardCard title="Total Sales Reps" value={totalSalesReps.toString()} />
@@ -157,35 +157,63 @@ export function AdminDashboard(props: { users: UserProfile[]; courses: Course[] 
         id: "course-completion",
         title: "Course Completion by Module",
         component: (
-          <div className="grid grid-4">
-            <DashboardCard
-              title="Total Course Completion"
-              value={`${totalCourseCompletionPercentage}%`}
-              description="Across all trainings"
-            />
-            {publishedCourses.map((course) => {
-              const avgCompletion = getCourseCompletion(course.id);
-              return (
-                <DashboardCard
-                  key={course.id}
-                  title={course.title}
-                  value={`${avgCompletion}%`}
-                  description="Module completion"
-                />
-              );
-            })}
+          <div style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: "60px 20px",
+            fontSize: 18,
+            fontWeight: 500,
+            color: "#6b7280",
+            backgroundColor: "#f9fafb",
+            borderRadius: 8,
+            border: "2px dashed #d1d5db"
+          }}>
+            🚧 Coming Soon
           </div>
+          // <div className="grid grid-4">
+          //   <DashboardCard
+          //     title="Total Course Completion"
+          //     value={`${totalCourseCompletionPercentage}%`}
+          //     description="Across all trainings"
+          //   />
+          //   {publishedCourses.map((course) => {
+          //     const avgCompletion = getCourseCompletion(course.id);
+          //     return (
+          //       <DashboardCard
+          //         key={course.id}
+          //         title={course.title}
+          //         value={`${avgCompletion}%`}
+          //         description="Module completion"
+          //       />
+          //     );
+          //   })}
+          // </div>
         )
       },
       {
         id: "bot-dashboard",
         title: "Bot Dashboard",
         component: (
-          <div className="grid grid-4">
-            <DashboardCard title="Total Bots" value={totalBots.toString()} />
-            <DashboardCard title="Total Chat Sessions" value={totalChatSessions.toLocaleString()} />
-            <DashboardCard title="Total Bot Updates" value={totalBotUpdates.toString()} />
+          <div style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: "60px 20px",
+            fontSize: 18,
+            fontWeight: 500,
+            color: "#6b7280",
+            backgroundColor: "#f9fafb",
+            borderRadius: 8,
+            border: "2px dashed #d1d5db"
+          }}>
+            🚧 Coming Soon
           </div>
+          // <div className="grid grid-4">
+          //   <DashboardCard title="Total Bots" value={totalBots.toString()} />
+          //   <DashboardCard title="Total Chat Sessions" value={totalChatSessions.toLocaleString()} />
+          //   <DashboardCard title="Total Bot Updates" value={totalBotUpdates.toString()} />
+          // </div>
         )
       },
       {
