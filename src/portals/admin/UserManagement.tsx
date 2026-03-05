@@ -174,8 +174,36 @@ export function UserManagement(props: UserEditorProps) {
   }
 
   function createUser() {
-    const template = draftUsers[0];
-    const baseToggles: FeatureToggles = template ? { ...template.featureToggles } : ({} as FeatureToggles);
+    const allToggles: FeatureToggles = {
+      dashboard: true,
+      userManagement: true,
+      roleHierarchy: true,
+      businessUnits: true,
+      salesOverview: true,
+      marketingOverview: true,
+      courseManagement: true,
+      materialsLibrary: true,
+      approvalWorkflows: true,
+      aiBots: true,
+      webTemplates: true,
+      webText: true,
+      appsTools: true,
+      socialMediaMetrics: true,
+      team: true,
+      plans: true,
+      training: true,
+      onlineTraining: true,
+      taskTracker: true,
+      profile: true,
+      plan: true,
+      materials: true,
+      aiChat: true,
+      webPage: true,
+      businessCards: true,
+      assets: true,
+      approvals: true,
+      socialMetrics: true
+    };
     const newUser: UserProfile = {
       id: `user-${Date.now()}`,
       name: "New User",
@@ -187,7 +215,7 @@ export function UserManagement(props: UserEditorProps) {
       phone: "",
       territory: "",
       publicProfile: { showHeadshot: false, showEmail: false, showPhone: false, showStrengths: false, showWeaknesses: false, showTerritory: false },
-      featureToggles: baseToggles
+      featureToggles: allToggles
     };
     const next = [...draftUsers, newUser];
     setDraftUsers(next);
@@ -245,6 +273,30 @@ export function UserManagement(props: UserEditorProps) {
         
         return user;
       });
+
+      // Check for duplicate emails
+      const emailChecks = await Promise.all(
+        users.map(async (user) => {
+          try {
+            const res = await fetch(`/api/users/check-email?email=${encodeURIComponent(user.email)}`);
+            if (res.ok) {
+              const data = await res.json();
+              return { email: user.email, exists: data.exists };
+            }
+            return { email: user.email, exists: false };
+          } catch {
+            return { email: user.email, exists: false };
+          }
+        })
+      );
+
+      const duplicateEmails = emailChecks.filter(check => check.exists).map(check => check.email);
+      
+      if (duplicateEmails.length > 0) {
+        alert(`The following emails already exist:\n${duplicateEmails.join("\n")}\n\nPlease remove them from the CSV and try again.`);
+        if (fileInputRef.current) fileInputRef.current.value = "";
+        return;
+      }
 
       setPendingImportUsers(users);
       setShowImportConfirm(true);
