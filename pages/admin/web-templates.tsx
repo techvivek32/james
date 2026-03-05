@@ -1,4 +1,27 @@
 import type { NextPage } from "next";
+import { AdminPageWrapper } from "../../src/portals/admin/AdminPageWrapper";
+
+const WebTemplatesPage: NextPage = () => {
+  return (
+    <AdminPageWrapper currentView="webTemplates">
+      <div style={{
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        minHeight: '60vh',
+        textAlign: 'center'
+      }}>
+        <h1 style={{ fontSize: '48px', marginBottom: '16px', color: '#6b7280' }}>🚧</h1>
+        <h2 style={{ fontSize: '32px', fontWeight: '600', marginBottom: '8px' }}>Coming Soon</h2>
+        <p style={{ fontSize: '16px', color: '#6b7280' }}>This feature is under development</p>
+      </div>
+    </AdminPageWrapper>
+  );
+};
+
+{/*
+import type { NextPage } from "next";
 import { useEffect, useState } from "react";
 import { AdminPageWrapper } from "../../src/portals/admin/AdminPageWrapper";
 import { WebTemplatesPage as WebTemplatesComponent } from "../../src/portals/admin/WebTemplates";
@@ -34,5 +57,6 @@ const WebTemplatesPage: NextPage = () => {
     </AdminPageWrapper>
   );
 };
+*/}
 
 export default WebTemplatesPage;
