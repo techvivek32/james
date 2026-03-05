@@ -16,16 +16,42 @@ const RegisterPage: NextPage = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [error, setError] = useState("");
+  const [emailError, setEmailError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [success, setSuccess] = useState(false);
 
   function handleChange(e: ChangeEvent<HTMLInputElement | HTMLSelectElement>) {
     setFormData({ ...formData, [e.target.name]: e.target.value });
+    if (e.target.name === "email") {
+      setEmailError("");
+    }
+  }
+
+  async function checkEmailAvailability(email: string) {
+    if (!email) return;
+    try {
+      const res = await fetch(`/api/users/check-email?email=${encodeURIComponent(email)}`);
+      if (res.ok) {
+        const data = await res.json();
+        if (data.exists) {
+          setEmailError("This email is already registered");
+        } else {
+          setEmailError("");
+        }
+      }
+    } catch (error) {
+      console.error("Failed to check email:", error);
+    }
   }
 
   async function handleSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setError("");
+
+    if (emailError) {
+      setError(emailError);
+      return;
+    }
 
     if (formData.password !== formData.confirmPassword) {
       setError("Passwords do not match");
@@ -140,9 +166,15 @@ const RegisterPage: NextPage = () => {
               name="email"
               value={formData.email}
               onChange={handleChange}
+              onBlur={(e) => checkEmailAvailability(e.target.value)}
               placeholder="you@company.com"
               required
             />
+            {emailError && (
+              <div style={{ fontSize: 12, color: "#dc2626", marginTop: 4 }}>
+                {emailError}
+              </div>
+            )}
           </label>
 
           <label className="field">

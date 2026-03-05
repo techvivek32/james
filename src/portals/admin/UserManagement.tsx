@@ -22,6 +22,8 @@ export function UserManagement(props: UserEditorProps) {
   const [showWebPreview, setShowWebPreview] = useState(false);
   const [showRolesDropdown, setShowRolesDropdown] = useState(false);
   const [managerDraftId, setManagerDraftId] = useState<string>(props.users.find((u) => u.id === selectedUserId)?.managerId ?? "");
+  const [emailError, setEmailError] = useState("");
+  const emailInputRef = useRef<HTMLInputElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [importing, setImporting] = useState(false);
   const [pendingImportUsers, setPendingImportUsers] = useState<any[]>([]);
@@ -128,6 +130,26 @@ export function UserManagement(props: UserEditorProps) {
     setIsDirty(true);
     if (selectedUserId === updated.id && nextUser.id !== updated.id) {
       setSelectedUserId(nextUser.id);
+    }
+  }
+
+  async function checkEmailAvailability(email: string, currentUserId: string) {
+    if (!email || email === currentUserId) {
+      setEmailError("");
+      return;
+    }
+    try {
+      const res = await fetch(`/api/users/check-email?email=${encodeURIComponent(email)}`);
+      if (res.ok) {
+        const data = await res.json();
+        if (data.exists) {
+          setEmailError("This email is already in use");
+        } else {
+          setEmailError("");
+        }
+      }
+    } catch (error) {
+      console.error("Failed to check email:", error);
     }
   }
 
@@ -423,7 +445,12 @@ export function UserManagement(props: UserEditorProps) {
               <div className="panel-header-row">
                 <span>User Details{selectedUser.suspended && <span style={{ color: "#dc2626", marginLeft: 8 }}>• SUSPENDED</span>}</span>
                 <div className="panel-header-actions">
-                  <button type="button" className="btn-primary btn-small" disabled={!isDirty} onClick={() => {
+                  <button type="button" className="btn-primary btn-small" disabled={!isDirty || !!emailError} onClick={() => {
+                    if (emailError) {
+                      emailInputRef.current?.focus();
+                      emailInputRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                      return;
+                    }
                     const usersToSave = draftUsers.map((user) => {
                       if (user.password && user.password.trim().length > 0) return { ...user };
                       const { password, ...rest } = user;
@@ -460,7 +487,22 @@ export function UserManagement(props: UserEditorProps) {
               </label>
               <label className="field">
                 <span className="field-label">Email</span>
-                <input className="field-input" value={selectedUser.email} onChange={(e) => updateUser({ ...selectedUser, email: e.target.value })} />
+                <input
+                  ref={emailInputRef}
+                  className="field-input" 
+                  value={selectedUser.email} 
+                  onChange={(e) => {
+                    updateUser({ ...selectedUser, email: e.target.value });
+                    setEmailError("");
+                  }}
+                  onBlur={(e) => checkEmailAvailability(e.target.value, selectedUser.id)}
+                  style={emailError ? { borderColor: "#dc2626", animation: "shake 0.3s" } : {}}
+                />
+                {emailError && (
+                  <div style={{ fontSize: 12, color: "#dc2626", marginTop: 4, animation: "fadeIn 0.3s" }}>
+                    {emailError}
+                  </div>
+                )}
               </label>
               <label className="field">
                 <span className="field-label">Reset Password</span>

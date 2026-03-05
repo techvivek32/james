@@ -40,14 +40,19 @@ export default async function handler(
         return;
       }
 
-      // Check if there's already a pending request
+      // Check if there's already ANY request (pending, approved, or rejected)
       const existingRequest = await UserRequestModel.findOne({ 
-        email: email.trim().toLowerCase(),
-        status: "pending"
+        email: email.trim().toLowerCase()
       });
 
       if (existingRequest) {
-        res.status(400).json({ error: "A request with this email is already pending" });
+        if (existingRequest.status === "pending") {
+          res.status(400).json({ error: "A request with this email is already pending" });
+        } else if (existingRequest.status === "approved") {
+          res.status(400).json({ error: "This email has already been approved. Please login." });
+        } else {
+          res.status(400).json({ error: "A request with this email already exists" });
+        }
         return;
       }
 
