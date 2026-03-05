@@ -1,4 +1,34 @@
 import type { NextPage } from "next";
+import { SalesLayout } from "../../src/portals/sales/SalesLayout";
+import { useAuth } from "../../src/contexts/AuthContext";
+
+const WebPage: NextPage = () => {
+  const { user } = useAuth();
+
+  if (!user) {
+    return <div>Loading...</div>;
+  }
+
+  return (
+    <SalesLayout currentView="webPage" userName={user.name} userId={user.id}>
+      <div style={{
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        minHeight: '60vh',
+        textAlign: 'center'
+      }}>
+        <h1 style={{ fontSize: '48px', marginBottom: '16px', color: '#6b7280' }}>🚧</h1>
+        <h2 style={{ fontSize: '32px', fontWeight: '600', marginBottom: '8px' }}>Coming Soon</h2>
+        <p style={{ fontSize: '16px', color: '#6b7280' }}>This feature is under development</p>
+      </div>
+    </SalesLayout>
+  );
+};
+
+{/*
+import type { NextPage } from "next";
 import { useEffect, useState } from "react";
 import { SalesLayout } from "../../src/portals/sales/SalesLayout";
 import { WebPagePreview } from "../../src/portals/sales/WebPagePreview";
@@ -48,5 +78,6 @@ const WebPage: NextPage = () => {
     </SalesLayout>
   );
 };
+*/}
 
 export default WebPage;
