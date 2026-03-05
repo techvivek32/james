@@ -50,6 +50,7 @@ export function CourseManagement(props: CourseEditorProps) {
   const [dragOverPageId, setDragOverPageId] = useState<string | null>(null);
   const [dragOverPosition, setDragOverPosition] = useState<'above' | 'below' | null>(null);
   const [draggedFolderId, setDraggedFolderId] = useState<string | null>(null);
+  const [editingLessonId, setEditingLessonId] = useState<string | null>(null);
 
   // Add drag and drop styles
   const dragStyles = `
@@ -1388,6 +1389,7 @@ export function CourseManagement(props: CourseEditorProps) {
                                       setActivePageId(page.id);
                                       setOpenPageMenuId(null);
                                       setIsCourseMenuOpen(false);
+                                      setEditingLessonId(null);
                                     }}
                                   >
                                     <span style={{ cursor: "grab", marginRight: "8px" }}>⋮⋮</span>
@@ -1658,6 +1660,7 @@ export function CourseManagement(props: CourseEditorProps) {
                                             setActivePageId(page.id);
                                             setOpenPageMenuId(null);
                                             setIsCourseMenuOpen(false);
+                                            setEditingLessonId(null);
                                           }}
                                         >
                                           <span style={{ cursor: "grab", marginRight: "8px" }}>⋮⋮</span>
@@ -1853,49 +1856,67 @@ export function CourseManagement(props: CourseEditorProps) {
                                     ) : (
                                       <>
                                     <div className="course-page-main-header">
-                                      <div className="course-page-toolbar">
-                                        <button type="button" className={activeFormats.has("h1") ? "course-page-toolbar-button active" : "course-page-toolbar-button"} onClick={() => applyFormatting("h1")}>H1</button>
-                                        <button type="button" className={activeFormats.has("h2") ? "course-page-toolbar-button active" : "course-page-toolbar-button"} onClick={() => applyFormatting("h2")}>H2</button>
-                                        <button type="button" className={activeFormats.has("h3") ? "course-page-toolbar-button active" : "course-page-toolbar-button"} onClick={() => applyFormatting("h3")}>H3</button>
-                                        <button type="button" className={activeFormats.has("h4") ? "course-page-toolbar-button active" : "course-page-toolbar-button"} onClick={() => applyFormatting("h4")}>H4</button>
-                                        <span style={{ borderLeft: "1px solid #ddd", height: "20px", margin: "0 8px" }} />
-                                        <button type="button" className={activeFormats.has("bold") ? "course-page-toolbar-button course-page-toolbar-button-bold active" : "course-page-toolbar-button course-page-toolbar-button-bold"} onClick={() => applyFormatting("bold")}>B</button>
-                                        <button type="button" className={activeFormats.has("italic") ? "course-page-toolbar-button course-page-toolbar-button-italic active" : "course-page-toolbar-button course-page-toolbar-button-italic"} onClick={() => applyFormatting("italic")}>I</button>
-                                        <button type="button" className={activeFormats.has("underline") ? "course-page-toolbar-button active" : "course-page-toolbar-button"} onClick={() => applyFormatting("underline")}>U</button>
-                                        <button type="button" className={activeFormats.has("strike") ? "course-page-toolbar-button course-page-toolbar-button-strike active" : "course-page-toolbar-button course-page-toolbar-button-strike"} onClick={() => applyFormatting("strike")}>S</button>
-                                        <button type="button" className={activeFormats.has("code") ? "course-page-toolbar-button course-page-toolbar-button-icon active" : "course-page-toolbar-button course-page-toolbar-button-icon"} onClick={() => applyFormatting("code")}>{"</>"}</button>
-                                        <span style={{ borderLeft: "1px solid #ddd", height: "20px", margin: "0 8px" }} />
-                                        <button type="button" className={activeFormats.has("ul") ? "course-page-toolbar-button course-page-toolbar-button-icon active" : "course-page-toolbar-button course-page-toolbar-button-icon"} onClick={() => applyFormatting("ul")}>•</button>
-                                        <button type="button" className={activeFormats.has("ol") ? "course-page-toolbar-button course-page-toolbar-button-icon active" : "course-page-toolbar-button course-page-toolbar-button-icon"} onClick={() => applyFormatting("ol")}>1.</button>
-                                        <button type="button" className={activeFormats.has("quote") ? "course-page-toolbar-button course-page-toolbar-button-icon active" : "course-page-toolbar-button course-page-toolbar-button-icon"} onClick={() => applyFormatting("quote")}>"</button>
-                                        <span style={{ borderLeft: "1px solid #ddd", height: "20px", margin: "0 8px" }} />
-                                        <button type="button" className="course-page-toolbar-button course-page-toolbar-button-icon" onClick={() => { setImageUrlDraft(""); setIsImageModalOpen(true); }}>🖼</button>
-                                        <button type="button" className="course-page-toolbar-button course-page-toolbar-button-icon" onClick={() => { setLinkLabelDraft(""); setLinkUrlDraft(""); setIsLinkModalOpen(true); }}>🔗</button>
-                                        <button
-                                          type="button"
-                                          className="course-page-toolbar-button course-page-toolbar-button-icon course-page-toolbar-button-video"
-                                          onClick={() => {
-                                            setVideoUrlDraft("");
-                                            setIsVideoModalOpen(true);
-                                          }}
-                                        >
-                                          ▶
-                                        </button>
+                                      {editingLessonId === activePage.id && (
+                                        <div className="course-page-toolbar">
+                                          <button type="button" className={activeFormats.has("h1") ? "course-page-toolbar-button active" : "course-page-toolbar-button"} onClick={() => applyFormatting("h1")}>H1</button>
+                                          <button type="button" className={activeFormats.has("h2") ? "course-page-toolbar-button active" : "course-page-toolbar-button"} onClick={() => applyFormatting("h2")}>H2</button>
+                                          <button type="button" className={activeFormats.has("h3") ? "course-page-toolbar-button active" : "course-page-toolbar-button"} onClick={() => applyFormatting("h3")}>H3</button>
+                                          <button type="button" className={activeFormats.has("h4") ? "course-page-toolbar-button active" : "course-page-toolbar-button"} onClick={() => applyFormatting("h4")}>H4</button>
+                                          <span style={{ borderLeft: "1px solid #ddd", height: "20px", margin: "0 8px" }} />
+                                          <button type="button" className={activeFormats.has("bold") ? "course-page-toolbar-button course-page-toolbar-button-bold active" : "course-page-toolbar-button course-page-toolbar-button-bold"} onClick={() => applyFormatting("bold")}>B</button>
+                                          <button type="button" className={activeFormats.has("italic") ? "course-page-toolbar-button course-page-toolbar-button-italic active" : "course-page-toolbar-button course-page-toolbar-button-italic"} onClick={() => applyFormatting("italic")}>I</button>
+                                          <button type="button" className={activeFormats.has("underline") ? "course-page-toolbar-button active" : "course-page-toolbar-button"} onClick={() => applyFormatting("underline")}>U</button>
+                                          <button type="button" className={activeFormats.has("strike") ? "course-page-toolbar-button course-page-toolbar-button-strike active" : "course-page-toolbar-button course-page-toolbar-button-strike"} onClick={() => applyFormatting("strike")}>S</button>
+                                          <button type="button" className={activeFormats.has("code") ? "course-page-toolbar-button course-page-toolbar-button-icon active" : "course-page-toolbar-button course-page-toolbar-button-icon"} onClick={() => applyFormatting("code")}>{"</>"}</button>
+                                          <span style={{ borderLeft: "1px solid #ddd", height: "20px", margin: "0 8px" }} />
+                                          <button type="button" className={activeFormats.has("ul") ? "course-page-toolbar-button course-page-toolbar-button-icon active" : "course-page-toolbar-button course-page-toolbar-button-icon"} onClick={() => applyFormatting("ul")}>•</button>
+                                          <button type="button" className={activeFormats.has("ol") ? "course-page-toolbar-button course-page-toolbar-button-icon active" : "course-page-toolbar-button course-page-toolbar-button-icon"} onClick={() => applyFormatting("ol")}>1.</button>
+                                          <button type="button" className={activeFormats.has("quote") ? "course-page-toolbar-button course-page-toolbar-button-icon active" : "course-page-toolbar-button course-page-toolbar-button-icon"} onClick={() => applyFormatting("quote")}>"</button>
+                                          <span style={{ borderLeft: "1px solid #ddd", height: "20px", margin: "0 8px" }} />
+                                          <button type="button" className="course-page-toolbar-button course-page-toolbar-button-icon" onClick={() => { setImageUrlDraft(""); setIsImageModalOpen(true); }}>🖼</button>
+                                          <button type="button" className="course-page-toolbar-button course-page-toolbar-button-icon" onClick={() => { setLinkLabelDraft(""); setLinkUrlDraft(""); setIsLinkModalOpen(true); }}>🔗</button>
+                                          <button
+                                            type="button"
+                                            className="course-page-toolbar-button course-page-toolbar-button-icon course-page-toolbar-button-video"
+                                            onClick={() => {
+                                              setVideoUrlDraft("");
+                                              setIsVideoModalOpen(true);
+                                            }}
+                                          >
+                                            ▶
+                                          </button>
+                                        </div>
+                                      )}
+                                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%" }}>
+                                        {editingLessonId === activePage.id ? (
+                                          <input
+                                            className="course-page-title-input"
+                                            value={activePage.title}
+                                            onChange={(event) => {
+                                              const nextPages = pages.map((page) => (page.id === activePage.id ? { ...page, title: event.target.value } : page));
+                                              updateCourse({ ...selectedCourse, pages: nextPages });
+                                            }}
+                                          />
+                                        ) : (
+                                          <>
+                                            <h2 style={{ margin: 0, fontSize: 24, fontWeight: 600 }}>{activePage.title}</h2>
+                                            <button
+                                              type="button"
+                                              style={{ background: "none", border: "none", cursor: "pointer", fontSize: 18, padding: 4 }}
+                                              onClick={() => setEditingLessonId(activePage.id)}
+                                              title="Edit lesson"
+                                            >
+                                              ✏️
+                                            </button>
+                                          </>
+                                        )}
                                       </div>
-                                      <input
-                                        className="course-page-title-input"
-                                        value={activePage.title}
-                                        onChange={(event) => {
-                                          const nextPages = pages.map((page) => (page.id === activePage.id ? { ...page, title: event.target.value } : page));
-                                          updateCourse({ ...selectedCourse, pages: nextPages });
-                                        }}
-                                      />
                                     </div>
                                     <div className="course-page-editor-body">
                                       <div
                                         ref={bodyInputRef}
                                         className="course-page-body-input"
-                                        contentEditable
+                                        contentEditable={editingLessonId === activePage.id}
                                         suppressContentEditableWarning
                                         onInput={(event) => {
                                           const nextBody = event.currentTarget.innerHTML;
@@ -2047,6 +2068,7 @@ export function CourseManagement(props: CourseEditorProps) {
                                       </div>
                                     ) : null}
                                     
+                                    {editingLessonId === activePage.id && (
                                     <div className="course-page-footer">
                                       <div className="course-page-add">
                                         <button type="button" className="course-page-add-button" onClick={() => setIsAddMenuOpen(!isAddMenuOpen)}>
@@ -2111,13 +2133,14 @@ export function CourseManagement(props: CourseEditorProps) {
                                           <span className="status-toggle-thumb" />
                                         </span>
                                       </button>
-                                      <button type="button" className="course-page-footer-button course-page-footer-cancel" onClick={() => setDetailSection("overview")}>
+                                      <button type="button" className="course-page-footer-button course-page-footer-cancel" onClick={() => setEditingLessonId(null)}>
                                         CANCEL
                                       </button>
-                                      <button type="button" className="course-page-footer-button course-page-footer-save" onClick={() => setDetailSection("overview")}>
+                                      <button type="button" className="course-page-footer-button course-page-footer-save" onClick={() => setEditingLessonId(null)}>
                                         SAVE
                                       </button>
                                     </div>
+                                    )}
                                       </>
                                     )}
                                   </>
