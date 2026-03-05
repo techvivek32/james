@@ -1392,7 +1392,11 @@ export function CourseManagement(props: CourseEditorProps) {
                                     }}
                                   >
                                     <span style={{ cursor: "grab", marginRight: "8px" }}>⋮⋮</span>
-                                    <span className="course-pages-item-title">{page.title}</span>
+                                    <span className="course-pages-item-title">
+                                      {page.title}
+                                      {page.status === "draft" && <span style={{ color: "#9ca3af", fontSize: "12px", marginLeft: "6px" }}>(Draft)</span>}
+                                      {page.status === "published" && <span style={{ color: "#10b981", fontSize: "12px", marginLeft: "6px" }}>(Published)</span>}
+                                    </span>
                                     <button
                                       type="button"
                                       className="course-page-menu-trigger"
@@ -1663,7 +1667,11 @@ export function CourseManagement(props: CourseEditorProps) {
                                           }}
                                         >
                                           <span style={{ cursor: "grab", marginRight: "8px" }}>⋮⋮</span>
-                                          <span className="course-pages-item-title">{page.title}</span>
+                                          <span className="course-pages-item-title">
+                                            {page.title}
+                                            {page.status === "draft" && <span style={{ color: "#9ca3af", fontSize: "12px", marginLeft: "6px" }}>(Draft)</span>}
+                                            {page.status === "published" && <span style={{ color: "#10b981", fontSize: "12px", marginLeft: "6px" }}>(Published)</span>}
+                                          </span>
                                           <button
                                             type="button"
                                             className="course-page-menu-trigger"
