@@ -183,6 +183,34 @@ export function CourseManagement(props: CourseEditorProps) {
     }
   }, [activePageId, selectedCourseId, props.courses]);
 
+  // Click outside handler to close all menus
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      const target = event.target as HTMLElement;
+      
+      // Check if click is outside menu triggers and menus
+      const isMenuTrigger = target.closest('.course-page-menu-trigger') || 
+                           target.closest('.course-folder-menu-trigger') ||
+                           target.closest('.course-menu-trigger');
+      const isMenu = target.closest('.course-page-menu') || 
+                    target.closest('.course-folder-menu') ||
+                    target.closest('.course-menu');
+      
+      if (!isMenuTrigger && !isMenu) {
+        setOpenPageMenuId(null);
+        setOpenFolderMenuId(null);
+        setIsCourseMenuOpen(false);
+        setIsAddMenuOpen(false);
+        setOpenResourceMenuId(null);
+      }
+    }
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
+
   function updateCourse(updated: Course) {
     if (isCreatingNewCourse) {
       setNewCourseData(updated);
@@ -394,6 +422,124 @@ export function CourseManagement(props: CourseEditorProps) {
     } else {
       folders.push(draggedFolder);
     }
+    
+    updateCourse({ ...selectedCourse, folders });
+  }
+
+  // Helper function to move page up within pages without folder
+  function movePageUpInRoot(pageId: string) {
+    if (!selectedCourse) return;
+    const allPages = [...(selectedCourse.pages ?? [])];
+    const pagesWithoutFolder = allPages.filter(p => !p.folderId);
+    const page = allPages.find(p => p.id === pageId);
+    if (!page) return;
+    
+    const indexInFiltered = pagesWithoutFolder.indexOf(page);
+    if (indexInFiltered <= 0) return; // Already at top
+    
+    const currentIndex = allPages.indexOf(page);
+    const targetPage = pagesWithoutFolder[indexInFiltered - 1];
+    const targetIndex = allPages.indexOf(targetPage);
+    
+    // Remove from current position
+    allPages.splice(currentIndex, 1);
+    // Insert before target
+    allPages.splice(targetIndex, 0, page);
+    
+    updateCourse({ ...selectedCourse, pages: allPages });
+  }
+
+  // Helper function to move page down within pages without folder
+  function movePageDownInRoot(pageId: string) {
+    if (!selectedCourse) return;
+    const allPages = [...(selectedCourse.pages ?? [])];
+    const pagesWithoutFolder = allPages.filter(p => !p.folderId);
+    const page = allPages.find(p => p.id === pageId);
+    if (!page) return;
+    
+    const indexInFiltered = pagesWithoutFolder.indexOf(page);
+    if (indexInFiltered >= pagesWithoutFolder.length - 1) return; // Already at bottom
+    
+    const currentIndex = allPages.indexOf(page);
+    const targetPage = pagesWithoutFolder[indexInFiltered + 1];
+    const targetIndex = allPages.indexOf(targetPage);
+    
+    // Remove from current position
+    allPages.splice(currentIndex, 1);
+    // Insert after target
+    allPages.splice(targetIndex, 0, page);
+    
+    updateCourse({ ...selectedCourse, pages: allPages });
+  }
+
+  // Helper function to move page up within a folder
+  function movePageUpInFolder(pageId: string, folderId: string) {
+    if (!selectedCourse) return;
+    const allPages = [...(selectedCourse.pages ?? [])];
+    const folderPages = allPages.filter(p => p.folderId === folderId);
+    const page = allPages.find(p => p.id === pageId);
+    if (!page) return;
+    
+    const indexInFolder = folderPages.indexOf(page);
+    if (indexInFolder <= 0) return; // Already at top of folder
+    
+    const currentIndex = allPages.indexOf(page);
+    const targetPage = folderPages[indexInFolder - 1];
+    const targetIndex = allPages.indexOf(targetPage);
+    
+    // Remove from current position
+    allPages.splice(currentIndex, 1);
+    // Insert before target
+    allPages.splice(targetIndex, 0, page);
+    
+    updateCourse({ ...selectedCourse, pages: allPages });
+  }
+
+  // Helper function to move page down within a folder
+  function movePageDownInFolder(pageId: string, folderId: string) {
+    if (!selectedCourse) return;
+    const allPages = [...(selectedCourse.pages ?? [])];
+    const folderPages = allPages.filter(p => p.folderId === folderId);
+    const page = allPages.find(p => p.id === pageId);
+    if (!page) return;
+    
+    const indexInFolder = folderPages.indexOf(page);
+    if (indexInFolder >= folderPages.length - 1) return; // Already at bottom of folder
+    
+    const currentIndex = allPages.indexOf(page);
+    const targetPage = folderPages[indexInFolder + 1];
+    const targetIndex = allPages.indexOf(targetPage);
+    
+    // Remove from current position
+    allPages.splice(currentIndex, 1);
+    // Insert after target
+    allPages.splice(targetIndex, 0, page);
+    
+    updateCourse({ ...selectedCourse, pages: allPages });
+  }
+
+  // Helper function to move folder up
+  function moveFolderUp(folderId: string) {
+    if (!selectedCourse) return;
+    const folders = [...(selectedCourse.folders ?? [])];
+    const folderIndex = folders.findIndex(f => f.id === folderId);
+    if (folderIndex <= 0) return; // Already at top
+    
+    // Swap with previous folder
+    [folders[folderIndex - 1], folders[folderIndex]] = [folders[folderIndex], folders[folderIndex - 1]];
+    
+    updateCourse({ ...selectedCourse, folders });
+  }
+
+  // Helper function to move folder down
+  function moveFolderDown(folderId: string) {
+    if (!selectedCourse) return;
+    const folders = [...(selectedCourse.folders ?? [])];
+    const folderIndex = folders.findIndex(f => f.id === folderId);
+    if (folderIndex >= folders.length - 1) return; // Already at bottom
+    
+    // Swap with next folder
+    [folders[folderIndex], folders[folderIndex + 1]] = [folders[folderIndex + 1], folders[folderIndex]];
     
     updateCourse({ ...selectedCourse, folders });
   }
@@ -1404,7 +1550,10 @@ export function CourseManagement(props: CourseEditorProps) {
                                     key={page.id}
                                     className={`${activePage && page.id === activePage.id ? "course-pages-item active" : "course-pages-item"} ${draggedPageId === page.id ? 'dragging' : ''} ${dragOverPageId === page.id && dragOverPosition === 'above' ? 'drag-over-above' : ''} ${dragOverPageId === page.id && dragOverPosition === 'below' ? 'drag-over-below' : ''}`}
                                     draggable
-                                    onDragStart={() => setDraggedPageId(page.id)}
+                                    onDragStart={(e) => {
+                                      setDraggedPageId(page.id);
+                                      e.dataTransfer.effectAllowed = 'move';
+                                    }}
                                     onDragEnd={() => {
                                       setDraggedPageId(null);
                                       setDraggedFolderId(null);
@@ -1415,6 +1564,7 @@ export function CourseManagement(props: CourseEditorProps) {
                                     onDragOver={(e) => {
                                       e.preventDefault();
                                       e.stopPropagation();
+                                      e.dataTransfer.dropEffect = 'move';
                                       if (draggedPageId && draggedPageId !== page.id) {
                                         const rect = e.currentTarget.getBoundingClientRect();
                                         const midY = rect.top + rect.height / 2;
@@ -1429,6 +1579,19 @@ export function CourseManagement(props: CourseEditorProps) {
                                         setDragOverPageId(page.id);
                                         setDragOverPosition(position);
                                         setDragOverFolderId(null);
+                                      }
+                                    }}
+                                    onDragLeave={(e) => {
+                                      e.preventDefault();
+                                      const rect = e.currentTarget.getBoundingClientRect();
+                                      if (
+                                        e.clientX < rect.left ||
+                                        e.clientX >= rect.right ||
+                                        e.clientY < rect.top ||
+                                        e.clientY >= rect.bottom
+                                      ) {
+                                        setDragOverPageId(null);
+                                        setDragOverPosition(null);
                                       }
                                     }}
                                     onDrop={(e) => {
@@ -1473,6 +1636,28 @@ export function CourseManagement(props: CourseEditorProps) {
                                         <button type="button" className="course-page-menu-item" onClick={() => { setActivePageId(page.id); setOpenPageMenuId(null); }}>
                                           Edit Lesson
                                         </button>
+                                        <button 
+                                          type="button" 
+                                          className="course-page-menu-item"
+                                          disabled={pages.filter(p => !p.folderId).indexOf(page) === 0}
+                                          onClick={() => { 
+                                            movePageUpInRoot(page.id);
+                                            setOpenPageMenuId(null); 
+                                          }}
+                                        >
+                                          ↑ Move Up
+                                        </button>
+                                        <button 
+                                          type="button" 
+                                          className="course-page-menu-item"
+                                          disabled={pages.filter(p => !p.folderId).indexOf(page) === pages.filter(p => !p.folderId).length - 1}
+                                          onClick={() => { 
+                                            movePageDownInRoot(page.id);
+                                            setOpenPageMenuId(null); 
+                                          }}
+                                        >
+                                          ↓ Move Down
+                                        </button>
                                         <button type="button" className="course-page-menu-item" onClick={() => { 
                                           setChangeModulePageId(page.id);
                                           setSelectedModuleId(page.folderId);
@@ -1511,6 +1696,7 @@ export function CourseManagement(props: CourseEditorProps) {
                                       onDragStart={(e) => {
                                         if (e.target === e.currentTarget || (e.target as HTMLElement).classList.contains('course-folder-toggle') || (e.target as HTMLElement).classList.contains('course-folder-title')) {
                                           setDraggedFolderId(folder.id);
+                                          e.dataTransfer.effectAllowed = 'move';
                                         } else {
                                           e.preventDefault();
                                         }
@@ -1524,8 +1710,10 @@ export function CourseManagement(props: CourseEditorProps) {
                                       onDragOver={(e) => {
                                         e.preventDefault();
                                         e.stopPropagation();
+                                        e.dataTransfer.dropEffect = 'move';
                                         if (draggedPageId) {
                                           setDragOverFolderId(folder.id);
+                                          setDragOverPosition(null);
                                         } else if (draggedFolderId && draggedFolderId !== folder.id) {
                                           const rect = e.currentTarget.getBoundingClientRect();
                                           const midY = rect.top + rect.height / 2;
@@ -1536,9 +1724,17 @@ export function CourseManagement(props: CourseEditorProps) {
                                       }}
                                       onDragLeave={(e) => {
                                         e.preventDefault();
-                                        e.stopPropagation();
-                                        if (!draggedFolderId) {
-                                          setDragOverFolderId(null);
+                                        const rect = e.currentTarget.getBoundingClientRect();
+                                        if (
+                                          e.clientX < rect.left ||
+                                          e.clientX >= rect.right ||
+                                          e.clientY < rect.top ||
+                                          e.clientY >= rect.bottom
+                                        ) {
+                                          if (!draggedFolderId) {
+                                            setDragOverFolderId(null);
+                                          }
+                                          setDragOverPosition(null);
                                         }
                                       }}
                                       onDrop={(e) => {
@@ -1599,6 +1795,28 @@ export function CourseManagement(props: CourseEditorProps) {
                                               }}
                                             >
                                               Edit Module  
+                                            </button>
+                                            <button
+                                              type="button"
+                                              className="course-page-menu-item"
+                                              disabled={folders.indexOf(folder) === 0}
+                                              onClick={() => {
+                                                moveFolderUp(folder.id);
+                                                setOpenFolderMenuId(null);
+                                              }}
+                                            >
+                                              ↑ Move Module Up
+                                            </button>
+                                            <button
+                                              type="button"
+                                              className="course-page-menu-item"
+                                              disabled={folders.indexOf(folder) === folders.length - 1}
+                                              onClick={() => {
+                                                moveFolderDown(folder.id);
+                                                setOpenFolderMenuId(null);
+                                              }}
+                                            >
+                                              ↓ Move Module Down
                                             </button>
                                             <button
                                               type="button"
@@ -1665,7 +1883,10 @@ export function CourseManagement(props: CourseEditorProps) {
                                           key={page.id}
                                           className={`${activePage && page.id === activePage.id ? "course-pages-item course-pages-item-child active" : "course-pages-item course-pages-item-child"} ${draggedPageId === page.id ? 'dragging' : ''} ${dragOverPageId === page.id && dragOverPosition === 'above' ? 'drag-over-above' : ''} ${dragOverPageId === page.id && dragOverPosition === 'below' ? 'drag-over-below' : ''}`}
                                           draggable
-                                          onDragStart={() => setDraggedPageId(page.id)}
+                                          onDragStart={(e) => {
+                                            setDraggedPageId(page.id);
+                                            e.dataTransfer.effectAllowed = 'move';
+                                          }}
                                           onDragEnd={() => {
                                             setDraggedPageId(null);
                                             setDraggedFolderId(null);
@@ -1676,6 +1897,7 @@ export function CourseManagement(props: CourseEditorProps) {
                                           onDragOver={(e) => {
                                             e.preventDefault();
                                             e.stopPropagation();
+                                            e.dataTransfer.dropEffect = 'move';
                                             if (draggedPageId && draggedPageId !== page.id) {
                                               const rect = e.currentTarget.getBoundingClientRect();
                                               const midY = rect.top + rect.height / 2;
@@ -1683,6 +1905,19 @@ export function CourseManagement(props: CourseEditorProps) {
                                               setDragOverPageId(page.id);
                                               setDragOverPosition(position);
                                               setDragOverFolderId(null);
+                                            }
+                                          }}
+                                          onDragLeave={(e) => {
+                                            e.preventDefault();
+                                            const rect = e.currentTarget.getBoundingClientRect();
+                                            if (
+                                              e.clientX < rect.left ||
+                                              e.clientX >= rect.right ||
+                                              e.clientY < rect.top ||
+                                              e.clientY >= rect.bottom
+                                            ) {
+                                              setDragOverPageId(null);
+                                              setDragOverPosition(null);
                                             }
                                           }}
                                           onDrop={(e) => {
@@ -1724,6 +1959,28 @@ export function CourseManagement(props: CourseEditorProps) {
                                             <div className="course-page-menu">
                                               <button type="button" className="course-page-menu-item" onClick={() => { setActivePageId(page.id); setOpenPageMenuId(null); }}>
                                                 Edit Lesson
+                                              </button>
+                                              <button 
+                                                type="button" 
+                                                className="course-page-menu-item"
+                                                disabled={folderPages.indexOf(page) === 0}
+                                                onClick={() => { 
+                                                  movePageUpInFolder(page.id, folder.id);
+                                                  setOpenPageMenuId(null); 
+                                                }}
+                                              >
+                                                ↑ Move Up
+                                              </button>
+                                              <button 
+                                                type="button" 
+                                                className="course-page-menu-item"
+                                                disabled={folderPages.indexOf(page) === folderPages.length - 1}
+                                                onClick={() => { 
+                                                  movePageDownInFolder(page.id, folder.id);
+                                                  setOpenPageMenuId(null); 
+                                                }}
+                                              >
+                                                ↓ Move Down
                                               </button>
                                               <button type="button" className="course-page-menu-item" onClick={() => { 
                                                 setChangeModulePageId(page.id);

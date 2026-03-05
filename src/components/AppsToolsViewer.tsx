@@ -51,7 +51,7 @@ export function AppsToolsViewer() {
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: 16 }}>
             {items.map((item) => (
               <Link key={item._id} href={`/sales/apps-tools/${item._id}`} style={{ textDecoration: 'none', color: 'inherit' }}>
-                <div className="card" style={{ padding: 0, overflow: "hidden", cursor: "pointer", transition: "transform 0.2s", ":hover": { transform: "scale(1.02)" } }}>
+                <div className="card" style={{ padding: 0, overflow: "hidden", cursor: "pointer", transition: "transform 0.2s" }}>
                   {item.imageUrl && (
                     <div style={{ width: "100%", height: 180, backgroundImage: `url(${item.imageUrl})`, backgroundSize: "cover", backgroundPosition: "center" }} />
                   )}
