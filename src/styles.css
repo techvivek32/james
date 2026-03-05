@@ -662,8 +662,8 @@ body {
 .course-actions {
   margin-top: 24px;
   display: flex;
-  justify-content: flex-end;
-  gap: 8px;
+  justify-content: space-between;
+  align-items: center;
 }
 
 .course-pages-layout {
@@ -1342,7 +1342,7 @@ body {
 }
 
 .field-label {
-  font-size: 12px;
+  font-size: 14px;
   font-weight: 500;
   color: #6b7280;
 }

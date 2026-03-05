@@ -40,10 +40,28 @@ export function CourseManagement(props: CourseEditorProps) {
   const [lastPageId, setLastPageId] = useState<string | null>(null);
   const [activeFormats, setActiveFormats] = useState<Set<string>>(new Set());
   const [collapsedFolders, setCollapsedFolders] = useState<Set<string>>(new Set());
+  const [originalCourse, setOriginalCourse] = useState<Course | null>(null);
+  const [hasChanges, setHasChanges] = useState(false);
 
   const visibleCourses = props.courses;
 
   const selectedCourse = props.courses.find((course) => course.id === selectedCourseId);
+
+  // Track changes when course is selected
+  useEffect(() => {
+    if (selectedCourse && viewMode === "detail") {
+      setOriginalCourse(JSON.parse(JSON.stringify(selectedCourse)));
+      setHasChanges(false);
+    }
+  }, [selectedCourseId, viewMode]);
+
+  // Check for changes
+  useEffect(() => {
+    if (originalCourse && selectedCourse) {
+      const hasChanged = JSON.stringify(originalCourse) !== JSON.stringify(selectedCourse);
+      setHasChanges(hasChanged);
+    }
+  }, [selectedCourse, originalCourse]);
 
   useEffect(() => {
     if (bodyInputRef.current && activePageId) {
@@ -64,6 +82,28 @@ export function CourseManagement(props: CourseEditorProps) {
   function updateCourse(updated: Course) {
     const next = props.courses.map((course) => (course.id === updated.id ? updated : course));
     props.onCoursesChange(next);
+  }
+
+  function saveCourse() {
+    if (selectedCourse && hasChanges) {
+      // Save logic here - course is already updated in props.courses
+      setOriginalCourse(JSON.parse(JSON.stringify(selectedCourse)));
+      setHasChanges(false);
+      console.log('Course saved:', selectedCourse.title);
+    }
+    setViewMode("grid");
+  }
+
+  function cancelChanges() {
+    if (originalCourse && hasChanges) {
+      // Revert to original course
+      const next = props.courses.map((course) => 
+        course.id === originalCourse.id ? originalCourse : course
+      );
+      props.onCoursesChange(next);
+      setHasChanges(false);
+    }
+    setViewMode("grid");
   }
 
   function createCourse() {
@@ -214,7 +254,7 @@ export function CourseManagement(props: CourseEditorProps) {
                       </div>
                     </div>
                     <div className="training-card-body">
-                      <div className="training-card-title">{course.title}</div>
+                      <div className="training-card-title">{course.title}{course.status === "draft" ? " (Draft)" : ""}</div>
                       <div className="training-card-progress-row">
                         <div className="training-card-progress-label">0%</div>
                         <div className="training-card-progress-track">
@@ -912,11 +952,22 @@ export function CourseManagement(props: CourseEditorProps) {
                     </label>
                   </div>
                   <div className="course-actions">
-                    <button type="button" className="btn-secondary btn-cancel" onClick={() => setViewMode("grid")}>
-                      Cancel
-                    </button>
+                    <div style={{ display: "flex", gap: 8 }}>
+                      <button type="button" className="btn-secondary btn-cancel" onClick={cancelChanges}>
+                        Cancel
+                      </button>
+                      <button 
+                        type="button" 
+                        className="btn-primary btn-success" 
+                        onClick={saveCourse}
+                        disabled={!hasChanges}
+                        style={!hasChanges ? { opacity: 0.5, cursor: "not-allowed" } : {}}
+                      >
+                        Save
+                      </button>
+                    </div>
                     <button type="button" className="btn-primary btn-success" onClick={() => setDetailSection("pages")}>
-                      Course Details
+                      Add
                     </button>
                   </div>
                 </>
