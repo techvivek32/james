@@ -30,7 +30,7 @@ export default async function handler(
 
   console.log("Bulk save - Received courses:");
   courses.forEach(c => {
-    console.log(`  Course ${c.id}: ${c.title}`);
+    console.log(`  Course ${c.id}: ${c.title}, order: ${c.order}`);
     console.log(`    - Status: ${c.status}`);
     console.log(`    - Pages: ${c.pages?.length || 0}`);
     c.pages?.forEach((p: any) => {
@@ -76,6 +76,11 @@ export default async function handler(
     id: { $nin: ids.length ? ids : ["__none__"] }
   });
 
+  console.log("About to save courses with order:");
+  migratedCourses.forEach(c => {
+    console.log(`  ${c.id}: order=${c.order}`);
+  });
+
   await Promise.all(
     migratedCourses.map((course) =>
       CourseModel.findOneAndUpdate(
@@ -89,7 +94,7 @@ export default async function handler(
   const nextCourses = await CourseModel.find().lean();
   console.log("After save - courses in DB:");
   nextCourses.forEach(c => {
-    console.log(`  Course ${c.id}: ${c.pages?.length || 0} pages`);
+    console.log(`  Course ${c.id}: ${c.pages?.length || 0} pages, order: ${c.order}`);
     c.pages?.forEach((p: any) => {
       if (p.isQuiz) {
         console.log(`    - Quiz: ${p.title}, questions: ${p.quizQuestions?.length || 0}`);

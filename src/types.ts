@@ -163,4 +163,5 @@ export type Course = {
   accessMode?: "open" | "assigned";
   folders?: CourseFolder[];
   pages?: CoursePage[];
+  order?: number;
 };

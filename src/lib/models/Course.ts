@@ -68,7 +68,8 @@ const courseFolderSchema = new Schema(
     coverImageUrl: String,
     accessMode: String,
     folders: [courseFolderSchema],
-    pages: [coursePageSchema]
+    pages: [coursePageSchema],
+    order: Number
   },
   { timestamps: true, strict: true, minimize: false }
 );

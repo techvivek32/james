@@ -28,6 +28,7 @@ export function CourseManagement(props: CourseEditorProps) {
   const [isImageModalOpen, setIsImageModalOpen] = useState(false);
   const [imageUrlDraft, setImageUrlDraft] = useState("");
   const [isLinkModalOpen, setIsLinkModalOpen] = useState(false);
+  const [draggedCourseId, setDraggedCourseId] = useState<string | null>(null);
   const [linkLabelDraft, setLinkLabelDraft] = useState("");
   const [linkUrlDraft, setLinkUrlDraft] = useState("");
   const [isResourceFileModalOpen, setIsResourceFileModalOpen] = useState(false);
@@ -841,6 +842,58 @@ export function CourseManagement(props: CourseEditorProps) {
     setEditingFolderId(null);
   }
 
+  // Drag and drop handlers for course reordering
+  const handleDragStart = (e: React.DragEvent, courseId: string) => {
+    setDraggedCourseId(courseId);
+    e.dataTransfer.effectAllowed = 'move';
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+  };
+
+  const handleDrop = (e: React.DragEvent, targetCourseId: string) => {
+    e.preventDefault();
+    
+    if (!draggedCourseId || draggedCourseId === targetCourseId) {
+      setDraggedCourseId(null);
+      return;
+    }
+
+    console.log('[DRAG] Starting reorder:', { draggedCourseId, targetCourseId });
+
+    const courses = [...props.courses];
+    const draggedIndex = courses.findIndex(c => c.id === draggedCourseId);
+    const targetIndex = courses.findIndex(c => c.id === targetCourseId);
+
+    console.log('[DRAG] Indices:', { draggedIndex, targetIndex });
+
+    if (draggedIndex === -1 || targetIndex === -1) {
+      setDraggedCourseId(null);
+      return;
+    }
+
+    // Remove dragged course and insert at target position
+    const [draggedCourse] = courses.splice(draggedIndex, 1);
+    courses.splice(targetIndex, 0, draggedCourse);
+
+    // Assign order numbers to all courses
+    const reorderedCourses = courses.map((course, index) => ({
+      ...course,
+      order: index
+    }));
+
+    console.log('[DRAG] New order:', reorderedCourses.map(c => ({ title: c.title, order: c.order })));
+
+    props.onCoursesChange(reorderedCourses);
+    setDraggedCourseId(null);
+  };
+
+  const handleDragEnd = () => {
+    setDraggedCourseId(null);
+  };
+
   if (viewMode === "grid") {
     return (
       <div className="admin-course-grid-page">
@@ -866,6 +919,15 @@ export function CourseManagement(props: CourseEditorProps) {
                     key={course.id}
                     type="button"
                     className="training-card admin-course-card"
+                    draggable
+                    onDragStart={(e) => handleDragStart(e, course.id)}
+                    onDragOver={handleDragOver}
+                    onDrop={(e) => handleDrop(e, course.id)}
+                    onDragEnd={handleDragEnd}
+                    style={{
+                      opacity: draggedCourseId === course.id ? 0.5 : 1,
+                      cursor: 'move'
+                    }}
                     onClick={() => {
                       setSelectedCourseId(course.id);
                       setViewMode("detail");

@@ -16,7 +16,13 @@ const CourseManagementPage: NextPage = () => {
         const res = await fetch("/api/courses");
         if (res.ok && mounted) {
           const data = await res.json();
-          setCourses(data);
+          // Sort courses by order field
+          const sortedData = data.sort((a: Course, b: Course) => {
+            const orderA = a.order ?? 999999;
+            const orderB = b.order ?? 999999;
+            return orderA - orderB;
+          });
+          setCourses(sortedData);
         }
       } catch (error) {
         console.error("Failed to load courses:", error);
@@ -78,7 +84,7 @@ const CourseManagementPage: NextPage = () => {
     
     console.log("Saving courses to API:");
     cleanedCourses.forEach(c => {
-      console.log(`Course ${c.id}: ${c.pages?.length || 0} pages`);
+      console.log(`Course ${c.id}: ${c.pages?.length || 0} pages, order: ${c.order}`);
       c.pages?.forEach((p: any) => {
         if (p.isQuiz) {
           console.log(`  - Quiz: ${p.title}, questions: ${p.quizQuestions?.length || 0}`);
