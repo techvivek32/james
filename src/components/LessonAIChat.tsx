@@ -173,7 +173,7 @@ export function LessonAIChat(props: { lessonTitle: string; lessonContent?: strin
         alignItems: "center"
       }}>
         <div>
-          <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 4 }}>Lesson AI Chat</div>
+          <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 4 }}>Lesson AI Coach</div>
           <div style={{ fontSize: 12, color: "#6b7280" }}>Ask questions about {props.lessonTitle}.</div>
         </div>
         <button
