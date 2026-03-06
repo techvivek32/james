@@ -32,6 +32,19 @@ const OnlineTrainingPage: NextPage = () => {
     };
   }, []);
 
+  if (isLoading) {
+    return (
+      <ManagerLayout currentView="onlineTraining">
+        <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '400px' }}>
+          <div style={{ textAlign: 'center' }}>
+            <div className="spinner" style={{ margin: '0 auto 16px' }}></div>
+            <div style={{ color: '#6b7280' }}>Loading courses...</div>
+          </div>
+        </div>
+      </ManagerLayout>
+    );
+  }
+
   return (
     <ManagerLayout currentView="onlineTraining">
       <ManagerOnlineTrainingPage currentUser={currentUser} courses={courses} />

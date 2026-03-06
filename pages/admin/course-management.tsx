@@ -102,6 +102,19 @@ const CourseManagementPage: NextPage = () => {
     }
   }
 
+  if (isLoading) {
+    return (
+      <AdminPageWrapper currentView="courseManagement">
+        <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '400px' }}>
+          <div style={{ textAlign: 'center' }}>
+            <div className="spinner" style={{ margin: '0 auto 16px' }}></div>
+            <div style={{ color: '#6b7280' }}>Loading courses...</div>
+          </div>
+        </div>
+      </AdminPageWrapper>
+    );
+  }
+
   return (
     <AdminPageWrapper currentView="courseManagement">
       <CourseManagement courses={courses} onCoursesChange={handleCoursesChange} />

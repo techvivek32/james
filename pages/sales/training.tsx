@@ -38,8 +38,17 @@ const Training: NextPage = () => {
     };
   }, [user?.id, user?.role]);
 
-  if (!user) {
-    return <div>Loading...</div>;
+  if (!user || isLoading) {
+    return (
+      <SalesLayout currentView="training">
+        <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '400px' }}>
+          <div style={{ textAlign: 'center' }}>
+            <div className="spinner" style={{ margin: '0 auto 16px' }}></div>
+            <div style={{ color: '#6b7280' }}>Loading courses...</div>
+          </div>
+        </div>
+      </SalesLayout>
+    );
   }
 
   return (
