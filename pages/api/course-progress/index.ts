@@ -11,13 +11,25 @@ export default async function handler(
   if (req.method === "GET") {
     const { userId, courseIds } = req.query;
 
-    if (!userId || !courseIds) {
-      res.status(400).json({ error: "userId and courseIds are required" });
+    if (!userId) {
+      res.status(400).json({ error: "userId is required" });
+      return;
+    }
+
+    // Handle empty courseIds - return empty object
+    if (!courseIds || (courseIds as string).trim() === '') {
+      res.status(200).json({});
       return;
     }
 
     try {
-      const courseIdArray = (courseIds as string).split(',');
+      const courseIdArray = (courseIds as string).split(',').filter(id => id.trim());
+      
+      // If no valid course IDs after filtering, return empty object
+      if (courseIdArray.length === 0) {
+        res.status(200).json({});
+        return;
+      }
       
       // Fetch progress for all courses in one query
       const progressRecords = await CourseProgressModel.find({
