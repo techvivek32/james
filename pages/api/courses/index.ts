@@ -12,23 +12,8 @@ export default async function handler(
   if (req.method === "GET") {
     const { userId, userRole } = req.query;
     
-    // For course list view, only fetch necessary fields to improve performance
-    const projection = userId && userRole ? {
-      id: 1,
-      title: 1,
-      tagline: 1,
-      coverImageUrl: 1,
-      status: 1,
-      accessMode: 1,
-      order: 1,
-      'pages.id': 1,
-      'pages.status': 1,
-      'folders.id': 1,
-      'folders.title': 1,
-      'folders.status': 1
-    } : {};
-    
-    const courses = await CourseModel.find({}, projection).lean();
+    // Fetch all course data (needed for lessons, quizzes, etc.)
+    const courses = await CourseModel.find({}).lean();
     
     // If no user context, return all courses (for admin)
     if (!userId || !userRole) {
