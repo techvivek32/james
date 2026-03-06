@@ -676,7 +676,7 @@ body {
 }
 
 .course-pages-left {
-  width: 260px;
+  width: 220px;
   display: flex;
   flex-direction: column;
 }
@@ -981,6 +981,77 @@ body {
   word-break: break-word;
   overflow-wrap: anywhere;
   box-sizing: border-box;
+}
+
+/* Reduce spacing between videos and images in course content */
+.course-page-body-input iframe,
+.course-page-body-input video {
+  margin: 16px -12px !important;
+  display: block;
+  width: calc(100% + 24px) !important;
+  min-height: 500px;
+  aspect-ratio: 16 / 9;
+  border-radius: 0 !important;
+  border: none;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  object-fit: cover;
+}
+
+/* Target the video container divs */
+.course-page-body-input div[style*="aspect-ratio: 16/9"],
+.course-page-body-input div[style*="aspect-ratio: 16 / 9"] {
+  min-height: 600px !important;
+  margin: 16px -12px !important;
+  width: calc(100% + 24px) !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  overflow: hidden;
+}
+
+/* Make sure iframes inside containers fill properly and hide black bars */
+.course-page-body-input div[style*="aspect-ratio"] iframe {
+  object-fit: cover;
+  transform: scale(1.01);
+}
+
+/* Specific handling for YouTube iframes */
+.course-page-body-input iframe[src*="youtube.com"],
+.course-page-body-input iframe[src*="youtu.be"] {
+  object-fit: cover;
+  transform: scale(1.01);
+}
+
+.course-page-body-input img {
+  margin: 16px 0 !important;
+  display: block;
+  max-width: 100%;
+  height: auto;
+  border-radius: 8px;
+}
+
+/* Reduce spacing between consecutive media elements */
+.course-page-body-input iframe + iframe,
+.course-page-body-input video + video,
+.course-page-body-input img + img,
+.course-page-body-input iframe + video,
+.course-page-body-input video + iframe,
+.course-page-body-input iframe + img,
+.course-page-body-input img + iframe,
+.course-page-body-input video + img,
+.course-page-body-input img + video {
+  margin-top: 20px !important;
+}
+
+/* Reduce spacing between consecutive video containers */
+.course-page-body-input div[style*="aspect-ratio"] + div[style*="aspect-ratio"] {
+  margin-top: 20px !important;
+}
+
+/* Remove extra spacing from paragraphs around media */
+.course-page-body-input p:has(iframe),
+.course-page-body-input p:has(video),
+.course-page-body-input p:has(img) {
+  margin: 12px 0 !important;
 }
 
 .course-page-add {
