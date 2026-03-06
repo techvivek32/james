@@ -38,12 +38,21 @@ async function debugCourses() {
       });
     }
     
-    // Check manager user
-    const manager = await mongoose.connection.db.collection('users').findOne({ 
-      email: 'brooke.taylor@company.com' 
+    // Check all users
+    const allUsers = await mongoose.connection.db.collection('users').find({}).toArray();
+    console.log(`\n=== ALL USERS IN DATABASE (${allUsers.length}) ===`);
+    allUsers.forEach(u => {
+      console.log(`\n${u.role?.toUpperCase() || 'NO ROLE'}: ${u.name} (${u.email})`);
+      console.log(`  ID: ${u.id}`);
+      console.log(`  Training Center: ${u.featureToggles?.trainingCenter ? '✓ YES' : '❌ NO'}`);
     });
     
-    console.log(`\n=== MANAGER USER ===`);
+    // Check manager user
+    const manager = await mongoose.connection.db.collection('users').findOne({ 
+      role: 'manager' 
+    });
+    
+    console.log(`\n=== CHECKING FIRST MANAGER USER ===`);
     if (manager) {
       console.log(`Name: ${manager.name}`);
       console.log(`Email: ${manager.email}`);
