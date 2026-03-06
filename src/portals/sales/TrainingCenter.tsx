@@ -69,26 +69,36 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
   const [courseProgress, setCourseProgress] = useState<Record<string, { completed: number; total: number; isCompleted: boolean }>>({});
 
   useEffect(() => {
-    if (!user) return;
+    if (!user || courses.length === 0) return;
+    
     const loadProgress = async () => {
-      const progressMap: Record<string, { completed: number; total: number; isCompleted: boolean }> = {};
-      for (const course of courses) {
-        try {
-          const res = await fetch(`/api/progress?userId=${user.id}&courseId=${course.id}`);
+      try {
+        // Batch load all progress in one API call
+        const courseIds = courses.map(c => c.id).join(',');
+        const res = await fetch(`/api/course-progress?userId=${user.id}&courseIds=${courseIds}`);
+        
+        if (res.ok) {
           const data = await res.json();
-          const totalPages = course.pages?.length || 0;
-          const completedPages = data.completedPages?.length || 0;
-          progressMap[course.id] = { 
-            completed: completedPages, 
-            total: totalPages,
-            isCompleted: data.courseCompleted || false
-          };
-        } catch (err) {
-          console.error(`Failed to load progress for ${course.id}:`, err);
+          const progressMap: Record<string, { completed: number; total: number; isCompleted: boolean }> = {};
+          
+          courses.forEach(course => {
+            const courseData = data[course.id] || {};
+            const totalPages = course.pages?.length || 0;
+            const completedPages = courseData.completedPages?.length || 0;
+            progressMap[course.id] = { 
+              completed: completedPages, 
+              total: totalPages,
+              isCompleted: courseData.courseCompleted || false
+            };
+          });
+          
+          setCourseProgress(progressMap);
         }
+      } catch (err) {
+        console.error('Failed to load progress:', err);
       }
-      setCourseProgress(progressMap);
     };
+    
     loadProgress();
   }, [courses, user]);
 

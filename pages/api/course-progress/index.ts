@@ -1,6 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from "next";
-import mongoose from "mongoose";
 import { connectMongo } from "../../../src/lib/mongodb";
+import { CourseProgressModel } from "../../../src/lib/models/CourseProgress";
 
 export default async function handler(
   req: NextApiRequest,
@@ -9,76 +9,41 @@ export default async function handler(
   await connectMongo();
 
   if (req.method === "GET") {
-    try {
-      const { userId, courseId } = req.query;
+    const { userId, courseIds } = req.query;
 
-      // Get user progress from database
-      const db = mongoose.connection.db;
-      if (!db) {
-        return res.status(500).json({ error: "Database not available" });
-      }
-      const userProgressCollection = db.collection('userprogresses');
-      
-      if (userId && courseId) {
-        // Get specific user's progress for a course
-        const progress = await userProgressCollection.findOne({ 
-          userId: userId as string, 
-          courseId: courseId as string 
-        });
-        
-        if (progress) {
-          const completionPercentage = progress.completedLessons?.length 
-            ? Math.round((progress.completedLessons.length / (progress.totalLessons || 1)) * 100)
-            : 0;
-          res.status(200).json({ 
-            userId: progress.userId,
-            courseId: progress.courseId,
-            completionPercentage 
-          });
-        } else {
-          res.status(200).json({ completionPercentage: 0 });
-        }
-        return;
-      }
-
-      if (userId) {
-        // Get all progress for a user
-        const progress = await userProgressCollection.find({ 
-          userId: userId as string 
-        }).toArray();
-        
-        const formattedProgress = progress.map(p => ({
-          userId: p.userId,
-          courseId: p.courseId,
-          completionPercentage: p.completedLessons?.length 
-            ? Math.round((p.completedLessons.length / (p.totalLessons || 1)) * 100)
-            : 0
-        }));
-        
-        res.status(200).json(formattedProgress);
-        return;
-      }
-
-      // Get all progress for all users
-      const allProgress = await userProgressCollection.find().toArray();
-      
-      const formattedProgress = allProgress.map(p => ({
-        userId: p.userId,
-        courseId: p.courseId,
-        completionPercentage: p.completedLessons?.length 
-          ? Math.round((p.completedLessons.length / (p.totalLessons || 1)) * 100)
-          : 0
-      }));
-      
-      res.status(200).json(formattedProgress);
-      return;
-    } catch (error) {
-      console.error("Error fetching course progress:", error);
-      res.status(200).json([]);
+    if (!userId || !courseIds) {
+      res.status(400).json({ error: "userId and courseIds are required" });
       return;
     }
-  }
 
-  res.setHeader("Allow", "GET");
-  res.status(405).end();
+    try {
+      const courseIdArray = (courseIds as string).split(',');
+      
+      // Fetch progress for all courses in one query
+      const progressRecords = await CourseProgressModel.find({
+        userId,
+        courseId: { $in: courseIdArray }
+      }).lean();
+
+      // Build response object
+      const result: Record<string, any> = {};
+      
+      courseIdArray.forEach(courseId => {
+        const progress = progressRecords.find(p => p.courseId === courseId);
+        result[courseId] = progress || {
+          completedPages: [],
+          quizResults: [],
+          courseCompleted: false
+        };
+      });
+
+      res.status(200).json(result);
+    } catch (error) {
+      console.error("Failed to fetch course progress:", error);
+      res.status(500).json({ error: "Failed to fetch progress" });
+    }
+  } else {
+    res.setHeader("Allow", "GET");
+    res.status(405).end();
+  }
 }

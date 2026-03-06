@@ -76,23 +76,33 @@ export function ManagerOnlineTrainingPage(props: {
 
   useEffect(() => {
     const loadProgress = async () => {
-      const progressMap: Record<string, { completed: number; total: number; isCompleted: boolean }> = {};
-      for (const course of publishedCourses) {
-        try {
-          const res = await fetch(`/api/progress?userId=${props.currentUser.id}&courseId=${course.id}`);
+      if (publishedCourses.length === 0) return;
+      
+      try {
+        // Batch load all progress in one API call
+        const courseIds = publishedCourses.map(c => c.id).join(',');
+        const res = await fetch(`/api/course-progress?userId=${props.currentUser.id}&courseIds=${courseIds}`);
+        
+        if (res.ok) {
           const data = await res.json();
-          const totalPages = course.pages?.length || 0;
-          const completedPages = data.completedPages?.length || 0;
-          progressMap[course.id] = { 
-            completed: completedPages, 
-            total: totalPages,
-            isCompleted: data.courseCompleted || false
-          };
-        } catch (err) {
-          console.error(`Failed to load progress for ${course.id}:`, err);
+          const progressMap: Record<string, { completed: number; total: number; isCompleted: boolean }> = {};
+          
+          publishedCourses.forEach(course => {
+            const courseData = data[course.id] || {};
+            const totalPages = course.pages?.length || 0;
+            const completedPages = courseData.completedPages?.length || 0;
+            progressMap[course.id] = { 
+              completed: completedPages, 
+              total: totalPages,
+              isCompleted: courseData.courseCompleted || false
+            };
+          });
+          
+          setCourseProgress(progressMap);
         }
+      } catch (err) {
+        console.error('Failed to load progress:', err);
       }
-      setCourseProgress(progressMap);
     };
     loadProgress();
   }, [publishedCourses, props.currentUser]);

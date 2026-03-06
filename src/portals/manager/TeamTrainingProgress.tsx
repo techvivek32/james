@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { DashboardCard } from "../../components/DashboardCard";
 import { AuthenticatedUser, Course, UserProfile } from "../../types";
 
@@ -8,13 +8,18 @@ export function TeamTrainingProgressPage(props: {
   courses: Course[];
 }) {
   const [selectedMemberId, setSelectedMemberId] = useState<string | null>(null);
-  const publishedCourses = props.courses.filter(
-    (course) => course.status !== "draft"
+  
+  // Memoize publishedCourses to prevent infinite loop
+  const publishedCourses = useMemo(() => 
+    props.courses.filter((course) => course.status !== "draft"),
+    [props.courses]
   );
 
   const [userProgress, setUserProgress] = useState<Record<string, Record<string, { completed: number; total: number; isCompleted: boolean }>>>({});
 
   useEffect(() => {
+    if (props.teamMembers.length === 0 || publishedCourses.length === 0) return;
+    
     const loadAllProgress = async () => {
       const progressData: Record<string, Record<string, { completed: number; total: number; isCompleted: boolean }>> = {};
       
