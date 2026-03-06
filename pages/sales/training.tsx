@@ -23,7 +23,13 @@ const Training: NextPage = () => {
         const coursesRes = await fetch(`/api/courses?userId=${user.id}&userRole=${user.role}`);
         if (coursesRes.ok && mounted) {
           const data = await coursesRes.json();
-          setCourses(data);
+          // Sort courses by order field
+          const sortedData = data.sort((a: Course, b: Course) => {
+            const orderA = a.order ?? 999999;
+            const orderB = b.order ?? 999999;
+            return orderA - orderB;
+          });
+          setCourses(sortedData);
         }
       } catch (error) {
         console.error("Failed to load courses:", error);
