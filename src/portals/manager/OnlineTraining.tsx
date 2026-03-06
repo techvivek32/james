@@ -33,7 +33,7 @@ export function ManagerOnlineTrainingPage(props: {
 
   useEffect(() => {
     if (!activePageId || !selectedCourse) return;
-    const pages = selectedCourse.pages ?? [];
+    const pages = (selectedCourse.pages ?? []).filter(p => p.status === 'published');
     const page = pages.find(p => p.id === activePageId);
     if (!page) return;
     
@@ -96,7 +96,7 @@ export function ManagerOnlineTrainingPage(props: {
   }, [publishedCourses, props.currentUser]);
 
   if (selectedCourse) {
-    const pages = selectedCourse.pages ?? [];
+    const pages = (selectedCourse.pages ?? []).filter(p => p.status === 'published');
     const folders = selectedCourse.folders ?? [];
     const activePage = pages.find((p) => p.id === activePageId) ?? pages[0];
 

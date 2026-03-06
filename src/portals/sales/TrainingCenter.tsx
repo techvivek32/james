@@ -92,7 +92,7 @@ export function TrainingCenter(props: { courses: Course[] }) {
   }, [courses, user]);
 
   if (selectedCourse) {
-    const pages = selectedCourse.pages ?? [];
+    const pages = (selectedCourse.pages ?? []).filter(p => p.status === 'published');
     const folders = selectedCourse.folders ?? [];
     const activePage = pages.find((p) => p.id === activePageId) ?? pages[0];
 

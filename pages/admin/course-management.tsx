@@ -6,17 +6,29 @@ import { Course } from "../../src/types";
 
 const CourseManagementPage: NextPage = () => {
   const [courses, setCourses] = useState<Course[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
+    let mounted = true;
+    
     async function loadData() {
       try {
         const res = await fetch("/api/courses");
-        if (res.ok) setCourses(await res.json());
+        if (res.ok && mounted) {
+          const data = await res.json();
+          setCourses(data);
+        }
       } catch (error) {
         console.error("Failed to load courses:", error);
+      } finally {
+        if (mounted) setIsLoading(false);
       }
     }
     loadData();
+    
+    return () => {
+      mounted = false;
+    };
   }, []);
 
   async function handleCoursesChange(next: Course[]) {

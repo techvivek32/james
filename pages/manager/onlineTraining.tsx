@@ -6,18 +6,30 @@ import { Course, AuthenticatedUser } from "../../src/types";
 
 const OnlineTrainingPage: NextPage = () => {
   const [courses, setCourses] = useState<Course[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const currentUser: AuthenticatedUser = { id: "manager-1", name: "Manager", role: "manager" };
 
   useEffect(() => {
+    let mounted = true;
+    
     async function loadData() {
       try {
         const coursesRes = await fetch(`/api/courses?userId=${currentUser.id}&userRole=${currentUser.role}`);
-        if (coursesRes.ok) setCourses(await coursesRes.json());
+        if (coursesRes.ok && mounted) {
+          const data = await coursesRes.json();
+          setCourses(data);
+        }
       } catch (error) {
         console.error("Failed to load courses:", error);
+      } finally {
+        if (mounted) setIsLoading(false);
       }
     }
     loadData();
+    
+    return () => {
+      mounted = false;
+    };
   }, []);
 
   return (
