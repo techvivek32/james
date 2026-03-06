@@ -144,12 +144,14 @@ export function CourseManagement(props: CourseEditorProps) {
         position: relative;
       }
       /* Hide delete button in view mode (non-editable content) */
-      .course-page-body-input:not([contenteditable="true"]) .video-delete-btn {
+      .course-page-body-input:not([contenteditable="true"]) .video-delete-btn,
+      .course-page-body-input:not([contenteditable="true"]) .image-delete-btn {
         display: none !important;
       }
       /* Ensure video buttons are clickable and don't trigger contenteditable */
       [data-video-type] button,
-      [data-video-type] a {
+      [data-video-type] a,
+      [data-image-container] button {
         pointer-events: auto !important;
         user-select: none;
       }
@@ -285,6 +287,57 @@ export function CourseManagement(props: CourseEditorProps) {
           </div>`;
         });
         
+        // Migrate old images to new format with delete button
+        bodyHtml = bodyHtml.replace(/<div contenteditable="false" style="margin: 16px auto; max-width: 640px;"><img src="([^"]+)" style="width: 100%; height: auto; border-radius: 12px; display: block;"><\/div>/gi, (match, imgSrc) => {
+          return `<div contenteditable="false" style="margin: 16px auto; max-width: 640px; position: relative;" data-image-container>
+            <div style="position: relative;">
+              <img src="${imgSrc}" style="width: 100%; height: auto; border-radius: 12px; display: block;">
+              <div contenteditable="false" style="position: absolute; top: 12px; left: 12px; z-index: 10;">
+                <button type="button" data-image-delete contenteditable="false" title="Delete Image" style="display: flex; align-items: center; justify-content: center; width: 40px; height: 40px; background: rgba(107, 114, 128, 0.9); color: white; border: none; border-radius: 8px; cursor: pointer; transition: all 0.2s; backdrop-filter: blur(4px);" onmouseover="this.style.background='rgba(75, 85, 99, 0.95)'; this.style.transform='scale(1.05)'" onmouseout="this.style.background='rgba(107, 114, 128, 0.9)'; this.style.transform='scale(1)'" class="image-delete-btn">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
+                </button>
+              </div>
+            </div>
+          </div>`;
+        });
+        
+        // Also migrate really old image format without max-width
+        bodyHtml = bodyHtml.replace(/<div contenteditable="false" style="margin: 16px 0;"><img src="([^"]+)" style="max-width: 100%; height: auto; border-radius: 8px;"><\/div>/gi, (match, imgSrc) => {
+          return `<div contenteditable="false" style="margin: 16px auto; max-width: 640px; position: relative;" data-image-container>
+            <div style="position: relative;">
+              <img src="${imgSrc}" style="width: 100%; height: auto; border-radius: 12px; display: block;">
+              <div contenteditable="false" style="position: absolute; top: 12px; left: 12px; z-index: 10;">
+                <button type="button" data-image-delete contenteditable="false" title="Delete Image" style="display: flex; align-items: center; justify-content: center; width: 40px; height: 40px; background: rgba(107, 114, 128, 0.9); color: white; border: none; border-radius: 8px; cursor: pointer; transition: all 0.2s; backdrop-filter: blur(4px);" onmouseover="this.style.background='rgba(75, 85, 99, 0.95)'; this.style.transform='scale(1.05)'" onmouseout="this.style.background='rgba(107, 114, 128, 0.9)'; this.style.transform='scale(1)'" class="image-delete-btn">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
+                </button>
+              </div>
+            </div>
+          </div>`;
+        });
+        
+        // Catch-all: Migrate any remaining image in a div that doesn't have delete button
+        // This will match any div with an img tag that doesn't already have data-image-delete
+        bodyHtml = bodyHtml.replace(/<div([^>]*contenteditable="false"[^>]*)>(\s*)<img\s+src="([^"]+)"([^>]*)>(\s*)<\/div>/gi, (match, divAttrs, ws1, imgSrc, imgAttrs, ws2) => {
+          // Skip if this div already has the delete button
+          if (match.includes('data-image-delete') || match.includes('data-image-container')) {
+            return match;
+          }
+          // Skip if this is a video container
+          if (match.includes('data-video-type')) {
+            return match;
+          }
+          return `<div contenteditable="false" style="margin: 16px auto; max-width: 640px; position: relative;" data-image-container>
+            <div style="position: relative;">
+              <img src="${imgSrc}" style="width: 100%; height: auto; border-radius: 12px; display: block;">
+              <div contenteditable="false" style="position: absolute; top: 12px; left: 12px; z-index: 10;">
+                <button type="button" data-image-delete contenteditable="false" title="Delete Image" style="display: flex; align-items: center; justify-content: center; width: 40px; height: 40px; background: rgba(107, 114, 128, 0.9); color: white; border: none; border-radius: 8px; cursor: pointer; transition: all 0.2s; backdrop-filter: blur(4px);" onmouseover="this.style.background='rgba(75, 85, 99, 0.95)'; this.style.transform='scale(1.05)'" onmouseout="this.style.background='rgba(107, 114, 128, 0.9)'; this.style.transform='scale(1)'" class="image-delete-btn">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
+                </button>
+              </div>
+            </div>
+          </div>`;
+        });
+        
         bodyInputRef.current.innerHTML = bodyHtml;
       }
     }
@@ -333,7 +386,7 @@ export function CourseManagement(props: CourseEditorProps) {
         return false;
       }
       
-      // Check if click is on delete button or its children
+      // Check if click is on video delete button or its children
       const deleteButton = target.closest('[data-video-delete]');
       if (deleteButton) {
         e.preventDefault();
@@ -351,6 +404,32 @@ export function CourseManagement(props: CourseEditorProps) {
           const course = props.courses.find((c) => c.id === selectedCourseId);
           if (course) {
             videoContainer.remove();
+            const nextBody = bodyInputRef.current.innerHTML;
+            const nextPages = (course.pages || []).map((p) => (p.id === activePageId ? { ...p, body: nextBody } : p));
+            updateCourse({ ...course, pages: nextPages });
+          }
+        }
+        return false;
+      }
+      
+      // Check if click is on image delete button or its children
+      const imageDeleteButton = target.closest('[data-image-delete]');
+      if (imageDeleteButton) {
+        e.preventDefault();
+        e.stopPropagation();
+        e.stopImmediatePropagation();
+        
+        // Show confirmation dialog
+        const confirmed = window.confirm('Are you sure you want to delete this image?');
+        if (!confirmed) {
+          return false;
+        }
+        
+        const imageContainer = imageDeleteButton.closest('[data-image-container]');
+        if (imageContainer && bodyInputRef.current) {
+          const course = props.courses.find((c) => c.id === selectedCourseId);
+          if (course) {
+            imageContainer.remove();
             const nextBody = bodyInputRef.current.innerHTML;
             const nextPages = (course.pages || []).map((p) => (p.id === activePageId ? { ...p, body: nextBody } : p));
             updateCourse({ ...course, pages: nextPages });
@@ -983,7 +1062,16 @@ export function CourseManagement(props: CourseEditorProps) {
             return;
           }
           
-          const imageHtml = `<div contenteditable="false" style="margin: 16px 0;"><img src="${trimmed}" style="max-width: 100%; height: auto; border-radius: 8px;"></div>`;
+          const imageHtml = `<div contenteditable="false" style="margin: 16px auto; max-width: 640px; position: relative;" data-image-container>
+            <div style="position: relative;">
+              <img src="${trimmed}" style="width: 100%; height: auto; border-radius: 12px; display: block;">
+              <div contenteditable="false" style="position: absolute; top: 12px; left: 12px; z-index: 10;">
+                <button type="button" data-image-delete contenteditable="false" title="Delete Image" style="display: flex; align-items: center; justify-content: center; width: 40px; height: 40px; background: rgba(107, 114, 128, 0.9); color: white; border: none; border-radius: 8px; cursor: pointer; transition: all 0.2s; backdrop-filter: blur(4px);" onmouseover="this.style.background='rgba(75, 85, 99, 0.95)'; this.style.transform='scale(1.05)'" onmouseout="this.style.background='rgba(107, 114, 128, 0.9)'; this.style.transform='scale(1)'" class="image-delete-btn">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
+                </button>
+              </div>
+            </div>
+          </div>`;
           
           if (bodyInputRef.current && imageHtml) {
             bodyInputRef.current.focus();
@@ -1356,7 +1444,7 @@ export function CourseManagement(props: CourseEditorProps) {
               const shareUrl = `https://www.youtube.com/watch?v=${videoId}`;
               videoHtml = `<div contenteditable="false" style="margin: 16px auto; max-width: 640px; position: relative;" data-video-type="youtube" data-video-id="${videoId}" data-share-url="${shareUrl}">
                 <div style="position: relative; aspect-ratio: 16/9; background: #000; border-radius: 12px; overflow: hidden;">
-                  <iframe src="https://www.youtube.com/embed/${videoId}" style="width: 100%; height: 100%; border: none;" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"></iframe>
+                  <iframe src="https://www.youtube.com/embed/${videoId}" loading="lazy" style="width: 100%; height: 100%; border: none;" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"></iframe>
                   <div contenteditable="false" style="position: absolute; top: 12px; left: 12px; display: flex; gap: 8px; z-index: 10;">
                     <button type="button" data-video-share contenteditable="false" title="Share Video" style="display: flex; align-items: center; justify-content: center; width: 40px; height: 40px; background: rgba(239, 68, 68, 0.9); color: white; border: none; border-radius: 8px; cursor: pointer; transition: all 0.2s; backdrop-filter: blur(4px);" onmouseover="this.style.background='rgba(220, 38, 38, 0.95)'; this.style.transform='scale(1.05)'" onmouseout="this.style.background='rgba(239, 68, 68, 0.9)'; this.style.transform='scale(1)'">
                       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"></circle><circle cx="6" cy="12" r="3"></circle><circle cx="18" cy="19" r="3"></circle><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line></svg>
@@ -1381,7 +1469,7 @@ export function CourseManagement(props: CourseEditorProps) {
               console.log('Vimeo embed URL:', embedUrl);
               videoHtml = `<div contenteditable="false" style="margin: 16px auto; max-width: 640px; position: relative;" data-video-type="vimeo" data-video-id="${videoId}" data-share-url="${shareUrl}">
                 <div style="position: relative; aspect-ratio: 16/9; background: #000; border-radius: 12px; overflow: hidden;">
-                  <iframe src="${embedUrl}" style="width: 100%; height: 100%; border: none;" allow="autoplay; fullscreen; picture-in-picture"></iframe>
+                  <iframe src="${embedUrl}" loading="lazy" style="width: 100%; height: 100%; border: none;" allow="autoplay; fullscreen; picture-in-picture"></iframe>
                   <div contenteditable="false" style="position: absolute; top: 12px; left: 12px; display: flex; gap: 8px; z-index: 10;">
                     <button type="button" data-video-share contenteditable="false" title="Share Video" style="display: flex; align-items: center; justify-content: center; width: 40px; height: 40px; background: rgba(239, 68, 68, 0.9); color: white; border: none; border-radius: 8px; cursor: pointer; transition: all 0.2s; backdrop-filter: blur(4px);" onmouseover="this.style.background='rgba(220, 38, 38, 0.95)'; this.style.transform='scale(1.05)'" onmouseout="this.style.background='rgba(239, 68, 68, 0.9)'; this.style.transform='scale(1)'">
                       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"></circle><circle cx="6" cy="12" r="3"></circle><circle cx="18" cy="19" r="3"></circle><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line></svg>
