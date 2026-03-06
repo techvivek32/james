@@ -73,11 +73,13 @@ export function ManagerOnlineTrainingPage(props: {
       : 0;
 
   const [courseProgress, setCourseProgress] = useState<Record<string, { completed: number; total: number; isCompleted: boolean }>>({});
+  const [isLoadingProgress, setIsLoadingProgress] = useState(false);
 
   useEffect(() => {
     const loadProgress = async () => {
-      if (publishedCourses.length === 0) return;
+      if (publishedCourses.length === 0 || isLoadingProgress) return;
       
+      setIsLoadingProgress(true);
       try {
         // Batch load all progress in one API call
         const courseIds = publishedCourses.map(c => c.id).join(',');
@@ -102,9 +104,15 @@ export function ManagerOnlineTrainingPage(props: {
         }
       } catch (err) {
         console.error('Failed to load progress:', err);
+      } finally {
+        setIsLoadingProgress(false);
       }
     };
-    loadProgress();
+    
+    // Load progress in background without blocking UI
+    if (publishedCourses.length > 0) {
+      setTimeout(() => loadProgress(), 0);
+    }
   }, [publishedCourses, props.currentUser]);
 
   if (selectedCourse) {
