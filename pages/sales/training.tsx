@@ -19,6 +19,8 @@ const Training: NextPage = () => {
         return;
       }
       
+      setIsLoading(true);
+      
       try {
         const coursesRes = await fetch(`/api/courses?userId=${user.id}&userRole=${user.role}`);
         if (coursesRes.ok && mounted) {
@@ -37,20 +39,23 @@ const Training: NextPage = () => {
         if (mounted) setIsLoading(false);
       }
     }
-    loadCourses();
+    
+    if (user?.id) {
+      loadCourses();
+    }
     
     return () => {
       mounted = false;
     };
   }, [user?.id, user?.role]);
 
-  if (!user || isLoading) {
+  if (!user) {
     return (
       <SalesLayout currentView="training">
         <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '400px' }}>
           <div style={{ textAlign: 'center' }}>
             <div className="spinner" style={{ margin: '0 auto 16px' }}></div>
-            <div style={{ color: '#6b7280' }}>Loading courses...</div>
+            <div style={{ color: '#6b7280' }}>Loading...</div>
           </div>
         </div>
       </SalesLayout>
@@ -58,8 +63,8 @@ const Training: NextPage = () => {
   }
 
   return (
-    <SalesLayout currentView="training" userName={user.name} userId={user.id}>
-      <TrainingCenter courses={courses} />
+    <SalesLayout currentView="training">
+      <TrainingCenter courses={courses} isLoading={isLoading} />
     </SalesLayout>
   );
 };

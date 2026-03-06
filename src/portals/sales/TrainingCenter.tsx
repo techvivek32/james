@@ -3,9 +3,10 @@ import { Course } from "../../types";
 import { LessonAIChat } from "../../components/LessonAIChat";
 import { useAuth } from "../../contexts/AuthContext";
 
-export function TrainingCenter(props: { courses: Course[] }) {
+export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }) {
   const { user } = useAuth();
   const courses = props.courses;
+  const isLoading = props.isLoading || false;
   const [search, setSearch] = useState("");
   const [selectedCourse, setSelectedCourse] = useState<Course | null>(null);
   const [activePageId, setActivePageId] = useState<string | null>(null);
@@ -156,6 +157,13 @@ export function TrainingCenter(props: { courses: Course[] }) {
 
     return (
       <div className="training-center">
+        <style>{`
+          .training-center [data-video-share],
+          .training-center [data-video-delete],
+          .training-center [data-image-delete] {
+            display: none !important;
+          }
+        `}</style>
         <div className="training-center-header">
           <div className="panel-header">{selectedCourse.title}</div>
           <button type="button" className="btn-secondary btn-small" onClick={() => { setSelectedCourse(null); setActivePageId(null); }}>
@@ -416,7 +424,14 @@ export function TrainingCenter(props: { courses: Course[] }) {
           />
         </div>
       </div>
-      {filteredCourses.length > 0 ? (
+      {isLoading ? (
+        <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '300px' }}>
+          <div style={{ textAlign: 'center' }}>
+            <div className="spinner" style={{ margin: '0 auto 16px' }}></div>
+            <div style={{ color: '#6b7280' }}>Loading courses...</div>
+          </div>
+        </div>
+      ) : filteredCourses.length > 0 ? (
         <div className="training-card-grid">
           {filteredCourses.map((course: Course) => {
             const progress = courseProgress[course.id] || { completed: 0, total: 0, isCompleted: false };

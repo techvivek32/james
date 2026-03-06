@@ -6,8 +6,10 @@ import { LessonAIChat } from "../../components/LessonAIChat";
 export function ManagerOnlineTrainingPage(props: {
   currentUser: AuthenticatedUser;
   courses: Course[];
+  isLoading?: boolean;
 }) {
   const publishedCourses = props.courses;
+  const isLoading = props.isLoading || false;
   const [selectedCourse, setSelectedCourse] = useState<Course | null>(null);
   const [activePageId, setActivePageId] = useState<string | null>(null);
   const [collapsedFolders, setCollapsedFolders] = useState<Set<string>>(new Set());
@@ -160,6 +162,13 @@ export function ManagerOnlineTrainingPage(props: {
 
     return (
       <div className="training-center">
+        <style>{`
+          .training-center [data-video-share],
+          .training-center [data-video-delete],
+          .training-center [data-image-delete] {
+            display: none !important;
+          }
+        `}</style>
         <div className="panel-header">
           <div className="panel-header-row">
             <span>{selectedCourse.title}</span>
@@ -435,7 +444,14 @@ export function ManagerOnlineTrainingPage(props: {
             </div>
           </div>
         </div>
-      ) : (
+      ) : isLoading ? (
+        <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '300px' }}>
+          <div style={{ textAlign: 'center' }}>
+            <div className="spinner" style={{ margin: '0 auto 16px' }}></div>
+            <div style={{ color: '#6b7280' }}>Loading courses...</div>
+          </div>
+        </div>
+      ) : publishedCourses.length > 0 ? (
         <div className="training-card-grid">
           {publishedCourses.map((course, index) => {
             const progress = courseProgress[course.id] || { completed: 0, total: 0, isCompleted: false };
@@ -476,6 +492,8 @@ export function ManagerOnlineTrainingPage(props: {
             );
           })}
         </div>
+      ) : (
+        <div className="panel-empty">No courses available yet.</div>
       )}
     </div>
   );
