@@ -845,8 +845,15 @@ export function CourseManagement(props: CourseEditorProps) {
 
   // Drag and drop handlers for course reordering
   const handleDragStart = (e: React.DragEvent, courseId: string) => {
+    console.log('[COURSE DRAG] Starting drag for course:', courseId);
     setDraggedCourseId(courseId);
     e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', courseId);
+  };
+
+  const handleDragEnd = () => {
+    console.log('[COURSE DRAG] Drag ended');
+    setDraggedCourseId(null);
   };
 
   const handleDragOver = (e: React.DragEvent) => {
@@ -891,10 +898,6 @@ export function CourseManagement(props: CourseEditorProps) {
     setDraggedCourseId(null);
   };
 
-  const handleDragEnd = () => {
-    setDraggedCourseId(null);
-  };
-
   if (viewMode === "grid") {
     return (
       <div className="admin-course-grid-page">
@@ -920,7 +923,7 @@ export function CourseManagement(props: CourseEditorProps) {
                     key={course.id}
                     type="button"
                     className="training-card admin-course-card"
-                    draggable
+                    draggable={true}
                     onDragStart={(e) => handleDragStart(e, course.id)}
                     onDragOver={handleDragOver}
                     onDrop={(e) => handleDrop(e, course.id)}
@@ -1972,12 +1975,15 @@ export function CourseManagement(props: CourseEditorProps) {
                                   <div
                                     key={page.id}
                                     className={`${activePage && page.id === activePage.id ? "course-pages-item active" : "course-pages-item"} ${draggedPageId === page.id ? 'dragging' : ''} ${dragOverPageId === page.id && dragOverPosition === 'above' ? 'drag-over-above' : ''} ${dragOverPageId === page.id && dragOverPosition === 'below' ? 'drag-over-below' : ''}`}
-                                    draggable
+                                    draggable={true}
                                     onDragStart={(e) => {
+                                      console.log('Drag started for page:', page.id);
                                       setDraggedPageId(page.id);
                                       e.dataTransfer.effectAllowed = 'move';
+                                      e.dataTransfer.setData('text/plain', page.id);
                                     }}
                                     onDragEnd={() => {
+                                      console.log('Drag ended');
                                       setDraggedPageId(null);
                                       setDraggedFolderId(null);
                                       setDragOverFolderId(null);
@@ -2018,6 +2024,7 @@ export function CourseManagement(props: CourseEditorProps) {
                                       }
                                     }}
                                     onDrop={(e) => {
+                                      console.log('Drop on page:', page.id);
                                       e.preventDefault();
                                       e.stopPropagation();
                                       if (draggedPageId && draggedPageId !== page.id && dragOverPosition) {
@@ -2031,14 +2038,32 @@ export function CourseManagement(props: CourseEditorProps) {
                                       setDragOverPosition(null);
                                       setDragOverFolderId(null);
                                     }}
-                                    onClick={() => {
+                                    onClick={(e) => {
+                                      // Don't trigger click if we just finished dragging
+                                      if (draggedPageId) {
+                                        e.preventDefault();
+                                        return;
+                                      }
                                       setActivePageId(page.id);
                                       setOpenPageMenuId(null);
                                       setIsCourseMenuOpen(false);
                                       setEditingLessonId(null);
                                     }}
                                   >
-                                    <span style={{ cursor: "grab", marginRight: "8px" }}>⋮⋮</span>
+                                    <span 
+                                      className="drag-handle"
+                                      style={{ 
+                                        cursor: "grab", 
+                                        marginRight: "8px",
+                                        userSelect: "none",
+                                        WebkitUserSelect: "none",
+                                        fontSize: "16px",
+                                        color: "#9ca3af"
+                                      }}
+                                      title="Drag to reorder"
+                                    >
+                                      ⋮⋮
+                                    </span>
                                     <span className="course-pages-item-title">
                                       {page.title}
                                       {page.status === "draft" && <span style={{ color: "#9ca3af", fontSize: "12px", marginLeft: "6px" }}>(Draft)</span>}
@@ -2115,16 +2140,19 @@ export function CourseManagement(props: CourseEditorProps) {
                                     <div 
                                       key={folder.id} 
                                       className={`course-folder-group ${dragOverFolderId === folder.id ? 'drag-over' : ''} ${draggedFolderId === folder.id ? 'dragging' : ''} ${dragOverFolderId === folder.id && dragOverPosition === 'above' ? 'drag-over-above' : ''} ${dragOverFolderId === folder.id && dragOverPosition === 'below' ? 'drag-over-below' : ''}`}
-                                      draggable
+                                      draggable={true}
                                       onDragStart={(e) => {
+                                        console.log('Folder drag started:', folder.id);
                                         if (e.target === e.currentTarget || (e.target as HTMLElement).classList.contains('course-folder-toggle') || (e.target as HTMLElement).classList.contains('course-folder-title')) {
                                           setDraggedFolderId(folder.id);
                                           e.dataTransfer.effectAllowed = 'move';
+                                          e.dataTransfer.setData('text/plain', folder.id);
                                         } else {
                                           e.preventDefault();
                                         }
                                       }}
                                       onDragEnd={() => {
+                                        console.log('Folder drag ended');
                                         setDraggedFolderId(null);
                                         setDragOverFolderId(null);
                                         setDragOverPageId(null);
@@ -2161,6 +2189,7 @@ export function CourseManagement(props: CourseEditorProps) {
                                         }
                                       }}
                                       onDrop={(e) => {
+                                        console.log('Drop on folder:', folder.id);
                                         e.preventDefault();
                                         e.stopPropagation();
                                         if (draggedPageId) {
@@ -2305,12 +2334,15 @@ export function CourseManagement(props: CourseEditorProps) {
                                         <div
                                           key={page.id}
                                           className={`${activePage && page.id === activePage.id ? "course-pages-item course-pages-item-child active" : "course-pages-item course-pages-item-child"} ${draggedPageId === page.id ? 'dragging' : ''} ${dragOverPageId === page.id && dragOverPosition === 'above' ? 'drag-over-above' : ''} ${dragOverPageId === page.id && dragOverPosition === 'below' ? 'drag-over-below' : ''}`}
-                                          draggable
+                                          draggable={true}
                                           onDragStart={(e) => {
+                                            console.log('Page in folder drag started:', page.id);
                                             setDraggedPageId(page.id);
                                             e.dataTransfer.effectAllowed = 'move';
+                                            e.dataTransfer.setData('text/plain', page.id);
                                           }}
                                           onDragEnd={() => {
+                                            console.log('Page in folder drag ended');
                                             setDraggedPageId(null);
                                             setDraggedFolderId(null);
                                             setDragOverFolderId(null);
@@ -2344,6 +2376,7 @@ export function CourseManagement(props: CourseEditorProps) {
                                             }
                                           }}
                                           onDrop={(e) => {
+                                            console.log('Drop on page in folder:', page.id);
                                             e.preventDefault();
                                             e.stopPropagation();
                                             if (draggedPageId && draggedPageId !== page.id && dragOverPosition) {

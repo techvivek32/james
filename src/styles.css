@@ -3541,3 +3541,116 @@ body {
   z-index: 1000;
   pointer-events: none;
 }
+
+/* Drag and Drop Styles */
+.course-pages-sidebar.drag-active .course-folder-group {
+  transition: all 0.2s ease;
+}
+
+.course-folder-group.drag-over {
+  background-color: #e0f2fe !important;
+  border: 2px dashed #0ea5e9 !important;
+  border-radius: 8px;
+}
+
+.course-folder-group.dragging {
+  opacity: 0.4;
+  transform: rotate(1deg);
+  cursor: grabbing !important;
+}
+
+.course-folder-group.drag-over-above::before {
+  content: '';
+  position: absolute;
+  top: -2px;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background-color: #0ea5e9;
+  border-radius: 2px;
+  z-index: 100;
+}
+
+.course-folder-group.drag-over-below::after {
+  content: '';
+  position: absolute;
+  bottom: -2px;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background-color: #0ea5e9;
+  border-radius: 2px;
+  z-index: 100;
+}
+
+.course-pages-item.dragging {
+  opacity: 0.4;
+  transform: rotate(2deg);
+  cursor: grabbing !important;
+}
+
+.course-pages-item.drag-over-above::before {
+  content: '';
+  position: absolute;
+  top: -2px;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background-color: #0ea5e9;
+  border-radius: 2px;
+  z-index: 100;
+}
+
+.course-pages-item.drag-over-below::after {
+  content: '';
+  position: absolute;
+  bottom: -2px;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background-color: #0ea5e9;
+  border-radius: 2px;
+  z-index: 100;
+}
+
+.course-pages-item {
+  position: relative;
+  cursor: grab;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.course-pages-item:active {
+  cursor: grabbing;
+}
+
+.course-folder-group {
+  position: relative;
+  cursor: grab;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.course-folder-group:active {
+  cursor: grabbing;
+}
+
+/* Make drag handle more visible */
+.drag-handle,
+.course-pages-item > span:first-child {
+  color: #9ca3af;
+  font-weight: bold;
+  transition: color 0.2s;
+  cursor: grab !important;
+}
+
+.drag-handle:hover,
+.course-pages-item:hover > span:first-child {
+  color: #4b5563;
+}
+
+.drag-handle:active,
+.course-pages-item:active > span:first-child {
+  cursor: grabbing !important;
+}
+
