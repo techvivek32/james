@@ -143,6 +143,19 @@ export function CourseManagement(props: CourseEditorProps) {
       .course-folder-group {
         position: relative;
       }
+      /* Hide delete button in view mode (non-editable content) */
+      .course-page-body-input:not([contenteditable="true"]) .video-delete-btn {
+        display: none !important;
+      }
+      /* Ensure video buttons are clickable and don't trigger contenteditable */
+      [data-video-type] button,
+      [data-video-type] a {
+        pointer-events: auto !important;
+        user-select: none;
+      }
+      [data-video-type] iframe {
+        pointer-events: auto;
+      }
     `;
     document.head.appendChild(styleElement);
   }
@@ -189,16 +202,170 @@ export function CourseManagement(props: CourseEditorProps) {
               const videoId = vimeoMatch[1];
               const hash = vimeoMatch[2];
               const embedUrl = hash ? `https://player.vimeo.com/video/${videoId}?h=${hash}` : `https://player.vimeo.com/video/${videoId}`;
-              return `<iframe src="${embedUrl}" style="width: 100%; height: 100%; border: none;" allow="autoplay; fullscreen; picture-in-picture" allowfullscreen></iframe>`;
+              return `<iframe src="${embedUrl}" style="width: 100%; height: 100%; border: none;" allow="autoplay; fullscreen; picture-in-picture"></iframe>`;
             }
             return match;
           });
         }
         
+        // Migrate old YouTube videos to new format with share button
+        bodyHtml = bodyHtml.replace(/<div contenteditable="false" style="margin: 16px auto; max-width: 640px;[^"]*"[^>]*data-video-type="youtube" data-video-id="([^"]+)"[^>]*>[\s\S]*?<\/div>/gi, (match, videoId) => {
+          const shareUrl = `https://www.youtube.com/watch?v=${videoId}`;
+          return `<div contenteditable="false" style="margin: 16px auto; max-width: 640px; position: relative;" data-video-type="youtube" data-video-id="${videoId}" data-share-url="${shareUrl}">
+            <div style="position: relative; aspect-ratio: 16/9; background: #000; border-radius: 12px; overflow: hidden;">
+              <iframe src="https://www.youtube.com/embed/${videoId}" style="width: 100%; height: 100%; border: none;" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"></iframe>
+              <div style="position: absolute; top: 12px; left: 12px; display: flex; gap: 8px; z-index: 10;">
+                <button type="button" data-video-share title="Share Video" style="display: flex; align-items: center; justify-content: center; width: 40px; height: 40px; background: rgba(239, 68, 68, 0.9); color: white; border: none; border-radius: 8px; cursor: pointer; transition: all 0.2s; backdrop-filter: blur(4px);" onmouseover="this.style.background='rgba(220, 38, 38, 0.95)'; this.style.transform='scale(1.05)'" onmouseout="this.style.background='rgba(239, 68, 68, 0.9)'; this.style.transform='scale(1)'">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"></circle><circle cx="6" cy="12" r="3"></circle><circle cx="18" cy="19" r="3"></circle><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line></svg>
+                </button>
+                <button type="button" data-video-delete title="Delete Video" style="display: flex; align-items: center; justify-content: center; width: 40px; height: 40px; background: rgba(107, 114, 128, 0.9); color: white; border: none; border-radius: 8px; cursor: pointer; transition: all 0.2s; backdrop-filter: blur(4px);" onmouseover="this.style.background='rgba(75, 85, 99, 0.95)'; this.style.transform='scale(1.05)'" onmouseout="this.style.background='rgba(107, 114, 128, 0.9)'; this.style.transform='scale(1)'" class="video-delete-btn">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
+                </button>
+              </div>
+            </div>
+          </div>`;
+        });
+        
+        // Also migrate really old YouTube format without data attributes
+        bodyHtml = bodyHtml.replace(/<div contenteditable="false" style="margin: 16px auto; max-width: 640px; aspect-ratio: 16\/9; background: #000; border-radius: 12px; overflow: hidden;"><iframe src="https:\/\/www\.youtube\.com\/embed\/([^"]+)"([^>]*)><\/iframe><\/div>/gi, (match, videoId) => {
+          const shareUrl = `https://www.youtube.com/watch?v=${videoId}`;
+          return `<div contenteditable="false" style="margin: 16px auto; max-width: 640px; position: relative;" data-video-type="youtube" data-video-id="${videoId}" data-share-url="${shareUrl}">
+            <div style="position: relative; aspect-ratio: 16/9; background: #000; border-radius: 12px; overflow: hidden;">
+              <iframe src="https://www.youtube.com/embed/${videoId}" style="width: 100%; height: 100%; border: none;" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"></iframe>
+              <div style="position: absolute; top: 12px; left: 12px; display: flex; gap: 8px; z-index: 10;">
+                <button type="button" data-video-share title="Share Video" style="display: flex; align-items: center; justify-content: center; width: 40px; height: 40px; background: rgba(239, 68, 68, 0.9); color: white; border: none; border-radius: 8px; cursor: pointer; transition: all 0.2s; backdrop-filter: blur(4px);" onmouseover="this.style.background='rgba(220, 38, 38, 0.95)'; this.style.transform='scale(1.05)'" onmouseout="this.style.background='rgba(239, 68, 68, 0.9)'; this.style.transform='scale(1)'">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"></circle><circle cx="6" cy="12" r="3"></circle><circle cx="18" cy="19" r="3"></circle><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line></svg>
+                </button>
+                <button type="button" data-video-delete title="Delete Video" style="display: flex; align-items: center; justify-content: center; width: 40px; height: 40px; background: rgba(107, 114, 128, 0.9); color: white; border: none; border-radius: 8px; cursor: pointer; transition: all 0.2s; backdrop-filter: blur(4px);" onmouseover="this.style.background='rgba(75, 85, 99, 0.95)'; this.style.transform='scale(1.05)'" onmouseout="this.style.background='rgba(107, 114, 128, 0.9)'; this.style.transform='scale(1)'" class="video-delete-btn">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
+                </button>
+              </div>
+            </div>
+          </div>`;
+        });
+        
+        // Migrate old Vimeo videos to new format with share button
+        bodyHtml = bodyHtml.replace(/<div contenteditable="false" style="margin: 16px auto; max-width: 640px;[^"]*"[^>]*data-video-type="vimeo" data-video-id="([^"]+)"[^>]*>[\s\S]*?<\/div>/gi, (match, videoId) => {
+          // Try to extract hash if present in the match
+          const hashMatch = match.match(/vimeo\.com\/video\/\d+\?h=([a-zA-Z0-9]+)/);
+          const hash = hashMatch ? hashMatch[1] : null;
+          const embedUrl = hash ? `https://player.vimeo.com/video/${videoId}?h=${hash}` : `https://player.vimeo.com/video/${videoId}`;
+          const shareUrl = hash ? `https://vimeo.com/${videoId}/${hash}` : `https://vimeo.com/${videoId}`;
+          return `<div contenteditable="false" style="margin: 16px auto; max-width: 640px; position: relative;" data-video-type="vimeo" data-video-id="${videoId}" data-share-url="${shareUrl}">
+            <div style="position: relative; aspect-ratio: 16/9; background: #000; border-radius: 12px; overflow: hidden;">
+              <iframe src="${embedUrl}" style="width: 100%; height: 100%; border: none;" allow="autoplay; fullscreen; picture-in-picture"></iframe>
+              <div style="position: absolute; top: 12px; left: 12px; display: flex; gap: 8px; z-index: 10;">
+                <button type="button" data-video-share title="Share Video" style="display: flex; align-items: center; justify-content: center; width: 40px; height: 40px; background: rgba(239, 68, 68, 0.9); color: white; border: none; border-radius: 8px; cursor: pointer; transition: all 0.2s; backdrop-filter: blur(4px);" onmouseover="this.style.background='rgba(220, 38, 38, 0.95)'; this.style.transform='scale(1.05)'" onmouseout="this.style.background='rgba(239, 68, 68, 0.9)'; this.style.transform='scale(1)'">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"></circle><circle cx="6" cy="12" r="3"></circle><circle cx="18" cy="19" r="3"></circle><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line></svg>
+                </button>
+                <button type="button" data-video-delete title="Delete Video" style="display: flex; align-items: center; justify-content: center; width: 40px; height: 40px; background: rgba(107, 114, 128, 0.9); color: white; border: none; border-radius: 8px; cursor: pointer; transition: all 0.2s; backdrop-filter: blur(4px);" onmouseover="this.style.background='rgba(75, 85, 99, 0.95)'; this.style.transform='scale(1.05)'" onmouseout="this.style.background='rgba(107, 114, 128, 0.9)'; this.style.transform='scale(1)'" class="video-delete-btn">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
+                </button>
+              </div>
+            </div>
+          </div>`;
+        });
+        
+        // Also migrate really old Vimeo format without data attributes
+        bodyHtml = bodyHtml.replace(/<div contenteditable="false" style="margin: 16px auto; max-width: 640px; aspect-ratio: 16\/9; background: #000; border-radius: 12px; overflow: hidden;"><iframe src="https:\/\/player\.vimeo\.com\/video\/(\d+)(\?h=([a-zA-Z0-9]+))?"([^>]*)><\/iframe><\/div>/gi, (match, videoId, hashPart, hash) => {
+          const embedUrl = hash ? `https://player.vimeo.com/video/${videoId}?h=${hash}` : `https://player.vimeo.com/video/${videoId}`;
+          const shareUrl = hash ? `https://vimeo.com/${videoId}/${hash}` : `https://vimeo.com/${videoId}`;
+          return `<div contenteditable="false" style="margin: 16px auto; max-width: 640px; position: relative;" data-video-type="vimeo" data-video-id="${videoId}" data-share-url="${shareUrl}">
+            <div style="position: relative; aspect-ratio: 16/9; background: #000; border-radius: 12px; overflow: hidden;">
+              <iframe src="${embedUrl}" style="width: 100%; height: 100%; border: none;" allow="autoplay; fullscreen; picture-in-picture"></iframe>
+              <div style="position: absolute; top: 12px; left: 12px; display: flex; gap: 8px; z-index: 10;">
+                <button type="button" data-video-share title="Share Video" style="display: flex; align-items: center; justify-content: center; width: 40px; height: 40px; background: rgba(239, 68, 68, 0.9); color: white; border: none; border-radius: 8px; cursor: pointer; transition: all 0.2s; backdrop-filter: blur(4px);" onmouseover="this.style.background='rgba(220, 38, 38, 0.95)'; this.style.transform='scale(1.05)'" onmouseout="this.style.background='rgba(239, 68, 68, 0.9)'; this.style.transform='scale(1)'">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"></circle><circle cx="6" cy="12" r="3"></circle><circle cx="18" cy="19" r="3"></circle><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line></svg>
+                </button>
+                <button type="button" data-video-delete title="Delete Video" style="display: flex; align-items: center; justify-content: center; width: 40px; height: 40px; background: rgba(107, 114, 128, 0.9); color: white; border: none; border-radius: 8px; cursor: pointer; transition: all 0.2s; backdrop-filter: blur(4px);" onmouseover="this.style.background='rgba(75, 85, 99, 0.95)'; this.style.transform='scale(1.05)'" onmouseout="this.style.background='rgba(107, 114, 128, 0.9)'; this.style.transform='scale(1)'" class="video-delete-btn">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
+                </button>
+              </div>
+            </div>
+          </div>`;
+        });
+        
         bodyInputRef.current.innerHTML = bodyHtml;
       }
     }
   }, [activePageId, selectedCourseId, props.courses]);
+
+  // Add event delegation for video buttons (share and delete)
+  useEffect(() => {
+    const bodyElement = bodyInputRef.current;
+    if (!bodyElement) return;
+    
+    const handleVideoButtonClick = async (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+      
+      // Check if click is on share button or its children
+      const shareButton = target.closest('[data-video-share]');
+      if (shareButton) {
+        e.preventDefault();
+        e.stopPropagation();
+        e.stopImmediatePropagation();
+        
+        const videoContainer = shareButton.closest('[data-video-type]');
+        const shareUrl = videoContainer?.getAttribute('data-share-url');
+        
+        if (shareUrl) {
+          try {
+            await navigator.clipboard.writeText(shareUrl);
+            
+            // Show "Copied!" message
+            const originalHTML = (shareButton as HTMLElement).innerHTML;
+            (shareButton as HTMLElement).innerHTML = '<span style="font-size: 11px; font-weight: 600; white-space: nowrap;">Copied!</span>';
+            (shareButton as HTMLElement).style.width = 'auto';
+            (shareButton as HTMLElement).style.padding = '0 12px';
+            
+            setTimeout(() => {
+              if (shareButton) {
+                (shareButton as HTMLElement).innerHTML = originalHTML;
+                (shareButton as HTMLElement).style.width = '40px';
+                (shareButton as HTMLElement).style.padding = '';
+              }
+            }, 2000);
+          } catch (err) {
+            console.error('Failed to copy link:', err);
+            alert('Failed to copy link. Please try again.');
+          }
+        }
+        return false;
+      }
+      
+      // Check if click is on delete button or its children
+      const deleteButton = target.closest('[data-video-delete]');
+      if (deleteButton) {
+        e.preventDefault();
+        e.stopPropagation();
+        e.stopImmediatePropagation();
+        
+        // Show confirmation dialog
+        const confirmed = window.confirm('Are you sure you want to delete this video?');
+        if (!confirmed) {
+          return false;
+        }
+        
+        const videoContainer = deleteButton.closest('[data-video-type]');
+        if (videoContainer && bodyInputRef.current) {
+          const course = props.courses.find((c) => c.id === selectedCourseId);
+          if (course) {
+            videoContainer.remove();
+            const nextBody = bodyInputRef.current.innerHTML;
+            const nextPages = (course.pages || []).map((p) => (p.id === activePageId ? { ...p, body: nextBody } : p));
+            updateCourse({ ...course, pages: nextPages });
+          }
+        }
+        return false;
+      }
+    };
+    
+    bodyElement.addEventListener('mousedown', handleVideoButtonClick, true);
+    
+    return () => {
+      bodyElement.removeEventListener('mousedown', handleVideoButtonClick, true);
+    };
+  }, [activePageId, selectedCourseId, props.courses, updateCourse]);
 
   // Click outside handler to close all menus
   useEffect(() => {
@@ -1186,7 +1353,20 @@ export function CourseManagement(props: CourseEditorProps) {
             const match = trimmed.match(/(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/ ]{11})/);
             const videoId = match ? match[1] : "";
             if (videoId) {
-              videoHtml = `<div contenteditable="false" style="margin: 16px auto; max-width: 640px; aspect-ratio: 16/9; background: #000; border-radius: 12px; overflow: hidden;"><iframe src="https://www.youtube.com/embed/${videoId}" style="width: 100%; height: 100%; border: none;" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe></div>`;
+              const shareUrl = `https://www.youtube.com/watch?v=${videoId}`;
+              videoHtml = `<div contenteditable="false" style="margin: 16px auto; max-width: 640px; position: relative;" data-video-type="youtube" data-video-id="${videoId}" data-share-url="${shareUrl}">
+                <div style="position: relative; aspect-ratio: 16/9; background: #000; border-radius: 12px; overflow: hidden;">
+                  <iframe src="https://www.youtube.com/embed/${videoId}" style="width: 100%; height: 100%; border: none;" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"></iframe>
+                  <div contenteditable="false" style="position: absolute; top: 12px; left: 12px; display: flex; gap: 8px; z-index: 10;">
+                    <button type="button" data-video-share contenteditable="false" title="Share Video" style="display: flex; align-items: center; justify-content: center; width: 40px; height: 40px; background: rgba(239, 68, 68, 0.9); color: white; border: none; border-radius: 8px; cursor: pointer; transition: all 0.2s; backdrop-filter: blur(4px);" onmouseover="this.style.background='rgba(220, 38, 38, 0.95)'; this.style.transform='scale(1.05)'" onmouseout="this.style.background='rgba(239, 68, 68, 0.9)'; this.style.transform='scale(1)'">
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"></circle><circle cx="6" cy="12" r="3"></circle><circle cx="18" cy="19" r="3"></circle><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line></svg>
+                    </button>
+                    <button type="button" data-video-delete contenteditable="false" title="Delete Video" style="display: flex; align-items: center; justify-content: center; width: 40px; height: 40px; background: rgba(107, 114, 128, 0.9); color: white; border: none; border-radius: 8px; cursor: pointer; transition: all 0.2s; backdrop-filter: blur(4px);" onmouseover="this.style.background='rgba(75, 85, 99, 0.95)'; this.style.transform='scale(1.05)'" onmouseout="this.style.background='rgba(107, 114, 128, 0.9)'; this.style.transform='scale(1)'" class="video-delete-btn">
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
+                    </button>
+                  </div>
+                </div>
+              </div>`;
             }
           } else if (isVimeo) {
             // Extract Vimeo video ID from various URL formats
@@ -1197,8 +1377,21 @@ export function CourseManagement(props: CourseEditorProps) {
               const videoId = vimeoMatch[1];
               const hash = vimeoMatch[2];
               const embedUrl = hash ? `https://player.vimeo.com/video/${videoId}?h=${hash}` : `https://player.vimeo.com/video/${videoId}`;
+              const shareUrl = hash ? `https://vimeo.com/${videoId}/${hash}` : `https://vimeo.com/${videoId}`;
               console.log('Vimeo embed URL:', embedUrl);
-              videoHtml = `<div contenteditable="false" style="margin: 16px auto; max-width: 640px; aspect-ratio: 16/9; background: #000; border-radius: 12px; overflow: hidden;"><iframe src="${embedUrl}" style="width: 100%; height: 100%; border: none;" allow="autoplay; fullscreen; picture-in-picture" allowfullscreen></iframe></div>`;
+              videoHtml = `<div contenteditable="false" style="margin: 16px auto; max-width: 640px; position: relative;" data-video-type="vimeo" data-video-id="${videoId}" data-share-url="${shareUrl}">
+                <div style="position: relative; aspect-ratio: 16/9; background: #000; border-radius: 12px; overflow: hidden;">
+                  <iframe src="${embedUrl}" style="width: 100%; height: 100%; border: none;" allow="autoplay; fullscreen; picture-in-picture"></iframe>
+                  <div contenteditable="false" style="position: absolute; top: 12px; left: 12px; display: flex; gap: 8px; z-index: 10;">
+                    <button type="button" data-video-share contenteditable="false" title="Share Video" style="display: flex; align-items: center; justify-content: center; width: 40px; height: 40px; background: rgba(239, 68, 68, 0.9); color: white; border: none; border-radius: 8px; cursor: pointer; transition: all 0.2s; backdrop-filter: blur(4px);" onmouseover="this.style.background='rgba(220, 38, 38, 0.95)'; this.style.transform='scale(1.05)'" onmouseout="this.style.background='rgba(239, 68, 68, 0.9)'; this.style.transform='scale(1)'">
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"></circle><circle cx="6" cy="12" r="3"></circle><circle cx="18" cy="19" r="3"></circle><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line></svg>
+                    </button>
+                    <button type="button" data-video-delete contenteditable="false" title="Delete Video" style="display: flex; align-items: center; justify-content: center; width: 40px; height: 40px; background: rgba(107, 114, 128, 0.9); color: white; border: none; border-radius: 8px; cursor: pointer; transition: all 0.2s; backdrop-filter: blur(4px);" onmouseover="this.style.background='rgba(75, 85, 99, 0.95)'; this.style.transform='scale(1.05)'" onmouseout="this.style.background='rgba(107, 114, 128, 0.9)'; this.style.transform='scale(1)'" class="video-delete-btn">
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
+                    </button>
+                  </div>
+                </div>
+              </div>`;
             }
           } else if (isUploadedFile) {
             // Uploaded file from /uploads/ folder
@@ -2613,3 +2806,5 @@ export function CourseManagement(props: CourseEditorProps) {
     </div>
   );
 }
+
+
