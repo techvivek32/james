@@ -15,16 +15,9 @@ const OnlineTrainingPage: NextPage = () => {
   useEffect(() => {
     if (!authLoading && !user) {
       router.push("/login");
+      return;
     }
-  }, [user, authLoading, router]);
-
-  if (authLoading || !user) {
-    return null;
-  }
-
-  const currentUser: AuthenticatedUser = { id: user.id, name: user.name, role: user.role };
-
-  useEffect(() => {
+    
     if (!user) return;
     
     let mounted = true;
@@ -33,7 +26,7 @@ const OnlineTrainingPage: NextPage = () => {
       setIsLoading(true);
       
       try {
-        const coursesRes = await fetch(`/api/courses?userId=${user.id}&userRole=${user.role}`);
+        const coursesRes = await fetch(`/api/courses?userId=${user!.id}&userRole=${user!.role}`);
         if (coursesRes.ok && mounted) {
           const data = await coursesRes.json();
           // Sort courses by order field
@@ -55,7 +48,13 @@ const OnlineTrainingPage: NextPage = () => {
     return () => {
       mounted = false;
     };
-  }, [user]);
+  }, [user, authLoading, router]);
+
+  if (authLoading || !user) {
+    return null;
+  }
+
+  const currentUser: AuthenticatedUser = { id: user.id, name: user.name, role: user.role };
 
   return (
     <ManagerLayout currentView="onlineTraining">
