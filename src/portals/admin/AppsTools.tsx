@@ -315,12 +315,12 @@ export function AppsToolManagement() {
           {items.length === 0 ? (
             <div className="panel-empty">No {title.toLowerCase()} yet.</div>
           ) : (
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: 16 }}>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(350px, 1fr))", gap: 20 }}>
               {items.map((item) => (
-                <div key={item._id} className="card" style={{ padding: 0, overflow: "hidden" }}>
+                <div key={item._id} className="card" style={{ padding: 0, overflow: "hidden", height: "100%" }}>
                   <div style={{ 
                     width: "100%", 
-                    height: 180, 
+                    height: 280, 
                     backgroundImage: item.imageUrl && !item.imageUrl.startsWith('blob:') ? `url(${item.imageUrl})` : 'none',
                     backgroundColor: '#f3f4f6',
                     backgroundSize: "cover", 
@@ -333,7 +333,7 @@ export function AppsToolManagement() {
                   }}>
                     {(!item.imageUrl || item.imageUrl.startsWith('blob:')) && 'No Image'}
                   </div>
-                  <div style={{ padding: 16 }}>
+                  <div style={{ padding: 20 }}>
                     <div className="card-title" style={{ marginBottom: 8 }}>{item.title}</div>
                     <div className="card-description" style={{ marginBottom: 12, fontSize: 13 }}>
                       {item.description.length > 50 ? `${item.description.substring(0, 50)}...` : item.description}
