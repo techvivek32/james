@@ -447,16 +447,9 @@ export function TrainingCenter(props: { courses: Course[] }) {
                 </div>
                 <div className="training-card-body">
                   <div className="training-card-title">{course.title}</div>
-                  {progress.isCompleted ? (
+                  {progress.isCompleted && (
                     <div style={{ color: "#10b981", fontSize: "14px", fontWeight: 600, marginTop: "8px" }}>
                       ✓ Completed
-                    </div>
-                  ) : (
-                    <div className="training-card-progress-row">
-                      <div className="training-card-progress-label">{percentage}%</div>
-                      <div className="training-card-progress-track">
-                        <div className="training-card-progress-fill" style={{ width: `${percentage}%` }} />
-                      </div>
                     </div>
                   )}
                 </div>

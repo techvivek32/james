@@ -891,12 +891,6 @@ export function CourseManagement(props: CourseEditorProps) {
                           {course.description.length > 50 ? course.description.substring(0, 50) + "..." : course.description}
                         </div>
                       )}
-                      <div className="training-card-progress-row">
-                        <div className="training-card-progress-label">0%</div>
-                        <div className="training-card-progress-track">
-                          <div className="training-card-progress-fill" />
-                        </div>
-                      </div>
                     </div>
                   </button>
                 ))}

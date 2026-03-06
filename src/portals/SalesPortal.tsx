@@ -840,12 +840,6 @@ function TrainingCenter(props: { courses: Course[] }) {
               </div>
               <div className="training-card-body">
                 <div className="training-card-title">{course.title}</div>
-                <div className="training-card-progress-row">
-                  <div className="training-card-progress-label">0%</div>
-                  <div className="training-card-progress-track">
-                    <div className="training-card-progress-fill" />
-                  </div>
-                </div>
               </div>
             </div>
           ))}

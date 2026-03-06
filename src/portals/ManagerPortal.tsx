@@ -1776,17 +1776,6 @@ function ManagerOnlineTrainingPage(props: {
                 </div>
                 <div className="training-card-body">
                   <div className="training-card-title">{course.title}</div>
-                  <div className="training-card-progress-row">
-                    <div className="training-card-progress-label">
-                      {pct}%
-                    </div>
-                    <div className="training-card-progress-track">
-                      <div
-                        className="training-card-progress-fill"
-                        style={{ width: `${pct}%` }}
-                      />
-                    </div>
-                  </div>
                 </div>
               </div>
             );
