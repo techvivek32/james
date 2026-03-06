@@ -415,7 +415,8 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
               </>
             )}
           </div>
-          {activePage && !activePage.isQuiz && <LessonAIChat lessonTitle={activePage.title || selectedCourse.title} lessonContent={activePage.body} videoUrl={activePage.videoUrl} courseTitle={selectedCourse.title} allPages={pages} />}
+          {/* Temporarily hidden - Coming Soon */}
+          {/* {activePage && !activePage.isQuiz && <LessonAIChat lessonTitle={activePage.title || selectedCourse.title} lessonContent={activePage.body} videoUrl={activePage.videoUrl} courseTitle={selectedCourse.title} allPages={pages} />} */}
         </div>
       </div>
     );
