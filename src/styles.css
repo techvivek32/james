@@ -974,17 +974,18 @@ body {
   overflow-x: hidden;
   border-radius: 10px;
   border: 1px solid #e5e7eb;
-  padding: 10px 12px;
+  padding: 0;
   font-size: 14px;
   resize: vertical;
   white-space: pre-wrap;
   word-break: break-word;
   overflow-wrap: anywhere;
   box-sizing: border-box;
-  text-align: center;
+  text-align: left;
+  line-height: 0;
 }
 
-/* Reset text alignment for text content */
+/* Add padding back for text content */
 .course-page-body-input p,
 .course-page-body-input h1,
 .course-page-body-input h2,
@@ -993,14 +994,37 @@ body {
 .course-page-body-input h5,
 .course-page-body-input h6,
 .course-page-body-input ul,
-.course-page-body-input ol {
+.course-page-body-input ol,
+.course-page-body-input div:not([data-video-type]):not([style*="aspect-ratio"]):not([data-image-container]) {
+  padding-left: 12px;
+  padding-right: 12px;
   text-align: left;
+  line-height: 1.5;
+}
+
+/* First and last text elements need top/bottom padding */
+.course-page-body-input > *:first-child:not([data-video-type]):not([data-image-container]) {
+  padding-top: 10px;
+}
+
+.course-page-body-input > *:last-child:not([data-video-type]):not([data-image-container]) {
+  padding-bottom: 10px;
+}
+
+/* Video containers should have no padding, margin, or line-height */
+.course-page-body-input div[data-video-type],
+.course-page-body-input div[style*="aspect-ratio"],
+.course-page-body-input div[data-image-container] {
+  padding: 0 !important;
+  margin: 0 !important;
+  line-height: 0 !important;
+  display: block !important;
 }
 
 /* Reduce spacing between videos and images in course content */
 .course-page-body-input iframe,
 .course-page-body-input video {
-  margin: 5px auto !important;
+  margin: 0 !important;
   display: block;
   width: 100% !important;
   height: auto !important;
@@ -1013,7 +1037,7 @@ body {
 /* Target the video container divs - make them responsive */
 .course-page-body-input div[style*="aspect-ratio: 16/9"],
 .course-page-body-input div[style*="aspect-ratio: 16 / 9"] {
-  margin: 5px auto !important;
+  margin: 0 !important;
   width: 100% !important;
   border-radius: 0 !important;
   background: transparent !important;
@@ -1022,14 +1046,16 @@ body {
   height: auto !important;
   min-height: auto !important;
   position: relative !important;
+  padding: 0 !important;
 }
 
 /* Override the max-width on the outer video container */
 .course-page-body-input div[data-video-type] {
   max-width: 100% !important;
   width: 100% !important;
-  margin: 5px 0 !important;
+  margin: 0 !important;
   overflow: visible !important;
+  padding: 0 !important;
 }
 
 /* Make sure iframes inside containers are responsive */
