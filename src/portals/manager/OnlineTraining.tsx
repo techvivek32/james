@@ -454,7 +454,14 @@ export function ManagerOnlineTrainingPage(props: {
           description="Published online trainings"
         />
       </div>
-      {publishedCourses.length === 0 ? (
+      {isLoading ? (
+        <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '300px' }}>
+          <div style={{ textAlign: 'center' }}>
+            <div className="spinner" style={{ margin: '0 auto 16px' }}></div>
+            <div style={{ color: '#6b7280' }}>Loading courses...</div>
+          </div>
+        </div>
+      ) : publishedCourses.length === 0 ? (
         <div className="panel" style={{ marginTop: 0 }}>
           <div className="panel-body">
             <div className="panel-empty">
@@ -462,14 +469,7 @@ export function ManagerOnlineTrainingPage(props: {
             </div>
           </div>
         </div>
-      ) : isLoading ? (
-        <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '300px' }}>
-          <div style={{ textAlign: 'center' }}>
-            <div className="spinner" style={{ margin: '0 auto 16px' }}></div>
-            <div style={{ color: '#6b7280' }}>Loading courses...</div>
-          </div>
-        </div>
-      ) : publishedCourses.length > 0 ? (
+      ) : (
         <div className="training-card-grid">
           {publishedCourses.map((course, index) => {
             const progress = courseProgress[course.id] || { completed: 0, total: 0, isCompleted: false };
@@ -510,8 +510,6 @@ export function ManagerOnlineTrainingPage(props: {
             );
           })}
         </div>
-      ) : (
-        <div className="panel-empty">No courses available yet.</div>
       )}
     </div>
   );
