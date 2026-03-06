@@ -926,8 +926,10 @@ export function CourseManagement(props: CourseEditorProps) {
                     onDrop={(e) => handleDrop(e, course.id)}
                     onDragEnd={handleDragEnd}
                     style={{
-                      opacity: draggedCourseId === course.id ? 0.5 : 1,
-                      cursor: 'move'
+                      opacity: draggedCourseId === course.id ? 0.5 : (course.status === "draft" ? 0.6 : 1),
+                      cursor: 'move',
+                      filter: course.status === "draft" ? 'grayscale(30%)' : 'none',
+                      border: course.status === "draft" ? '2px dashed #d1d5db' : undefined
                     }}
                     onClick={() => {
                       setSelectedCourseId(course.id);
@@ -945,12 +947,19 @@ export function CourseManagement(props: CourseEditorProps) {
                     >
                       <div className="training-card-image-overlay">
                         {course.tagline && <span className="training-card-chip">{course.tagline}</span>}
+                        {course.status === "draft" && (
+                          <span className="training-card-chip" style={{ backgroundColor: "#f59e0b", marginLeft: "8px" }}>
+                            Draft
+                          </span>
+                        )}
                       </div>
                     </div>
                     <div className="training-card-body">
-                      <div className="training-card-title">{course.title}{course.status === "draft" ? " (Draft)" : ""}</div>
+                      <div className="training-card-title" style={{ color: course.status === "draft" ? "#9ca3af" : undefined }}>
+                        {course.title}
+                      </div>
                       {course.description && (
-                        <div style={{ fontSize: "12px", color: "#6b7280", marginTop: "4px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                        <div style={{ fontSize: "12px", color: course.status === "draft" ? "#d1d5db" : "#6b7280", marginTop: "4px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                           {course.description.length > 50 ? course.description.substring(0, 50) + "..." : course.description}
                         </div>
                       )}
@@ -973,11 +982,39 @@ export function CourseManagement(props: CourseEditorProps) {
     <div className="admin-course-management">
       {isDeleteConfirmOpen && selectedCourse && (
         <div className="overlay">
-          <div className="dialog">
-            <div className="dialog-title">Delete Course</div>
-            <p style={{ margin: "12px 0", fontSize: "14px", color: "#6b7280" }}>
-              Are you sure you want to delete "{selectedCourse.title}"? This action cannot be undone.
-            </p>
+          <div className="dialog" style={{ maxWidth: "500px" }}>
+            <div className="dialog-title" style={{ color: "#dc2626", display: "flex", alignItems: "center", gap: "8px" }}>
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="12" cy="12" r="10"/>
+                <line x1="12" y1="8" x2="12" y2="12"/>
+                <line x1="12" y1="16" x2="12.01" y2="16"/>
+              </svg>
+              Delete Course
+            </div>
+            <div style={{ padding: "16px 0" }}>
+              <p style={{ margin: "0 0 12px 0", fontSize: "14px", color: "#374151", fontWeight: 500 }}>
+                Are you sure you want to delete this course?
+              </p>
+              <div style={{ 
+                padding: "12px", 
+                backgroundColor: "#fef2f2", 
+                borderRadius: "8px", 
+                border: "1px solid #fecaca",
+                marginBottom: "12px"
+              }}>
+                <div style={{ fontSize: "14px", fontWeight: 600, color: "#991b1b", marginBottom: "4px" }}>
+                  {selectedCourse.title}
+                </div>
+                {selectedCourse.pages && selectedCourse.pages.length > 0 && (
+                  <div style={{ fontSize: "12px", color: "#dc2626" }}>
+                    This will delete {selectedCourse.pages.length} lesson{selectedCourse.pages.length !== 1 ? 's' : ''} and all associated content.
+                  </div>
+                )}
+              </div>
+              <p style={{ margin: "0", fontSize: "13px", color: "#6b7280" }}>
+                ⚠️ This action cannot be undone. All course content, lessons, and student progress will be permanently deleted.
+              </p>
+            </div>
             <div className="dialog-footer">
               <div />
               <div className="dialog-actions">
@@ -986,7 +1023,7 @@ export function CourseManagement(props: CourseEditorProps) {
                   className="btn-secondary btn-cancel"
                   onClick={() => setIsDeleteConfirmOpen(false)}
                 >
-                  No
+                  Cancel
                 </button>
                 <button
                   type="button"
@@ -994,9 +1031,10 @@ export function CourseManagement(props: CourseEditorProps) {
                   onClick={() => {
                     deleteCourse(selectedCourse.id);
                     setIsDeleteConfirmOpen(false);
+                    setViewMode("grid");
                   }}
                 >
-                  Yes, Delete
+                  Delete Course
                 </button>
               </div>
             </div>
