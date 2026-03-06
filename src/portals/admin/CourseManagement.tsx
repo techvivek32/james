@@ -178,7 +178,24 @@ export function CourseManagement(props: CourseEditorProps) {
           bodyLength: page.body?.length || 0,
           bodyPreview: page.body?.substring(0, 200)
         });
-        bodyInputRef.current.innerHTML = page.body || "";
+        
+        let bodyHtml = page.body || "";
+        
+        // Convert Vimeo video tags to iframes
+        if (bodyHtml.includes('vimeo.com')) {
+          bodyHtml = bodyHtml.replace(/<video([^>]*)src="([^"]*vimeo\.com[^"]*)"([^>]*)><\/video>/gi, (match, before, src, after) => {
+            const vimeoMatch = src.match(/vimeo\.com\/(?:video\/)?(\d+)(?:\/([a-zA-Z0-9]+))?/);
+            if (vimeoMatch) {
+              const videoId = vimeoMatch[1];
+              const hash = vimeoMatch[2];
+              const embedUrl = hash ? `https://player.vimeo.com/video/${videoId}?h=${hash}` : `https://player.vimeo.com/video/${videoId}`;
+              return `<iframe src="${embedUrl}" style="width: 100%; height: 100%; border: none;" allow="autoplay; fullscreen; picture-in-picture" allowfullscreen></iframe>`;
+            }
+            return match;
+          });
+        }
+        
+        bodyInputRef.current.innerHTML = bodyHtml;
       }
     }
   }, [activePageId, selectedCourseId, props.courses]);
@@ -1161,6 +1178,7 @@ export function CourseManagement(props: CourseEditorProps) {
           }
           
           const isYouTube = trimmed.includes("youtube.com") || trimmed.includes("youtu.be");
+          const isVimeo = trimmed.includes("vimeo.com");
           const isUploadedFile = trimmed.startsWith("/uploads/");
           let videoHtml = "";
           
@@ -1169,6 +1187,18 @@ export function CourseManagement(props: CourseEditorProps) {
             const videoId = match ? match[1] : "";
             if (videoId) {
               videoHtml = `<div contenteditable="false" style="margin: 16px auto; max-width: 640px; aspect-ratio: 16/9; background: #000; border-radius: 12px; overflow: hidden;"><iframe src="https://www.youtube.com/embed/${videoId}" style="width: 100%; height: 100%; border: none;" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe></div>`;
+            }
+          } else if (isVimeo) {
+            // Extract Vimeo video ID from various URL formats
+            // Supports: vimeo.com/123456789, vimeo.com/123456789/hash, player.vimeo.com/video/123456789
+            const vimeoMatch = trimmed.match(/vimeo\.com\/(?:video\/)?(\d+)(?:\/([a-zA-Z0-9]+))?/);
+            console.log('Vimeo URL:', trimmed, 'Match:', vimeoMatch);
+            if (vimeoMatch) {
+              const videoId = vimeoMatch[1];
+              const hash = vimeoMatch[2];
+              const embedUrl = hash ? `https://player.vimeo.com/video/${videoId}?h=${hash}` : `https://player.vimeo.com/video/${videoId}`;
+              console.log('Vimeo embed URL:', embedUrl);
+              videoHtml = `<div contenteditable="false" style="margin: 16px auto; max-width: 640px; aspect-ratio: 16/9; background: #000; border-radius: 12px; overflow: hidden;"><iframe src="${embedUrl}" style="width: 100%; height: 100%; border: none;" allow="autoplay; fullscreen; picture-in-picture" allowfullscreen></iframe></div>`;
             }
           } else if (isUploadedFile) {
             // Uploaded file from /uploads/ folder
