@@ -981,52 +981,81 @@ body {
   word-break: break-word;
   overflow-wrap: anywhere;
   box-sizing: border-box;
+  text-align: center;
+}
+
+/* Reset text alignment for text content */
+.course-page-body-input p,
+.course-page-body-input h1,
+.course-page-body-input h2,
+.course-page-body-input h3,
+.course-page-body-input h4,
+.course-page-body-input h5,
+.course-page-body-input h6,
+.course-page-body-input ul,
+.course-page-body-input ol {
+  text-align: left;
 }
 
 /* Reduce spacing between videos and images in course content */
 .course-page-body-input iframe,
 .course-page-body-input video {
-  margin: 16px -12px !important;
+  margin: 5px auto !important;
   display: block;
-  width: calc(100% + 24px) !important;
-  min-height: 500px;
+  width: 100% !important;
+  height: auto !important;
   aspect-ratio: 16 / 9;
   border-radius: 0 !important;
   border: none;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-  object-fit: cover;
 }
 
-/* Target the video container divs */
+/* Target the video container divs - make them responsive */
 .course-page-body-input div[style*="aspect-ratio: 16/9"],
 .course-page-body-input div[style*="aspect-ratio: 16 / 9"] {
-  min-height: 600px !important;
-  margin: 16px -12px !important;
-  width: calc(100% + 24px) !important;
+  margin: 5px auto !important;
+  width: 100% !important;
   border-radius: 0 !important;
   background: transparent !important;
-  overflow: hidden;
+  overflow: visible !important;
+  /* Remove fixed height - let it be responsive */
+  height: auto !important;
+  min-height: auto !important;
+  position: relative !important;
 }
 
-/* Make sure iframes inside containers fill properly and hide black bars */
+/* Override the max-width on the outer video container */
+.course-page-body-input div[data-video-type] {
+  max-width: 100% !important;
+  width: 100% !important;
+  margin: 5px 0 !important;
+  overflow: visible !important;
+}
+
+/* Make sure iframes inside containers are responsive */
 .course-page-body-input div[style*="aspect-ratio"] iframe {
-  object-fit: cover;
-  transform: scale(1.01);
+  width: 100% !important;
+  height: 100% !important;
 }
 
 /* Specific handling for YouTube iframes */
 .course-page-body-input iframe[src*="youtube.com"],
 .course-page-body-input iframe[src*="youtu.be"] {
-  object-fit: cover;
-  transform: scale(1.01);
+  width: 100% !important;
+  height: 100% !important;
 }
 
 .course-page-body-input img {
-  margin: 16px 0 !important;
+  margin: 5px auto !important;
   display: block;
   max-width: 100%;
   height: auto;
   border-radius: 8px;
+}
+
+/* Apply 5px spacing to ALL elements in lesson content */
+.course-page-body-input > * {
+  margin: 5px 0 !important;
 }
 
 /* Reduce spacing between consecutive media elements */
@@ -1038,20 +1067,69 @@ body {
 .course-page-body-input iframe + img,
 .course-page-body-input img + iframe,
 .course-page-body-input video + img,
-.course-page-body-input img + video {
-  margin-top: 20px !important;
+.course-page-body-input img + video,
+.course-page-body-input div + img,
+.course-page-body-input img + div,
+.course-page-body-input div + div {
+  margin-top: 5px !important;
 }
 
 /* Reduce spacing between consecutive video containers */
 .course-page-body-input div[style*="aspect-ratio"] + div[style*="aspect-ratio"] {
-  margin-top: 20px !important;
+  margin-top: 5px !important;
 }
 
 /* Remove extra spacing from paragraphs around media */
 .course-page-body-input p:has(iframe),
 .course-page-body-input p:has(video),
 .course-page-body-input p:has(img) {
-  margin: 12px 0 !important;
+  margin: 5px 0 !important;
+}
+
+/* Reduce spacing for all paragraphs in lesson content */
+.course-page-body-input p {
+  margin: 5px 0 !important;
+}
+
+/* Remove spacing from empty paragraphs */
+.course-page-body-input p:empty {
+  margin: 0 !important;
+  height: 0 !important;
+  display: none !important;
+}
+
+/* Reduce spacing for br tags */
+.course-page-body-input br {
+  line-height: 5px !important;
+}
+
+/* Reduce spacing for headings */
+.course-page-body-input h1,
+.course-page-body-input h2,
+.course-page-body-input h3,
+.course-page-body-input h4,
+.course-page-body-input h5,
+.course-page-body-input h6 {
+  margin: 5px 0 !important;
+}
+
+/* Reduce spacing for lists */
+.course-page-body-input ul,
+.course-page-body-input ol {
+  margin: 5px 0 !important;
+  padding-left: 20px !important;
+}
+
+.course-page-body-input li {
+  margin: 2px 0 !important;
+}
+
+/* Remove spacing from divs that only contain whitespace */
+.course-page-body-input div:empty {
+  margin: 0 !important;
+  padding: 0 !important;
+  height: 0 !important;
+  display: none !important;
 }
 
 .course-page-add {
