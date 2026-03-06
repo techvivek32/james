@@ -101,10 +101,8 @@ export function ManagerOnlineTrainingPage(props: {
     const activePage = pages.find((p) => p.id === activePageId) ?? pages[0];
 
     const isPageUnlocked = (pageId: string) => {
-      const pageIndex = pages.findIndex(p => p.id === pageId);
-      if (pageIndex === 0) return true;
-      const previousPage = pages[pageIndex - 1];
-      return previousPage ? completedPages.has(previousPage.id) : false;
+      // All pages are unlocked for managers - they can access any page
+      return true;
     };
 
     const handleNextPage = () => {
