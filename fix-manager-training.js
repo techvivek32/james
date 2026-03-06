@@ -31,19 +31,19 @@ async function fixManagerTraining() {
       console.log(`- ${c.title} (${c.id}) - Status: ${c.status}, Access: ${c.accessMode || 'open'}`);
     });
     
-    // Check manager users
-    const managers = await mongoose.connection.db.collection('users').find({ role: 'manager' }).toArray();
-    console.log(`\n=== MANAGERS (${managers.length}) ===`);
+    // Check all users
+    const users = await mongoose.connection.db.collection('users').find({}).toArray();
+    console.log(`\n=== ALL USERS (${users.length}) ===`);
     
-    for (const manager of managers) {
-      console.log(`\nManager: ${manager.name} (${manager.email})`);
-      console.log(`  Training Center: ${manager.featureToggles?.trainingCenter ? 'ENABLED' : 'DISABLED'}`);
+    for (const user of users) {
+      console.log(`\n${user.role.toUpperCase()}: ${user.name} (${user.email})`);
+      console.log(`  Training Center: ${user.featureToggles?.trainingCenter ? 'ENABLED' : 'DISABLED'}`);
       
       // Enable training center if not enabled
-      if (!manager.featureToggles?.trainingCenter) {
+      if (!user.featureToggles?.trainingCenter) {
         console.log(`  -> Enabling training center...`);
         await mongoose.connection.db.collection('users').updateOne(
-          { _id: manager._id },
+          { _id: user._id },
           { 
             $set: { 
               'featureToggles.trainingCenter': true 
