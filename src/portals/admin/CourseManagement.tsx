@@ -2131,28 +2131,6 @@ export function CourseManagement(props: CourseEditorProps) {
                                         <button type="button" className="course-page-menu-item" onClick={() => { setActivePageId(page.id); setOpenPageMenuId(null); }}>
                                           Edit Lesson
                                         </button>
-                                        <button 
-                                          type="button" 
-                                          className="course-page-menu-item"
-                                          disabled={pages.filter(p => !p.folderId).indexOf(page) === 0}
-                                          onClick={() => { 
-                                            movePageUpInRoot(page.id);
-                                            setOpenPageMenuId(null); 
-                                          }}
-                                        >
-                                          ↑ Move Up
-                                        </button>
-                                        <button 
-                                          type="button" 
-                                          className="course-page-menu-item"
-                                          disabled={pages.filter(p => !p.folderId).indexOf(page) === pages.filter(p => !p.folderId).length - 1}
-                                          onClick={() => { 
-                                            movePageDownInRoot(page.id);
-                                            setOpenPageMenuId(null); 
-                                          }}
-                                        >
-                                          ↓ Move Down
-                                        </button>
                                         <button type="button" className="course-page-menu-item" onClick={() => { 
                                           setChangeModulePageId(page.id);
                                           setSelectedModuleId(page.folderId);
@@ -2311,28 +2289,6 @@ export function CourseManagement(props: CourseEditorProps) {
                                               }}
                                             >
                                               Edit Module  
-                                            </button>
-                                            <button
-                                              type="button"
-                                              className="course-page-menu-item"
-                                              disabled={folders.indexOf(folder) === 0}
-                                              onClick={() => {
-                                                moveFolderUp(folder.id);
-                                                setOpenFolderMenuId(null);
-                                              }}
-                                            >
-                                              ↑ Move Module Up
-                                            </button>
-                                            <button
-                                              type="button"
-                                              className="course-page-menu-item"
-                                              disabled={folders.indexOf(folder) === folders.length - 1}
-                                              onClick={() => {
-                                                moveFolderDown(folder.id);
-                                                setOpenFolderMenuId(null);
-                                              }}
-                                            >
-                                              ↓ Move Module Down
                                             </button>
                                             <button
                                               type="button"
@@ -2508,28 +2464,6 @@ export function CourseManagement(props: CourseEditorProps) {
                                             <div className="course-page-menu">
                                               <button type="button" className="course-page-menu-item" onClick={() => { setActivePageId(page.id); setOpenPageMenuId(null); }}>
                                                 Edit Lesson
-                                              </button>
-                                              <button 
-                                                type="button" 
-                                                className="course-page-menu-item"
-                                                disabled={folderPages.indexOf(page) === 0}
-                                                onClick={() => { 
-                                                  movePageUpInFolder(page.id, folder.id);
-                                                  setOpenPageMenuId(null); 
-                                                }}
-                                              >
-                                                ↑ Move Up
-                                              </button>
-                                              <button 
-                                                type="button" 
-                                                className="course-page-menu-item"
-                                                disabled={folderPages.indexOf(page) === folderPages.length - 1}
-                                                onClick={() => { 
-                                                  movePageDownInFolder(page.id, folder.id);
-                                                  setOpenPageMenuId(null); 
-                                                }}
-                                              >
-                                                ↓ Move Down
                                               </button>
                                               <button type="button" className="course-page-menu-item" onClick={() => { 
                                                 setChangeModulePageId(page.id);
@@ -2897,7 +2831,7 @@ export function CourseManagement(props: CourseEditorProps) {
                                                       setOpenResourceMenuId(null);
                                                     }}
                                                   >
-                                                    Move up
+                                                    Move Up
                                                   </button>
                                                   <button
                                                     type="button"
@@ -2913,7 +2847,7 @@ export function CourseManagement(props: CourseEditorProps) {
                                                       setOpenResourceMenuId(null);
                                                     }}
                                                   >
-                                                    Move down
+                                                    Move Down
                                                   </button>
                                                   <button
                                                     type="button"
@@ -2989,7 +2923,7 @@ export function CourseManagement(props: CourseEditorProps) {
                                                       setOpenResourceMenuId(null);
                                                     }}
                                                   >
-                                                    Move up
+                                                    Move Up
                                                   </button>
                                                   <button
                                                     type="button"
@@ -3005,7 +2939,7 @@ export function CourseManagement(props: CourseEditorProps) {
                                                       setOpenResourceMenuId(null);
                                                     }}
                                                   >
-                                                    Move down
+                                                    Move Down
                                                   </button>
                                                   <button
                                                     type="button"
