@@ -1,13 +1,17 @@
 // Run this script to add database indexes for better performance
-// Usage: node add-indexes.js
+// Usage: node add-indexes.js [mongodb-uri]
+// Example: node add-indexes.js mongodb://localhost:27017/millerstorm
 
 const mongoose = require('mongoose');
-require('dotenv').config();
+
+// Get MongoDB URI from command line argument or use default
+const MONGODB_URI = process.argv[2] || 'mongodb://localhost:27017/millerstorm';
 
 async function addIndexes() {
   try {
-    await mongoose.connect(process.env.MONGODB_URI);
-    console.log('Connected to MongoDB');
+    console.log('Connecting to MongoDB...');
+    await mongoose.connect(MONGODB_URI);
+    console.log('✓ Connected to MongoDB');
 
     const db = mongoose.connection.db;
     
