@@ -3624,6 +3624,14 @@ body {
   cursor: grabbing;
 }
 
+.course-pages-item-child {
+  cursor: grab;
+}
+
+.course-pages-item-child:active {
+  cursor: grabbing;
+}
+
 .course-folder-group {
   position: relative;
   cursor: grab;
@@ -3633,6 +3641,12 @@ body {
 
 .course-folder-group:active {
   cursor: grabbing;
+}
+
+.course-folder-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
 }
 
 /* Make drag handle more visible */

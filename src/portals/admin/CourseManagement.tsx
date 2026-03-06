@@ -184,6 +184,43 @@ export function CourseManagement(props: CourseEditorProps) {
     }
   }, [selectedCourse, originalCourse]);
 
+  // Cleanup drag state on escape key or when component unmounts
+  useEffect(() => {
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setDraggedPageId(null);
+        setDraggedFolderId(null);
+        setDragOverFolderId(null);
+        setDragOverPageId(null);
+        setDragOverPosition(null);
+        setDraggedCourseId(null);
+      }
+    };
+
+    const handleMouseUp = () => {
+      // Reset drag state after a short delay if mouse is released
+      setTimeout(() => {
+        if (draggedPageId || draggedFolderId || draggedCourseId) {
+          console.log('Cleaning up stuck drag state');
+          setDraggedPageId(null);
+          setDraggedFolderId(null);
+          setDragOverFolderId(null);
+          setDragOverPageId(null);
+          setDragOverPosition(null);
+          setDraggedCourseId(null);
+        }
+      }, 100);
+    };
+
+    document.addEventListener('keydown', handleEscape);
+    document.addEventListener('mouseup', handleMouseUp);
+
+    return () => {
+      document.removeEventListener('keydown', handleEscape);
+      document.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [draggedPageId, draggedFolderId, draggedCourseId]);
+
   useEffect(() => {
     if (bodyInputRef.current && activePageId) {
       const course = props.courses.find((c) => c.id === selectedCourseId);
@@ -1978,17 +2015,22 @@ export function CourseManagement(props: CourseEditorProps) {
                                     draggable={true}
                                     onDragStart={(e) => {
                                       console.log('Drag started for page:', page.id);
+                                      e.stopPropagation();
                                       setDraggedPageId(page.id);
                                       e.dataTransfer.effectAllowed = 'move';
                                       e.dataTransfer.setData('text/plain', page.id);
                                     }}
-                                    onDragEnd={() => {
+                                    onDragEnd={(e) => {
                                       console.log('Drag ended');
-                                      setDraggedPageId(null);
-                                      setDraggedFolderId(null);
-                                      setDragOverFolderId(null);
-                                      setDragOverPageId(null);
-                                      setDragOverPosition(null);
+                                      e.stopPropagation();
+                                      // Always reset drag state on drag end
+                                      setTimeout(() => {
+                                        setDraggedPageId(null);
+                                        setDraggedFolderId(null);
+                                        setDragOverFolderId(null);
+                                        setDragOverPageId(null);
+                                        setDragOverPosition(null);
+                                      }, 0);
                                     }}
                                     onDragOver={(e) => {
                                       e.preventDefault();
@@ -2038,7 +2080,12 @@ export function CourseManagement(props: CourseEditorProps) {
                                       setDragOverPosition(null);
                                       setDragOverFolderId(null);
                                     }}
+                                    onMouseDown={(e) => {
+                                      // Allow drag to start
+                                      e.stopPropagation();
+                                    }}
                                     onClick={(e) => {
+                                      e.stopPropagation();
                                       // Don't trigger click if we just finished dragging
                                       if (draggedPageId) {
                                         e.preventDefault();
@@ -2151,12 +2198,15 @@ export function CourseManagement(props: CourseEditorProps) {
                                           e.preventDefault();
                                         }
                                       }}
-                                      onDragEnd={() => {
+                                      onDragEnd={(e) => {
                                         console.log('Folder drag ended');
-                                        setDraggedFolderId(null);
-                                        setDragOverFolderId(null);
-                                        setDragOverPageId(null);
-                                        setDragOverPosition(null);
+                                        // Always reset drag state on drag end
+                                        setTimeout(() => {
+                                          setDraggedFolderId(null);
+                                          setDragOverFolderId(null);
+                                          setDragOverPageId(null);
+                                          setDragOverPosition(null);
+                                        }, 0);
                                       }}
                                       onDragOver={(e) => {
                                         e.preventDefault();
@@ -2205,6 +2255,20 @@ export function CourseManagement(props: CourseEditorProps) {
                                       }}
                                     >
                                       <div className="course-folder-item">
+                                        <span 
+                                          className="drag-handle"
+                                          style={{ 
+                                            cursor: "grab", 
+                                            marginRight: "8px",
+                                            userSelect: "none",
+                                            WebkitUserSelect: "none",
+                                            fontSize: "16px",
+                                            color: "#9ca3af"
+                                          }}
+                                          title="Drag to reorder module"
+                                        >
+                                          ⋮⋮
+                                        </span>
                                         <button 
                                           type="button" 
                                           className="course-folder-toggle"
@@ -2337,17 +2401,22 @@ export function CourseManagement(props: CourseEditorProps) {
                                           draggable={true}
                                           onDragStart={(e) => {
                                             console.log('Page in folder drag started:', page.id);
+                                            e.stopPropagation();
                                             setDraggedPageId(page.id);
                                             e.dataTransfer.effectAllowed = 'move';
                                             e.dataTransfer.setData('text/plain', page.id);
                                           }}
-                                          onDragEnd={() => {
+                                          onDragEnd={(e) => {
                                             console.log('Page in folder drag ended');
-                                            setDraggedPageId(null);
-                                            setDraggedFolderId(null);
-                                            setDragOverFolderId(null);
-                                            setDragOverPageId(null);
-                                            setDragOverPosition(null);
+                                            e.stopPropagation();
+                                            // Always reset drag state on drag end
+                                            setTimeout(() => {
+                                              setDraggedPageId(null);
+                                              setDraggedFolderId(null);
+                                              setDragOverFolderId(null);
+                                              setDragOverPageId(null);
+                                              setDragOverPosition(null);
+                                            }, 0);
                                           }}
                                           onDragOver={(e) => {
                                             e.preventDefault();
@@ -2382,20 +2451,44 @@ export function CourseManagement(props: CourseEditorProps) {
                                             if (draggedPageId && draggedPageId !== page.id && dragOverPosition) {
                                               reorderPages(draggedPageId, page.id, dragOverPosition, folder.id);
                                             }
+                                            // Reset all drag states
                                             setDraggedPageId(null);
                                             setDraggedFolderId(null);
                                             setDragOverPageId(null);
                                             setDragOverPosition(null);
                                             setDragOverFolderId(null);
                                           }}
-                                          onClick={() => {
+                                          onMouseDown={(e) => {
+                                            // Allow drag to start
+                                            e.stopPropagation();
+                                          }}
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            // Don't trigger click if we just finished dragging
+                                            if (draggedPageId) {
+                                              e.preventDefault();
+                                              return;
+                                            }
                                             setActivePageId(page.id);
                                             setOpenPageMenuId(null);
                                             setIsCourseMenuOpen(false);
                                             setEditingLessonId(null);
                                           }}
                                         >
-                                          <span style={{ cursor: "grab", marginRight: "8px" }}>⋮⋮</span>
+                                          <span 
+                                            className="drag-handle"
+                                            style={{ 
+                                              cursor: "grab", 
+                                              marginRight: "8px",
+                                              userSelect: "none",
+                                              WebkitUserSelect: "none",
+                                              fontSize: "16px",
+                                              color: "#9ca3af"
+                                            }}
+                                            title="Drag to reorder"
+                                          >
+                                            ⋮⋮
+                                          </span>
                                           <span className="course-pages-item-title">
                                             {page.title}
                                             {page.status === "draft" && <span style={{ color: "#9ca3af", fontSize: "12px", marginLeft: "6px" }}>(Draft)</span>}
