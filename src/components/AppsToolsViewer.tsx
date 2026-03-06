@@ -52,9 +52,21 @@ export function AppsToolsViewer() {
             {items.map((item) => (
               <Link key={item._id} href={`/sales/apps-tools/${item._id}`} style={{ textDecoration: 'none', color: 'inherit' }}>
                 <div className="card" style={{ padding: 0, overflow: "hidden", cursor: "pointer", transition: "transform 0.2s" }}>
-                  {item.imageUrl && (
-                    <div style={{ width: "100%", height: 180, backgroundImage: `url(${item.imageUrl})`, backgroundSize: "cover", backgroundPosition: "center" }} />
-                  )}
+                  <div style={{ 
+                    width: "100%", 
+                    height: 180, 
+                    backgroundImage: item.imageUrl && !item.imageUrl.startsWith('blob:') ? `url(${item.imageUrl})` : 'none',
+                    backgroundColor: '#f3f4f6',
+                    backgroundSize: "cover", 
+                    backgroundPosition: "center",
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    color: '#9ca3af',
+                    fontSize: 14
+                  }}>
+                    {(!item.imageUrl || item.imageUrl.startsWith('blob:')) && 'No Image'}
+                  </div>
                   <div style={{ padding: 16, textAlign: "center" }}>
                     <div className="card-title" style={{ marginBottom: 0, fontSize: 16, fontWeight: 600 }}>{item.title}</div>
                   </div>

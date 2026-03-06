@@ -318,9 +318,21 @@ export function AppsToolManagement() {
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: 16 }}>
               {items.map((item) => (
                 <div key={item._id} className="card" style={{ padding: 0, overflow: "hidden" }}>
-                  {item.imageUrl && (
-                    <div style={{ width: "100%", height: 180, backgroundImage: `url(${item.imageUrl})`, backgroundSize: "cover", backgroundPosition: "center" }} />
-                  )}
+                  <div style={{ 
+                    width: "100%", 
+                    height: 180, 
+                    backgroundImage: item.imageUrl && !item.imageUrl.startsWith('blob:') ? `url(${item.imageUrl})` : 'none',
+                    backgroundColor: '#f3f4f6',
+                    backgroundSize: "cover", 
+                    backgroundPosition: "center",
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    color: '#9ca3af',
+                    fontSize: 14
+                  }}>
+                    {(!item.imageUrl || item.imageUrl.startsWith('blob:')) && 'No Image'}
+                  </div>
                   <div style={{ padding: 16 }}>
                     <div className="card-title" style={{ marginBottom: 8 }}>{item.title}</div>
                     <div className="card-description" style={{ marginBottom: 12, fontSize: 13 }}>

@@ -1,5 +1,6 @@
 import { useRef, useState, useEffect } from "react";
 import { Course, CoursePage, CourseFolder } from "../../types";
+import { Toast } from "../../components/Toast";
 
 type CourseEditorProps = {
   courses: Course[];
@@ -58,6 +59,8 @@ export function CourseManagement(props: CourseEditorProps) {
   const [isChangeModuleModalOpen, setIsChangeModuleModalOpen] = useState(false);
   const [changeModulePageId, setChangeModulePageId] = useState<string | null>(null);
   const [selectedModuleId, setSelectedModuleId] = useState<string | undefined>(undefined);
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [toastType, setToastType] = useState<'success' | 'error' | 'info'>('success');
 
   // Add drag and drop styles
   const dragStyles = `
@@ -167,6 +170,12 @@ export function CourseManagement(props: CourseEditorProps) {
   const visibleCourses = props.courses;
 
   const selectedCourse = isCreatingNewCourse ? newCourseData : props.courses.find((course) => course.id === selectedCourseId);
+
+  // Show toast notification
+  function showToast(message: string, type: 'success' | 'error' | 'info' = 'success') {
+    setToastMessage(message);
+    setToastType(type);
+  }
 
   // Track changes when course is selected
   useEffect(() => {
@@ -541,11 +550,13 @@ export function CourseManagement(props: CourseEditorProps) {
       setNewCourseData(null);
       setOriginalCourse(JSON.parse(JSON.stringify(newCourseData)));
       setHasChanges(false);
+      showToast('Course created successfully!', 'success');
     } else if (selectedCourse && hasChanges) {
       // Save existing course changes
       setOriginalCourse(JSON.parse(JSON.stringify(selectedCourse)));
       setHasChanges(false);
       console.log('Course saved:', selectedCourse.title);
+      showToast('Course saved successfully!', 'success');
     }
     setViewMode("grid");
   }
@@ -1020,6 +1031,13 @@ export function CourseManagement(props: CourseEditorProps) {
 
   return (
     <div className="admin-course-management">
+      {toastMessage && (
+        <Toast
+          message={toastMessage}
+          type={toastType}
+          onClose={() => setToastMessage(null)}
+        />
+      )}
       {isDeleteConfirmOpen && selectedCourse && (
         <div className="overlay">
           <div className="dialog" style={{ maxWidth: "500px" }}>
@@ -2652,6 +2670,7 @@ export function CourseManagement(props: CourseEditorProps) {
                                           <button type="button" className="course-page-footer-button course-page-footer-save" onClick={() => {
                                             // Just save, don't redirect - stay on quiz page
                                             console.log('Quiz saved:', activePage.title);
+                                            showToast('Quiz saved successfully!', 'success');
                                           }}>
                                             SAVE
                                           </button>
@@ -3021,7 +3040,10 @@ export function CourseManagement(props: CourseEditorProps) {
                                           <button type="button" className="course-page-footer-button course-page-footer-cancel" onClick={() => setEditingLessonId(null)}>
                                             CANCEL
                                           </button>
-                                          <button type="button" className="course-page-footer-button course-page-footer-save" onClick={() => setEditingLessonId(null)}>
+                                          <button type="button" className="course-page-footer-button course-page-footer-save" onClick={() => {
+                                            setEditingLessonId(null);
+                                            showToast('Lesson saved successfully!', 'success');
+                                          }}>
                                             SAVE
                                           </button>
                                         </>
