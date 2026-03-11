@@ -647,12 +647,12 @@ export function ManagerOnlineTrainingPage(props: {
       )}
 
       {/* Share Modal */}
-      {activePage && (
+      {activePageId && selectedCourse && (
         <ShareModal
           isOpen={isShareModalOpen}
           onClose={() => setIsShareModalOpen(false)}
-          title={activePage.title}
-          shareUrl={`${typeof window !== 'undefined' ? window.location.origin : ''}/share/lesson/${activePage.id}`}
+          title={selectedCourse.pages?.find(p => p.id === activePageId)?.title || 'Lesson'}
+          shareUrl={`${typeof window !== 'undefined' ? window.location.origin : ''}/share/lesson/${activePageId}`}
         />
       )}
     </>

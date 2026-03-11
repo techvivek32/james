@@ -91,12 +91,16 @@ export default async function handler(
           }
 
           console.log(`Saving metric: ${metricId}`);
-          console.log("Update data keys:", Object.keys(updateData));
-          console.log("Update data:", JSON.stringify(updateData, null, 2));
+          console.log("Update data keys before cleanup:", Object.keys(updateData));
 
           // Remove immutable fields that shouldn't be updated
           delete updateData._id;
           delete updateData.__v;
+          delete updateData.createdAt;
+          delete updateData.updatedAt;
+
+          console.log("Update data keys after cleanup:", Object.keys(updateData));
+          console.log("Update data:", JSON.stringify(updateData, null, 2));
 
           // Use direct MongoDB collection update to bypass Mongoose schema restrictions
           const db = require("mongoose").connection.db;

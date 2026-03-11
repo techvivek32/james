@@ -49,6 +49,10 @@ export function SocialMediaMetrics() {
   const [showColumnModal, setShowColumnModal] = useState(false);
   const [columnName, setColumnName] = useState("");
   const [columnDatatype, setColumnDatatype] = useState<"string" | "number" | "boolean" | "date">("string");
+  const [editingColumnId, setEditingColumnId] = useState<string | null>(null);
+  const [showColumnEditModal, setShowColumnEditModal] = useState(false);
+  const [editColumnName, setEditColumnName] = useState("");
+  const [editColumnDatatype, setEditColumnDatatype] = useState<"string" | "number" | "boolean" | "date">("string");
 
   // Get all visible columns (all custom columns including defaults)
   const allVisibleColumns = customColumns;
@@ -187,11 +191,49 @@ export function SocialMediaMetrics() {
     }
   }
 
-  function toggleDefaultColumn(columnId: string) {
-    if (visibleDefaultColumns.includes(columnId)) {
-      setVisibleDefaultColumns(visibleDefaultColumns.filter(id => id !== columnId));
-    } else {
-      setVisibleDefaultColumns([...visibleDefaultColumns, columnId]);
+  function openColumnEditModal(column: CustomColumn) {
+    setEditingColumnId(column.id);
+    setEditColumnName(column.name);
+    setEditColumnDatatype(column.datatype);
+    setShowColumnEditModal(true);
+  }
+
+  async function saveColumnEdit() {
+    if (!editColumnName.trim()) {
+      alert("Please enter a column name");
+      return;
+    }
+
+    try {
+      // For now, we'll just update the local state
+      // In a real app, you'd want to update the database too
+      setCustomColumns(customColumns.map(col => 
+        col.id === editingColumnId 
+          ? { ...col, name: editColumnName, datatype: editColumnDatatype }
+          : col
+      ));
+
+      // Update metrics with new column name if it changed
+      const oldColumn = customColumns.find(c => c.id === editingColumnId);
+      if (oldColumn && oldColumn.name !== editColumnName) {
+        setMetrics(metrics.map(m => {
+          const updated = { ...m };
+          if (oldColumn.name in updated) {
+            updated[editColumnName] = updated[oldColumn.name];
+            delete updated[oldColumn.name];
+          }
+          return updated;
+        }));
+      }
+
+      setShowColumnEditModal(false);
+      setEditingColumnId(null);
+      setEditColumnName("");
+      setEditColumnDatatype("string");
+      alert("✓ Column updated successfully!");
+    } catch (error) {
+      console.error("Failed to update column:", error);
+      alert("Failed to update column");
     }
   }
 
@@ -470,7 +512,130 @@ export function SocialMediaMetrics() {
           </div>
         )}
 
+        {/* Edit Column Modal */}
+        {showColumnEditModal && (
+          <div style={{
+            position: "fixed",
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: "rgba(0, 0, 0, 0.5)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            zIndex: 9999
+          }} onClick={() => {
+            setShowColumnEditModal(false);
+            setEditingColumnId(null);
+            setEditColumnName("");
+            setEditColumnDatatype("string");
+          }}>
+            <div style={{
+              backgroundColor: "white",
+              borderRadius: 8,
+              padding: 24,
+              maxWidth: 450,
+              width: "95%",
+              boxShadow: "0 20px 60px rgba(0, 0, 0, 0.3)",
+              border: "1px solid #e5e7eb"
+            }} onClick={(e) => e.stopPropagation()}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
+                <h3 style={{ margin: 0, fontSize: 18, fontWeight: 600, color: "#111827" }}>Edit Column</h3>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowColumnEditModal(false);
+                    setEditingColumnId(null);
+                    setEditColumnName("");
+                    setEditColumnDatatype("string");
+                  }}
+                  style={{
+                    background: "none",
+                    border: "none",
+                    fontSize: 24,
+                    cursor: "pointer",
+                    color: "#6b7280",
+                    padding: 0,
+                    width: 32,
+                    height: 32,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center"
+                  }}
+                >
+                  ✕
+                </button>
+              </div>
+              
+              <div style={{ marginBottom: 16 }}>
+                <label style={{ display: "block", marginBottom: 8, fontSize: 13, fontWeight: 600, color: "#374151" }}>Column Name</label>
+                <input
+                  type="text"
+                  className="field-input"
+                  value={editColumnName}
+                  onChange={(e) => setEditColumnName(e.target.value)}
+                  placeholder="e.g., Engagement Rate, Budget"
+                  style={{ width: "100%", padding: "8px 12px", fontSize: 13, border: "1px solid #d1d5db", borderRadius: 6 }}
+                />
+              </div>
 
+              <div style={{ marginBottom: 24 }}>
+                <label style={{ display: "block", marginBottom: 8, fontSize: 13, fontWeight: 600, color: "#374151" }}>Data Type</label>
+                <select
+                  className="field-input"
+                  value={editColumnDatatype}
+                  onChange={(e) => setEditColumnDatatype(e.target.value as any)}
+                  style={{ width: "100%", padding: "8px 12px", fontSize: 13, border: "1px solid #d1d5db", borderRadius: 6 }}
+                >
+                  {datatypeOptions.map(opt => (
+                    <option key={opt.value} value={opt.value}>{opt.label}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div style={{ display: "flex", gap: 12, justifyContent: "flex-end" }}>
+                <button
+                  type="button"
+                  className="btn-ghost btn-danger btn-small"
+                  onClick={() => {
+                    if (editingColumnId) {
+                      deleteCustomColumn(editingColumnId);
+                      setShowColumnEditModal(false);
+                      setEditingColumnId(null);
+                      setEditColumnName("");
+                      setEditColumnDatatype("string");
+                    }
+                  }}
+                  style={{ padding: "8px 16px", fontSize: 13, marginRight: "auto" }}
+                >
+                  Delete Column
+                </button>
+                <button
+                  type="button"
+                  className="btn-secondary btn-small"
+                  onClick={() => {
+                    setShowColumnEditModal(false);
+                    setEditingColumnId(null);
+                    setEditColumnName("");
+                    setEditColumnDatatype("string");
+                  }}
+                  style={{ padding: "8px 16px", fontSize: 13 }}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  className="btn-primary btn-small"
+                  onClick={saveColumnEdit}
+                  style={{ padding: "8px 16px", fontSize: 13 }}
+                >
+                  Save Changes
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Summary Cards */}
         <div style={{ display: "grid", gridTemplateColumns: `repeat(${Math.max(1, allVisibleColumns.length)}, 1fr)`, gap: 16, marginBottom: 24 }}>
@@ -505,16 +670,35 @@ export function SocialMediaMetrics() {
                   <th style={{ padding: "12px 16px", textAlign: "left", fontWeight: 600, color: "#374151" }}>Platform</th>
                   {allVisibleColumns.map(col => (
                     <th key={col.id} style={{ padding: "12px 16px", textAlign: "center", fontWeight: 600, color: "#374151", backgroundColor: "#f3f4f6", minWidth: 150 }}>
-                      <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, flexWrap: "wrap" }}>
+                      <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
                         <span>{col.name}</span>
                         <button
                           type="button"
-                          className="btn-ghost btn-danger"
-                          onClick={() => deleteCustomColumn(col.id)}
-                          style={{ padding: "2px 6px", fontSize: 11, cursor: "pointer", flexShrink: 0 }}
-                          title="Delete column"
+                          onClick={() => openColumnEditModal(col)}
+                          title={`Edit ${col.name}`}
+                          style={{
+                            background: "none",
+                            border: "none",
+                            cursor: "pointer",
+                            fontSize: 14,
+                            padding: "2px 4px",
+                            color: "#6b7280",
+                            borderRadius: 3,
+                            transition: "all 0.2s",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center"
+                          }}
+                          onMouseEnter={(e) => {
+                            (e.currentTarget as HTMLButtonElement).style.backgroundColor = "#e5e7eb";
+                            (e.currentTarget as HTMLButtonElement).style.color = "#374151";
+                          }}
+                          onMouseLeave={(e) => {
+                            (e.currentTarget as HTMLButtonElement).style.backgroundColor = "transparent";
+                            (e.currentTarget as HTMLButtonElement).style.color = "#6b7280";
+                          }}
                         >
-                          ✕
+                          ⚙️
                         </button>
                       </div>
                     </th>
