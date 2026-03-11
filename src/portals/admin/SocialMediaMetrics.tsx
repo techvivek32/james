@@ -1,10 +1,144 @@
 import { useState, useEffect } from "react";
 
+// Realistic platform icons as SVG
+const PLATFORM_ICONS = [
+  // Major Social Media
+  { name: "Instagram", icon: "📷", svg: "instagram" },
+  { name: "Facebook", icon: "f", svg: "facebook" },
+  { name: "TikTok", icon: "♪", svg: "tiktok" },
+  { name: "YouTube", icon: "▶", svg: "youtube" },
+  { name: "Twitter", icon: "𝕏", svg: "twitter" },
+  { name: "LinkedIn", icon: "in", svg: "linkedin" },
+  { name: "Pinterest", icon: "P", svg: "pinterest" },
+  { name: "Snapchat", icon: "👻", svg: "snapchat" },
+  
+  // Messaging & Communication
+  { name: "WhatsApp", icon: "💬", svg: "whatsapp" },
+  { name: "Telegram", icon: "✈", svg: "telegram" },
+  { name: "Discord", icon: "🎮", svg: "discord" },
+  { name: "Messenger", icon: "💬", svg: "messenger" },
+  { name: "WeChat", icon: "💬", svg: "wechat" },
+  { name: "QQ", icon: "Q", svg: "qq" },
+  { name: "Viber", icon: "📱", svg: "viber" },
+  { name: "Signal", icon: "🔒", svg: "signal" },
+  { name: "Line", icon: "💬", svg: "line" },
+  { name: "KakaoTalk", icon: "💬", svg: "kakaotalk" },
+  { name: "Skype", icon: "☎", svg: "skype" },
+  
+  // Video & Streaming
+  { name: "Twitch", icon: "🎮", svg: "twitch" },
+  { name: "YouTube Shorts", icon: "▶", svg: "youtube-shorts" },
+  { name: "Rumble", icon: "▶", svg: "rumble" },
+  { name: "Odysee", icon: "▶", svg: "odysee" },
+  { name: "Vimeo", icon: "▶", svg: "vimeo" },
+  { name: "Dailymotion", icon: "▶", svg: "dailymotion" },
+  { name: "Kick", icon: "🎮", svg: "kick" },
+  { name: "Mixer", icon: "🎮", svg: "mixer" },
+  { name: "Loom", icon: "📹", svg: "loom" },
+  { name: "Wistia", icon: "📹", svg: "wistia" },
+  
+  // Content & Blogging
+  { name: "Medium", icon: "M", svg: "medium" },
+  { name: "Substack", icon: "📧", svg: "substack" },
+  { name: "Patreon", icon: "P", svg: "patreon" },
+  { name: "Quora", icon: "Q", svg: "quora" },
+  { name: "Dev.to", icon: "💻", svg: "devto" },
+  { name: "Hashnode", icon: "#", svg: "hashnode" },
+  { name: "Ghost", icon: "👻", svg: "ghost" },
+  { name: "Notion", icon: "N", svg: "notion" },
+  
+  // Emerging & Decentralized
+  { name: "Threads", icon: "@", svg: "threads" },
+  { name: "Bluesky", icon: "🦋", svg: "bluesky" },
+  { name: "Mastodon", icon: "🐘", svg: "mastodon" },
+  { name: "Pixelfed", icon: "📷", svg: "pixelfed" },
+  { name: "PeerTube", icon: "▶", svg: "peertube" },
+  { name: "Lemmy", icon: "L", svg: "lemmy" },
+  { name: "Kbin", icon: "K", svg: "kbin" },
+  { name: "Nostr", icon: "⚡", svg: "nostr" },
+  
+  // Community & Local
+  { name: "Nextdoor", icon: "🏘", svg: "nextdoor" },
+  { name: "BeReal", icon: "📷", svg: "bereal" },
+  { name: "Neighborhood", icon: "🏘", svg: "neighborhood" },
+  { name: "Meetup", icon: "👥", svg: "meetup" },
+  
+  // Business & Professional
+  { name: "Slack", icon: "#", svg: "slack" },
+  { name: "Microsoft Teams", icon: "💼", svg: "teams" },
+  { name: "Zoom", icon: "📹", svg: "zoom" },
+  { name: "Google Meet", icon: "📹", svg: "google-meet" },
+  { name: "Webex", icon: "📹", svg: "webex" },
+  { name: "Jira", icon: "J", svg: "jira" },
+  { name: "Asana", icon: "A", svg: "asana" },
+  { name: "Monday.com", icon: "M", svg: "monday" },
+  
+  // Reddit & Forums
+  { name: "Reddit", icon: "🔴", svg: "reddit" },
+  { name: "4chan", icon: "4", svg: "4chan" },
+  { name: "8kun", icon: "8", svg: "8kun" },
+  { name: "Hacker News", icon: "Y", svg: "hackernews" },
+  
+  // Photo & Visual
+  { name: "Flickr", icon: "📷", svg: "flickr" },
+  { name: "500px", icon: "📷", svg: "500px" },
+  { name: "SmugMug", icon: "📷", svg: "smugmug" },
+  { name: "Imgur", icon: "I", svg: "imgur" },
+  { name: "Giphy", icon: "G", svg: "giphy" },
+  
+  // Music & Audio
+  { name: "Spotify", icon: "🎵", svg: "spotify" },
+  { name: "Apple Music", icon: "🎵", svg: "apple-music" },
+  { name: "SoundCloud", icon: "🎵", svg: "soundcloud" },
+  { name: "Bandcamp", icon: "🎵", svg: "bandcamp" },
+  { name: "Podcast", icon: "🎙", svg: "podcast" },
+  { name: "Anchor", icon: "🎙", svg: "anchor" },
+  
+  // Gaming & Entertainment
+  { name: "Steam", icon: "🎮", svg: "steam" },
+  { name: "Epic Games", icon: "🎮", svg: "epicgames" },
+  { name: "PlayStation", icon: "🎮", svg: "playstation" },
+  { name: "Xbox", icon: "🎮", svg: "xbox" },
+  { name: "Nintendo", icon: "🎮", svg: "nintendo" },
+  { name: "Roblox", icon: "🎮", svg: "roblox" },
+  { name: "Fortnite", icon: "🎮", svg: "fortnite" },
+  
+  // Shopping & Commerce
+  { name: "Amazon", icon: "🛒", svg: "amazon" },
+  { name: "eBay", icon: "🛒", svg: "ebay" },
+  { name: "Etsy", icon: "🛒", svg: "etsy" },
+  { name: "Shopify", icon: "🛒", svg: "shopify" },
+  { name: "TikTok Shop", icon: "🛒", svg: "tiktok-shop" },
+  
+  // Crypto & Web3
+  { name: "Bitcoin", icon: "₿", svg: "bitcoin" },
+  { name: "Ethereum", icon: "Ξ", svg: "ethereum" },
+  { name: "OpenSea", icon: "🌊", svg: "opensea" },
+  { name: "Discord (Web3)", icon: "🎮", svg: "discord-web3" },
+  
+  // News & Media
+  { name: "Medium", icon: "M", svg: "medium" },
+  { name: "Substack", icon: "📧", svg: "substack" },
+  { name: "Mirror", icon: "🪞", svg: "mirror" },
+  { name: "Lens Protocol", icon: "👁", svg: "lens" },
+  
+  // Additional Platforms
+  { name: "Viber", icon: "📱", svg: "viber" },
+  { name: "Nextdoor", icon: "🏘", svg: "nextdoor" },
+  { name: "Clubhouse", icon: "🎙", svg: "clubhouse" },
+  { name: "Spaces (Twitter)", icon: "🎙", svg: "spaces" },
+  { name: "Twitch Clips", icon: "🎮", svg: "twitch-clips" },
+  { name: "YouTube Live", icon: "▶", svg: "youtube-live" },
+];
+
+const ICON_LIBRARY = PLATFORM_ICONS.map(p => p.icon);
+
 type SocialMetric = {
   _id?: string;
   id: string;
   platform: "instagram" | "facebook" | "tiktok" | "youtube";
   platformName: string;
+  icon?: string;
   followers: number;
   posts30d: number;
   views30d: number;
@@ -52,6 +186,7 @@ export function SocialMediaMetrics() {
       id: `social-new-${Date.now()}`,
       platform: "instagram",
       platformName: "Instagram",
+      icon: "📷",
       followers: 0,
       posts30d: 0,
       views30d: 0
@@ -207,23 +342,70 @@ export function SocialMediaMetrics() {
                     <tr key={metric.id} style={{ borderBottom: "1px solid #f1f5f9" }}>
                       <td style={{ padding: "12px 16px" }}>
                         {isEditing ? (
-                          <select
-                            className="field-input"
-                            value={metric.platform}
-                            onChange={(e) => updateMetric(metric.id, "platform", e.target.value)}
-                            style={{ width: "100%", maxWidth: 200 }}
-                          >
-                            {platformOptions.map(opt => (
-                              <option key={opt.value} value={opt.value}>{opt.label}</option>
-                            ))}
-                          </select>
+                          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                            <div>
+                              <label style={{ fontSize: 12, color: "#6b7280", display: "block", marginBottom: 4 }}>Platform Name</label>
+                              <input
+                                type="text"
+                                className="field-input"
+                                value={metric.platformName}
+                                onChange={(e) => updateMetric(metric.id, "platformName", e.target.value)}
+                                placeholder="e.g., Instagram, Facebook"
+                                style={{ width: "100%", maxWidth: 200 }}
+                              />
+                            </div>
+                            <div>
+                              <label style={{ fontSize: 12, color: "#6b7280", display: "block", marginBottom: 4 }}>Icon (Click to select)</label>
+                              <div style={{ 
+                                display: "grid", 
+                                gridTemplateColumns: "repeat(6, 1fr)", 
+                                gap: 6, 
+                                maxWidth: "100%",
+                                maxHeight: 400,
+                                overflowY: "auto",
+                                padding: 8,
+                                border: "1px solid #e5e7eb",
+                                borderRadius: 6,
+                                backgroundColor: "#f9fafb"
+                              }}>
+                                {PLATFORM_ICONS.map((platform) => (
+                                  <button
+                                    key={platform.svg}
+                                    type="button"
+                                    onClick={() => updateMetric(metric.id, "icon", platform.icon)}
+                                    style={{
+                                      fontSize: 14,
+                                      padding: 8,
+                                      border: (metric as any).icon === platform.icon ? "2px solid #2563eb" : "1px solid #e5e7eb",
+                                      borderRadius: 4,
+                                      backgroundColor: (metric as any).icon === platform.icon ? "#eff6ff" : "#ffffff",
+                                      cursor: "pointer",
+                                      transition: "all 0.2s",
+                                      display: "flex",
+                                      flexDirection: "column",
+                                      alignItems: "center",
+                                      justifyContent: "center",
+                                      gap: 4,
+                                      minHeight: 60
+                                    }}
+                                    title={platform.name}
+                                  >
+                                    <span style={{ fontSize: 20 }}>{platform.icon}</span>
+                                    <span style={{ fontSize: 10, textAlign: "center", lineHeight: 1.2 }}>{platform.name}</span>
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
+                          </div>
                         ) : (
                           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                             <span style={{ fontSize: 20 }}>
-                              {metric.platform === "instagram" && "📷"}
-                              {metric.platform === "facebook" && "👥"}
-                              {metric.platform === "tiktok" && "🎵"}
-                              {metric.platform === "youtube" && "▶️"}
+                              {(metric as any).icon || (
+                                metric.platform === "instagram" ? "📷" :
+                                metric.platform === "facebook" ? "👥" :
+                                metric.platform === "tiktok" ? "🎵" :
+                                metric.platform === "youtube" ? "▶️" : "📱"
+                              )}
                             </span>
                             <span style={{ fontWeight: 500 }}>{metric.platformName}</span>
                           </div>
