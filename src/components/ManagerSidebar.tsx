@@ -5,13 +5,13 @@ const sidebarItems = [
   { id: "dashboard", label: "Team Dashboard" },
   { id: "plans", label: "Team Business Planners" },
   { id: "training", label: "Training Center" },
+  { id: "onlineTraining", label: "Online Training" },
   { id: "jays-ai-clone", label: "Jay's AI Clone (coming soon)" },
   { id: "apps-tools", label: "Apps & Tools" },
   { id: "my-profile", label: "My Profile" },
   { id: "task-manager", label: "Task Manager (coming soon)" },
   // Hidden modules - don't delete
   // { id: "team", label: "My Team" },
-  // { id: "onlineTraining", label: "Online Training" },
   // { id: "taskTracker", label: "Task Tracker" },
   // { id: "web-templates", label: "Web Page Approvals" },
 ];
