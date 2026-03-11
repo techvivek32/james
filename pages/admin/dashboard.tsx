@@ -7,13 +7,19 @@ import { Course, UserProfile } from "../../src/types";
 const DashboardPage: NextPage = () => {
   const [users, setUsers] = useState<UserProfile[]>([]);
   const [courses, setCourses] = useState<Course[]>([]);
+  const [businessPlans, setBusinessPlans] = useState<any[]>([]);
 
   useEffect(() => {
     async function loadData() {
       try {
-        const [usersRes, coursesRes] = await Promise.all([fetch("/api/users"), fetch("/api/courses")]);
+        const [usersRes, coursesRes, plansRes] = await Promise.all([
+          fetch("/api/users"),
+          fetch("/api/courses"),
+          fetch("/api/business-plan")
+        ]);
         if (usersRes.ok) setUsers(await usersRes.json());
         if (coursesRes.ok) setCourses(await coursesRes.json());
+        if (plansRes.ok) setBusinessPlans(await plansRes.json());
       } catch (error) {
         console.error("Failed to load admin dashboard data:", error);
       }
@@ -23,7 +29,7 @@ const DashboardPage: NextPage = () => {
 
   return (
     <AdminPageWrapper currentView="dashboard">
-      <AdminDashboard users={users} courses={courses} />
+      <AdminDashboard users={users} courses={courses} businessPlans={businessPlans} />
     </AdminPageWrapper>
   );
 };

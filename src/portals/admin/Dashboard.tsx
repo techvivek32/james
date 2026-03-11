@@ -11,7 +11,7 @@ type SocialMetric = {
   posts30d: number;
   views30d: number;
   displayOrder?: number;
-  [key: string]: any; // Allow custom columns
+  [key: string]: any;
 };
 
 type CustomColumn = {
@@ -26,24 +26,23 @@ type DashboardSection = {
   component: JSX.Element;
 };
 
-export function AdminDashboard(props: { users: UserProfile[]; courses: Course[] }) {
+export function AdminDashboard(props: { users: UserProfile[]; courses: Course[]; businessPlans?: any[] }) {
   const [showSocialDetails, setShowSocialDetails] = useState(true);
   const [socialMetrics, setSocialMetrics] = useState<SocialMetric[]>([]);
   const [customColumns, setCustomColumns] = useState<CustomColumn[]>([]);
   const [courseProgress, setCourseProgress] = useState<any[]>([]);
   const [botStats, setBotStats] = useState<any>({ totalBots: 0, totalSessions: 0, totalMessages: 0 });
-  const [businessPlans, setBusinessPlans] = useState<any[]>([]);
   const [draggedItem, setDraggedItem] = useState<string | null>(null);
   const [sections, setSections] = useState<DashboardSection[]>([]);
   const users = props.users;
   const courses = props.courses;
+  const businessPlans = props.businessPlans || [];
 
   useEffect(() => {
     loadSocialMetrics();
     loadCustomColumns();
     loadCourseProgress();
     loadBotStats();
-    loadBusinessPlans();
   }, []);
 
   useEffect(() => {
@@ -51,7 +50,6 @@ export function AdminDashboard(props: { users: UserProfile[]; courses: Course[] 
   }, [socialMetrics, customColumns, courseProgress, botStats, businessPlans, users, courses, showSocialDetails]);
 
   useEffect(() => {
-    // Save section order to localStorage whenever sections change
     if (sections.length > 0) {
       const sectionOrder = sections.map(s => s.id);
       localStorage.setItem('dashboardSectionOrder', JSON.stringify(sectionOrder));
@@ -94,18 +92,6 @@ export function AdminDashboard(props: { users: UserProfile[]; courses: Course[] 
     }
   }
 
-  async function loadBusinessPlans() {
-    try {
-      const res = await fetch("/api/business-plans");
-      if (res.ok) {
-        const data = await res.json();
-        setBusinessPlans(data);
-      }
-    } catch (error) {
-      console.error("Failed to load business plans:", error);
-    }
-  }
-
   async function loadBotStats() {
     try {
       const res = await fetch("/api/bot-stats");
@@ -121,19 +107,53 @@ export function AdminDashboard(props: { users: UserProfile[]; courses: Course[] 
   const totalSalesReps = users.filter((user) => user.role === "sales").length;
   const totalManagers = users.filter((user) => user.role === "manager").length;
 
-  // Business Plan calculations from separate collection
-  const totalIncomeGoal = businessPlans.reduce((sum, plan) => sum + (plan.revenueGoal || 0), 0);
-  const totalMonthlyDeals = businessPlans.reduce((sum, plan) => sum + (plan.dealsPerMonth || 0), 0);
-  const totalYearlyDeals = businessPlans.reduce((sum, plan) => sum + (plan.dealsPerYear || 0), 0);
-  const totalInspections = businessPlans.reduce((sum, plan) => sum + (plan.inspectionsNeeded || 0), 0);
-  const totalKnocks = businessPlans.reduce((sum, plan) => sum + (plan.doorsPerYear || 0), 0);
-  const totalConversations = Math.round(totalKnocks * 0.15); // Assuming 15% conversation rate
-  const totalClaims = Math.round(totalYearlyDeals * 0.8); // Assuming 80% claims rate
+  // Calculate metrics from committed business plans only
+  const committedPlans = businessPlans.filter(p => p.businessPlan?.committed);
   
-  const plansWithDays = businessPlans.filter(plan => plan.daysPerWeek);
-  const avgDays = plansWithDays.length > 0 
-    ? Math.round(plansWithDays.reduce((sum, plan) => sum + (plan.daysPerWeek || 0), 0) / plansWithDays.length)
-    : 0;
+  const calculateMetrics = (incomeGoal: number, dealAve: number) => {
+    const dealsPerYear = dealAve > 0 ? Math.round(incomeGoal / dealAve) : 0;
+    const dealsPerMonth = dealsPerYear / 12;
+    const claimsPerYear = Math.round(dealsPerYear - (dealsPerYear * 0.25));
+    const claimsPerMonth = claimsPerYear / 12;
+    const inspectionsPerYear = Math.round(claimsPerYear - (claimsPerYear * 0.30));
+    const inspectionsPerMonth = inspectionsPerYear / 12;
+
+    return {
+      dealsPerYear,
+      dealsPerMonth,
+      claimsPerYear,
+      claimsPerMonth,
+      inspectionsPerYear,
+      inspectionsPerMonth
+    };
+  };
+
+  const totals = committedPlans.reduce(
+    (acc, plan) => {
+      const bp = plan.businessPlan;
+      if (!bp) return acc;
+      
+      const metrics = calculateMetrics(bp.revenueGoal || 0, bp.averageDealSize || 0);
+      
+      acc.incomeGoal += bp.revenueGoal || 0;
+      acc.dealsPerYear += metrics.dealsPerYear;
+      acc.dealsPerMonth += metrics.dealsPerMonth;
+      acc.claimsPerYear += metrics.claimsPerYear;
+      acc.claimsPerMonth += metrics.claimsPerMonth;
+      acc.inspectionsPerYear += metrics.inspectionsPerYear;
+      acc.inspectionsPerMonth += metrics.inspectionsPerMonth;
+      return acc;
+    },
+    {
+      incomeGoal: 0,
+      dealsPerYear: 0,
+      dealsPerMonth: 0,
+      claimsPerYear: 0,
+      claimsPerMonth: 0,
+      inspectionsPerYear: 0,
+      inspectionsPerMonth: 0
+    }
+  );
 
   const publishedCourses = courses.filter((course) => course.status !== "draft");
 
@@ -176,14 +196,14 @@ export function AdminDashboard(props: { users: UserProfile[]; courses: Course[] 
         id: "business-plan",
         title: "Business Plan Roll-up",
         component: (
-          <div style={{ display: "flex", gap: 12, width: "100%" }}>
-            <div style={{ flex: 1 }}><DashboardCard title="Total Income Goal" value={`$${totalIncomeGoal.toLocaleString()}`} /></div>
-            <div style={{ flex: 1 }}><DashboardCard title="Monthly Forecast Deals" value={totalMonthlyDeals.toLocaleString()} /></div>
-            <div style={{ flex: 1 }}><DashboardCard title="Yearly Deals" value={totalYearlyDeals.toLocaleString()} /></div>
-            <div style={{ flex: 1 }}><DashboardCard title="Total Claims" value={totalClaims.toLocaleString()} /></div>
-            <div style={{ flex: 1 }}><DashboardCard title="Inspections" value={totalInspections.toLocaleString()} /></div>
-            <div style={{ flex: 1 }}><DashboardCard title="Conversations" value={totalConversations.toLocaleString()} /></div>
-            <div style={{ flex: 1 }}><DashboardCard title="Knocks" value={totalKnocks.toLocaleString()} /></div>
+          <div style={{ display: "flex", gap: 12, width: "100%", flexWrap: "wrap" }}>
+            <div style={{ flex: "1 1 calc(20% - 10px)", minWidth: 150 }}><DashboardCard title="Total Income Goal" value={`$${totals.incomeGoal.toLocaleString()}`} /></div>
+            <div style={{ flex: "1 1 calc(20% - 10px)", minWidth: 150 }}><DashboardCard title="Deals Per Year" value={totals.dealsPerYear.toLocaleString()} /></div>
+            <div style={{ flex: "1 1 calc(20% - 10px)", minWidth: 150 }}><DashboardCard title="Deals Per Month" value={totals.dealsPerMonth.toFixed(2)} /></div>
+            <div style={{ flex: "1 1 calc(20% - 10px)", minWidth: 150 }}><DashboardCard title="Claims Per Year" value={totals.claimsPerYear.toLocaleString()} /></div>
+            <div style={{ flex: "1 1 calc(20% - 10px)", minWidth: 150 }}><DashboardCard title="Claims Per Month" value={totals.claimsPerMonth.toFixed(2)} /></div>
+            <div style={{ flex: "1 1 calc(20% - 10px)", minWidth: 150 }}><DashboardCard title="Inspections Per Year" value={totals.inspectionsPerYear.toLocaleString()} /></div>
+            <div style={{ flex: "1 1 calc(20% - 10px)", minWidth: 150 }}><DashboardCard title="Inspections Per Month" value={totals.inspectionsPerMonth.toFixed(2)} /></div>
           </div>
         )
       },
@@ -205,24 +225,6 @@ export function AdminDashboard(props: { users: UserProfile[]; courses: Course[] 
           }}>
             🚧 Coming Soon
           </div>
-          // <div className="grid grid-4">
-          //   <DashboardCard
-          //     title="Total Course Completion"
-          //     value={`${totalCourseCompletionPercentage}%`}
-          //     description="Across all trainings"
-          //   />
-          //   {publishedCourses.map((course) => {
-          //     const avgCompletion = getCourseCompletion(course.id);
-          //     return (
-          //       <DashboardCard
-          //         key={course.id}
-          //         title={course.title}
-          //         value={`${avgCompletion}%`}
-          //         description="Module completion"
-          //       />
-          //     );
-          //   })}
-          // </div>
         )
       },
       {
@@ -243,11 +245,6 @@ export function AdminDashboard(props: { users: UserProfile[]; courses: Course[] 
           }}>
             🚧 Coming Soon
           </div>
-          // <div className="grid grid-4">
-          //   <DashboardCard title="Total Bots" value={totalBots.toString()} />
-          //   <DashboardCard title="Total Chat Sessions" value={totalChatSessions.toLocaleString()} />
-          //   <DashboardCard title="Total Bot Updates" value={totalBotUpdates.toString()} />
-          // </div>
         )
       },
       {
@@ -264,7 +261,6 @@ export function AdminDashboard(props: { users: UserProfile[]; courses: Course[] 
               </div>
             ) : (
               <>
-                {/* Summary Cards - Show totals for all numeric columns */}
                 <div className="grid grid-3" style={{ marginBottom: 16 }}>
                   {customColumns.map(col => {
                     if (col.datatype === "number") {
@@ -282,7 +278,6 @@ export function AdminDashboard(props: { users: UserProfile[]; courses: Course[] 
 
                 {showSocialDetails && (
                   <>
-                    {/* Table Header */}
                     <div
                       style={{
                         display: "grid",
@@ -303,7 +298,6 @@ export function AdminDashboard(props: { users: UserProfile[]; courses: Course[] 
                       ))}
                     </div>
 
-                    {/* Table Rows */}
                     {socialMetrics.map((metric, index) => (
                       <div
                         key={metric.id}
@@ -339,7 +333,6 @@ export function AdminDashboard(props: { users: UserProfile[]; courses: Course[] 
       }
     ];
 
-    // Try to restore saved order from localStorage
     try {
       const savedOrder = localStorage.getItem('dashboardSectionOrder');
       if (savedOrder) {
@@ -348,7 +341,6 @@ export function AdminDashboard(props: { users: UserProfile[]; courses: Course[] 
           .map((id: string) => defaultSections.find(s => s.id === id))
           .filter(Boolean);
         
-        // Add any new sections that weren't in saved order
         const existingIds = orderIds;
         const newSections = defaultSections.filter(s => !existingIds.includes(s.id));
         
@@ -359,7 +351,6 @@ export function AdminDashboard(props: { users: UserProfile[]; courses: Course[] 
       console.error('Failed to restore section order:', error);
     }
 
-    // Use default order if no saved order exists
     setSections(defaultSections);
   }
 
