@@ -11,7 +11,7 @@ export default async function handler(
   if (req.method === "GET") {
     try {
       console.log("=== FETCHING METRICS ===");
-      const metrics = await SocialMediaMetricsModel.find({}).sort({ platform: 1 });
+      const metrics = await SocialMediaMetricsModel.find({}).sort({ displayOrder: 1, platform: 1 });
       
       console.log("Fetched metrics count:", metrics.length);
       if (metrics.length > 0) {
@@ -70,9 +70,10 @@ export default async function handler(
       console.log("Received metrics count:", metrics.length);
       console.log("First metric sample:", JSON.stringify(metrics[0], null, 2));
 
-      // Update all metrics
+      // Update all metrics with their new order
       const results = [];
-      for (const metric of metrics) {
+      for (let index = 0; index < metrics.length; index++) {
+        const metric = metrics[index];
         try {
           // Generate new ID for new metrics
           let metricId = metric.id;
@@ -84,13 +85,14 @@ export default async function handler(
           const updateData: any = { ...metric };
           updateData.id = metricId;
           updateData.lastUpdated = new Date();
+          updateData.displayOrder = index; // Set order based on position in array
 
           // Ensure platform is set
           if (!updateData.platform) {
             updateData.platform = metric.platformName.toLowerCase();
           }
 
-          console.log(`Saving metric: ${metricId}`);
+          console.log(`Saving metric: ${metricId} at order ${index}`);
           console.log("Update data keys before cleanup:", Object.keys(updateData));
 
           // Remove immutable fields that shouldn't be updated

@@ -11,7 +11,8 @@ const socialMediaMetricsSchema = new Schema(
     followers: { type: Number, default: 0 },
     posts30d: { type: Number, default: 0 },
     views30d: { type: Number, default: 0 },
-    lastUpdated: { type: Date, default: Date.now }
+    lastUpdated: { type: Date, default: Date.now },
+    displayOrder: { type: Number, default: 0 } // Track row order
   },
   { 
     timestamps: true,

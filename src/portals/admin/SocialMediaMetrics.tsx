@@ -53,6 +53,8 @@ export function SocialMediaMetrics() {
   const [showColumnEditModal, setShowColumnEditModal] = useState(false);
   const [editColumnName, setEditColumnName] = useState("");
   const [editColumnDatatype, setEditColumnDatatype] = useState<"string" | "number" | "boolean" | "date">("string");
+  const [draggedRowId, setDraggedRowId] = useState<string | null>(null);
+  const [draggedColumnId, setDraggedColumnId] = useState<string | null>(null);
 
   // Get all visible columns (all custom columns including defaults)
   const allVisibleColumns = customColumns;
@@ -66,7 +68,34 @@ export function SocialMediaMetrics() {
     try {
       const res = await fetch("/api/social-media-metrics/columns");
       if (res.ok) {
-        const data = await res.json();
+        let data = await res.json();
+        
+        // Apply saved column order from localStorage
+        const savedOrder = localStorage.getItem('social-metrics-column-order');
+        if (savedOrder) {
+          try {
+            const orderIds = JSON.parse(savedOrder);
+            const orderedColumns = [];
+            
+            // Add columns in saved order
+            for (const id of orderIds) {
+              const col = data.find((c: CustomColumn) => c.id === id);
+              if (col) orderedColumns.push(col);
+            }
+            
+            // Add any new columns that weren't in saved order
+            for (const col of data) {
+              if (!orderedColumns.find(c => c.id === col.id)) {
+                orderedColumns.push(col);
+              }
+            }
+            
+            data = orderedColumns;
+          } catch (e) {
+            console.error("Failed to apply saved column order:", e);
+          }
+        }
+        
         setCustomColumns(data);
       }
     } catch (error) {
@@ -237,6 +266,62 @@ export function SocialMediaMetrics() {
     }
   }
 
+  // Row drag and drop handlers
+  function handleRowDragStart(e: React.DragEvent, metricId: string) {
+    setDraggedRowId(metricId);
+    e.dataTransfer.effectAllowed = "move";
+  }
+
+  function handleRowDragOver(e: React.DragEvent) {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "move";
+  }
+
+  function handleRowDrop(e: React.DragEvent, targetMetricId: string) {
+    e.preventDefault();
+    if (!draggedRowId || draggedRowId === targetMetricId) return;
+
+    const draggedIndex = metrics.findIndex(m => m.id === draggedRowId);
+    const targetIndex = metrics.findIndex(m => m.id === targetMetricId);
+
+    if (draggedIndex === -1 || targetIndex === -1) return;
+
+    const newMetrics = [...metrics];
+    const [draggedMetric] = newMetrics.splice(draggedIndex, 1);
+    newMetrics.splice(targetIndex, 0, draggedMetric);
+
+    setMetrics(newMetrics);
+    setDraggedRowId(null);
+  }
+
+  // Column drag and drop handlers
+  function handleColumnDragStart(e: React.DragEvent, columnId: string) {
+    setDraggedColumnId(columnId);
+    e.dataTransfer.effectAllowed = "move";
+  }
+
+  function handleColumnDragOver(e: React.DragEvent) {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "move";
+  }
+
+  function handleColumnDrop(e: React.DragEvent, targetColumnId: string) {
+    e.preventDefault();
+    if (!draggedColumnId || draggedColumnId === targetColumnId) return;
+
+    const draggedIndex = customColumns.findIndex(c => c.id === draggedColumnId);
+    const targetIndex = customColumns.findIndex(c => c.id === targetColumnId);
+
+    if (draggedIndex === -1 || targetIndex === -1) return;
+
+    const newColumns = [...customColumns];
+    const [draggedColumn] = newColumns.splice(draggedIndex, 1);
+    newColumns.splice(targetIndex, 0, draggedColumn);
+
+    setCustomColumns(newColumns);
+    setDraggedColumnId(null);
+  }
+
   async function loadMetrics() {
     setLoading(true);
     try {
@@ -338,6 +423,9 @@ export function SocialMediaMetrics() {
       console.log("Response:", data);
 
       if (res.ok && data.success) {
+        // Save column order to localStorage
+        localStorage.setItem('social-metrics-column-order', JSON.stringify(customColumns.map(c => c.id)));
+        
         alert("✓ Metrics saved successfully!");
         setEditingId(null);
         
@@ -669,9 +757,26 @@ export function SocialMediaMetrics() {
                 <tr style={{ borderBottom: "2px solid #e5e7eb", backgroundColor: "#f9fafb" }}>
                   <th style={{ padding: "12px 16px", textAlign: "left", fontWeight: 600, color: "#374151" }}>Platform</th>
                   {allVisibleColumns.map(col => (
-                    <th key={col.id} style={{ padding: "12px 16px", textAlign: "center", fontWeight: 600, color: "#374151", backgroundColor: "#f3f4f6", minWidth: 150 }}>
+                    <th 
+                      key={col.id} 
+                      draggable
+                      onDragStart={(e) => handleColumnDragStart(e, col.id)}
+                      onDragOver={handleColumnDragOver}
+                      onDrop={(e) => handleColumnDrop(e, col.id)}
+                      style={{ 
+                        padding: "12px 16px", 
+                        textAlign: "center", 
+                        fontWeight: 600, 
+                        color: "#374151", 
+                        backgroundColor: draggedColumnId === col.id ? "#fef3c7" : "#f3f4f6",
+                        minWidth: 150,
+                        cursor: "move",
+                        transition: "background-color 0.2s",
+                        opacity: draggedColumnId === col.id ? 0.7 : 1
+                      }}
+                    >
                       <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
-                        <span>{col.name}</span>
+                        <span>☰ {col.name}</span>
                         <button
                           type="button"
                           onClick={() => openColumnEditModal(col)}
@@ -710,7 +815,20 @@ export function SocialMediaMetrics() {
                 {metrics.map((metric, index) => {
                   const isEditing = editingId === metric.id;
                   return (
-                    <tr key={metric.id} style={{ borderBottom: "1px solid #f1f5f9", backgroundColor: isEditing ? "#fef3c7" : index % 2 === 0 ? "#ffffff" : "#f9fafb" }}>
+                    <tr 
+                      key={metric.id} 
+                      draggable
+                      onDragStart={(e) => handleRowDragStart(e, metric.id)}
+                      onDragOver={handleRowDragOver}
+                      onDrop={(e) => handleRowDrop(e, metric.id)}
+                      style={{ 
+                        borderBottom: "1px solid #f1f5f9", 
+                        backgroundColor: draggedRowId === metric.id ? "#fef3c7" : isEditing ? "#fef3c7" : index % 2 === 0 ? "#ffffff" : "#f9fafb",
+                        cursor: "move",
+                        transition: "background-color 0.2s",
+                        opacity: draggedRowId === metric.id ? 0.7 : 1
+                      }}
+                    >
                       <td style={{ padding: "12px 16px" }}>
                         {isEditing ? (
                           <input
