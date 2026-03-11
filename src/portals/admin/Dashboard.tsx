@@ -10,6 +10,14 @@ type SocialMetric = {
   followers: number;
   posts30d: number;
   views30d: number;
+  displayOrder?: number;
+  [key: string]: any; // Allow custom columns
+};
+
+type CustomColumn = {
+  id: string;
+  name: string;
+  datatype: "string" | "number" | "boolean" | "date";
 };
 
 type DashboardSection = {
@@ -21,6 +29,7 @@ type DashboardSection = {
 export function AdminDashboard(props: { users: UserProfile[]; courses: Course[] }) {
   const [showSocialDetails, setShowSocialDetails] = useState(true);
   const [socialMetrics, setSocialMetrics] = useState<SocialMetric[]>([]);
+  const [customColumns, setCustomColumns] = useState<CustomColumn[]>([]);
   const [courseProgress, setCourseProgress] = useState<any[]>([]);
   const [botStats, setBotStats] = useState<any>({ totalBots: 0, totalSessions: 0, totalMessages: 0 });
   const [businessPlans, setBusinessPlans] = useState<any[]>([]);
@@ -31,6 +40,7 @@ export function AdminDashboard(props: { users: UserProfile[]; courses: Course[] 
 
   useEffect(() => {
     loadSocialMetrics();
+    loadCustomColumns();
     loadCourseProgress();
     loadBotStats();
     loadBusinessPlans();
@@ -38,7 +48,7 @@ export function AdminDashboard(props: { users: UserProfile[]; courses: Course[] 
 
   useEffect(() => {
     initializeSections();
-  }, [socialMetrics, courseProgress, botStats, businessPlans, users, courses, showSocialDetails]);
+  }, [socialMetrics, customColumns, courseProgress, botStats, businessPlans, users, courses, showSocialDetails]);
 
   useEffect(() => {
     // Save section order to localStorage whenever sections change
@@ -57,6 +67,18 @@ export function AdminDashboard(props: { users: UserProfile[]; courses: Course[] 
       }
     } catch (error) {
       console.error("Failed to load social metrics:", error);
+    }
+  }
+
+  async function loadCustomColumns() {
+    try {
+      const res = await fetch("/api/social-media-metrics/columns");
+      if (res.ok) {
+        const data = await res.json();
+        setCustomColumns(data);
+      }
+    } catch (error) {
+      console.error("Failed to load custom columns:", error);
     }
   }
 
@@ -132,17 +154,11 @@ export function AdminDashboard(props: { users: UserProfile[]; courses: Course[] 
   const totalChatSessions = botStats.totalSessions || 0;
   const totalBotUpdates = botStats.totalMessages || 0;
 
-  const socialPlatforms = socialMetrics.map(metric => ({
-    id: metric.platform,
-    name: metric.platformName,
-    followers: metric.followers,
-    posts30d: metric.posts30d,
-    views30d: metric.views30d
-  }));
+  const socialPlatforms = socialMetrics;
 
-  const totalFollowers = socialPlatforms.reduce((sum, platform) => sum + platform.followers, 0);
-  const totalPosts30d = socialPlatforms.reduce((sum, platform) => sum + platform.posts30d, 0);
-  const totalViews30d = socialPlatforms.reduce((sum, platform) => sum + platform.views30d, 0);
+  const totalFollowers = socialMetrics.reduce((sum, m) => sum + (m.followers || 0), 0);
+  const totalPosts30d = socialMetrics.reduce((sum, m) => sum + (m.posts30d || 0), 0);
+  const totalViews30d = socialMetrics.reduce((sum, m) => sum + (m.views30d || 0), 0);
 
   function initializeSections() {
     const defaultSections: DashboardSection[] = [
@@ -248,38 +264,52 @@ export function AdminDashboard(props: { users: UserProfile[]; courses: Course[] 
               </div>
             ) : (
               <>
+                {/* Summary Cards - Show totals for all numeric columns */}
                 <div className="grid grid-3" style={{ marginBottom: 16 }}>
-                  <DashboardCard title="Total Followers" value={totalFollowers.toLocaleString()} />
-                  <DashboardCard title="Posts (Last 30 Days)" value={totalPosts30d.toLocaleString()} />
-                  <DashboardCard title="Views (Last 30 Days)" value={totalViews30d.toLocaleString()} />
+                  {customColumns.map(col => {
+                    if (col.datatype === "number") {
+                      const total = socialMetrics.reduce((sum, m) => {
+                        const value = m[col.name];
+                        return sum + (typeof value === 'number' ? value : 0);
+                      }, 0);
+                      return (
+                        <DashboardCard key={col.id} title={`Total ${col.name}`} value={total.toLocaleString()} />
+                      );
+                    }
+                    return null;
+                  })}
                 </div>
+
                 {showSocialDetails && (
                   <>
+                    {/* Table Header */}
                     <div
                       style={{
                         display: "grid",
-                        gridTemplateColumns: "1fr 1fr 1fr 1fr",
+                        gridTemplateColumns: `1fr ${customColumns.map(() => "1fr").join(" ")}`,
                         gap: 12,
                         fontSize: 12,
                         fontWeight: 600,
                         marginBottom: 8,
                         padding: "12px 16px",
-                        borderBottom: "1px solid #e5e7eb",
-                        color: "#6b7280",
+                        borderBottom: "2px solid #e5e7eb",
+                        color: "#374151",
                         backgroundColor: "#f9fafb"
                       }}
                     >
                       <div>Platform</div>
-                      <div style={{ textAlign: "center" }}>Followers</div>
-                      <div style={{ textAlign: "center" }}>Posts</div>
-                      <div style={{ textAlign: "center" }}>Views</div>
+                      {customColumns.map(col => (
+                        <div key={col.id} style={{ textAlign: "center" }}>{col.name}</div>
+                      ))}
                     </div>
-                    {socialPlatforms.map((platform, index) => (
+
+                    {/* Table Rows */}
+                    {socialMetrics.map((metric, index) => (
                       <div
-                        key={platform.id}
+                        key={metric.id}
                         style={{
                           display: "grid",
-                          gridTemplateColumns: "1fr 1fr 1fr 1fr",
+                          gridTemplateColumns: `1fr ${customColumns.map(() => "1fr").join(" ")}`,
                           gap: 12,
                           alignItems: "center",
                           padding: "12px 16px",
@@ -288,25 +318,19 @@ export function AdminDashboard(props: { users: UserProfile[]; courses: Course[] 
                           fontSize: 14
                         }}
                       >
-                        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                          <span style={{ fontSize: 18 }}>
-                            {platform.id === "instagram" && "📷"}
-                            {platform.id === "facebook" && "👥"}
-                            {platform.id === "tiktok" && "🎵"}
-                            {platform.id === "youtube" && "▶️"}
-                          </span>
-                          <span style={{ fontWeight: 500 }}>{platform.name}</span>
-                        </div>
-                        <div style={{ textAlign: "center", fontWeight: 500 }}>{platform.followers.toLocaleString()}</div>
-                        <div style={{ textAlign: "center", fontWeight: 500 }}>{platform.posts30d.toLocaleString()}</div>
-                        <div style={{ textAlign: "center", fontWeight: 500 }}>{platform.views30d.toLocaleString()}</div>
+                        <div style={{ fontWeight: 500 }}>{metric.platformName}</div>
+                        {customColumns.map(col => (
+                          <div key={col.id} style={{ textAlign: "center", fontWeight: 500 }}>
+                            {col.datatype === "number" ? (metric[col.name] || 0).toLocaleString() : metric[col.name] || "-"}
+                          </div>
+                        ))}
                       </div>
                     ))}
                   </>
                 )}
                 
                 <div style={{ marginTop: 24 }}>
-                  <SocialMediaCharts platforms={socialPlatforms} />
+                  <SocialMediaCharts platforms={socialMetrics} customColumns={customColumns} />
                 </div>
               </>
             )}
