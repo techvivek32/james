@@ -598,7 +598,7 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
           type="button"
           onClick={() => setActiveTab('courses')}
           style={{
-            padding: '12px 24px',
+            padding: '16px 32px',
             background: 'none',
             border: 'none',
             borderBottom: activeTab === 'courses' ? '2px solid #2563eb' : '2px solid transparent',
@@ -606,7 +606,7 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
             fontWeight: activeTab === 'courses' ? 600 : 400,
             cursor: 'pointer',
             marginBottom: '-2px',
-            fontSize: 16
+            fontSize: 18
           }}
         >
           Courses
@@ -615,7 +615,7 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
           type="button"
           onClick={() => setActiveTab('myPlaylists')}
           style={{
-            padding: '12px 24px',
+            padding: '16px 32px',
             background: 'none',
             border: 'none',
             borderBottom: activeTab === 'myPlaylists' ? '2px solid #2563eb' : '2px solid transparent',
@@ -623,7 +623,7 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
             fontWeight: activeTab === 'myPlaylists' ? 600 : 400,
             cursor: 'pointer',
             marginBottom: '-2px',
-            fontSize: 16
+            fontSize: 18
           }}
         >
           My Playlists
@@ -639,7 +639,7 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
             }
           }}
           style={{
-            padding: '12px 24px',
+            padding: '16px 32px',
             background: 'none',
             border: 'none',
             borderBottom: activeTab === 'assignedPlaylists' ? '2px solid #2563eb' : '2px solid transparent',
@@ -647,7 +647,7 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
             fontWeight: activeTab === 'assignedPlaylists' ? 600 : 400,
             cursor: 'pointer',
             marginBottom: '-2px',
-            fontSize: 16,
+            fontSize: 18,
             position: 'relative',
             display: 'flex',
             alignItems: 'center',
@@ -660,12 +660,12 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
               backgroundColor: '#ef4444',
               color: 'white',
               borderRadius: '50%',
-              width: 24,
-              height: 24,
+              width: 28,
+              height: 28,
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              fontSize: 12,
+              fontSize: 14,
               fontWeight: 600
             }}>
               {unreadAssignedCount}
@@ -769,10 +769,11 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
                           {playlist.selectedModules.length} module{playlist.selectedModules.length !== 1 ? 's' : ''}
                         </div>
                       </div>
-                      <div style={{ display: 'flex', gap: 8 }}>
+                      <div style={{ display: 'flex', gap: 12 }}>
                         <button
                           type="button"
-                          className="btn-primary btn-small"
+                          className="btn-primary"
+                          style={{ padding: '14px 28px', fontSize: 17, fontWeight: 600 }}
                           onClick={() => {
                             const course = courses.find(c => c.id === playlist.courseId);
                             if (course) {
@@ -785,7 +786,8 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
                         </button>
                         <button
                           type="button"
-                          className="btn-ghost btn-danger btn-small"
+                          className="btn-ghost btn-danger"
+                          style={{ padding: '14px 28px', fontSize: 17, fontWeight: 600 }}
                           onClick={() => {
                             if (confirm('Delete this playlist?')) {
                               const updated = playlists.filter(p => p.id !== playlist.id);
@@ -839,10 +841,11 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
                           Assigned by: {assignment.managerName}
                         </div>
                       </div>
-                      <div style={{ display: 'flex', gap: 8 }}>
+                      <div style={{ display: 'flex', gap: 12 }}>
                         <button
                           type="button"
-                          className="btn-primary btn-small"
+                          className="btn-primary"
+                          style={{ padding: '14px 28px', fontSize: 17, fontWeight: 600 }}
                           onClick={() => {
                             const course = courses.find(c => c.id === assignment.courseId);
                             if (course) {

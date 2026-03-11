@@ -1006,7 +1006,7 @@ export function ManagerOnlineTrainingPage(props: {
           type="button"
           onClick={() => setActiveTab('courses')}
           style={{
-            padding: '12px 24px',
+            padding: '16px 32px',
             background: 'none',
             border: 'none',
             borderBottom: activeTab === 'courses' ? '2px solid #2563eb' : '2px solid transparent',
@@ -1014,7 +1014,7 @@ export function ManagerOnlineTrainingPage(props: {
             fontWeight: activeTab === 'courses' ? 600 : 400,
             cursor: 'pointer',
             marginBottom: '-2px',
-            fontSize: 16
+            fontSize: 18
           }}
         >
           Courses
@@ -1023,7 +1023,7 @@ export function ManagerOnlineTrainingPage(props: {
           type="button"
           onClick={() => setActiveTab('playlists')}
           style={{
-            padding: '12px 24px',
+            padding: '16px 32px',
             background: 'none',
             border: 'none',
             borderBottom: activeTab === 'playlists' ? '2px solid #2563eb' : '2px solid transparent',
@@ -1031,7 +1031,7 @@ export function ManagerOnlineTrainingPage(props: {
             fontWeight: activeTab === 'playlists' ? 600 : 400,
             cursor: 'pointer',
             marginBottom: '-2px',
-            fontSize: 16
+            fontSize: 18
           }}
         >
           Playlists
@@ -1142,10 +1142,11 @@ export function ManagerOnlineTrainingPage(props: {
                           {playlist.selectedModules.length} module{playlist.selectedModules.length !== 1 ? 's' : ''}
                         </div>
                       </div>
-                      <div style={{ display: 'flex', gap: 8 }}>
+                      <div style={{ display: 'flex', gap: 12 }}>
                         <button
                           type="button"
-                          className="btn-primary btn-small"
+                          className="btn-primary"
+                          style={{ padding: '14px 28px', fontSize: 17, fontWeight: 600 }}
                           onClick={() => {
                             const course = publishedCourses.find(c => c.id === playlist.courseId);
                             if (course) {
@@ -1158,7 +1159,8 @@ export function ManagerOnlineTrainingPage(props: {
                         </button>
                         <button
                           type="button"
-                          className="btn-secondary btn-small"
+                          className="btn-secondary"
+                          style={{ padding: '14px 28px', fontSize: 17, fontWeight: 600 }}
                           onClick={() => {
                             const course = publishedCourses.find(c => c.id === playlist.courseId);
                             if (course) {
@@ -1174,7 +1176,8 @@ export function ManagerOnlineTrainingPage(props: {
                         </button>
                         <button
                           type="button"
-                          className="btn-secondary btn-small"
+                          className="btn-secondary"
+                          style={{ padding: '14px 28px', fontSize: 17, fontWeight: 600 }}
                           onClick={() => {
                             console.log('Assign button clicked!', playlist);
                             console.log('Sales users available:', salesUsers);
@@ -1189,7 +1192,8 @@ export function ManagerOnlineTrainingPage(props: {
                         </button>
                         <button
                           type="button"
-                          className="btn-ghost btn-danger btn-small"
+                          className="btn-ghost btn-danger"
+                          style={{ padding: '14px 28px', fontSize: 17, fontWeight: 600 }}
                           onClick={() => {
                             if (confirm('Delete this playlist?')) {
                               const updated = playlists.filter(p => p.id !== playlist.id);
