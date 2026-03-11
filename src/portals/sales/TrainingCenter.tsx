@@ -33,6 +33,7 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
   const [playlists, setPlaylists] = useState<Playlist[]>([]);
   const [viewingPlaylist, setViewingPlaylist] = useState<Playlist | null>(null);
   const [assignedPlaylists, setAssignedPlaylists] = useState<any[]>([]);
+  const [unreadAssignedCount, setUnreadAssignedCount] = useState(0);
 
   // Load playlists from localStorage
   useEffect(() => {
@@ -47,7 +48,14 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
     if (user?.id) {
       fetch(`/api/playlist-assignments?userId=${user.id}`)
         .then(res => res.json())
-        .then(data => setAssignedPlaylists(data))
+        .then(data => {
+          setAssignedPlaylists(data);
+          // Set unread count from localStorage
+          const viewed = localStorage.getItem(`assigned-playlists-viewed-${user.id}`);
+          if (!viewed) {
+            setUnreadAssignedCount(data.length);
+          }
+        })
         .catch(err => console.error('Failed to load assigned playlists:', err));
     }
   }, [user?.id]);
@@ -622,7 +630,14 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
         </button>
         <button
           type="button"
-          onClick={() => setActiveTab('assignedPlaylists')}
+          onClick={() => {
+            setActiveTab('assignedPlaylists');
+            // Mark as viewed
+            if (user?.id) {
+              localStorage.setItem(`assigned-playlists-viewed-${user.id}`, 'true');
+              setUnreadAssignedCount(0);
+            }
+          }}
           style={{
             padding: '12px 24px',
             background: 'none',
@@ -632,10 +647,30 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
             fontWeight: activeTab === 'assignedPlaylists' ? 600 : 400,
             cursor: 'pointer',
             marginBottom: '-2px',
-            fontSize: 16
+            fontSize: 16,
+            position: 'relative',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 8
           }}
         >
           Assigned Playlists
+          {unreadAssignedCount > 0 && (
+            <span style={{
+              backgroundColor: '#ef4444',
+              color: 'white',
+              borderRadius: '50%',
+              width: 24,
+              height: 24,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontSize: 12,
+              fontWeight: 600
+            }}>
+              {unreadAssignedCount}
+            </span>
+          )}
         </button>
       </div>
 
