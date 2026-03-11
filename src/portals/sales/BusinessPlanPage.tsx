@@ -2,25 +2,47 @@ import { useState, useMemo, ChangeEvent, useEffect } from "react";
 import { DashboardCard } from "../../components/DashboardCard";
 import { UserProfile, BusinessPlan } from "../../types";
 
+// Business logic calculations
+const calculateMetrics = (incomeGoal: number, dealAve: number, workingDaysPerWeek: number) => {
+  // Deals Per Year = Income Goal / Deal Ave
+  const dealsPerYear = dealAve > 0 ? Math.round(incomeGoal / dealAve) : 0;
+  
+  // Deals Per Month = Deals Per Year / 12 (no rounding for monthly)
+  const dealsPerMonth = dealsPerYear / 12;
+  
+  // Claims Per Year = Deals Per Year - (Deals Per Year × 25%) (Claims Ratio - hardcoded)
+  const claimsPerYear = Math.round(dealsPerYear - (dealsPerYear * 0.25));
+  
+  // Claims Per Month = Claims Per Year / 12 (no rounding for monthly)
+  const claimsPerMonth = claimsPerYear / 12;
+  
+  // Inspections Per Year = Claims Per Year - (Claims Per Year × 30%) (Inspection Ratio - hardcoded)
+  const inspectionsPerYear = Math.round(claimsPerYear - (claimsPerYear * 0.30));
+  
+  // Inspections Per Month = Inspections Per Year / 12 (no rounding for monthly)
+  const inspectionsPerMonth = inspectionsPerYear / 12;
+
+  return {
+    dealsPerYear,
+    dealsPerMonth,
+    claimsPerYear,
+    claimsPerMonth,
+    inspectionsPerYear,
+    inspectionsPerMonth,
+    workingDaysPerWeek
+  };
+};
+
 export function BusinessPlanPage(props: {
   profile: UserProfile;
   onProfileChange: (profile: UserProfile) => void;
 }) {
   const [existingPlan, setExistingPlan] = useState<BusinessPlan | null>(null);
   const [loading, setLoading] = useState(true);
-  const revenueOptions = Array.from(
-    { length: 19 },
-    (_, index) => 100000 + index * 50000
-  );
-  const [revenueGoal, setRevenueGoal] = useState(
-    existingPlan?.revenueGoal ?? 100000
-  );
-  const [daysPerWeek, setDaysPerWeek] = useState(
-    existingPlan?.daysPerWeek ?? 5
-  );
-  const [averageIncomePerDeal, setAverageIncomePerDeal] = useState(
-    existingPlan?.averageDealSize ?? 12000
-  );
+  const [incomeGoal, setIncomeGoal] = useState(100000);
+  const [dealAve, setDealAve] = useState(12000);
+  const [workingDaysPerWeek, setWorkingDaysPerWeek] = useState(5);
+  const [saved, setSaved] = useState(false);
   const [committed, setCommitted] = useState(false);
 
   // Load user's business plan from database
@@ -33,10 +55,11 @@ export function BusinessPlanPage(props: {
           const userPlan = data.find((plan: any) => plan.userId === props.profile.id);
           if (userPlan?.businessPlan) {
             setExistingPlan(userPlan.businessPlan);
-            setRevenueGoal(userPlan.businessPlan.revenueGoal || 100000);
-            setDaysPerWeek(userPlan.businessPlan.daysPerWeek || 5);
-            setAverageIncomePerDeal(userPlan.businessPlan.averageDealSize || 12000);
+            setIncomeGoal(userPlan.businessPlan.revenueGoal || 100000);
+            setDealAve(userPlan.businessPlan.averageDealSize || 12000);
+            setWorkingDaysPerWeek(userPlan.businessPlan.daysPerWeek || 5);
             setCommitted(userPlan.businessPlan.committed || false);
+            setSaved(true);
           }
         }
       } catch (error) {
@@ -50,67 +73,52 @@ export function BusinessPlanPage(props: {
   }, [props.profile.id]);
 
   const metrics = useMemo(() => {
-    const averageDealSize = averageIncomePerDeal;
-    const knockToConversationRate = 0.10; // 10%
-    const conversationToInspectionRate = 0.30; // 30%
-    const inspectionToClaimRate = 0.50; // 50%
+    return calculateMetrics(incomeGoal, dealAve, workingDaysPerWeek);
+  }, [incomeGoal, dealAve, workingDaysPerWeek]);
 
-    const dealsPerYear = Math.ceil(revenueGoal / averageDealSize);
-    const dealsPerMonth = Math.ceil(dealsPerYear / 12);
-    const inspectionsNeeded = Math.ceil(dealsPerYear / inspectionToClaimRate);
-    const conversationsNeeded = Math.ceil(inspectionsNeeded / conversationToInspectionRate);
-    const doorsPerYear = Math.ceil(conversationsNeeded / knockToConversationRate);
-    const inspectionsPerMonth = Math.ceil(inspectionsNeeded / 12);
-    const conversationsPerMonth = Math.ceil(conversationsNeeded / 12);
-    const doorsPerMonth = Math.ceil(doorsPerYear / 12);
-    const weeksPerYear = 52;
-    const workingDaysPerWeek = daysPerWeek;
-    const workingDaysPerYear = weeksPerYear * workingDaysPerWeek;
-    const doorsPerDay =
-      workingDaysPerYear > 0
-        ? Math.ceil(doorsPerYear / workingDaysPerYear)
-        : 0;
-    const conversationsPerDay =
-      workingDaysPerYear > 0
-        ? Math.ceil(conversationsNeeded / workingDaysPerYear)
-        : 0;
-    const inspectionsPerDay =
-      workingDaysPerYear > 0
-        ? Math.ceil(inspectionsNeeded / workingDaysPerYear)
-        : 0;
-
-    return {
-      dealsPerYear,
-      dealsPerMonth,
-      inspectionsNeeded,
-      conversationsNeeded,
-      doorsPerYear,
-      inspectionsPerMonth,
-      conversationsPerMonth,
-      doorsPerMonth,
-      doorsPerDay,
-      conversationsPerDay,
-      inspectionsPerDay
-    };
-  }, [averageIncomePerDeal, revenueGoal, daysPerWeek]);
-
-  async function handleCommit() {
-    const territoryInput = existingPlan?.territories.join(", ") ?? props.profile.territory ?? "";
-    const territories = territoryInput
-      .split(",")
-      .map((t) => t.trim())
-      .filter((t) => t.length > 0);
-
+  async function handleSavePlan() {
     const plan: BusinessPlan = {
-      revenueGoal,
-      daysPerWeek,
-      territories,
-      averageDealSize: averageIncomePerDeal,
+      revenueGoal: incomeGoal,
+      daysPerWeek: workingDaysPerWeek,
+      territories: [props.profile.territory || ""],
+      averageDealSize: dealAve,
       dealsPerYear: metrics.dealsPerYear,
-      dealsPerMonth: metrics.dealsPerMonth,
-      inspectionsNeeded: metrics.inspectionsNeeded,
-      doorsPerYear: metrics.doorsPerYear,
-      doorsPerDay: metrics.doorsPerDay,
+      dealsPerMonth: Math.round(metrics.dealsPerMonth),
+      inspectionsNeeded: Math.round(metrics.inspectionsPerMonth),
+      doorsPerYear: 0,
+      doorsPerDay: 0,
+      committed: false
+    };
+
+    try {
+      await fetch('/api/business-plan', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId: props.profile.id,
+          businessPlan: plan
+        })
+      });
+
+      setExistingPlan(plan);
+      setSaved(true);
+      setCommitted(false);
+    } catch (error) {
+      console.error('Failed to save business plan:', error);
+    }
+  }
+
+  async function handleCommitPlan() {
+    const plan: BusinessPlan = {
+      revenueGoal: incomeGoal,
+      daysPerWeek: workingDaysPerWeek,
+      territories: [props.profile.territory || ""],
+      averageDealSize: dealAve,
+      dealsPerYear: metrics.dealsPerYear,
+      dealsPerMonth: Math.round(metrics.dealsPerMonth),
+      inspectionsNeeded: Math.round(metrics.inspectionsPerMonth),
+      doorsPerYear: 0,
+      doorsPerDay: 0,
       committed: true
     };
 
@@ -128,22 +136,13 @@ export function BusinessPlanPage(props: {
       // Build change details
       const changes: string[] = [];
       if (existingPlan?.revenueGoal !== plan.revenueGoal) {
-        changes.push(`Revenue Goal: $${existingPlan?.revenueGoal?.toLocaleString() || 0} → $${plan.revenueGoal?.toLocaleString()}`);
+        changes.push(`Income Goal: ${existingPlan?.revenueGoal?.toLocaleString() || 0} → ${plan.revenueGoal?.toLocaleString()}`);
+      }
+      if (existingPlan?.averageDealSize !== plan.averageDealSize) {
+        changes.push(`Deal Ave: ${existingPlan?.averageDealSize?.toLocaleString() || 0} → ${plan.averageDealSize?.toLocaleString()}`);
       }
       if (existingPlan?.daysPerWeek !== plan.daysPerWeek) {
-        changes.push(`Days/Week: ${existingPlan?.daysPerWeek || 0} → ${plan.daysPerWeek}`);
-      }
-      if (existingPlan?.dealsPerYear !== plan.dealsPerYear) {
-        changes.push(`Deals/Year: ${existingPlan?.dealsPerYear || 0} → ${plan.dealsPerYear}`);
-      }
-      if (existingPlan?.dealsPerMonth !== plan.dealsPerMonth) {
-        changes.push(`Deals/Month: ${existingPlan?.dealsPerMonth || 0} → ${plan.dealsPerMonth}`);
-      }
-      if (existingPlan?.inspectionsNeeded !== plan.inspectionsNeeded) {
-        changes.push(`Inspections: ${existingPlan?.inspectionsNeeded || 0} → ${plan.inspectionsNeeded}`);
-      }
-      if (existingPlan?.doorsPerYear !== plan.doorsPerYear) {
-        changes.push(`Door Knocks: ${existingPlan?.doorsPerYear?.toLocaleString() || 0} → ${plan.doorsPerYear?.toLocaleString()}`);
+        changes.push(`Working Days/Week: ${existingPlan?.daysPerWeek || 0} → ${plan.daysPerWeek}`);
       }
       const changeMessage = changes.length > 0 ? changes.join(', ') : 'Plan committed';
 
@@ -188,126 +187,192 @@ export function BusinessPlanPage(props: {
       });
       setCommitted(true);
     } catch (error) {
-      console.error('Failed to save business plan:', error);
+      console.error('Failed to commit business plan:', error);
     }
   }
 
   if (loading) {
-    return <div>Loading your business plan...</div>;
+    return <div className="panel-empty">Loading your business plan...</div>;
   }
 
   return (
-    <div className="business-plan">
-      <div className="panel-header">My Business Plan</div>
-      <div className="plan-form-row">
-        <label className="field plan-field-days">
-          <span className="field-label">Revenue Goal</span>
-          <select
-            className="field-input"
-            value={revenueGoal.toString()}
-            onChange={(e: ChangeEvent<HTMLSelectElement>) =>
-              setRevenueGoal(Number(e.target.value) || 0)
-            }
-          >
-            {revenueOptions.map((amount) => (
-              <option key={amount} value={amount.toString()}>
-                ${amount.toLocaleString()}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label className="field plan-field-days">
-          <span className="field-label">Average Income per Deal</span>
-          <input
-            className="field-input"
-            type="number"
-            min={100}
-            step={100}
-            value={averageIncomePerDeal}
-            onChange={(e: ChangeEvent<HTMLInputElement>) => {
-              const value = Number(e.target.value);
-              if (value >= 100) {
-                setAverageIncomePerDeal(value);
-              }
-            }}
-          />
-        </label>
-        <label className="field plan-field-days">
-          <span className="field-label">Days per week working</span>
-          <div className="plan-days-row">
-            <select
-              className="field-input"
-              value={daysPerWeek.toString()}
-              onChange={(e: ChangeEvent<HTMLSelectElement>) => {
-                const value = parseFloat(e.target.value);
-                if (!isNaN(value)) {
-                  setDaysPerWeek(value);
-                }
-              }}
-            >
-              {Array.from({ length: 14 }, (_, i) => 0.5 + i * 0.5).map((days) => (
-                <option key={days} value={days.toString()}>
-                  {days}
-                </option>
-              ))}
-            </select>
+    <div className="panel">
+      <div className="panel-header">
+        <span>My Business Plan - {props.profile.name}</span>
+      </div>
+      
+      <div className="panel-body">
+        {/* Input Section */}
+        <div style={{ marginBottom: 32, backgroundColor: "#f9fafb", padding: 16, borderRadius: 8, border: "1px solid #e5e7eb" }}>
+          <h3 style={{ fontSize: 14, fontWeight: 600, color: "#111827", margin: 0, marginBottom: 16 }}>
+            Plan Inputs
+          </h3>
+          
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 16 }}>
+            {/* Income Goal */}
+            <label className="field">
+              <span className="field-label">Income Goal</span>
+              <div style={{ position: "relative", display: "flex", alignItems: "center" }}>
+                <span style={{ position: "absolute", left: 12, fontSize: 13, color: "#6b7280", fontWeight: 600 }}>$</span>
+                <input
+                  className="field-input"
+                  type="number"
+                  min={0}
+                  step={1000}
+                  value={incomeGoal}
+                  onChange={(e: ChangeEvent<HTMLInputElement>) => {
+                    const value = Number(e.target.value);
+                    setIncomeGoal(value);
+                  }}
+                  style={{ width: "100%", padding: "10px 12px 10px 28px", fontSize: 13, border: "1px solid #d1d5db", borderRadius: 6 }}
+                />
+              </div>
+            </label>
+
+            {/* Deal Ave */}
+            <label className="field">
+              <span className="field-label">Deal Ave (Average Deal Size)</span>
+              <div style={{ position: "relative", display: "flex", alignItems: "center" }}>
+                <span style={{ position: "absolute", left: 12, fontSize: 13, color: "#6b7280", fontWeight: 600 }}>$</span>
+                <input
+                  className="field-input"
+                  type="number"
+                  min={0}
+                  step={100}
+                  value={dealAve}
+                  onChange={(e: ChangeEvent<HTMLInputElement>) => {
+                    const value = Number(e.target.value);
+                    setDealAve(value);
+                  }}
+                  style={{ width: "100%", padding: "10px 12px 10px 28px", fontSize: 13, border: "1px solid #d1d5db", borderRadius: 6 }}
+                />
+              </div>
+            </label>
+
+            {/* Working Days Per Week */}
+            <label className="field">
+              <span className="field-label">Working Days Per Week</span>
+              <input
+                className="field-input"
+                type="number"
+                min={1}
+                max={7}
+                step={0.5}
+                value={workingDaysPerWeek}
+                onChange={(e: ChangeEvent<HTMLInputElement>) => {
+                  const value = Number(e.target.value);
+                  if (value >= 1 && value <= 7) {
+                    setWorkingDaysPerWeek(value);
+                  }
+                }}
+                style={{ width: "100%", padding: "10px 12px", fontSize: 13, border: "1px solid #d1d5db", borderRadius: 6 }}
+              />
+            </label>
+          </div>
+        </div>
+
+        {/* Hardcoded Ratios Display */}
+        <div style={{ marginBottom: 32, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+          <div style={{ padding: 12, backgroundColor: "#fce7f3", borderRadius: 8, border: "1px solid #ec4899" }}>
+            <div style={{ fontSize: 11, color: "#831843", fontWeight: 600, marginBottom: 4 }}>Claims Ratio</div>
+            <div style={{ fontSize: 16, fontWeight: 700, color: "#831843" }}>25%</div>
+          </div>
+          
+          <div style={{ padding: 12, backgroundColor: "#fef3c7", borderRadius: 8, border: "1px solid #f59e0b" }}>
+            <div style={{ fontSize: 11, color: "#78350f", fontWeight: 600, marginBottom: 4 }}>Inspection Ratio</div>
+            <div style={{ fontSize: 16, fontWeight: 700, color: "#78350f" }}>30%</div>
+          </div>
+        </div>
+
+        {/* Results Section - Yearly */}
+        <div style={{ borderTop: "2px solid #e5e7eb", paddingTop: 24, marginBottom: 24 }}>
+          <h3 style={{ fontSize: 16, fontWeight: 600, color: "#111827", marginBottom: 16 }}>
+            Yearly Targets
+          </h3>
+
+          <div className="grid grid-4" style={{ marginBottom: 24 }}>
+            <DashboardCard
+              title="Deals Per Year"
+              value={metrics.dealsPerYear.toLocaleString()}
+              description="Income Goal / Deal Ave"
+            />
+            <DashboardCard
+              title="Claims Per Year"
+              value={metrics.claimsPerYear.toLocaleString()}
+              description="Deals Per Year - (Deals Per Year × 25%)"
+            />
+            <DashboardCard
+              title="Inspections Per Year"
+              value={metrics.inspectionsPerYear.toLocaleString()}
+              description="Claims Per Year - (Claims Per Year × 30%)"
+            />
+          </div>
+        </div>
+
+        {/* Results Section - Monthly */}
+        <div style={{ borderTop: "2px solid #e5e7eb", paddingTop: 24, marginBottom: 24 }}>
+          <h3 style={{ fontSize: 16, fontWeight: 600, color: "#111827", marginBottom: 16 }}>
+            Monthly Targets
+          </h3>
+
+          <div className="grid grid-4" style={{ marginBottom: 24 }}>
+            <DashboardCard
+              title="Deals Per Month"
+              value={metrics.dealsPerMonth % 1 !== 0 ? metrics.dealsPerMonth.toFixed(2) : metrics.dealsPerMonth.toLocaleString()}
+              description="Deals Per Year / 12"
+            />
+            <DashboardCard
+              title="Claims Per Month"
+              value={metrics.claimsPerMonth % 1 !== 0 ? metrics.claimsPerMonth.toFixed(2) : metrics.claimsPerMonth.toLocaleString()}
+              description="Claims Per Year / 12"
+            />
+            <DashboardCard
+              title="Inspections Per Month"
+              value={metrics.inspectionsPerMonth % 1 !== 0 ? metrics.inspectionsPerMonth.toFixed(2) : metrics.inspectionsPerMonth.toLocaleString()}
+              description="Inspections Per Year / 12"
+            />
+          </div>
+        </div>
+
+        {/* Commitment Section */}
+        <div style={{ borderTop: "2px solid #e5e7eb", paddingTop: 24, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+          <div>
+            <h3 style={{ fontSize: 14, fontWeight: 600, color: "#111827", margin: 0, marginBottom: 4 }}>
+              {committed ? "Plan Committed" : "Save Your Plan"}
+            </h3>
+            <p style={{ fontSize: 12, color: "#6b7280", margin: 0 }}>
+              {committed ? "Your plan has been committed to your manager" : "Save as draft or commit your plan"}
+            </p>
+          </div>
+          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+            {committed && (
+              <span style={{
+                padding: "6px 12px",
+                backgroundColor: "#d1fae5",
+                color: "#065f46",
+                borderRadius: 6,
+                fontSize: 12,
+                fontWeight: 600
+              }}>
+                ✓ Committed
+              </span>
+            )}
             <button
-              type="button"
-              className="btn-primary plan-calculate-button"
+              className="btn-primary"
+              onClick={handleSavePlan}
+              style={{ padding: "10px 24px", fontSize: 13, fontWeight: 600, backgroundColor: "#f59e0b" }}
             >
-              Calculate
+              Save as Draft
+            </button>
+            <button
+              className="btn-primary"
+              onClick={handleCommitPlan}
+              style={{ padding: "10px 24px", fontSize: 13, fontWeight: 600 }}
+            >
+              {committed ? "Update Commitment" : "Commit Plan"}
             </button>
           </div>
-        </label>
-      </div>
-      <div className="grid grid-3 plan-metrics">
-        <DashboardCard
-          title="Deals Needed Per Year"
-          value={String(metrics.dealsPerYear)}
-        />
-        <DashboardCard
-          title="Deals Needed Per Month"
-          value={String(metrics.dealsPerMonth)}
-        />
-        <DashboardCard
-          title="Inspections Needed Per Month"
-          value={String(metrics.inspectionsPerMonth)}
-        />
-        <DashboardCard
-          title="Conversations Per Month"
-          value={String(metrics.conversationsPerMonth)}
-        />
-        <DashboardCard
-          title="Doors Knocked Per month"
-          value={String(metrics.doorsPerMonth)}
-        />
-      </div>
-      <div className="grid grid-3 plan-metrics">
-        <DashboardCard
-          title="Doors To Knock Per Day"
-          value={String(metrics.doorsPerDay)}
-        />
-        <DashboardCard
-          title="Conversations Per Day"
-          value={String(metrics.conversationsPerDay)}
-        />
-        <DashboardCard
-          title="Inspections Needed Per Day"
-          value={String(metrics.inspectionsPerDay)}
-        />
-      </div>
-      <div className="panel-section plan-actions">
-        <button
-          className={committed ? "btn-primary solid" : "btn-primary"}
-          onClick={handleCommit}
-        >
-          I'm Committed To My Plan – send to manager for approval
-        </button>
-        {committed && (
-          <span className="plan-commitment-badge">
-            Commitment recorded for this plan
-          </span>
-        )}
+        </div>
       </div>
     </div>
   );

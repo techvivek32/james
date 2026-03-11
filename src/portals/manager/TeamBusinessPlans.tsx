@@ -1,302 +1,445 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo, ChangeEvent } from "react";
 import { DashboardCard } from "../../components/DashboardCard";
 import { UserProfile, BusinessPlan } from "../../types";
 import { useAuth } from "../../contexts/AuthContext";
 
 export function TeamBusinessPlansPage() {
-  const [users, setUsers] = useState<UserProfile[]>([]);
+  const [teamMembers, setTeamMembers] = useState<UserProfile[]>([]);
   const [loading, setLoading] = useState(true);
-  const [editingUser, setEditingUser] = useState<UserProfile | null>(null);
-  const [editForm, setEditForm] = useState<BusinessPlan | null>(null);
-  const [originalForm, setOriginalForm] = useState<BusinessPlan | null>(null);
+  const [editingUserId, setEditingUserId] = useState<string | null>(null);
+  const [editForm, setEditForm] = useState<{
+    incomeGoal: number;
+    dealAve: number;
+    workingDaysPerWeek: number;
+  } | null>(null);
   const { user } = useAuth();
 
   useEffect(() => {
-    if (user) {
-      fetchUsers();
+    if (user?.id) {
+      fetchTeamData();
     }
-  }, [user]);
+  }, [user?.id]);
 
-  async function fetchUsers() {
+  async function fetchTeamData() {
     try {
-      const [usersRes, plansRes] = await Promise.all([
-        fetch(`/api/users`),
-        fetch(`/api/business-plan?managerId=${user?.id}`)
-      ]);
-      
-      if (usersRes.ok && plansRes.ok) {
+      const usersRes = await fetch("/api/users");
+      if (usersRes.ok) {
         const allUsers = await usersRes.json();
-        const plansData = await plansRes.json();
+        // Filter team members assigned to this manager
+        const team = allUsers.filter((u: UserProfile) => u.managerId === user?.id && u.role === "sales");
         
-        // Merge business plans into users
-        const usersWithPlans = allUsers.map((u: UserProfile) => {
-          const planData = plansData.find((p: any) => p.userId === u.id);
-          return {
-            ...u,
-            businessPlan: planData?.businessPlan || u.businessPlan
-          };
-        });
+        // Fetch their business plans
+        const plansPromises = team.map(member =>
+          fetch(`/api/business-plan?userId=${member.id}`)
+            .then(r => r.json())
+            .then(data => {
+              const userPlan = data.find((p: any) => p.userId === member.id);
+              return {
+                ...member,
+                businessPlan: userPlan?.businessPlan
+              };
+            })
+        );
         
-        setUsers(usersWithPlans);
+        const teamWithPlans = await Promise.all(plansPromises);
+        setTeamMembers(teamWithPlans);
       }
     } catch (error) {
-      console.error('Failed to fetch users:', error);
+      console.error('Failed to fetch team data:', error);
     } finally {
       setLoading(false);
     }
   }
 
+  // Calculate metrics
+  const calculateMetrics = (incomeGoal: number, dealAve: number) => {
+    const dealsPerYear = dealAve > 0 ? Math.round(incomeGoal / dealAve) : 0;
+    const dealsPerMonth = dealsPerYear / 12;
+    const claimsPerYear = Math.round(dealsPerYear - (dealsPerYear * 0.25));
+    const claimsPerMonth = claimsPerYear / 12;
+    const inspectionsPerYear = Math.round(claimsPerYear - (claimsPerYear * 0.30));
+    const inspectionsPerMonth = inspectionsPerYear / 12;
+
+    return {
+      dealsPerYear,
+      dealsPerMonth,
+      claimsPerYear,
+      claimsPerMonth,
+      inspectionsPerYear,
+      inspectionsPerMonth
+    };
+  };
+
+  // Calculate team totals from committed plans
+  const totals = useMemo(() => {
+    const committedPlans = teamMembers.filter(m => m.businessPlan?.committed);
+    
+    return committedPlans.reduce(
+      (acc, member) => {
+        const bp = member.businessPlan;
+        if (!bp) return acc;
+        
+        const metrics = calculateMetrics(bp.revenueGoal || 0, bp.averageDealSize || 0);
+        
+        acc.incomeGoal += bp.revenueGoal || 0;
+        acc.dealsPerYear += metrics.dealsPerYear;
+        acc.dealsPerMonth += metrics.dealsPerMonth;
+        acc.claimsPerYear += metrics.claimsPerYear;
+        acc.claimsPerMonth += metrics.claimsPerMonth;
+        acc.inspectionsPerYear += metrics.inspectionsPerYear;
+        acc.inspectionsPerMonth += metrics.inspectionsPerMonth;
+        return acc;
+      },
+      {
+        incomeGoal: 0,
+        dealsPerYear: 0,
+        dealsPerMonth: 0,
+        claimsPerYear: 0,
+        claimsPerMonth: 0,
+        inspectionsPerYear: 0,
+        inspectionsPerMonth: 0
+      }
+    );
+  }, [teamMembers]);
+
   async function handleSave() {
-    if (!editingUser || !editForm || !originalForm) return;
+    if (!editingUserId || !editForm) return;
+    
+    const member = teamMembers.find(m => m.id === editingUserId);
+    if (!member) return;
+
+    const metrics = calculateMetrics(editForm.incomeGoal, editForm.dealAve);
+
+    const plan: BusinessPlan = {
+      revenueGoal: editForm.incomeGoal,
+      daysPerWeek: editForm.workingDaysPerWeek,
+      territories: [member.territory || ""],
+      averageDealSize: editForm.dealAve,
+      dealsPerYear: metrics.dealsPerYear,
+      dealsPerMonth: Math.round(metrics.dealsPerMonth),
+      inspectionsNeeded: Math.round(metrics.inspectionsPerMonth),
+      doorsPerYear: 0,
+      doorsPerDay: 0,
+      committed: member.businessPlan?.committed || false
+    };
+
     try {
       await fetch('/api/business-plan', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          userId: editingUser.id,
-          businessPlan: editForm
+          userId: editingUserId,
+          businessPlan: plan
         })
       });
 
-      // Build change details
-      const changes: string[] = [];
-      if (originalForm.revenueGoal !== editForm.revenueGoal) {
-        changes.push(`Revenue Goal: $${originalForm.revenueGoal?.toLocaleString()} → $${editForm.revenueGoal?.toLocaleString()}`);
-      }
-      if (originalForm.daysPerWeek !== editForm.daysPerWeek) {
-        changes.push(`Days/Week: ${originalForm.daysPerWeek} → ${editForm.daysPerWeek}`);
-      }
-      if (originalForm.dealsPerYear !== editForm.dealsPerYear) {
-        changes.push(`Deals/Year: ${originalForm.dealsPerYear} → ${editForm.dealsPerYear}`);
-      }
-      if (originalForm.dealsPerMonth !== editForm.dealsPerMonth) {
-        changes.push(`Deals/Month: ${originalForm.dealsPerMonth} → ${editForm.dealsPerMonth}`);
-      }
-      if (originalForm.inspectionsNeeded !== editForm.inspectionsNeeded) {
-        changes.push(`Inspections: ${originalForm.inspectionsNeeded} → ${editForm.inspectionsNeeded}`);
-      }
-      if (originalForm.doorsPerYear !== editForm.doorsPerYear) {
-        changes.push(`Door Knocks: ${originalForm.doorsPerYear?.toLocaleString()} → ${editForm.doorsPerYear?.toLocaleString()}`);
-      }
-      const changeMessage = changes.length > 0 ? changes.join(', ') : 'No changes';
-
-      // Create notifications
-      const allUsers = await fetch('/api/users').then(r => r.json());
-      const admins = allUsers.filter((u: any) => u.role === 'admin');
-      
-      const notifications = [
-        {
-          userId: editingUser.id,
+      // Create notification for sales rep
+      await fetch('/api/notifications', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId: editingUserId,
           type: 'plan_updated',
           title: 'Business Plan Updated',
-          message: `Your manager updated your business plan. ${changeMessage}`,
-          metadata: { updatedBy: 'manager', businessPlan: editForm }
-        },
-        ...admins.map((admin: any) => ({
-          userId: admin.id,
-          type: 'plan_updated',
-          title: 'Business Plan Updated',
-          message: `Manager updated ${editingUser.name}'s business plan. ${changeMessage}`,
-          metadata: { updatedBy: 'manager', targetUser: editingUser.id }
-        }))
-      ];
+          message: `Your manager updated your business plan.`,
+          metadata: { updatedBy: 'manager', businessPlan: plan }
+        })
+      });
 
-      await Promise.all(
-        notifications.map(n => 
-          fetch('/api/notifications', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(n)
-          })
-        )
-      );
-
-      window.location.reload();
+      setEditingUserId(null);
+      setEditForm(null);
+      fetchTeamData();
     } catch (error) {
-      console.error('Failed to update:', error);
+      console.error('Failed to save plan:', error);
     }
   }
 
   if (loading) {
-    return <div>Loading business plans...</div>;
+    return <div style={{ padding: 24 }}>Loading team data...</div>;
   }
 
   if (!user || user.role !== 'manager') {
-    return <div>Access denied</div>;
+    return <div style={{ padding: 24 }}>Access denied</div>;
   }
 
-  const teamMembers = users.filter((u) => u.managerId === user.id);
-  const teamPlans = teamMembers.filter((m) => !!m.businessPlan).map((m) => m.businessPlan!);
-  const teamRevenue = teamPlans.reduce((sum, p) => sum + (p.revenueGoal || 0), 0);
-  const totalDeals = teamPlans.reduce((sum, p) => sum + (p.dealsPerYear || 0), 0);
-  const totalInspections = teamPlans.reduce((sum, p) => sum + (p.inspectionsNeeded || 0), 0);
-  const totalDoors = teamPlans.reduce((sum, p) => sum + (p.doorsPerYear || 0), 0);
-
   return (
-    <div>
-      <div className="grid grid-4">
-        <DashboardCard
-          title="Team Revenue Goal"
-          value={`$${teamRevenue.toLocaleString()}`}
-          description="Sum of rep plans"
-        />
-        <DashboardCard
-          title="Deals Needed (Year)"
-          value={totalDeals.toLocaleString()}
-          description="Across all reps"
-        />
-        <DashboardCard
-          title="Inspections Needed"
-          value={totalInspections.toLocaleString()}
-          description="From plan assumptions"
-        />
-        <DashboardCard
-          title="Door Knocks (Year)"
-          value={totalDoors.toLocaleString()}
-          description="Team goal"
-        />
+    <div className="panel">
+      <div className="panel-header">
+        <span>Team Business Plans</span>
       </div>
-      <div className="panel" style={{ marginTop: 16 }}>
-        <div className="panel-header">
-          <div className="panel-header-row">
-            <span>Team Business Plans</span>
+      
+      <div className="panel-body">
+        {/* First Row - Totals */}
+        <div style={{ marginBottom: 32 }}>
+          <h3 style={{ fontSize: 14, fontWeight: 600, color: "#111827", margin: 0, marginBottom: 16 }}>
+            Team Totals
+          </h3>
+          
+          <div className="grid grid-4" style={{ marginBottom: 24 }}>
+            <DashboardCard
+              title="Total Income Goal"
+              value={`$${totals.incomeGoal.toLocaleString()}`}
+              description="Sum of all reps"
+            />
+            <DashboardCard
+              title="Claims Ratio"
+              value="25%"
+              description="Hardcoded"
+            />
+            <DashboardCard
+              title="Inspection Ratio"
+              value="30%"
+              description="Hardcoded"
+            />
           </div>
         </div>
-        <div className="panel-body">
-          {teamMembers.length === 0 ? (
-            <div className="panel-empty">
-              No team members assigned.
-            </div>
-          ) : (
-            <div style={{ overflowX: "auto" }}>
-              <table style={{ width: "100%", borderCollapse: "separate", borderSpacing: 0 }}>
-                <thead>
-                  <tr style={{ fontSize: 12, fontWeight: 600, color: "#6b7280" }}>
-                    <th style={{ padding: "8px 12px", textAlign: "left" }}>Rep</th>
-                    <th style={{ padding: "8px 12px", textAlign: "center" }}>Revenue Goal</th>
-                    <th style={{ padding: "8px 12px", textAlign: "center" }}>Days/Week</th>
-                    <th style={{ padding: "8px 12px", textAlign: "center" }}>Deals/Year</th>
-                    <th style={{ padding: "8px 12px", textAlign: "center" }}>Deals/Month</th>
-                    <th style={{ padding: "8px 12px", textAlign: "center" }}>Inspections</th>
-                    <th style={{ padding: "8px 12px", textAlign: "center" }}>Door Knocks</th>
-                    <th style={{ padding: "8px 12px", textAlign: "center" }}>Status</th>
-                    <th style={{ padding: "8px 12px", textAlign: "center" }}>Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {teamMembers.map((member, index) => {
-                    const plan = member.businessPlan;
+
+        {/* Yearly Targets */}
+        <div style={{ borderTop: "2px solid #e5e7eb", paddingTop: 24, marginBottom: 24 }}>
+          <h3 style={{ fontSize: 16, fontWeight: 600, color: "#111827", marginBottom: 16 }}>
+            Yearly Targets
+          </h3>
+
+          <div className="grid grid-4" style={{ marginBottom: 24 }}>
+            <DashboardCard
+              title="Deals Per Year"
+              value={totals.dealsPerYear.toLocaleString()}
+              description="Total from all reps"
+            />
+            <DashboardCard
+              title="Claims Per Year"
+              value={totals.claimsPerYear.toLocaleString()}
+              description="Total from all reps"
+            />
+            <DashboardCard
+              title="Inspections Per Year"
+              value={totals.inspectionsPerYear.toLocaleString()}
+              description="Total from all reps"
+            />
+          </div>
+        </div>
+
+        {/* Monthly Targets */}
+        <div style={{ borderTop: "2px solid #e5e7eb", paddingTop: 24, marginBottom: 24 }}>
+          <h3 style={{ fontSize: 16, fontWeight: 600, color: "#111827", marginBottom: 16 }}>
+            Monthly Targets
+          </h3>
+
+          <div className="grid grid-4" style={{ marginBottom: 24 }}>
+            <DashboardCard
+              title="Deals Per Month"
+              value={totals.dealsPerMonth % 1 !== 0 ? totals.dealsPerMonth.toFixed(2) : totals.dealsPerMonth.toLocaleString()}
+              description="Total from all reps"
+            />
+            <DashboardCard
+              title="Claims Per Month"
+              value={totals.claimsPerMonth % 1 !== 0 ? totals.claimsPerMonth.toFixed(2) : totals.claimsPerMonth.toLocaleString()}
+              description="Total from all reps"
+            />
+            <DashboardCard
+              title="Inspections Per Month"
+              value={totals.inspectionsPerMonth % 1 !== 0 ? totals.inspectionsPerMonth.toFixed(2) : totals.inspectionsPerMonth.toLocaleString()}
+              description="Total from all reps"
+            />
+          </div>
+        </div>
+
+        {/* Sales Team Plans Table */}
+        <div style={{ borderTop: "2px solid #e5e7eb", paddingTop: 24 }}>
+          <h3 style={{ fontSize: 16, fontWeight: 600, color: "#111827", marginBottom: 16 }}>
+            Sales Team Plans
+          </h3>
+          
+          <div style={{ overflowX: "auto" }}>
+            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+              <thead>
+                <tr style={{ backgroundColor: "#f3f4f6", borderBottom: "2px solid #e5e7eb" }}>
+                  <th style={{ padding: 12, textAlign: "left", fontWeight: 600, color: "#111827" }}>Rep Name</th>
+                  <th style={{ padding: 12, textAlign: "right", fontWeight: 600, color: "#111827" }}>Income Goal</th>
+                  <th style={{ padding: 12, textAlign: "right", fontWeight: 600, color: "#111827" }}>Deal Ave</th>
+                  <th style={{ padding: 12, textAlign: "right", fontWeight: 600, color: "#111827" }}>Deals/Year</th>
+                  <th style={{ padding: 12, textAlign: "right", fontWeight: 600, color: "#111827" }}>Deals/Month</th>
+                  <th style={{ padding: 12, textAlign: "right", fontWeight: 600, color: "#111827" }}>Claims/Year</th>
+                  <th style={{ padding: 12, textAlign: "right", fontWeight: 600, color: "#111827" }}>Claims/Month</th>
+                  <th style={{ padding: 12, textAlign: "right", fontWeight: 600, color: "#111827" }}>Inspections/Year</th>
+                  <th style={{ padding: 12, textAlign: "right", fontWeight: 600, color: "#111827" }}>Inspections/Month</th>
+                  <th style={{ padding: 12, textAlign: "center", fontWeight: 600, color: "#111827" }}>Status</th>
+                  <th style={{ padding: 12, textAlign: "center", fontWeight: 600, color: "#111827" }}>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {teamMembers.length > 0 ? (
+                  teamMembers.map((member, idx) => {
+                    const bp = member.businessPlan;
+                    const metrics = calculateMetrics(bp?.revenueGoal || 0, bp?.averageDealSize || 0);
+                    
                     return (
-                      <tr
-                        key={member.id}
-                        style={{
-                          fontSize: 13,
-                          backgroundColor: index % 2 === 0 ? "#ffffff" : "#f9fafb",
-                          borderTop: index === 0 ? "1px solid #e5e7eb" : "1px solid #f1f5f9"
-                        }}
-                      >
-                        <td style={{ padding: "8px 12px" }}>
-                          <div style={{ fontSize: 13, fontWeight: 500 }}>
-                            {member.name}
-                          </div>
-                          <div style={{ fontSize: 11, color: "#6b7280" }}>
-                            {member.role.toUpperCase()}
-                          </div>
+                      <tr key={idx} style={{ borderBottom: "1px solid #e5e7eb", backgroundColor: idx % 2 === 0 ? "#ffffff" : "#f9fafb" }}>
+                        <td style={{ padding: 12, color: "#111827", fontWeight: 500 }}>{member.name}</td>
+                        <td style={{ padding: 12, textAlign: "right", color: "#374151" }}>${(bp?.revenueGoal || 0).toLocaleString()}</td>
+                        <td style={{ padding: 12, textAlign: "right", color: "#374151" }}>${(bp?.averageDealSize || 0).toLocaleString()}</td>
+                        <td style={{ padding: 12, textAlign: "right", color: "#374151" }}>{metrics.dealsPerYear.toLocaleString()}</td>
+                        <td style={{ padding: 12, textAlign: "right", color: "#374151" }}>{metrics.dealsPerMonth.toFixed(2)}</td>
+                        <td style={{ padding: 12, textAlign: "right", color: "#374151" }}>{metrics.claimsPerYear.toLocaleString()}</td>
+                        <td style={{ padding: 12, textAlign: "right", color: "#374151" }}>{metrics.claimsPerMonth.toFixed(2)}</td>
+                        <td style={{ padding: 12, textAlign: "right", color: "#374151" }}>{metrics.inspectionsPerYear.toLocaleString()}</td>
+                        <td style={{ padding: 12, textAlign: "right", color: "#374151" }}>{metrics.inspectionsPerMonth.toFixed(2)}</td>
+                        <td style={{ padding: 12, textAlign: "center" }}>
+                          <span style={{ padding: "4px 8px", backgroundColor: bp?.committed ? "#d1fae5" : "#fef3c7", color: bp?.committed ? "#065f46" : "#78350f", borderRadius: 4, fontSize: 11, fontWeight: 600 }}>
+                            {bp?.committed ? "Committed" : "Draft"}
+                          </span>
                         </td>
-                        <td style={{ padding: "8px 12px", textAlign: "center" }}>
-                          {plan ? `$${plan.revenueGoal?.toLocaleString() || 'N/A'}` : 'N/A'}
-                        </td>
-                        <td style={{ padding: "8px 12px", textAlign: "center" }}>
-                          {plan ? (plan.daysPerWeek || 'N/A') : 'N/A'}
-                        </td>
-                        <td style={{ padding: "8px 12px", textAlign: "center" }}>
-                          {plan ? (plan.dealsPerYear?.toLocaleString() || 'N/A') : 'N/A'}
-                        </td>
-                        <td style={{ padding: "8px 12px", textAlign: "center" }}>
-                          {plan ? (plan.dealsPerMonth?.toLocaleString() || 'N/A') : 'N/A'}
-                        </td>
-                        <td style={{ padding: "8px 12px", textAlign: "center" }}>
-                          {plan ? (plan.inspectionsNeeded?.toLocaleString() || 'N/A') : 'N/A'}
-                        </td>
-                        <td style={{ padding: "8px 12px", textAlign: "center" }}>
-                          {plan ? (plan.doorsPerYear?.toLocaleString() || 'N/A') : 'N/A'}
-                        </td>
-                        <td style={{ padding: "8px 12px", textAlign: "center" }}>
-                          {plan ? (
-                            plan.committed ? (
-                              <span style={{ color: "#10b981", fontWeight: 500 }}>Committed</span>
-                            ) : (
-                              <span style={{ color: "#f59e0b", fontWeight: 500 }}>Draft</span>
-                            )
-                          ) : (
-                            <span style={{ color: "#6b7280" }}>Not Set</span>
-                          )}
-                        </td>
-                        <td style={{ padding: "8px 12px", textAlign: "center" }}>
+                        <td style={{ padding: 12, textAlign: "center" }}>
                           <button
                             onClick={() => {
-                              const plan = member.businessPlan || {
-                                revenueGoal: 0,
-                                daysPerWeek: 0,
-                                territories: [],
-                                dealsPerYear: 0,
-                                dealsPerMonth: 0,
-                                inspectionsNeeded: 0,
-                                doorsPerYear: 0,
-                                doorsPerDay: 0,
-                                committed: false
-                              };
-                              setEditingUser(member);
-                              setEditForm(plan);
-                              setOriginalForm(plan);
+                              setEditingUserId(member.id);
+                              setEditForm({
+                                incomeGoal: bp?.revenueGoal || 0,
+                                dealAve: bp?.averageDealSize || 0,
+                                workingDaysPerWeek: bp?.daysPerWeek || 5
+                              });
                             }}
-                            className="btn-secondary btn-small"
+                            style={{
+                              padding: "6px 12px",
+                              backgroundColor: "#3b82f6",
+                              color: "#ffffff",
+                              border: "none",
+                              borderRadius: 4,
+                              fontSize: 12,
+                              fontWeight: 600,
+                              cursor: "pointer"
+                            }}
                           >
                             Edit
                           </button>
                         </td>
                       </tr>
                     );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          )}
+                  })
+                ) : (
+                  <tr>
+                    <td colSpan={11} style={{ padding: 24, textAlign: "center", color: "#6b7280" }}>
+                      No team members assigned
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
         </div>
       </div>
-      {editingUser && editForm && (
-        <div className="overlay" onClick={() => setEditingUser(null)}>
-          <div className="dialog" style={{ width: 500 }} onClick={(e) => e.stopPropagation()}>
-            <div className="dialog-title">Edit Business Plan - {editingUser.name}</div>
-            <div className="form-grid" style={{ gridTemplateColumns: '1fr 1fr' }}>
-              <div className="field">
-                <label className="field-label">Revenue Goal</label>
-                <input className="field-input" type="number" value={editForm.revenueGoal || 0} onChange={(e) => setEditForm({...editForm, revenueGoal: Number(e.target.value)})} />
-              </div>
-              <div className="field">
-                <label className="field-label">Days Per Week</label>
-                <input className="field-input" type="number" value={editForm.daysPerWeek || 0} onChange={(e) => setEditForm({...editForm, daysPerWeek: Number(e.target.value)})} />
-              </div>
-              <div className="field">
-                <label className="field-label">Deals Per Year</label>
-                <input className="field-input" type="number" value={editForm.dealsPerYear || 0} onChange={(e) => setEditForm({...editForm, dealsPerYear: Number(e.target.value)})} />
-              </div>
-              <div className="field">
-                <label className="field-label">Deals Per Month</label>
-                <input className="field-input" type="number" value={editForm.dealsPerMonth || 0} onChange={(e) => setEditForm({...editForm, dealsPerMonth: Number(e.target.value)})} />
-              </div>
-              <div className="field">
-                <label className="field-label">Inspections Needed</label>
-                <input className="field-input" type="number" value={editForm.inspectionsNeeded || 0} onChange={(e) => setEditForm({...editForm, inspectionsNeeded: Number(e.target.value)})} />
-              </div>
-              <div className="field">
-                <label className="field-label">Door Knocks Per Year</label>
-                <input className="field-input" type="number" value={editForm.doorsPerYear || 0} onChange={(e) => setEditForm({...editForm, doorsPerYear: Number(e.target.value)})} />
-              </div>
+
+      {/* Edit Modal */}
+      {editingUserId && editForm && (
+        <div style={{
+          position: "fixed",
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: "rgba(0, 0, 0, 0.5)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          zIndex: 1000
+        }} onClick={() => setEditingUserId(null)}>
+          <div style={{
+            backgroundColor: "#ffffff",
+            borderRadius: 8,
+            padding: 24,
+            width: "90%",
+            maxWidth: 500,
+            boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.1)"
+          }} onClick={(e) => e.stopPropagation()}>
+            <h2 style={{ fontSize: 18, fontWeight: 600, color: "#111827", margin: 0, marginBottom: 20 }}>
+              Edit Plan - {teamMembers.find(m => m.id === editingUserId)?.name}
+            </h2>
+
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 20 }}>
+              <label className="field">
+                <span className="field-label">Income Goal</span>
+                <div style={{ position: "relative", display: "flex", alignItems: "center" }}>
+                  <span style={{ position: "absolute", left: 12, fontSize: 13, color: "#6b7280", fontWeight: 600 }}>$</span>
+                  <input
+                    type="number"
+                    min={0}
+                    step={1000}
+                    value={editForm.incomeGoal}
+                    onChange={(e: ChangeEvent<HTMLInputElement>) => {
+                      setEditForm({ ...editForm, incomeGoal: Number(e.target.value) });
+                    }}
+                    style={{ width: "100%", padding: "10px 12px 10px 28px", fontSize: 13, border: "1px solid #d1d5db", borderRadius: 6 }}
+                  />
+                </div>
+              </label>
+
+              <label className="field">
+                <span className="field-label">Deal Ave</span>
+                <div style={{ position: "relative", display: "flex", alignItems: "center" }}>
+                  <span style={{ position: "absolute", left: 12, fontSize: 13, color: "#6b7280", fontWeight: 600 }}>$</span>
+                  <input
+                    type="number"
+                    min={0}
+                    step={100}
+                    value={editForm.dealAve}
+                    onChange={(e: ChangeEvent<HTMLInputElement>) => {
+                      setEditForm({ ...editForm, dealAve: Number(e.target.value) });
+                    }}
+                    style={{ width: "100%", padding: "10px 12px 10px 28px", fontSize: 13, border: "1px solid #d1d5db", borderRadius: 6 }}
+                  />
+                </div>
+              </label>
+
+              <label className="field">
+                <span className="field-label">Working Days Per Week</span>
+                <input
+                  type="number"
+                  min={1}
+                  max={7}
+                  step={0.5}
+                  value={editForm.workingDaysPerWeek}
+                  onChange={(e: ChangeEvent<HTMLInputElement>) => {
+                    const value = Number(e.target.value);
+                    if (value >= 1 && value <= 7) {
+                      setEditForm({ ...editForm, workingDaysPerWeek: value });
+                    }
+                  }}
+                  style={{ width: "100%", padding: "10px 12px", fontSize: 13, border: "1px solid #d1d5db", borderRadius: 6 }}
+                />
+              </label>
             </div>
-            <div className="dialog-footer">
-              <button className="btn-secondary btn-cancel" onClick={() => setEditingUser(null)}>Cancel</button>
-              <button className="btn-primary solid" onClick={handleSave}>Save</button>
+
+            <div style={{ display: "flex", gap: 12, justifyContent: "flex-end" }}>
+              <button
+                onClick={() => setEditingUserId(null)}
+                style={{
+                  padding: "10px 24px",
+                  backgroundColor: "#e5e7eb",
+                  color: "#111827",
+                  border: "none",
+                  borderRadius: 6,
+                  fontSize: 13,
+                  fontWeight: 600,
+                  cursor: "pointer"
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleSave}
+                style={{
+                  padding: "10px 24px",
+                  backgroundColor: "#3b82f6",
+                  color: "#ffffff",
+                  border: "none",
+                  borderRadius: 6,
+                  fontSize: 13,
+                  fontWeight: 600,
+                  cursor: "pointer"
+                }}
+              >
+                Save
+              </button>
             </div>
           </div>
         </div>

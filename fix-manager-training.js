@@ -4,6 +4,7 @@ const path = require('path');
 
 // Read .env file manually
 let uri = "mongodb://dsatguru:vivekVOra32+@69.62.66.123:27017/millerstorm?authSource=admin";
+let uri = "mongodb://dsatguru:vivekVOra32+@69.62.66.123:27017/millerstorm?authSource=admin";
 try {
   const envPath = path.join(__dirname, '.env');
   if (fs.existsSync(envPath)) {

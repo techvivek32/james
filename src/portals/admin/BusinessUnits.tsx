@@ -1,18 +1,72 @@
-import { useState } from "react";
+import { useState, useMemo, ChangeEvent } from "react";
 import { DashboardCard } from "../../components/DashboardCard";
 import { UserProfile, BusinessPlan } from "../../types";
 
 export function BusinessUnitsManager(props: { users: UserProfile[] }) {
-  const [editingUser, setEditingUser] = useState<UserProfile | null>(null);
-  const [editForm, setEditForm] = useState<BusinessPlan | null>(null);
-  const [originalForm, setOriginalForm] = useState<BusinessPlan | null>(null);
   const [expandedManagers, setExpandedManagers] = useState<Set<string>>(new Set());
+  const [editingUserId, setEditingUserId] = useState<string | null>(null);
+  const [editForm, setEditForm] = useState<{
+    incomeGoal: number;
+    dealAve: number;
+    workingDaysPerWeek: number;
+  } | null>(null);
   const managers = props.users.filter((u) => u.role === "manager" || (u.roles || []).includes("manager"));
   const salesReps = props.users.filter((u) => u.role === "sales" || (u.roles || []).includes("sales"));
-  const plans = props.users.filter((u) => !!u.businessPlan).map((u) => u.businessPlan!);
-  const totalRevenue = plans.reduce((sum, p) => sum + (p.revenueGoal || 0), 0);
-  const totalDays = plans.reduce((sum, p) => sum + (p.daysPerWeek || 0), 0);
-  const avgDays = plans.length > 0 ? Math.round(totalDays / plans.length) : 0;
+
+  // Calculate metrics
+  const calculateMetrics = (incomeGoal: number, dealAve: number) => {
+    const dealsPerYear = dealAve > 0 ? Math.round(incomeGoal / dealAve) : 0;
+    const dealsPerMonth = dealsPerYear / 12;
+    const claimsPerYear = Math.round(dealsPerYear - (dealsPerYear * 0.25));
+    const claimsPerMonth = claimsPerYear / 12;
+    const inspectionsPerYear = Math.round(claimsPerYear - (claimsPerYear * 0.30));
+    const inspectionsPerMonth = inspectionsPerYear / 12;
+
+    return {
+      dealsPerYear,
+      dealsPerMonth,
+      claimsPerYear,
+      claimsPerMonth,
+      inspectionsPerYear,
+      inspectionsPerMonth
+    };
+  };
+
+  // Get all committed plans
+  const allCommittedPlans = useMemo(() => {
+    return salesReps.filter(rep => rep.businessPlan?.committed).map(rep => ({
+      ...rep,
+      metrics: calculateMetrics(rep.businessPlan?.revenueGoal || 0, rep.businessPlan?.averageDealSize || 0)
+    }));
+  }, [salesReps]);
+
+  // Calculate global totals from all committed plans
+  const globalTotals = useMemo(() => {
+    return allCommittedPlans.reduce(
+      (acc, rep) => {
+        const bp = rep.businessPlan;
+        if (!bp) return acc;
+        
+        acc.incomeGoal += bp.revenueGoal || 0;
+        acc.dealsPerYear += rep.metrics.dealsPerYear;
+        acc.dealsPerMonth += rep.metrics.dealsPerMonth;
+        acc.claimsPerYear += rep.metrics.claimsPerYear;
+        acc.claimsPerMonth += rep.metrics.claimsPerMonth;
+        acc.inspectionsPerYear += rep.metrics.inspectionsPerYear;
+        acc.inspectionsPerMonth += rep.metrics.inspectionsPerMonth;
+        return acc;
+      },
+      {
+        incomeGoal: 0,
+        dealsPerYear: 0,
+        dealsPerMonth: 0,
+        claimsPerYear: 0,
+        claimsPerMonth: 0,
+        inspectionsPerYear: 0,
+        inspectionsPerMonth: 0
+      }
+    );
+  }, [allCommittedPlans]);
 
   function toggleManager(managerId: string) {
     setExpandedManagers(prev => {
@@ -26,105 +80,152 @@ export function BusinessUnitsManager(props: { users: UserProfile[] }) {
     });
   }
 
+  function getTeamMembers(managerId: string) {
+    return props.users.filter((u) => u.managerId === managerId && u.role === "sales");
+  }
+
   async function handleSave() {
-    if (!editingUser || !editForm || !originalForm) return;
+    if (!editingUserId || !editForm) return;
+    
+    const member = salesReps.find(m => m.id === editingUserId);
+    if (!member) return;
+
+    const metrics = calculateMetrics(editForm.incomeGoal, editForm.dealAve);
+
+    const plan: BusinessPlan = {
+      revenueGoal: editForm.incomeGoal,
+      daysPerWeek: editForm.workingDaysPerWeek,
+      territories: [member.territory || ""],
+      averageDealSize: editForm.dealAve,
+      dealsPerYear: metrics.dealsPerYear,
+      dealsPerMonth: Math.round(metrics.dealsPerMonth),
+      inspectionsNeeded: Math.round(metrics.inspectionsPerMonth),
+      doorsPerYear: 0,
+      doorsPerDay: 0,
+      committed: member.businessPlan?.committed || false
+    };
+
     try {
       await fetch('/api/business-plan', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          userId: editingUser.id,
-          businessPlan: editForm
+          userId: editingUserId,
+          businessPlan: plan
         })
       });
 
-      // Build change details
-      const changes: string[] = [];
-      if (originalForm.revenueGoal !== editForm.revenueGoal) {
-        changes.push(`Revenue Goal: $${originalForm.revenueGoal?.toLocaleString()} → $${editForm.revenueGoal?.toLocaleString()}`);
-      }
-      if (originalForm.daysPerWeek !== editForm.daysPerWeek) {
-        changes.push(`Days/Week: ${originalForm.daysPerWeek} → ${editForm.daysPerWeek}`);
-      }
-      if (originalForm.dealsPerYear !== editForm.dealsPerYear) {
-        changes.push(`Deals/Year: ${originalForm.dealsPerYear} → ${editForm.dealsPerYear}`);
-      }
-      if (originalForm.dealsPerMonth !== editForm.dealsPerMonth) {
-        changes.push(`Deals/Month: ${originalForm.dealsPerMonth} → ${editForm.dealsPerMonth}`);
-      }
-      if (originalForm.inspectionsNeeded !== editForm.inspectionsNeeded) {
-        changes.push(`Inspections: ${originalForm.inspectionsNeeded} → ${editForm.inspectionsNeeded}`);
-      }
-      if (originalForm.doorsPerYear !== editForm.doorsPerYear) {
-        changes.push(`Door Knocks: ${originalForm.doorsPerYear?.toLocaleString()} → ${editForm.doorsPerYear?.toLocaleString()}`);
-      }
-      const changeMessage = changes.length > 0 ? changes.join(', ') : 'No changes';
-
-      // Create notifications
-      const notifications = [
-        {
-          userId: editingUser.id,
+      // Create notification for sales rep
+      await fetch('/api/notifications', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId: editingUserId,
           type: 'plan_updated',
           title: 'Business Plan Updated',
-          message: `Admin updated your business plan. ${changeMessage}`,
-          metadata: { updatedBy: 'admin', businessPlan: editForm }
-        }
-      ];
+          message: `Admin updated your business plan.`,
+          metadata: { updatedBy: 'admin', businessPlan: plan }
+        })
+      });
 
-      if (editingUser.managerId) {
-        notifications.push({
-          userId: editingUser.managerId,
-          type: 'plan_updated',
-          title: 'Team Member Plan Updated',
-          message: `Admin updated ${editingUser.name}'s business plan. ${changeMessage}`,
-          metadata: { updatedBy: 'admin', businessPlan: editingUser.businessPlan as any }
-        });
-      }
-
-      await Promise.all(
-        notifications.map(n => 
-          fetch('/api/notifications', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(n)
-          })
-        )
-      );
-
+      setEditingUserId(null);
+      setEditForm(null);
       window.location.reload();
     } catch (error) {
-      console.error('Failed to update:', error);
+      console.error('Failed to save plan:', error);
     }
-  }
-
-  function getTeamMembers(managerId: string) {
-    return props.users.filter((u) => u.managerId === managerId);
   }
 
   return (
     <div>
-      <div className="panel" style={{ marginBottom: 16 }}>
+      {/* Global Dashboard */}
+      <div className="panel" style={{ marginBottom: 32 }}>
         <div className="panel-header">
-          <div className="panel-header-row">
-            <span>Business Units Overview</span>
-          </div>
+          <span>All Committed Sales Plans - Global Dashboard</span>
         </div>
         <div className="panel-body">
-          <div className="grid grid-4">
-            <DashboardCard title="Total Managers" value={managers.length.toString()} />
-            <DashboardCard title="Total Sales Reps" value={salesReps.length.toString()} />
-            <DashboardCard title="Total Business Plans" value={plans.length.toString()} />
-            <DashboardCard title="Total Revenue" value={`$${totalRevenue.toLocaleString()}`} />
-            <DashboardCard title="Avg Days Per Week" value={avgDays.toString()} />
+          {/* First Row - Totals */}
+          <div style={{ marginBottom: 32 }}>
+            <h3 style={{ fontSize: 14, fontWeight: 600, color: "#111827", margin: 0, marginBottom: 16 }}>
+              Global Totals
+            </h3>
+            
+            <div className="grid grid-4" style={{ marginBottom: 24 }}>
+              <DashboardCard
+                title="Total Income Goal"
+                value={`$${globalTotals.incomeGoal.toLocaleString()}`}
+                description="Sum of all committed reps"
+              />
+              <DashboardCard
+                title="Claims Ratio"
+                value="25%"
+                description="Hardcoded"
+              />
+              <DashboardCard
+                title="Inspection Ratio"
+                value="30%"
+                description="Hardcoded"
+              />
+            </div>
+          </div>
+
+          {/* Yearly Targets */}
+          <div style={{ borderTop: "2px solid #e5e7eb", paddingTop: 24, marginBottom: 24 }}>
+            <h3 style={{ fontSize: 16, fontWeight: 600, color: "#111827", marginBottom: 16 }}>
+              Yearly Targets
+            </h3>
+
+            <div className="grid grid-4" style={{ marginBottom: 24 }}>
+              <DashboardCard
+                title="Deals Per Year"
+                value={globalTotals.dealsPerYear.toLocaleString()}
+                description="Total from all reps"
+              />
+              <DashboardCard
+                title="Claims Per Year"
+                value={globalTotals.claimsPerYear.toLocaleString()}
+                description="Total from all reps"
+              />
+              <DashboardCard
+                title="Inspections Per Year"
+                value={globalTotals.inspectionsPerYear.toLocaleString()}
+                description="Total from all reps"
+              />
+            </div>
+          </div>
+
+          {/* Monthly Targets */}
+          <div style={{ borderTop: "2px solid #e5e7eb", paddingTop: 24 }}>
+            <h3 style={{ fontSize: 16, fontWeight: 600, color: "#111827", marginBottom: 16 }}>
+              Monthly Targets
+            </h3>
+
+            <div className="grid grid-4">
+              <DashboardCard
+                title="Deals Per Month"
+                value={globalTotals.dealsPerMonth % 1 !== 0 ? globalTotals.dealsPerMonth.toFixed(2) : globalTotals.dealsPerMonth.toLocaleString()}
+                description="Total from all reps"
+              />
+              <DashboardCard
+                title="Claims Per Month"
+                value={globalTotals.claimsPerMonth % 1 !== 0 ? globalTotals.claimsPerMonth.toFixed(2) : globalTotals.claimsPerMonth.toLocaleString()}
+                description="Total from all reps"
+              />
+              <DashboardCard
+                title="Inspections Per Month"
+                value={globalTotals.inspectionsPerMonth % 1 !== 0 ? globalTotals.inspectionsPerMonth.toFixed(2) : globalTotals.inspectionsPerMonth.toLocaleString()}
+                description="Total from all reps"
+              />
+            </div>
           </div>
         </div>
       </div>
+
+      {/* Per-Manager Sections */}
       {managers.length === 0 ? (
         <div className="panel">
           <div className="panel-header">
-            <div className="panel-header-row">
-              <span>Business Units</span>
-            </div>
+            <span>Business Units</span>
           </div>
           <div className="panel-body">
             <div className="panel-empty">No managers found.</div>
@@ -133,10 +234,35 @@ export function BusinessUnitsManager(props: { users: UserProfile[] }) {
       ) : (
         managers.map((manager) => {
           const teamMembers = getTeamMembers(manager.id);
-          const teamPlans = teamMembers.filter((m) => !!m.businessPlan).map((m) => m.businessPlan!);
-          const teamRevenue = teamPlans.reduce((sum, p) => sum + (p.revenueGoal || 0), 0);
-          const teamDays = teamPlans.reduce((sum, p) => sum + (p.daysPerWeek || 0), 0);
-          const teamAvgDays = teamPlans.length > 0 ? Math.round(teamDays / teamPlans.length) : 0;
+          const teamCommittedPlans = teamMembers.filter(m => m.businessPlan?.committed);
+          
+          const teamTotals = teamCommittedPlans.reduce(
+            (acc, member) => {
+              const bp = member.businessPlan;
+              if (!bp) return acc;
+              
+              const metrics = calculateMetrics(bp.revenueGoal || 0, bp.averageDealSize || 0);
+              
+              acc.incomeGoal += bp.revenueGoal || 0;
+              acc.dealsPerYear += metrics.dealsPerYear;
+              acc.dealsPerMonth += metrics.dealsPerMonth;
+              acc.claimsPerYear += metrics.claimsPerYear;
+              acc.claimsPerMonth += metrics.claimsPerMonth;
+              acc.inspectionsPerYear += metrics.inspectionsPerYear;
+              acc.inspectionsPerMonth += metrics.inspectionsPerMonth;
+              return acc;
+            },
+            {
+              incomeGoal: 0,
+              dealsPerYear: 0,
+              dealsPerMonth: 0,
+              claimsPerYear: 0,
+              claimsPerMonth: 0,
+              inspectionsPerYear: 0,
+              inspectionsPerMonth: 0
+            }
+          );
+
           return (
             <div key={manager.id} className="panel" style={{ marginBottom: 16 }}>
               <div className="panel-header" style={{ cursor: 'pointer' }} onClick={() => toggleManager(manager.id)}>
@@ -147,157 +273,228 @@ export function BusinessUnitsManager(props: { users: UserProfile[] }) {
               </div>
               {expandedManagers.has(manager.id) && (
                 <div className="panel-body">
-                  <div className="grid grid-4" style={{ marginBottom: 12 }}>
-                    <DashboardCard title="Team Members" value={teamMembers.length.toString()} />
-                    <DashboardCard title="Plans in Team" value={teamPlans.length.toString()} />
-                    <DashboardCard title="Team Revenue" value={`$${teamRevenue.toLocaleString()}`} />
-                    <DashboardCard title="Avg Days Per Week" value={teamAvgDays.toString()} />
+                  {/* Team Summary Cards */}
+                  <div style={{ marginBottom: 32 }}>
+                    <h3 style={{ fontSize: 14, fontWeight: 600, color: "#111827", margin: 0, marginBottom: 16 }}>
+                      Team Totals
+                    </h3>
+                    
+                    <div className="grid grid-4" style={{ marginBottom: 24 }}>
+                      <DashboardCard
+                        title="Total Income Goal"
+                        value={`$${teamTotals.incomeGoal.toLocaleString()}`}
+                        description="Sum of committed reps"
+                      />
+                      <DashboardCard
+                        title="Claims Ratio"
+                        value="25%"
+                        description="Hardcoded"
+                      />
+                      <DashboardCard
+                        title="Inspection Ratio"
+                        value="30%"
+                        description="Hardcoded"
+                      />
+                    </div>
                   </div>
-                  {manager.businessPlan && (
-                    <div style={{ marginBottom: 16, padding: 12, backgroundColor: "#f9fafb", borderRadius: 6 }}>
-                      <div style={{ fontWeight: 600, marginBottom: 8 }}>{manager.name} (Manager)</div>
-                      <div className="grid grid-4">
-                        <DashboardCard title="Revenue Goal" value={`$${(manager.businessPlan.revenueGoal || 0).toLocaleString()}`} />
-                        <DashboardCard title="Days Per Week" value={(manager.businessPlan.daysPerWeek || 0).toString()} />
+
+                  {/* Team Sales Reps Table */}
+                  <div style={{ borderTop: "2px solid #e5e7eb", paddingTop: 24 }}>
+                    <h3 style={{ fontSize: 16, fontWeight: 600, color: "#111827", marginBottom: 16 }}>
+                      Sales Team Plans
+                    </h3>
+                    
+                    {teamMembers.length === 0 ? (
+                      <div className="panel-empty">No team members assigned.</div>
+                    ) : (
+                      <div style={{ overflowX: "auto" }}>
+                        <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+                          <thead>
+                            <tr style={{ backgroundColor: "#f3f4f6", borderBottom: "2px solid #e5e7eb" }}>
+                              <th style={{ padding: 12, textAlign: "left", fontWeight: 600, color: "#111827" }}>Rep Name</th>
+                              <th style={{ padding: 12, textAlign: "right", fontWeight: 600, color: "#111827" }}>Income Goal</th>
+                              <th style={{ padding: 12, textAlign: "right", fontWeight: 600, color: "#111827" }}>Deal Ave</th>
+                              <th style={{ padding: 12, textAlign: "right", fontWeight: 600, color: "#111827" }}>Deals/Year</th>
+                              <th style={{ padding: 12, textAlign: "right", fontWeight: 600, color: "#111827" }}>Deals/Month</th>
+                              <th style={{ padding: 12, textAlign: "right", fontWeight: 600, color: "#111827" }}>Claims/Year</th>
+                              <th style={{ padding: 12, textAlign: "right", fontWeight: 600, color: "#111827" }}>Claims/Month</th>
+                              <th style={{ padding: 12, textAlign: "right", fontWeight: 600, color: "#111827" }}>Inspections/Year</th>
+                              <th style={{ padding: 12, textAlign: "right", fontWeight: 600, color: "#111827" }}>Inspections/Month</th>
+                              <th style={{ padding: 12, textAlign: "center", fontWeight: 600, color: "#111827" }}>Status</th>
+                              <th style={{ padding: 12, textAlign: "center", fontWeight: 600, color: "#111827" }}>Actions</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {teamMembers.map((member, idx) => {
+                              const bp = member.businessPlan;
+                              const metrics = calculateMetrics(bp?.revenueGoal || 0, bp?.averageDealSize || 0);
+                              
+                              return (
+                                <tr key={idx} style={{ borderBottom: "1px solid #e5e7eb", backgroundColor: idx % 2 === 0 ? "#ffffff" : "#f9fafb" }}>
+                                  <td style={{ padding: 12, color: "#111827", fontWeight: 500 }}>{member.name}</td>
+                                  <td style={{ padding: 12, textAlign: "right", color: "#374151" }}>${(bp?.revenueGoal || 0).toLocaleString()}</td>
+                                  <td style={{ padding: 12, textAlign: "right", color: "#374151" }}>${(bp?.averageDealSize || 0).toLocaleString()}</td>
+                                  <td style={{ padding: 12, textAlign: "right", color: "#374151" }}>{metrics.dealsPerYear.toLocaleString()}</td>
+                                  <td style={{ padding: 12, textAlign: "right", color: "#374151" }}>{metrics.dealsPerMonth.toFixed(2)}</td>
+                                  <td style={{ padding: 12, textAlign: "right", color: "#374151" }}>{metrics.claimsPerYear.toLocaleString()}</td>
+                                  <td style={{ padding: 12, textAlign: "right", color: "#374151" }}>{metrics.claimsPerMonth.toFixed(2)}</td>
+                                  <td style={{ padding: 12, textAlign: "right", color: "#374151" }}>{metrics.inspectionsPerYear.toLocaleString()}</td>
+                                  <td style={{ padding: 12, textAlign: "right", color: "#374151" }}>{metrics.inspectionsPerMonth.toFixed(2)}</td>
+                                  <td style={{ padding: 12, textAlign: "center" }}>
+                                    <span style={{ padding: "4px 8px", backgroundColor: bp?.committed ? "#d1fae5" : "#fef3c7", color: bp?.committed ? "#065f46" : "#78350f", borderRadius: 4, fontSize: 11, fontWeight: 600 }}>
+                                      {bp?.committed ? "Committed" : "Draft"}
+                                    </span>
+                                  </td>
+                                  <td style={{ padding: 12, textAlign: "center" }}>
+                                    <button
+                                      onClick={() => {
+                                        setEditingUserId(member.id);
+                                        setEditForm({
+                                          incomeGoal: bp?.revenueGoal || 0,
+                                          dealAve: bp?.averageDealSize || 0,
+                                          workingDaysPerWeek: bp?.daysPerWeek || 5
+                                        });
+                                      }}
+                                      style={{
+                                        padding: "6px 12px",
+                                        backgroundColor: "#3b82f6",
+                                        color: "#ffffff",
+                                        border: "none",
+                                        borderRadius: 4,
+                                        fontSize: 12,
+                                        fontWeight: 600,
+                                        cursor: "pointer"
+                                      }}
+                                    >
+                                      Edit
+                                    </button>
+                                  </td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
                       </div>
-                    </div>
-                  )}
-                  {teamMembers.length === 0 ? (
-                    <div className="panel-empty">No team members assigned.</div>
-                  ) : (
-                    <div style={{ overflowX: "auto" }}>
-                      <table style={{ width: "100%", borderCollapse: "separate", borderSpacing: 0 }}>
-                        <thead>
-                          <tr style={{ fontSize: 12, fontWeight: 600, color: "#6b7280" }}>
-                            <th style={{ padding: "8px 12px", textAlign: "left" }}>Rep</th>
-                            <th style={{ padding: "8px 12px", textAlign: "center" }}>Revenue Goal</th>
-                            <th style={{ padding: "8px 12px", textAlign: "center" }}>Days/Week</th>
-                            <th style={{ padding: "8px 12px", textAlign: "center" }}>Deals/Year</th>
-                            <th style={{ padding: "8px 12px", textAlign: "center" }}>Deals/Month</th>
-                            <th style={{ padding: "8px 12px", textAlign: "center" }}>Inspections</th>
-                            <th style={{ padding: "8px 12px", textAlign: "center" }}>Door Knocks</th>
-                            <th style={{ padding: "8px 12px", textAlign: "center" }}>Status</th>
-                            <th style={{ padding: "8px 12px", textAlign: "center" }}>Actions</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {teamMembers.map((member, index) => {
-                            const plan = member.businessPlan;
-                            return (
-                              <tr
-                                key={member.id}
-                                style={{
-                                  fontSize: 13,
-                                  backgroundColor: index % 2 === 0 ? "#ffffff" : "#f9fafb",
-                                  borderTop: index === 0 ? "1px solid #e5e7eb" : "1px solid #f1f5f9"
-                                }}
-                              >
-                                <td style={{ padding: "8px 12px" }}>
-                                  <div style={{ fontSize: 13, fontWeight: 500 }}>
-                                    {member.name}
-                                  </div>
-                                  <div style={{ fontSize: 11, color: "#6b7280" }}>
-                                    {member.role.toUpperCase()}
-                                  </div>
-                                </td>
-                                <td style={{ padding: "8px 12px", textAlign: "center" }}>
-                                  {plan ? `$${plan.revenueGoal?.toLocaleString() || 'N/A'}` : 'N/A'}
-                                </td>
-                                <td style={{ padding: "8px 12px", textAlign: "center" }}>
-                                  {plan ? (plan.daysPerWeek || 'N/A') : 'N/A'}
-                                </td>
-                                <td style={{ padding: "8px 12px", textAlign: "center" }}>
-                                  {plan ? (plan.dealsPerYear?.toLocaleString() || 'N/A') : 'N/A'}
-                                </td>
-                                <td style={{ padding: "8px 12px", textAlign: "center" }}>
-                                  {plan ? (plan.dealsPerMonth?.toLocaleString() || 'N/A') : 'N/A'}
-                                </td>
-                                <td style={{ padding: "8px 12px", textAlign: "center" }}>
-                                  {plan ? (plan.inspectionsNeeded?.toLocaleString() || 'N/A') : 'N/A'}
-                                </td>
-                                <td style={{ padding: "8px 12px", textAlign: "center" }}>
-                                  {plan ? (plan.doorsPerYear?.toLocaleString() || 'N/A') : 'N/A'}
-                                </td>
-                                <td style={{ padding: "8px 12px", textAlign: "center" }}>
-                                  {plan ? (
-                                    plan.committed ? (
-                                      <span style={{ color: "#10b981", fontWeight: 500 }}>Committed</span>
-                                    ) : (
-                                      <span style={{ color: "#f59e0b", fontWeight: 500 }}>Draft</span>
-                                    )
-                                  ) : (
-                                    <span style={{ color: "#6b7280" }}>Not Set</span>
-                                  )}
-                                </td>
-                                <td style={{ padding: "8px 12px", textAlign: "center" }}>
-                                  <button
-                                    onClick={() => {
-                                      const plan = member.businessPlan || {
-                                        revenueGoal: 0,
-                                        daysPerWeek: 0,
-                                        territories: [],
-                                        dealsPerYear: 0,
-                                        dealsPerMonth: 0,
-                                        inspectionsNeeded: 0,
-                                        doorsPerYear: 0,
-                                        doorsPerDay: 0,
-                                        committed: false
-                                      };
-                                      setEditingUser(member);
-                                      setEditForm(plan);
-                                      setOriginalForm(plan);
-                                    }}
-                                    className="btn-secondary btn-small"
-                                  >
-                                    Edit
-                                  </button>
-                                </td>
-                              </tr>
-                            );
-                          })}
-                        </tbody>
-                      </table>
-                    </div>
-                  )}
+                    )}
+                  </div>
                 </div>
               )}
             </div>
           );
         })
       )}
-      {editingUser && editForm && (
-        <div className="overlay" onClick={() => setEditingUser(null)}>
-          <div className="dialog" style={{ width: 500 }} onClick={(e) => e.stopPropagation()}>
-            <div className="dialog-title">Edit Business Plan - {editingUser.name}</div>
-            <div className="form-grid" style={{ gridTemplateColumns: '1fr 1fr' }}>
-              <div className="field">
-                <label className="field-label">Revenue Goal</label>
-                <input className="field-input" type="number" value={editForm.revenueGoal || 0} onChange={(e) => setEditForm({...editForm, revenueGoal: Number(e.target.value)})} />
-              </div>
-              <div className="field">
-                <label className="field-label">Days Per Week</label>
-                <input className="field-input" type="number" value={editForm.daysPerWeek || 0} onChange={(e) => setEditForm({...editForm, daysPerWeek: Number(e.target.value)})} />
-              </div>
-              <div className="field">
-                <label className="field-label">Deals Per Year</label>
-                <input className="field-input" type="number" value={editForm.dealsPerYear || 0} onChange={(e) => setEditForm({...editForm, dealsPerYear: Number(e.target.value)})} />
-              </div>
-              <div className="field">
-                <label className="field-label">Deals Per Month</label>
-                <input className="field-input" type="number" value={editForm.dealsPerMonth || 0} onChange={(e) => setEditForm({...editForm, dealsPerMonth: Number(e.target.value)})} />
-              </div>
-              <div className="field">
-                <label className="field-label">Inspections Needed</label>
-                <input className="field-input" type="number" value={editForm.inspectionsNeeded || 0} onChange={(e) => setEditForm({...editForm, inspectionsNeeded: Number(e.target.value)})} />
-              </div>
-              <div className="field">
-                <label className="field-label">Door Knocks Per Year</label>
-                <input className="field-input" type="number" value={editForm.doorsPerYear || 0} onChange={(e) => setEditForm({...editForm, doorsPerYear: Number(e.target.value)})} />
-              </div>
+
+      {/* Edit Modal */}
+      {editingUserId && editForm && (
+        <div style={{
+          position: "fixed",
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: "rgba(0, 0, 0, 0.5)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          zIndex: 1000
+        }} onClick={() => setEditingUserId(null)}>
+          <div style={{
+            backgroundColor: "#ffffff",
+            borderRadius: 8,
+            padding: 24,
+            width: "90%",
+            maxWidth: 500,
+            boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.1)"
+          }} onClick={(e) => e.stopPropagation()}>
+            <h2 style={{ fontSize: 18, fontWeight: 600, color: "#111827", margin: 0, marginBottom: 20 }}>
+              Edit Plan - {salesReps.find(m => m.id === editingUserId)?.name}
+            </h2>
+
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 20 }}>
+              <label className="field">
+                <span className="field-label">Income Goal</span>
+                <div style={{ position: "relative", display: "flex", alignItems: "center" }}>
+                  <span style={{ position: "absolute", left: 12, fontSize: 13, color: "#6b7280", fontWeight: 600 }}>$</span>
+                  <input
+                    type="number"
+                    min={0}
+                    step={1000}
+                    value={editForm.incomeGoal}
+                    onChange={(e: ChangeEvent<HTMLInputElement>) => {
+                      setEditForm({ ...editForm, incomeGoal: Number(e.target.value) });
+                    }}
+                    style={{ width: "100%", padding: "10px 12px 10px 28px", fontSize: 13, border: "1px solid #d1d5db", borderRadius: 6 }}
+                  />
+                </div>
+              </label>
+
+              <label className="field">
+                <span className="field-label">Deal Ave</span>
+                <div style={{ position: "relative", display: "flex", alignItems: "center" }}>
+                  <span style={{ position: "absolute", left: 12, fontSize: 13, color: "#6b7280", fontWeight: 600 }}>$</span>
+                  <input
+                    type="number"
+                    min={0}
+                    step={100}
+                    value={editForm.dealAve}
+                    onChange={(e: ChangeEvent<HTMLInputElement>) => {
+                      setEditForm({ ...editForm, dealAve: Number(e.target.value) });
+                    }}
+                    style={{ width: "100%", padding: "10px 12px 10px 28px", fontSize: 13, border: "1px solid #d1d5db", borderRadius: 6 }}
+                  />
+                </div>
+              </label>
+
+              <label className="field">
+                <span className="field-label">Working Days Per Week</span>
+                <input
+                  type="number"
+                  min={1}
+                  max={7}
+                  step={0.5}
+                  value={editForm.workingDaysPerWeek}
+                  onChange={(e: ChangeEvent<HTMLInputElement>) => {
+                    const value = Number(e.target.value);
+                    if (value >= 1 && value <= 7) {
+                      setEditForm({ ...editForm, workingDaysPerWeek: value });
+                    }
+                  }}
+                  style={{ width: "100%", padding: "10px 12px", fontSize: 13, border: "1px solid #d1d5db", borderRadius: 6 }}
+                />
+              </label>
             </div>
-            <div className="dialog-footer">
-              <button className="btn-secondary btn-cancel" onClick={() => setEditingUser(null)}>Cancel</button>
-              <button className="btn-primary solid" onClick={handleSave}>Save</button>
+
+            <div style={{ display: "flex", gap: 12, justifyContent: "flex-end" }}>
+              <button
+                onClick={() => setEditingUserId(null)}
+                style={{
+                  padding: "10px 24px",
+                  backgroundColor: "#e5e7eb",
+                  color: "#111827",
+                  border: "none",
+                  borderRadius: 6,
+                  fontSize: 13,
+                  fontWeight: 600,
+                  cursor: "pointer"
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleSave}
+                style={{
+                  padding: "10px 24px",
+                  backgroundColor: "#3b82f6",
+                  color: "#ffffff",
+                  border: "none",
+                  borderRadius: 6,
+                  fontSize: 13,
+                  fontWeight: 600,
+                  cursor: "pointer"
+                }}
+              >
+                Save
+              </button>
             </div>
           </div>
         </div>
