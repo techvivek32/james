@@ -146,7 +146,16 @@ export function ManagerOnlineTrainingPage(props: {
       pages = pages.filter(p => viewingPlaylist.selectedModules.includes(p.id));
     }
     
-    const folders = selectedCourse.folders ?? [];
+    let folders = selectedCourse.folders ?? [];
+    
+    // If viewing a playlist, filter folders to show only those with selected pages
+    if (viewingPlaylist) {
+      const selectedPageIds = new Set(viewingPlaylist.selectedModules);
+      folders = folders.filter(folder => 
+        pages.some(page => page.folderId === folder.id && selectedPageIds.has(page.id))
+      );
+    }
+    
     const activePage = pages.find((p) => p.id === activePageId) ?? pages[0];
 
     const isPageUnlocked = (pageId: string) => {
