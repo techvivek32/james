@@ -3,16 +3,18 @@ import { Sidebar } from "./Sidebar";
 
 const sidebarItems = [
   { id: "dashboard", label: "Dashboard" },
+  { id: "socialMediaMetrics", label: "Social Media Executive View" },
+  { id: "businessUnits", label: "Business Planner Executive View" },
   { id: "userManagement", label: "User Management" },
-  { id: "roleHierarchy", label: "Role & Hierarchy Manager" },
-  { id: "businessUnits", label: "Sales Business Plan" },
-  { id: "courseManagement", label: "Course Management" },
-  { id: "materialsLibrary", label: "Marketing Materials Library" },
-  { id: "aiBots", label: "AI Bot Management" },
-  { id: "webTemplates", label: "Web Page Approval" },
-  { id: "webText", label: "Web Page Text" },
-  { id: "appsTools", label: "Apps/Tool" },
-  { id: "socialMediaMetrics", label: "Social Media Metrics" }
+  { id: "courseManagement", label: "Course Builder" },
+  { id: "appsTools", label: "Apps & Tool Builder" },
+  { id: "courseAiBots", label: "Course AI Bots Builder" },
+  { id: "aiBots", label: "Master AI Bot Builder" },
+  // Hidden modules - don't delete
+  // { id: "roleHierarchy", label: "Role & Hierarchy Manager" },
+  // { id: "materialsLibrary", label: "Marketing Materials Library" },
+  // { id: "webTemplates", label: "Web Page Approval" },
+  // { id: "webText", label: "Web Page Text" },
 ];
 
 type AdminSidebarProps = {
