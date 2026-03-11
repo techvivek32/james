@@ -186,7 +186,6 @@ export function SocialMediaCharts({ platforms, customColumns = [] }: SocialMedia
                     style={{
                       padding: 12,
                       borderRadius: 8,
-                      backgroundColor: "#f9fafb",
                       border: "1px solid #e5e7eb",
                       cursor: "pointer",
                       transition: "all 0.2s ease",
