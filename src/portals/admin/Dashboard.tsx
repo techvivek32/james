@@ -72,7 +72,34 @@ export function AdminDashboard(props: { users: UserProfile[]; courses: Course[];
     try {
       const res = await fetch("/api/social-media-metrics/columns");
       if (res.ok) {
-        const data = await res.json();
+        let data = await res.json();
+        
+        // Apply saved column order from localStorage (same as social metrics page)
+        const savedOrder = localStorage.getItem('social-metrics-column-order');
+        if (savedOrder) {
+          try {
+            const orderIds = JSON.parse(savedOrder);
+            const orderedColumns = [];
+            
+            // Add columns in saved order
+            for (const id of orderIds) {
+              const col = data.find((c: CustomColumn) => c.id === id);
+              if (col) orderedColumns.push(col);
+            }
+            
+            // Add any new columns that weren't in saved order
+            for (const col of data) {
+              if (!orderedColumns.find(c => c.id === col.id)) {
+                orderedColumns.push(col);
+              }
+            }
+            
+            data = orderedColumns;
+          } catch (e) {
+            console.error("Failed to apply saved column order:", e);
+          }
+        }
+        
         setCustomColumns(data);
       }
     } catch (error) {
