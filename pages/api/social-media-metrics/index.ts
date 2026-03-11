@@ -10,8 +10,25 @@ export default async function handler(
 
   if (req.method === "GET") {
     try {
-      const metrics = await SocialMediaMetricsModel.find({}).sort({ platform: 1 }).lean();
-      res.status(200).json(metrics);
+      console.log("=== FETCHING METRICS ===");
+      const metrics = await SocialMediaMetricsModel.find({}).sort({ platform: 1 });
+      
+      console.log("Fetched metrics count:", metrics.length);
+      if (metrics.length > 0) {
+        const firstObj = metrics[0].toObject();
+        console.log("First metric all keys:", Object.keys(firstObj));
+        console.log("First metric full data:", JSON.stringify(firstObj, null, 2));
+      }
+
+      // Convert to plain objects to ensure all fields are included
+      const plainMetrics = metrics.map(m => {
+        const obj = m.toObject();
+        console.log(`Metric ${obj.id} keys:`, Object.keys(obj));
+        return obj;
+      });
+      
+      console.log("=== RETURNING METRICS ===");
+      res.status(200).json(plainMetrics);
     } catch (error) {
       console.error("Failed to fetch social media metrics:", error);
       res.status(500).json({ error: "Failed to fetch metrics" });
@@ -49,35 +66,73 @@ export default async function handler(
         return;
       }
 
-      console.log("Saving metrics:", metrics);
+      console.log("=== SAVING METRICS ===");
+      console.log("Received metrics count:", metrics.length);
+      console.log("First metric sample:", JSON.stringify(metrics[0], null, 2));
 
       // Update all metrics
+      const results = [];
       for (const metric of metrics) {
-        // Generate new ID for new metrics
-        const metricId = metric.id.startsWith("social-new-") 
-          ? `social-${metric.platform}-${Date.now()}`
-          : metric.id;
+        try {
+          // Generate new ID for new metrics
+          let metricId = metric.id;
+          if (metric.id.startsWith("social-new-")) {
+            metricId = `social-${metric.platformName.toLowerCase().replace(/\s+/g, '-')}-${Date.now()}`;
+          }
 
-        await SocialMediaMetricsModel.findOneAndUpdate(
-          { id: metricId },
-          {
-            id: metricId,
-            platform: metric.platform,
-            platformName: metric.platformName,
-            followers: parseInt(metric.followers) || 0,
-            posts30d: parseInt(metric.posts30d) || 0,
-            views30d: parseInt(metric.views30d) || 0,
-            lastUpdated: new Date()
-          },
-          { upsert: true, new: true }
-        );
+          // Create update data - copy all fields from metric
+          const updateData: any = { ...metric };
+          updateData.id = metricId;
+          updateData.lastUpdated = new Date();
+
+          // Ensure platform is set
+          if (!updateData.platform) {
+            updateData.platform = metric.platformName.toLowerCase();
+          }
+
+          console.log(`Saving metric: ${metricId}`);
+          console.log("Update data keys:", Object.keys(updateData));
+          console.log("Update data:", JSON.stringify(updateData, null, 2));
+
+          // Remove immutable fields that shouldn't be updated
+          delete updateData._id;
+          delete updateData.__v;
+
+          // Use direct MongoDB collection update to bypass Mongoose schema restrictions
+          const db = require("mongoose").connection.db;
+          const collection = db.collection("socialmediametrics");
+          
+          await collection.updateOne(
+            { id: metricId },
+            { $set: updateData },
+            { upsert: true }
+          );
+
+          // Fetch the saved document to verify
+          const result = await SocialMediaMetricsModel.findOne({ id: metricId });
+          console.log(`Saved successfully: ${metricId}`);
+          console.log("Saved data keys:", Object.keys(result.toObject()));
+          console.log("Saved data:", JSON.stringify(result.toObject(), null, 2));
+          results.push(result);
+        } catch (itemError) {
+          console.error(`Error saving metric ${metric.id}:`, itemError);
+          throw itemError;
+        }
       }
 
-      console.log("Metrics saved successfully");
-      res.status(200).json({ message: "Metrics updated successfully" });
+      console.log("=== SAVE COMPLETE ===");
+      res.status(200).json({ 
+        message: "Metrics updated successfully", 
+        count: metrics.length,
+        success: true
+      });
     } catch (error) {
       console.error("Failed to update metrics:", error);
-      res.status(500).json({ error: "Failed to update metrics", details: error instanceof Error ? error.message : 'Unknown error' });
+      res.status(500).json({ 
+        error: "Failed to update metrics", 
+        details: error instanceof Error ? error.message : 'Unknown error',
+        success: false
+      });
     }
   } else {
     res.setHeader("Allow", ["GET", "POST", "PUT"]);
