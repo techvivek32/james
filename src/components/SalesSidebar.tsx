@@ -2,14 +2,15 @@ import { useRouter } from "next/router";
 import { Sidebar } from "./Sidebar";
 
 const sidebarItems = [
-  { id: "dashboard", label: "My Dashboard" },
-  { id: "plan", label: "My Business Plan" },
+  { id: "dashboard", label: "Dashboard" },
+  { id: "plan", label: "Business Planner" },
   { id: "training", label: "Training Center" },
-  { id: "materials", label: "Marketing Materials" },
-  { id: "aiChat", label: "Jay Miller's Clone" },
-  { id: "webPage", label: "My Web Page" },
+  { id: "aiChat", label: "Jay's AI Clone (coming soon)" },
   { id: "apps-tools", label: "Apps & Tools" },
-  { id: "profile", label: "My Profile" }
+  { id: "profile", label: "My Profile" },
+  // Hidden modules - don't delete
+  // { id: "materials", label: "Marketing Materials" },
+  // { id: "webPage", label: "My Web Page" },
 ];
 
 type SalesSidebarProps = {
