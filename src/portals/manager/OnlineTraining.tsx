@@ -34,6 +34,8 @@ export function ManagerOnlineTrainingPage(props: {
   const [selectedModules, setSelectedModules] = useState<Set<string>>(new Set());
   const [playlists, setPlaylists] = useState<Playlist[]>([]);
   const [viewingPlaylist, setViewingPlaylist] = useState<Playlist | null>(null);
+  const [editingPlaylist, setEditingPlaylist] = useState<Playlist | null>(null);
+  const [isEditPlaylistOpen, setIsEditPlaylistOpen] = useState(false);
 
   // Load playlists from localStorage
   useEffect(() => {
@@ -340,6 +342,97 @@ export function ManagerOnlineTrainingPage(props: {
                   disabled={!playlistName.trim() || selectedModules.size === 0}
                 >
                   Create Playlist
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Edit Playlist Modal */}
+        {isEditPlaylistOpen && editingPlaylist && selectedCourse && (
+          <div className="overlay">
+            <div className="dialog" style={{ maxWidth: 600 }}>
+              <div className="dialog-title">Edit Playlist</div>
+              <div style={{ padding: '16px 0' }}>
+                <label className="field" style={{ marginBottom: 16 }}>
+                  <span className="field-label">Playlist Name</span>
+                  <input
+                    className="field-input"
+                    value={playlistName}
+                    onChange={(e) => setPlaylistName(e.target.value)}
+                    placeholder="Enter playlist name"
+                  />
+                </label>
+                <div className="field">
+                  <span className="field-label">Select Modules</span>
+                  <div style={{ maxHeight: 300, overflowY: 'auto', border: '1px solid #e5e7eb', borderRadius: 8, padding: 12 }}>
+                    {((selectedCourse.pages ?? []).filter(p => p.status === 'published')).map((page) => {
+                      const folder = page.folderId ? (selectedCourse.folders ?? []).find(f => f.id === page.folderId) : null;
+                      const folderName = folder?.name || '';
+                      const displayName = folderName ? `${page.title} (${folderName})` : page.title;
+                      return (
+                        <label key={page.id} style={{ display: 'flex', alignItems: 'center', padding: '8px 0', cursor: 'pointer' }}>
+                          <input
+                            type="checkbox"
+                            checked={selectedModules.has(page.id)}
+                            onChange={(e) => {
+                              const newSet = new Set(selectedModules);
+                              if (e.target.checked) {
+                                newSet.add(page.id);
+                              } else {
+                                newSet.delete(page.id);
+                              }
+                              setSelectedModules(newSet);
+                            }}
+                            style={{ marginRight: 8 }}
+                          />
+                          <span>{displayName}</span>
+                        </label>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+              <div className="dialog-actions">
+                <button
+                  type="button"
+                  className="btn-secondary"
+                  onClick={() => {
+                    setIsEditPlaylistOpen(false);
+                    setEditingPlaylist(null);
+                    setPlaylistName('');
+                    setSelectedModules(new Set());
+                    setSelectedCourse(null);
+                  }}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  className="btn-primary btn-success"
+                  onClick={() => {
+                    if (playlistName.trim() && selectedModules.size > 0) {
+                      const updatedPlaylist: Playlist = {
+                        ...editingPlaylist,
+                        name: playlistName,
+                        selectedModules: Array.from(selectedModules)
+                      };
+                      const updatedPlaylists = playlists.map(p => 
+                        p.id === editingPlaylist.id ? updatedPlaylist : p
+                      );
+                      setPlaylists(updatedPlaylists);
+                      localStorage.setItem('manager-playlists', JSON.stringify(updatedPlaylists));
+                      setIsEditPlaylistOpen(false);
+                      setEditingPlaylist(null);
+                      setPlaylistName('');
+                      setSelectedModules(new Set());
+                      setSelectedCourse(null);
+                      alert('Playlist updated successfully!');
+                    }
+                  }}
+                  disabled={!playlistName.trim() || selectedModules.size === 0}
+                >
+                  Save Changes
                 </button>
               </div>
             </div>
@@ -749,6 +842,22 @@ export function ManagerOnlineTrainingPage(props: {
                           }}
                         >
                           View
+                        </button>
+                        <button
+                          type="button"
+                          className="btn-secondary btn-small"
+                          onClick={() => {
+                            const course = publishedCourses.find(c => c.id === playlist.courseId);
+                            if (course) {
+                              setEditingPlaylist(playlist);
+                              setPlaylistName(playlist.name);
+                              setSelectedModules(new Set(playlist.selectedModules));
+                              setSelectedCourse(course);
+                              setIsEditPlaylistOpen(true);
+                            }
+                          }}
+                        >
+                          Edit
                         </button>
                         <button
                           type="button"
