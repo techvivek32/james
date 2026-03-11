@@ -29,7 +29,7 @@ export function TeamBusinessPlansPage() {
         const team = allUsers.filter((u: UserProfile) => u.managerId === user?.id && u.role === "sales");
         
         // Fetch their business plans
-        const plansPromises = team.map(member =>
+        const plansPromises = team.map((member: UserProfile) =>
           fetch(`/api/business-plan?userId=${member.id}`)
             .then(r => r.json())
             .then(data => {
