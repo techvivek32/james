@@ -32,7 +32,6 @@ export function UserManagement(props: UserEditorProps) {
   const [showSuspendedUsers, setShowSuspendedUsers] = useState(true);
   const [sortBy, setSortBy] = useState<"nameAsc" | "nameDesc" | "newest" | "oldest" | "lastModified">("nameAsc");
   const [showSortDropdown, setShowSortDropdown] = useState(false);
-  const [showAssignedSalesUsers, setShowAssignedSalesUsers] = useState(false);
   const [assignedSalesUsers, setAssignedSalesUsers] = useState<any[]>([]);
 
   const featureToggleKeysByRole: Record<UserProfile["role"], (keyof FeatureToggles)[]> = {
@@ -622,11 +621,6 @@ export function UserManagement(props: UserEditorProps) {
                     saveNoticeTimeout.current = setTimeout(() => setSaveNotice(""), 2000);
                   }}>Save Changes</button>
                   {saveNotice && <span style={{ fontSize: 12, color: "#16a34a" }}>{saveNotice}</span>}
-                  {selectedUser.role === "manager" && (
-                    <button type="button" className="btn-primary btn-success btn-small" onClick={() => setShowAssignedSalesUsers(true)}>
-                      Assigned Sales Users ({assignedSalesUsers.length})
-                    </button>
-                  )}
                   <button type="button" className="btn-secondary btn-warning btn-small" onClick={() => {
                     const action = selectedUser.suspended ? "Unsuspend" : "Suspend";
                     if (window.confirm(`${action} ${selectedUser.name}?`)) {
@@ -768,106 +762,58 @@ export function UserManagement(props: UserEditorProps) {
                 </div>
               ))}
             </div>
+
+            {selectedUser.role === "manager" && assignedSalesUsers.length > 0 && (
+              <div className="panel-section" style={{ marginTop: 24 }}>
+                <div className="panel-section-title">Assigned Sales Users</div>
+                <div style={{ overflowX: 'auto', border: '1px solid #e5e7eb', borderRadius: 8 }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                    <thead>
+                      <tr style={{ backgroundColor: '#f9fafb', borderBottom: '2px solid #e5e7eb' }}>
+                        <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 600, fontSize: 14, color: '#374151' }}>Name</th>
+                        <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 600, fontSize: 14, color: '#374151' }}>Email</th>
+                        <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 600, fontSize: 14, color: '#374151' }}>Role</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {assignedSalesUsers.map((user, index) => (
+                        <tr
+                          key={user.id}
+                          onClick={() => setSelectedUserId(user.id)}
+                          style={{
+                            borderBottom: index < assignedSalesUsers.length - 1 ? '1px solid #f3f4f6' : 'none',
+                            cursor: 'pointer',
+                            transition: 'background-color 0.2s',
+                            backgroundColor: '#ffffff'
+                          }}
+                          onMouseEnter={(e) => {
+                            (e.currentTarget as HTMLElement).style.backgroundColor = '#eff6ff';
+                          }}
+                          onMouseLeave={(e) => {
+                            (e.currentTarget as HTMLElement).style.backgroundColor = '#ffffff';
+                          }}
+                        >
+                          <td style={{ padding: '12px 16px', fontSize: 14, color: '#111827', fontWeight: 500 }}>{user.name}</td>
+                          <td style={{ padding: '12px 16px', fontSize: 14, color: '#6b7280' }}>{user.email}</td>
+                          <td style={{ padding: '12px 16px', fontSize: 14, color: '#6b7280' }}>
+                            <span style={{ backgroundColor: '#e5e7eb', padding: '4px 8px', borderRadius: 4, fontSize: 12, fontWeight: 500 }}>
+                              {user.role?.charAt(0).toUpperCase() + user.role?.slice(1)}
+                            </span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
           </div>
         ) : (
           <div className="panel-empty">Select a user to manage details.</div>
         )}
       </div>
 
-      {/* Assigned Sales Users Modal */}
-      {showAssignedSalesUsers && selectedUser?.role === "manager" && (
-        <div className="overlay" style={{ 
-          position: 'fixed', 
-          top: 0, 
-          left: 0, 
-          right: 0, 
-          bottom: 0, 
-          backgroundColor: 'rgba(0, 0, 0, 0.5)', 
-          display: 'flex', 
-          alignItems: 'center', 
-          justifyContent: 'center', 
-          zIndex: 9999 
-        }}>
-          <div className="dialog" style={{ 
-            maxWidth: 600, 
-            backgroundColor: 'white', 
-            borderRadius: 8, 
-            padding: 24,
-            boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)'
-          }}>
-            <div className="dialog-title" style={{ fontSize: 20, fontWeight: 600, marginBottom: 16 }}>
-              Sales Users - {selectedUser.name}
-            </div>
-            
-            <div style={{ marginBottom: 16, padding: 12, backgroundColor: '#f3f4f6', borderRadius: 8 }}>
-              <div style={{ fontSize: 14, color: '#6b7280' }}>
-                Total assigned: <strong>{assignedSalesUsers.length}</strong>
-              </div>
-            </div>
-
-            <div style={{ border: '1px solid #e5e7eb', borderRadius: 8, padding: 12, minHeight: 200, maxHeight: 400, overflowY: 'auto', marginBottom: 16 }}>
-              {assignedSalesUsers.length === 0 ? (
-                <div style={{ textAlign: 'center', color: '#9ca3af', padding: 40 }}>
-                  <div style={{ fontSize: 48, marginBottom: 8 }}>👥</div>
-                  <div>No sales users assigned to this manager</div>
-                </div>
-              ) : (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                  {assignedSalesUsers.map(user => (
-                    <button
-                      key={user.id}
-                      type="button"
-                      onClick={() => {
-                        setSelectedUserId(user.id);
-                        setShowAssignedSalesUsers(false);
-                      }}
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        padding: '12px',
-                        backgroundColor: '#f9fafb',
-                        borderRadius: 6,
-                        gap: 12,
-                        border: '1px solid #e5e7eb',
-                        cursor: 'pointer',
-                        transition: 'all 0.2s',
-                        textAlign: 'left'
-                      }}
-                      onMouseEnter={(e) => {
-                        (e.currentTarget as HTMLElement).style.backgroundColor = '#eff6ff';
-                        (e.currentTarget as HTMLElement).style.borderColor = '#2563eb';
-                      }}
-                      onMouseLeave={(e) => {
-                        (e.currentTarget as HTMLElement).style.backgroundColor = '#f9fafb';
-                        (e.currentTarget as HTMLElement).style.borderColor = '#e5e7eb';
-                      }}
-                    >
-                      <div style={{ flex: 1 }}>
-                        <div style={{ fontSize: 14, fontWeight: 500, color: '#111827' }}>{user.name}</div>
-                        <div style={{ fontSize: 12, color: '#9ca3af' }}>{user.email}</div>
-                      </div>
-                      <div style={{ fontSize: 12, color: '#6b7280', backgroundColor: '#e5e7eb', padding: '4px 8px', borderRadius: 4 }}>
-                        Sales
-                      </div>
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            <div className="dialog-actions">
-              <button
-                type="button"
-                className="btn-secondary"
-                onClick={() => setShowAssignedSalesUsers(false)}
-                style={{ width: '100%' }}
-              >
-                Close
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Assigned Sales Users Modal - REMOVED */}
       </div>
     </div>
   );
