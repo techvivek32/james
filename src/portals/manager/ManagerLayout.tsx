@@ -4,7 +4,7 @@ import { ManagerSidebar } from "../../components/ManagerSidebar";
 import { Header } from "../../components/Header";
 import { useAuth } from "../../contexts/AuthContext";
 
-type ManagerViewId = "dashboard" | "team" | "plans" | "training" | "onlineTraining" | "taskTracker" | "webTemplates" | "apps-tools";
+type ManagerViewId = "dashboard" | "team" | "plans" | "training" | "onlineTraining" | "taskTracker" | "webTemplates" | "apps-tools" | "jays-ai-clone" | "my-profile" | "task-manager";
 
 type ManagerLayoutProps = {
   children: React.ReactNode;

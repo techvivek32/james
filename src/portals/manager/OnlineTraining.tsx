@@ -3,6 +3,15 @@ import { DashboardCard } from "../../components/DashboardCard";
 import { AuthenticatedUser, Course } from "../../types";
 import { LessonAIChat } from "../../components/LessonAIChat";
 
+type Playlist = {
+  id: string;
+  name: string;
+  courseId: string;
+  courseName: string;
+  selectedModules: string[]; // page IDs
+  createdAt: string;
+};
+
 export function ManagerOnlineTrainingPage(props: {
   currentUser: AuthenticatedUser;
   courses: Course[];
@@ -19,6 +28,20 @@ export function ManagerOnlineTrainingPage(props: {
   const [quizScore, setQuizScore] = useState<{ correct: number; total: number } | null>(null);
   const [savedQuizResults, setSavedQuizResults] = useState<any[]>([]);
   const [courseCompleted, setCourseCompleted] = useState(false);
+  const [activeTab, setActiveTab] = useState<'courses' | 'playlists'>('courses');
+  const [isCreatePlaylistOpen, setIsCreatePlaylistOpen] = useState(false);
+  const [playlistName, setPlaylistName] = useState('');
+  const [selectedModules, setSelectedModules] = useState<Set<string>>(new Set());
+  const [playlists, setPlaylists] = useState<Playlist[]>([]);
+  const [viewingPlaylist, setViewingPlaylist] = useState<Playlist | null>(null);
+
+  // Load playlists from localStorage
+  useEffect(() => {
+    const saved = localStorage.getItem('manager-playlists');
+    if (saved) {
+      setPlaylists(JSON.parse(saved));
+    }
+  }, []);
 
   useEffect(() => {
     if (selectedCourse && props.currentUser) {
@@ -116,7 +139,13 @@ export function ManagerOnlineTrainingPage(props: {
   }, [publishedCourses, props.currentUser]);
 
   if (selectedCourse) {
-    const pages = (selectedCourse.pages ?? []).filter(p => p.status === 'published');
+    let pages = (selectedCourse.pages ?? []).filter(p => p.status === 'published');
+    
+    // If viewing a playlist, filter to show only selected modules
+    if (viewingPlaylist) {
+      pages = pages.filter(p => viewingPlaylist.selectedModules.includes(p.id));
+    }
+    
     const folders = selectedCourse.folders ?? [];
     const activePage = pages.find((p) => p.id === activePageId) ?? pages[0];
 
@@ -190,11 +219,124 @@ export function ManagerOnlineTrainingPage(props: {
         <div className="panel-header">
           <div className="panel-header-row">
             <span>{selectedCourse.title}</span>
-            <button type="button" className="btn-secondary btn-small" onClick={() => { setSelectedCourse(null); setActivePageId(null); }}>
-              Back to Courses
-            </button>
+            <div style={{ display: 'flex', gap: 8 }}>
+              {!viewingPlaylist && (
+                <button type="button" className="btn-primary btn-small" onClick={() => setIsCreatePlaylistOpen(true)}>
+                  Make Playlist
+                </button>
+              )}
+              <button 
+                type="button" 
+                className="btn-secondary btn-small" 
+                onClick={() => { 
+                  setSelectedCourse(null); 
+                  setActivePageId(null);
+                  setViewingPlaylist(null);
+                  setActiveTab('playlists');
+                }}
+              >
+                View Playlists
+              </button>
+              <button type="button" className="btn-secondary btn-small" onClick={() => { 
+                setSelectedCourse(null); 
+                setActivePageId(null);
+                setViewingPlaylist(null);
+              }}>
+                Back to Courses
+              </button>
+            </div>
           </div>
         </div>
+
+        {/* Playlist Creation Modal */}
+        {isCreatePlaylistOpen && (
+          <div className="overlay">
+            <div className="dialog" style={{ maxWidth: 600 }}>
+              <div className="dialog-title">Create Playlist</div>
+              <div style={{ padding: '16px 0' }}>
+                <label className="field" style={{ marginBottom: 16 }}>
+                  <span className="field-label">Playlist Name</span>
+                  <input
+                    className="field-input"
+                    value={playlistName}
+                    onChange={(e) => setPlaylistName(e.target.value)}
+                    placeholder="Enter playlist name"
+                  />
+                </label>
+                <div className="field">
+                  <span className="field-label">Select Modules</span>
+                  <div style={{ maxHeight: 300, overflowY: 'auto', border: '1px solid #e5e7eb', borderRadius: 8, padding: 12 }}>
+                    {pages.map((page) => {
+                      const folder = page.folderId ? folders.find(f => f.id === page.folderId) : null;
+                      const folderName = folder?.name || '';
+                      const displayName = folderName ? `${page.title} (${folderName})` : page.title;
+                      console.log('Page:', page.title, 'FolderId:', page.folderId, 'Folder:', folder, 'Display:', displayName);
+                      return (
+                        <label key={page.id} style={{ display: 'flex', alignItems: 'center', padding: '8px 0', cursor: 'pointer' }}>
+                          <input
+                            type="checkbox"
+                            checked={selectedModules.has(page.id)}
+                            onChange={(e) => {
+                              const newSet = new Set(selectedModules);
+                              if (e.target.checked) {
+                                newSet.add(page.id);
+                              } else {
+                                newSet.delete(page.id);
+                              }
+                              setSelectedModules(newSet);
+                            }}
+                            style={{ marginRight: 8 }}
+                          />
+                          <span>{displayName}</span>
+                        </label>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+              <div className="dialog-actions">
+                <button
+                  type="button"
+                  className="btn-secondary"
+                  onClick={() => {
+                    setIsCreatePlaylistOpen(false);
+                    setPlaylistName('');
+                    setSelectedModules(new Set());
+                  }}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  className="btn-primary btn-success"
+                  onClick={() => {
+                    if (playlistName.trim() && selectedModules.size > 0) {
+                      const newPlaylist: Playlist = {
+                        id: Date.now().toString(),
+                        name: playlistName,
+                        courseId: selectedCourse.id,
+                        courseName: selectedCourse.title,
+                        selectedModules: Array.from(selectedModules),
+                        createdAt: new Date().toISOString()
+                      };
+                      const updatedPlaylists = [...playlists, newPlaylist];
+                      setPlaylists(updatedPlaylists);
+                      localStorage.setItem('manager-playlists', JSON.stringify(updatedPlaylists));
+                      setIsCreatePlaylistOpen(false);
+                      setPlaylistName('');
+                      setSelectedModules(new Set());
+                      alert('Playlist created successfully!');
+                    }
+                  }}
+                  disabled={!playlistName.trim() || selectedModules.size === 0}
+                >
+                  Create Playlist
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
         <div className="course-pages-layout">
           <div className="course-pages-left">
             <div className="course-pages-sidebar">
@@ -443,19 +585,59 @@ export function ManagerOnlineTrainingPage(props: {
 
   return (
     <div className="training-center">
-      <div className="grid grid-3" style={{ marginBottom: 16 }}>
-        <DashboardCard
-          title="Your Online Course Completion"
-          value={`${managerAverageCompletion}%`}
-          description="Across all published courses"
-        />
-        <DashboardCard
-          title="Available Courses"
-          value={publishedCourses.length.toString()}
-          description="Published online trainings"
-        />
+      {/* Tabs */}
+      <div style={{ display: 'flex', gap: 8, marginBottom: 24, borderBottom: '2px solid #e5e7eb' }}>
+        <button
+          type="button"
+          onClick={() => setActiveTab('courses')}
+          style={{
+            padding: '12px 24px',
+            background: 'none',
+            border: 'none',
+            borderBottom: activeTab === 'courses' ? '2px solid #2563eb' : '2px solid transparent',
+            color: activeTab === 'courses' ? '#2563eb' : '#6b7280',
+            fontWeight: activeTab === 'courses' ? 600 : 400,
+            cursor: 'pointer',
+            marginBottom: '-2px',
+            fontSize: 16
+          }}
+        >
+          Courses
+        </button>
+        <button
+          type="button"
+          onClick={() => setActiveTab('playlists')}
+          style={{
+            padding: '12px 24px',
+            background: 'none',
+            border: 'none',
+            borderBottom: activeTab === 'playlists' ? '2px solid #2563eb' : '2px solid transparent',
+            color: activeTab === 'playlists' ? '#2563eb' : '#6b7280',
+            fontWeight: activeTab === 'playlists' ? 600 : 400,
+            cursor: 'pointer',
+            marginBottom: '-2px',
+            fontSize: 16
+          }}
+        >
+          Playlists
+        </button>
       </div>
-      {isLoading ? (
+
+      {activeTab === 'courses' && (
+        <>
+          <div className="grid grid-3" style={{ marginBottom: 16 }}>
+            <DashboardCard
+              title="Your Online Course Completion"
+              value={`${managerAverageCompletion}%`}
+              description="Across all published courses"
+            />
+            <DashboardCard
+              title="Available Courses"
+              value={publishedCourses.length.toString()}
+              description="Published online trainings"
+            />
+          </div>
+          {isLoading ? (
         <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '300px' }}>
           <div style={{ textAlign: 'center' }}>
             <div className="spinner" style={{ margin: '0 auto 16px' }}></div>
@@ -510,6 +692,75 @@ export function ManagerOnlineTrainingPage(props: {
               </button>
             );
           })}
+        </div>
+      )}
+        </>
+      )}
+
+      {activeTab === 'playlists' && (
+        <div className="panel">
+          <div className="panel-header">
+            <span>My Playlists</span>
+          </div>
+          <div className="panel-body">
+            {playlists.length === 0 ? (
+              <div style={{ textAlign: 'center', padding: '40px', color: '#6b7280' }}>
+                <div style={{ fontSize: '48px', marginBottom: '16px', opacity: 0.3 }}>📋</div>
+                <h3 style={{ fontSize: '20px', fontWeight: 600, color: '#374151', marginBottom: '8px' }}>
+                  No Playlists Yet
+                </h3>
+                <p>Create a playlist by clicking "Make Playlist" when viewing a course</p>
+              </div>
+            ) : (
+              <div style={{ display: 'grid', gap: 16 }}>
+                {playlists.map((playlist) => (
+                  <div key={playlist.id} className="card" style={{ padding: 16 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start' }}>
+                      <div style={{ flex: 1 }}>
+                        <div style={{ fontSize: 18, fontWeight: 600, marginBottom: 8, color: '#111827' }}>
+                          {playlist.name}
+                        </div>
+                        <div style={{ fontSize: 14, color: '#6b7280', marginBottom: 8 }}>
+                          Course: {playlist.courseName}
+                        </div>
+                        <div style={{ fontSize: 14, color: '#6b7280' }}>
+                          {playlist.selectedModules.length} module{playlist.selectedModules.length !== 1 ? 's' : ''}
+                        </div>
+                      </div>
+                      <div style={{ display: 'flex', gap: 8 }}>
+                        <button
+                          type="button"
+                          className="btn-primary btn-small"
+                          onClick={() => {
+                            const course = publishedCourses.find(c => c.id === playlist.courseId);
+                            if (course) {
+                              setViewingPlaylist(playlist);
+                              setSelectedCourse(course);
+                            }
+                          }}
+                        >
+                          View
+                        </button>
+                        <button
+                          type="button"
+                          className="btn-ghost btn-danger btn-small"
+                          onClick={() => {
+                            if (confirm('Delete this playlist?')) {
+                              const updated = playlists.filter(p => p.id !== playlist.id);
+                              setPlaylists(updated);
+                              localStorage.setItem('manager-playlists', JSON.stringify(updated));
+                            }
+                          }}
+                        >
+                          Delete
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       )}
     </div>

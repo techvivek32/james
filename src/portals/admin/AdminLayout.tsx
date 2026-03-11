@@ -12,6 +12,7 @@ type AdminViewId =
   | "salesOverview"
   | "marketingOverview"
   | "courseManagement"
+  | "courseAiBots"
   | "materialsLibrary"
   | "approvalWorkflows"
   | "aiBots"
