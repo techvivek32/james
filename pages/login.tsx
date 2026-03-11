@@ -1,10 +1,12 @@
 import type { NextPage } from "next";
-import { useState, FormEvent, ChangeEvent } from "react";
+import { useState, FormEvent, ChangeEvent, useEffect } from "react";
 import Image from "next/image";
+import { useRouter } from "next/router";
 import { useAuth } from "../src/contexts/AuthContext";
 import logoImage from "../ref. images/MillerStorm-Logo_page-0001.jpg.jpeg";
 
 const LoginPage: NextPage = () => {
+  const router = useRouter();
   const { login } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -19,6 +21,11 @@ const LoginPage: NextPage = () => {
 
     try {
       await login(email, password);
+      // After successful login, redirect to the redirect_to URL if provided
+      const redirectTo = router.query.redirect_to as string;
+      if (redirectTo) {
+        router.push(redirectTo);
+      }
     } catch (err: any) {
       setError(err.message || "Login failed");
     } finally {

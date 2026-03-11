@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { DashboardCard } from "../../components/DashboardCard";
 import { AuthenticatedUser, Course } from "../../types";
 import { LessonAIChat } from "../../components/LessonAIChat";
+import { ShareModal } from "../../components/ShareModal";
 
 type Playlist = {
   id: string;
@@ -42,6 +43,25 @@ export function ManagerOnlineTrainingPage(props: {
   const [selectedSalesUser, setSelectedSalesUser] = useState<string[]>([]);
   const [assignedUsers, setAssignedUsers] = useState<Set<string>>(new Set());
   const [assignModalTab, setAssignModalTab] = useState<'assign' | 'unassign'>('assign');
+  const [isShareModalOpen, setIsShareModalOpen] = useState(false);
+
+  // Handle lessonId from query parameter (shared lesson)
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      const lessonId = params.get('lessonId');
+      if (lessonId) {
+        // Find the course that contains this lesson
+        const courseWithLesson = publishedCourses.find(course =>
+          course.pages?.some(page => page.id === lessonId)
+        );
+        if (courseWithLesson) {
+          setSelectedCourse(courseWithLesson);
+          setActivePageId(lessonId);
+        }
+      }
+    }
+  }, [publishedCourses]);
 
   // Load playlists from localStorage
   useEffect(() => {
@@ -625,6 +645,16 @@ export function ManagerOnlineTrainingPage(props: {
           </div>
         </div>
       )}
+
+      {/* Share Modal */}
+      {activePage && (
+        <ShareModal
+          isOpen={isShareModalOpen}
+          onClose={() => setIsShareModalOpen(false)}
+          title={activePage.title}
+          shareUrl={`${typeof window !== 'undefined' ? window.location.origin : ''}/share/lesson/${activePage.id}`}
+        />
+      )}
     </>
   );
 
@@ -815,6 +845,14 @@ export function ManagerOnlineTrainingPage(props: {
               <>
                 <div className="course-page-main-header">
                   <h2 className="course-page-title-input" style={{ border: "none", background: "none", padding: 0 }}>{activePage.title}</h2>
+                  <button
+                    type="button"
+                    className="btn-primary btn-small"
+                    onClick={() => setIsShareModalOpen(true)}
+                    style={{ marginLeft: 'auto' }}
+                  >
+                    Share
+                  </button>
                 </div>
                 {activePage.isQuiz && activePage.quizQuestions && activePage.quizQuestions.length > 0 ? (
                   <div className="course-page-editor-body">

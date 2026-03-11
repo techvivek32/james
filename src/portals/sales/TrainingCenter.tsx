@@ -2,6 +2,7 @@ import { useState, useMemo, useEffect } from "react";
 import { Course } from "../../types";
 import { LessonAIChat } from "../../components/LessonAIChat";
 import { useAuth } from "../../contexts/AuthContext";
+import { ShareModal } from "../../components/ShareModal";
 
 type Playlist = {
   id: string;
@@ -34,6 +35,25 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
   const [viewingPlaylist, setViewingPlaylist] = useState<Playlist | null>(null);
   const [assignedPlaylists, setAssignedPlaylists] = useState<any[]>([]);
   const [unreadAssignedCount, setUnreadAssignedCount] = useState(0);
+  const [isShareModalOpen, setIsShareModalOpen] = useState(false);
+
+  // Handle lessonId from query parameter (shared lesson)
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      const lessonId = params.get('lessonId');
+      if (lessonId) {
+        // Find the course that contains this lesson
+        const courseWithLesson = courses.find(course =>
+          course.pages?.some(page => page.id === lessonId)
+        );
+        if (courseWithLesson) {
+          setSelectedCourse(courseWithLesson);
+          setActivePageId(lessonId);
+        }
+      }
+    }
+  }, [courses]);
 
   // Load playlists from localStorage
   useEffect(() => {
@@ -348,6 +368,16 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
           </div>
         )}
 
+        {/* Share Modal */}
+        {activePage && (
+          <ShareModal
+            isOpen={isShareModalOpen}
+            onClose={() => setIsShareModalOpen(false)}
+            title={activePage.title}
+            shareUrl={`${typeof window !== 'undefined' ? window.location.origin : ''}/share/lesson/${activePage.id}`}
+          />
+        )}
+
         <div className="course-pages-layout">
           <div className="course-pages-left">
             <div className="course-pages-sidebar">
@@ -414,6 +444,14 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
               <>
                 <div className="course-page-main-header">
                   <h2 className="course-page-title-input" style={{ border: "none", background: "none", padding: 0 }}>{activePage.title}</h2>
+                  <button
+                    type="button"
+                    className="btn-primary btn-small"
+                    onClick={() => setIsShareModalOpen(true)}
+                    style={{ marginLeft: 'auto' }}
+                  >
+                    Share
+                  </button>
                 </div>
                 {activePage.isQuiz && activePage.quizQuestions && activePage.quizQuestions.length > 0 ? (
                   <div className="course-page-editor-body">
