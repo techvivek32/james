@@ -26,12 +26,13 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
   const [quizScore, setQuizScore] = useState<{ correct: number; total: number } | null>(null);
   const [savedQuizResults, setSavedQuizResults] = useState<any[]>([]);
   const [courseCompleted, setCourseCompleted] = useState(false);
-  const [activeTab, setActiveTab] = useState<'courses' | 'playlists'>('courses');
+  const [activeTab, setActiveTab] = useState<'courses' | 'myPlaylists' | 'assignedPlaylists'>('courses');
   const [isCreatePlaylistOpen, setIsCreatePlaylistOpen] = useState(false);
   const [playlistName, setPlaylistName] = useState('');
   const [selectedModules, setSelectedModules] = useState<Set<string>>(new Set());
   const [playlists, setPlaylists] = useState<Playlist[]>([]);
   const [viewingPlaylist, setViewingPlaylist] = useState<Playlist | null>(null);
+  const [assignedPlaylists, setAssignedPlaylists] = useState<any[]>([]);
 
   // Load playlists from localStorage
   useEffect(() => {
@@ -40,6 +41,16 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
       setPlaylists(JSON.parse(saved));
     }
   }, []);
+
+  // Load assigned playlists from API
+  useEffect(() => {
+    if (user?.id) {
+      fetch(`/api/playlist-assignments?userId=${user.id}`)
+        .then(res => res.json())
+        .then(data => setAssignedPlaylists(data))
+        .catch(err => console.error('Failed to load assigned playlists:', err));
+    }
+  }, [user?.id]);
 
   useEffect(() => {
     if (selectedCourse && user) {
@@ -226,7 +237,7 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
                 setSelectedCourse(null); 
                 setActivePageId(null);
                 setViewingPlaylist(null);
-                setActiveTab('playlists');
+                setActiveTab('myPlaylists');
               }}
             >
               View Playlists
@@ -261,7 +272,7 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
                   <div style={{ maxHeight: 300, overflowY: 'auto', border: '1px solid #e5e7eb', borderRadius: 8, padding: 12 }}>
                     {pages.map((page) => {
                       const folder = page.folderId ? folders.find(f => f.id === page.folderId) : null;
-                      const folderName = folder?.name || '';
+                      const folderName = folder?.title || '';
                       const displayName = folderName ? `${page.title} (${folderName})` : page.title;
                       return (
                         <label key={page.id} style={{ display: 'flex', alignItems: 'center', padding: '8px 0', cursor: 'pointer' }}>
@@ -594,20 +605,37 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
         </button>
         <button
           type="button"
-          onClick={() => setActiveTab('playlists')}
+          onClick={() => setActiveTab('myPlaylists')}
           style={{
             padding: '12px 24px',
             background: 'none',
             border: 'none',
-            borderBottom: activeTab === 'playlists' ? '2px solid #2563eb' : '2px solid transparent',
-            color: activeTab === 'playlists' ? '#2563eb' : '#6b7280',
-            fontWeight: activeTab === 'playlists' ? 600 : 400,
+            borderBottom: activeTab === 'myPlaylists' ? '2px solid #2563eb' : '2px solid transparent',
+            color: activeTab === 'myPlaylists' ? '#2563eb' : '#6b7280',
+            fontWeight: activeTab === 'myPlaylists' ? 600 : 400,
             cursor: 'pointer',
             marginBottom: '-2px',
             fontSize: 16
           }}
         >
-          Playlists
+          My Playlists
+        </button>
+        <button
+          type="button"
+          onClick={() => setActiveTab('assignedPlaylists')}
+          style={{
+            padding: '12px 24px',
+            background: 'none',
+            border: 'none',
+            borderBottom: activeTab === 'assignedPlaylists' ? '2px solid #2563eb' : '2px solid transparent',
+            color: activeTab === 'assignedPlaylists' ? '#2563eb' : '#6b7280',
+            fontWeight: activeTab === 'assignedPlaylists' ? 600 : 400,
+            cursor: 'pointer',
+            marginBottom: '-2px',
+            fontSize: 16
+          }}
+        >
+          Assigned Playlists
         </button>
       </div>
 
@@ -676,7 +704,7 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
         </>
       )}
 
-      {activeTab === 'playlists' && (
+      {activeTab === 'myPlaylists' && (
         <div className="panel">
           <div className="panel-header">
             <span>My Playlists</span>
@@ -732,6 +760,71 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
                           }}
                         >
                           Delete
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {activeTab === 'assignedPlaylists' && (
+        <div className="panel">
+          <div className="panel-header">
+            <span>Assigned Playlists</span>
+          </div>
+          <div className="panel-body">
+            {assignedPlaylists.length === 0 ? (
+              <div style={{ textAlign: 'center', padding: '40px', color: '#6b7280' }}>
+                <div style={{ fontSize: '48px', marginBottom: '16px', opacity: 0.3 }}>📋</div>
+                <h3 style={{ fontSize: '20px', fontWeight: 600, color: '#374151', marginBottom: '8px' }}>
+                  No Assigned Playlists
+                </h3>
+                <p>Your manager hasn't assigned any playlists yet</p>
+              </div>
+            ) : (
+              <div style={{ display: 'grid', gap: 16 }}>
+                {assignedPlaylists.map((assignment) => (
+                  <div key={assignment._id} className="card" style={{ padding: 16 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start' }}>
+                      <div style={{ flex: 1 }}>
+                        <div style={{ fontSize: 18, fontWeight: 600, marginBottom: 8, color: '#111827' }}>
+                          {assignment.playlistName}
+                        </div>
+                        <div style={{ fontSize: 14, color: '#6b7280', marginBottom: 4 }}>
+                          Course: {assignment.courseName}
+                        </div>
+                        <div style={{ fontSize: 14, color: '#6b7280', marginBottom: 4 }}>
+                          {assignment.selectedModules.length} module{assignment.selectedModules.length !== 1 ? 's' : ''}
+                        </div>
+                        <div style={{ fontSize: 12, color: '#9ca3af', fontStyle: 'italic' }}>
+                          Assigned by: {assignment.managerName}
+                        </div>
+                      </div>
+                      <div style={{ display: 'flex', gap: 8 }}>
+                        <button
+                          type="button"
+                          className="btn-primary btn-small"
+                          onClick={() => {
+                            const course = courses.find(c => c.id === assignment.courseId);
+                            if (course) {
+                              const playlist = {
+                                id: assignment.playlistId,
+                                name: assignment.playlistName,
+                                courseId: assignment.courseId,
+                                courseName: assignment.courseName,
+                                selectedModules: assignment.selectedModules,
+                                createdAt: assignment.createdAt
+                              };
+                              setViewingPlaylist(playlist);
+                              setSelectedCourse(course);
+                            }
+                          }}
+                        >
+                          View
                         </button>
                       </div>
                     </div>

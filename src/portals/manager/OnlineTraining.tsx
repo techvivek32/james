@@ -36,6 +36,12 @@ export function ManagerOnlineTrainingPage(props: {
   const [viewingPlaylist, setViewingPlaylist] = useState<Playlist | null>(null);
   const [editingPlaylist, setEditingPlaylist] = useState<Playlist | null>(null);
   const [isEditPlaylistOpen, setIsEditPlaylistOpen] = useState(false);
+  const [isAssignModalOpen, setIsAssignModalOpen] = useState(false);
+  const [assigningPlaylist, setAssigningPlaylist] = useState<Playlist | null>(null);
+  const [salesUsers, setSalesUsers] = useState<any[]>([]);
+  const [selectedSalesUser, setSelectedSalesUser] = useState<string[]>([]);
+  const [assignedUsers, setAssignedUsers] = useState<Set<string>>(new Set());
+  const [assignModalTab, setAssignModalTab] = useState<'assign' | 'unassign'>('assign');
 
   // Load playlists from localStorage
   useEffect(() => {
@@ -44,6 +50,34 @@ export function ManagerOnlineTrainingPage(props: {
       setPlaylists(JSON.parse(saved));
     }
   }, []);
+
+  // Load sales users under this manager
+  useEffect(() => {
+    if (props.currentUser?.id) {
+      console.log('Loading sales users for manager:', props.currentUser.id);
+      fetch(`/api/users?role=sales&managerId=${props.currentUser.id}`)
+        .then(res => res.json())
+        .then(data => {
+          console.log('Sales users loaded:', data);
+          setSalesUsers(data);
+        })
+        .catch(err => console.error('Failed to load sales users:', err));
+    }
+  }, [props.currentUser?.id]);
+
+  // Load already assigned users when modal opens
+  useEffect(() => {
+    if (isAssignModalOpen && assigningPlaylist) {
+      fetch(`/api/playlist-assignments?playlistId=${assigningPlaylist.id}`)
+        .then(res => res.json())
+        .then(data => {
+          const assignedUserIds = new Set<string>(data.map((a: any) => a.assignedToUserId));
+          setAssignedUsers(assignedUserIds);
+          setSelectedSalesUser(Array.from(assignedUserIds));
+        })
+        .catch(err => console.error('Failed to load assigned users:', err));
+    }
+  }, [isAssignModalOpen, assigningPlaylist]);
 
   useEffect(() => {
     if (selectedCourse && props.currentUser) {
@@ -140,6 +174,460 @@ export function ManagerOnlineTrainingPage(props: {
     }
   }, [publishedCourses, props.currentUser]);
 
+  // Render modals at top level so they work everywhere
+  const renderModals = () => (
+    <>
+      {/* Playlist Creation Modal */}
+      {isCreatePlaylistOpen && selectedCourse && (
+        <div className="overlay" style={{ 
+          position: 'fixed', 
+          top: 0, 
+          left: 0, 
+          right: 0, 
+          bottom: 0, 
+          backgroundColor: 'rgba(0, 0, 0, 0.5)', 
+          display: 'flex', 
+          alignItems: 'center', 
+          justifyContent: 'center', 
+          zIndex: 9999 
+        }}>
+          <div className="dialog" style={{ 
+            maxWidth: 600, 
+            backgroundColor: 'white', 
+            borderRadius: 8, 
+            padding: 24,
+            boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)'
+          }}>
+            <div className="dialog-title" style={{ fontSize: 20, fontWeight: 600, marginBottom: 16 }}>Create Playlist</div>
+            <div style={{ padding: '16px 0' }}>
+              <label className="field" style={{ marginBottom: 16 }}>
+                <span className="field-label">Playlist Name</span>
+                <input
+                  className="field-input"
+                  value={playlistName}
+                  onChange={(e) => setPlaylistName(e.target.value)}
+                  placeholder="Enter playlist name"
+                />
+              </label>
+              <div className="field">
+                <span className="field-label">Select Modules</span>
+                <div style={{ maxHeight: 300, overflowY: 'auto', border: '1px solid #e5e7eb', borderRadius: 8, padding: 12 }}>
+                  {((selectedCourse.pages ?? []).filter(p => p.status === 'published')).map((page) => {
+                    const folder = page.folderId ? (selectedCourse.folders ?? []).find(f => f.id === page.folderId) : null;
+                    const folderName = folder?.title || '';
+                    const displayName = folderName ? `${page.title} (${folderName})` : page.title;
+                    return (
+                      <label key={page.id} style={{ display: 'flex', alignItems: 'center', padding: '8px 0', cursor: 'pointer' }}>
+                        <input
+                          type="checkbox"
+                          checked={selectedModules.has(page.id)}
+                          onChange={(e) => {
+                            const newSet = new Set(selectedModules);
+                            if (e.target.checked) {
+                              newSet.add(page.id);
+                            } else {
+                              newSet.delete(page.id);
+                            }
+                            setSelectedModules(newSet);
+                          }}
+                          style={{ marginRight: 8 }}
+                        />
+                        <span>{displayName}</span>
+                      </label>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+            <div className="dialog-actions">
+              <button
+                type="button"
+                className="btn-secondary"
+                onClick={() => {
+                  setIsCreatePlaylistOpen(false);
+                  setPlaylistName('');
+                  setSelectedModules(new Set());
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="btn-primary btn-success"
+                onClick={() => {
+                  if (playlistName.trim() && selectedModules.size > 0) {
+                    const newPlaylist: Playlist = {
+                      id: Date.now().toString(),
+                      name: playlistName,
+                      courseId: selectedCourse.id,
+                      courseName: selectedCourse.title,
+                      selectedModules: Array.from(selectedModules),
+                      createdAt: new Date().toISOString()
+                    };
+                    const updatedPlaylists = [...playlists, newPlaylist];
+                    setPlaylists(updatedPlaylists);
+                    localStorage.setItem('manager-playlists', JSON.stringify(updatedPlaylists));
+                    setIsCreatePlaylistOpen(false);
+                    setPlaylistName('');
+                    setSelectedModules(new Set());
+                    alert('Playlist created successfully!');
+                  }
+                }}
+                disabled={!playlistName.trim() || selectedModules.size === 0}
+              >
+                Create Playlist
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Playlist Modal */}
+      {isEditPlaylistOpen && editingPlaylist && selectedCourse && (
+        <div className="overlay" style={{ 
+          position: 'fixed', 
+          top: 0, 
+          left: 0, 
+          right: 0, 
+          bottom: 0, 
+          backgroundColor: 'rgba(0, 0, 0, 0.5)', 
+          display: 'flex', 
+          alignItems: 'center', 
+          justifyContent: 'center', 
+          zIndex: 9999 
+        }}>
+          <div className="dialog" style={{ 
+            maxWidth: 600, 
+            backgroundColor: 'white', 
+            borderRadius: 8, 
+            padding: 24,
+            boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)'
+          }}>
+            <div className="dialog-title" style={{ fontSize: 20, fontWeight: 600, marginBottom: 16 }}>Edit Playlist</div>
+            <div style={{ padding: '16px 0' }}>
+              <label className="field" style={{ marginBottom: 16 }}>
+                <span className="field-label">Playlist Name</span>
+                <input
+                  className="field-input"
+                  value={playlistName}
+                  onChange={(e) => setPlaylistName(e.target.value)}
+                  placeholder="Enter playlist name"
+                />
+              </label>
+              <div className="field">
+                <span className="field-label">Select Modules</span>
+                <div style={{ maxHeight: 300, overflowY: 'auto', border: '1px solid #e5e7eb', borderRadius: 8, padding: 12 }}>
+                  {((selectedCourse.pages ?? []).filter(p => p.status === 'published')).map((page) => {
+                    const folder = page.folderId ? (selectedCourse.folders ?? []).find(f => f.id === page.folderId) : null;
+                    const folderName = folder?.title || '';
+                    const displayName = folderName ? `${page.title} (${folderName})` : page.title;
+                    return (
+                      <label key={page.id} style={{ display: 'flex', alignItems: 'center', padding: '8px 0', cursor: 'pointer' }}>
+                        <input
+                          type="checkbox"
+                          checked={selectedModules.has(page.id)}
+                          onChange={(e) => {
+                            const newSet = new Set(selectedModules);
+                            if (e.target.checked) {
+                              newSet.add(page.id);
+                            } else {
+                              newSet.delete(page.id);
+                            }
+                            setSelectedModules(newSet);
+                          }}
+                          style={{ marginRight: 8 }}
+                        />
+                        <span>{displayName}</span>
+                      </label>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+            <div className="dialog-actions">
+              <button
+                type="button"
+                className="btn-secondary"
+                onClick={() => {
+                  setIsEditPlaylistOpen(false);
+                  setEditingPlaylist(null);
+                  setPlaylistName('');
+                  setSelectedModules(new Set());
+                  setSelectedCourse(null);
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="btn-primary btn-success"
+                onClick={() => {
+                  if (playlistName.trim() && selectedModules.size > 0) {
+                    const updatedPlaylist: Playlist = {
+                      ...editingPlaylist,
+                      name: playlistName,
+                      selectedModules: Array.from(selectedModules)
+                    };
+                    const updatedPlaylists = playlists.map(p => 
+                      p.id === editingPlaylist.id ? updatedPlaylist : p
+                    );
+                    setPlaylists(updatedPlaylists);
+                    localStorage.setItem('manager-playlists', JSON.stringify(updatedPlaylists));
+                    setIsEditPlaylistOpen(false);
+                    setEditingPlaylist(null);
+                    setPlaylistName('');
+                    setSelectedModules(new Set());
+                    setSelectedCourse(null);
+                    alert('Playlist updated successfully!');
+                  }
+                }}
+                disabled={!playlistName.trim() || selectedModules.size === 0}
+              >
+                Save Changes
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Assign Playlist Modal */}
+      {isAssignModalOpen && assigningPlaylist && (
+        <div className="overlay" style={{ 
+          position: 'fixed', 
+          top: 0, 
+          left: 0, 
+          right: 0, 
+          bottom: 0, 
+          backgroundColor: 'rgba(0, 0, 0, 0.5)', 
+          display: 'flex', 
+          alignItems: 'center', 
+          justifyContent: 'center', 
+          zIndex: 9999 
+        }}>
+          <div className="dialog" style={{ 
+            maxWidth: 700, 
+            backgroundColor: 'white', 
+            borderRadius: 8, 
+            padding: 24,
+            boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)'
+          }}>
+            <div className="dialog-title" style={{ fontSize: 20, fontWeight: 600, marginBottom: 16 }}>
+              Manage Playlist Assignments
+            </div>
+            
+            <div style={{ marginBottom: 16, padding: 12, backgroundColor: '#f3f4f6', borderRadius: 8 }}>
+              <strong>Playlist:</strong> {assigningPlaylist.name}
+              <div style={{ fontSize: 14, color: '#6b7280', marginTop: 4 }}>
+                Course: {assigningPlaylist.courseName}
+              </div>
+            </div>
+
+            {/* Tab Buttons */}
+            <div style={{ display: 'flex', gap: 8, marginBottom: 16, borderBottom: '2px solid #e5e7eb' }}>
+              <button
+                type="button"
+                onClick={() => setAssignModalTab('assign')}
+                style={{
+                  padding: '12px 24px',
+                  background: 'none',
+                  border: 'none',
+                  borderBottom: assignModalTab === 'assign' ? '2px solid #2563eb' : '2px solid transparent',
+                  color: assignModalTab === 'assign' ? '#2563eb' : '#6b7280',
+                  fontWeight: assignModalTab === 'assign' ? 600 : 400,
+                  cursor: 'pointer',
+                  marginBottom: '-2px',
+                  fontSize: 16
+                }}
+              >
+                Assign Users
+              </button>
+              <button
+                type="button"
+                onClick={() => setAssignModalTab('unassign')}
+                style={{
+                  padding: '12px 24px',
+                  background: 'none',
+                  border: 'none',
+                  borderBottom: assignModalTab === 'unassign' ? '2px solid #2563eb' : '2px solid transparent',
+                  color: assignModalTab === 'unassign' ? '#2563eb' : '#6b7280',
+                  fontWeight: assignModalTab === 'unassign' ? 600 : 400,
+                  cursor: 'pointer',
+                  marginBottom: '-2px',
+                  fontSize: 16
+                }}
+              >
+                Unassign Users
+              </button>
+            </div>
+
+            {/* Assign Tab */}
+            {assignModalTab === 'assign' && (
+              <div style={{ padding: '16px 0' }}>
+                <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 12, color: '#111827' }}>
+                  Available Users
+                </div>
+                <div style={{ border: '1px solid #e5e7eb', borderRadius: 8, padding: 12, minHeight: 300, maxHeight: 400, overflowY: 'auto', marginBottom: 16 }}>
+                  {salesUsers.filter(u => !assignedUsers.has(u.id)).length === 0 ? (
+                    <div style={{ textAlign: 'center', color: '#9ca3af', padding: 40 }}>
+                      <div style={{ fontSize: 48, marginBottom: 8 }}>✓</div>
+                      All users already assigned
+                    </div>
+                  ) : (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                      {salesUsers.filter(u => !assignedUsers.has(u.id)).map(user => (
+                        <label key={user.id} style={{ display: 'flex', alignItems: 'center', padding: '12px', cursor: 'pointer', backgroundColor: '#f9fafb', borderRadius: 6, gap: 12, border: '1px solid #e5e7eb', transition: 'all 0.2s' }}>
+                          <input
+                            type="checkbox"
+                            checked={selectedSalesUser.includes(user.id)}
+                            onChange={(e) => {
+                              if (e.target.checked) {
+                                setSelectedSalesUser([...selectedSalesUser, user.id]);
+                              } else {
+                                setSelectedSalesUser(selectedSalesUser.filter(id => id !== user.id));
+                              }
+                            }}
+                            style={{ width: 18, height: 18, cursor: 'pointer' }}
+                          />
+                          <div style={{ flex: 1 }}>
+                            <div style={{ fontSize: 14, fontWeight: 500 }}>{user.name}</div>
+                            <div style={{ fontSize: 12, color: '#9ca3af' }}>{user.email}</div>
+                          </div>
+                        </label>
+                      ))}
+                    </div>
+                  )}
+                </div>
+                {selectedSalesUser.filter(id => !assignedUsers.has(id)).length > 0 && (
+                  <button
+                    type="button"
+                    className="btn-primary btn-success"
+                    onClick={async () => {
+                      const usersToAssign = selectedSalesUser.filter(id => !assignedUsers.has(id));
+                      if (usersToAssign.length === 0) return;
+                      
+                      try {
+                        for (const userId of usersToAssign) {
+                          const selectedUser = salesUsers.find(u => u.id === userId);
+                          if (!selectedUser) continue;
+
+                          await fetch('/api/playlist-assignments', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                              playlistId: assigningPlaylist.id,
+                              playlistName: assigningPlaylist.name,
+                              courseId: assigningPlaylist.courseId,
+                              courseName: assigningPlaylist.courseName,
+                              selectedModules: assigningPlaylist.selectedModules,
+                              managerId: props.currentUser.id,
+                              managerName: props.currentUser.name,
+                              assignedToUserId: selectedUser.id,
+                              assignedToUserName: selectedUser.name
+                            })
+                          });
+                        }
+                        
+                        // Reload assigned users
+                        const res = await fetch(`/api/playlist-assignments?playlistId=${assigningPlaylist.id}`);
+                        const data = await res.json();
+                        const assignedUserIds = new Set<string>(data.map((a: any) => a.assignedToUserId));
+                        setAssignedUsers(assignedUserIds);
+                        setSelectedSalesUser(Array.from(assignedUserIds));
+                        
+                        alert(`Assigned to ${usersToAssign.length} user${usersToAssign.length !== 1 ? 's' : ''}!`);
+                      } catch (error) {
+                        console.error('Error assigning playlist:', error);
+                        alert('Failed to assign playlist');
+                      }
+                    }}
+                    style={{ width: '100%' }}
+                  >
+                    Assign ({selectedSalesUser.filter(id => !assignedUsers.has(id)).length})
+                  </button>
+                )}
+              </div>
+            )}
+
+            {/* Unassign Tab */}
+            {assignModalTab === 'unassign' && (
+              <div style={{ padding: '16px 0' }}>
+                <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 12, color: '#111827' }}>
+                  Assigned Users
+                </div>
+                <div style={{ border: '1px solid #e5e7eb', borderRadius: 8, padding: 12, minHeight: 300, maxHeight: 400, overflowY: 'auto' }}>
+                  {Array.from(assignedUsers).length === 0 ? (
+                    <div style={{ textAlign: 'center', color: '#9ca3af', padding: 40 }}>
+                      <div style={{ fontSize: 48, marginBottom: 8 }}>📭</div>
+                      No users assigned yet
+                    </div>
+                  ) : (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                      {salesUsers.filter(u => assignedUsers.has(u.id)).map(user => (
+                        <div key={user.id} style={{ display: 'flex', alignItems: 'center', padding: '12px', backgroundColor: '#d1fae5', borderRadius: 6, gap: 12, border: '1px solid #86efac', justifyContent: 'space-between' }}>
+                          <div style={{ flex: 1 }}>
+                            <div style={{ fontSize: 14, fontWeight: 500, color: '#065f46' }}>{user.name}</div>
+                            <div style={{ fontSize: 12, color: '#047857' }}>{user.email}</div>
+                          </div>
+                          <button
+                            type="button"
+                            className="btn-ghost btn-danger btn-small"
+                            onClick={async () => {
+                              try {
+                                // Find and delete the assignment
+                                const res = await fetch(`/api/playlist-assignments?playlistId=${assigningPlaylist.id}`);
+                                const assignments = await res.json();
+                                const assignment = assignments.find((a: any) => a.assignedToUserId === user.id);
+                                
+                                if (assignment) {
+                                  await fetch(`/api/playlist-assignments?id=${assignment._id}`, {
+                                    method: 'DELETE'
+                                  });
+                                  
+                                  // Reload assigned users
+                                  const updatedRes = await fetch(`/api/playlist-assignments?playlistId=${assigningPlaylist.id}`);
+                                  const updatedData = await updatedRes.json();
+                                  const assignedUserIds = new Set<string>(updatedData.map((a: any) => a.assignedToUserId));
+                                  setAssignedUsers(assignedUserIds);
+                                  setSelectedSalesUser(Array.from(assignedUserIds));
+                                  
+                                  alert(`Unassigned from ${user.name}!`);
+                                }
+                              } catch (error) {
+                                console.error('Error unassigning playlist:', error);
+                                alert('Failed to unassign playlist');
+                              }
+                            }}
+                          >
+                            Unassign
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            <div className="dialog-actions" style={{ marginTop: 16 }}>
+              <button
+                type="button"
+                className="btn-secondary"
+                onClick={() => {
+                  setIsAssignModalOpen(false);
+                  setAssigningPlaylist(null);
+                  setSelectedSalesUser([]);
+                  setAssignModalTab('assign');
+                }}
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
+  );
+
   if (selectedCourse) {
     let pages = (selectedCourse.pages ?? []).filter(p => p.status === 'published');
     
@@ -219,225 +707,47 @@ export function ManagerOnlineTrainingPage(props: {
     };
 
     return (
-      <div className="training-center">
-        <style>{`
-          .training-center [data-video-share],
-          .training-center [data-video-delete],
-          .training-center [data-image-delete] {
-            display: none !important;
-          }
-        `}</style>
-        <div className="panel-header">
-          <div className="panel-header-row">
-            <span>{selectedCourse.title}</span>
-            <div style={{ display: 'flex', gap: 8 }}>
-              {!viewingPlaylist && (
-                <button type="button" className="btn-primary btn-small" onClick={() => setIsCreatePlaylistOpen(true)}>
-                  Make Playlist
+      <>
+        {renderModals()}
+        <div className="training-center">
+          <style>{`
+            .training-center [data-video-share],
+            .training-center [data-video-delete],
+            .training-center [data-image-delete] {
+              display: none !important;
+            }
+          `}</style>
+          <div className="panel-header">
+            <div className="panel-header-row">
+              <span>{selectedCourse.title}</span>
+              <div style={{ display: 'flex', gap: 8 }}>
+                {!viewingPlaylist && (
+                  <button type="button" className="btn-primary btn-small" onClick={() => setIsCreatePlaylistOpen(true)}>
+                    Make Playlist
+                  </button>
+                )}
+                <button 
+                  type="button" 
+                  className="btn-secondary btn-small" 
+                  onClick={() => { 
+                    setSelectedCourse(null); 
+                    setActivePageId(null);
+                    setViewingPlaylist(null);
+                    setActiveTab('playlists');
+                  }}
+                >
+                  View Playlists
                 </button>
-              )}
-              <button 
-                type="button" 
-                className="btn-secondary btn-small" 
-                onClick={() => { 
+                <button type="button" className="btn-secondary btn-small" onClick={() => { 
                   setSelectedCourse(null); 
                   setActivePageId(null);
                   setViewingPlaylist(null);
-                  setActiveTab('playlists');
-                }}
-              >
-                View Playlists
-              </button>
-              <button type="button" className="btn-secondary btn-small" onClick={() => { 
-                setSelectedCourse(null); 
-                setActivePageId(null);
-                setViewingPlaylist(null);
-              }}>
-                Back to Courses
-              </button>
-            </div>
-          </div>
-        </div>
-
-        {/* Playlist Creation Modal */}
-        {isCreatePlaylistOpen && (
-          <div className="overlay">
-            <div className="dialog" style={{ maxWidth: 600 }}>
-              <div className="dialog-title">Create Playlist</div>
-              <div style={{ padding: '16px 0' }}>
-                <label className="field" style={{ marginBottom: 16 }}>
-                  <span className="field-label">Playlist Name</span>
-                  <input
-                    className="field-input"
-                    value={playlistName}
-                    onChange={(e) => setPlaylistName(e.target.value)}
-                    placeholder="Enter playlist name"
-                  />
-                </label>
-                <div className="field">
-                  <span className="field-label">Select Modules</span>
-                  <div style={{ maxHeight: 300, overflowY: 'auto', border: '1px solid #e5e7eb', borderRadius: 8, padding: 12 }}>
-                    {pages.map((page) => {
-                      const folder = page.folderId ? folders.find(f => f.id === page.folderId) : null;
-                      const folderName = folder?.name || '';
-                      const displayName = folderName ? `${page.title} (${folderName})` : page.title;
-                      console.log('Page:', page.title, 'FolderId:', page.folderId, 'Folder:', folder, 'Display:', displayName);
-                      return (
-                        <label key={page.id} style={{ display: 'flex', alignItems: 'center', padding: '8px 0', cursor: 'pointer' }}>
-                          <input
-                            type="checkbox"
-                            checked={selectedModules.has(page.id)}
-                            onChange={(e) => {
-                              const newSet = new Set(selectedModules);
-                              if (e.target.checked) {
-                                newSet.add(page.id);
-                              } else {
-                                newSet.delete(page.id);
-                              }
-                              setSelectedModules(newSet);
-                            }}
-                            style={{ marginRight: 8 }}
-                          />
-                          <span>{displayName}</span>
-                        </label>
-                      );
-                    })}
-                  </div>
-                </div>
-              </div>
-              <div className="dialog-actions">
-                <button
-                  type="button"
-                  className="btn-secondary"
-                  onClick={() => {
-                    setIsCreatePlaylistOpen(false);
-                    setPlaylistName('');
-                    setSelectedModules(new Set());
-                  }}
-                >
-                  Cancel
-                </button>
-                <button
-                  type="button"
-                  className="btn-primary btn-success"
-                  onClick={() => {
-                    if (playlistName.trim() && selectedModules.size > 0) {
-                      const newPlaylist: Playlist = {
-                        id: Date.now().toString(),
-                        name: playlistName,
-                        courseId: selectedCourse.id,
-                        courseName: selectedCourse.title,
-                        selectedModules: Array.from(selectedModules),
-                        createdAt: new Date().toISOString()
-                      };
-                      const updatedPlaylists = [...playlists, newPlaylist];
-                      setPlaylists(updatedPlaylists);
-                      localStorage.setItem('manager-playlists', JSON.stringify(updatedPlaylists));
-                      setIsCreatePlaylistOpen(false);
-                      setPlaylistName('');
-                      setSelectedModules(new Set());
-                      alert('Playlist created successfully!');
-                    }
-                  }}
-                  disabled={!playlistName.trim() || selectedModules.size === 0}
-                >
-                  Create Playlist
+                }}>
+                  Back to Courses
                 </button>
               </div>
             </div>
           </div>
-        )}
-
-        {/* Edit Playlist Modal */}
-        {isEditPlaylistOpen && editingPlaylist && selectedCourse && (
-          <div className="overlay">
-            <div className="dialog" style={{ maxWidth: 600 }}>
-              <div className="dialog-title">Edit Playlist</div>
-              <div style={{ padding: '16px 0' }}>
-                <label className="field" style={{ marginBottom: 16 }}>
-                  <span className="field-label">Playlist Name</span>
-                  <input
-                    className="field-input"
-                    value={playlistName}
-                    onChange={(e) => setPlaylistName(e.target.value)}
-                    placeholder="Enter playlist name"
-                  />
-                </label>
-                <div className="field">
-                  <span className="field-label">Select Modules</span>
-                  <div style={{ maxHeight: 300, overflowY: 'auto', border: '1px solid #e5e7eb', borderRadius: 8, padding: 12 }}>
-                    {((selectedCourse.pages ?? []).filter(p => p.status === 'published')).map((page) => {
-                      const folder = page.folderId ? (selectedCourse.folders ?? []).find(f => f.id === page.folderId) : null;
-                      const folderName = folder?.name || '';
-                      const displayName = folderName ? `${page.title} (${folderName})` : page.title;
-                      return (
-                        <label key={page.id} style={{ display: 'flex', alignItems: 'center', padding: '8px 0', cursor: 'pointer' }}>
-                          <input
-                            type="checkbox"
-                            checked={selectedModules.has(page.id)}
-                            onChange={(e) => {
-                              const newSet = new Set(selectedModules);
-                              if (e.target.checked) {
-                                newSet.add(page.id);
-                              } else {
-                                newSet.delete(page.id);
-                              }
-                              setSelectedModules(newSet);
-                            }}
-                            style={{ marginRight: 8 }}
-                          />
-                          <span>{displayName}</span>
-                        </label>
-                      );
-                    })}
-                  </div>
-                </div>
-              </div>
-              <div className="dialog-actions">
-                <button
-                  type="button"
-                  className="btn-secondary"
-                  onClick={() => {
-                    setIsEditPlaylistOpen(false);
-                    setEditingPlaylist(null);
-                    setPlaylistName('');
-                    setSelectedModules(new Set());
-                    setSelectedCourse(null);
-                  }}
-                >
-                  Cancel
-                </button>
-                <button
-                  type="button"
-                  className="btn-primary btn-success"
-                  onClick={() => {
-                    if (playlistName.trim() && selectedModules.size > 0) {
-                      const updatedPlaylist: Playlist = {
-                        ...editingPlaylist,
-                        name: playlistName,
-                        selectedModules: Array.from(selectedModules)
-                      };
-                      const updatedPlaylists = playlists.map(p => 
-                        p.id === editingPlaylist.id ? updatedPlaylist : p
-                      );
-                      setPlaylists(updatedPlaylists);
-                      localStorage.setItem('manager-playlists', JSON.stringify(updatedPlaylists));
-                      setIsEditPlaylistOpen(false);
-                      setEditingPlaylist(null);
-                      setPlaylistName('');
-                      setSelectedModules(new Set());
-                      setSelectedCourse(null);
-                      alert('Playlist updated successfully!');
-                    }
-                  }}
-                  disabled={!playlistName.trim() || selectedModules.size === 0}
-                >
-                  Save Changes
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
 
         <div className="course-pages-layout">
           <div className="course-pages-left">
@@ -681,13 +991,16 @@ export function ManagerOnlineTrainingPage(props: {
           {/* Temporarily hidden - Coming Soon */}
           {/* {activePage && !activePage.isQuiz && <LessonAIChat lessonTitle={activePage.title || selectedCourse.title} lessonContent={activePage.body} videoUrl={activePage.videoUrl} courseTitle={selectedCourse.title} allPages={pages} />} */}
         </div>
-      </div>
+        </div>
+      </>
     );
   }
 
   return (
-    <div className="training-center">
-      {/* Tabs */}
+    <>
+      {renderModals()}
+      <div className="training-center">
+        {/* Tabs */}
       <div style={{ display: 'flex', gap: 8, marginBottom: 24, borderBottom: '2px solid #e5e7eb' }}>
         <button
           type="button"
@@ -861,6 +1174,21 @@ export function ManagerOnlineTrainingPage(props: {
                         </button>
                         <button
                           type="button"
+                          className="btn-secondary btn-small"
+                          onClick={() => {
+                            console.log('Assign button clicked!', playlist);
+                            console.log('Sales users available:', salesUsers);
+                            console.log('Setting assigningPlaylist to:', playlist);
+                            console.log('Setting isAssignModalOpen to: true');
+                            setAssigningPlaylist(playlist);
+                            setIsAssignModalOpen(true);
+                            console.log('State should be updated now');
+                          }}
+                        >
+                          Assign
+                        </button>
+                        <button
+                          type="button"
                           className="btn-ghost btn-danger btn-small"
                           onClick={() => {
                             if (confirm('Delete this playlist?')) {
@@ -881,6 +1209,7 @@ export function ManagerOnlineTrainingPage(props: {
           </div>
         </div>
       )}
-    </div>
+      </div>
+    </>
   );
 }

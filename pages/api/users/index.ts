@@ -10,7 +10,13 @@ export default async function handler(
   await connectMongo();
 
   if (req.method === "GET") {
-    const users = await UserModel.find().lean();
+    const { role, managerId } = req.query;
+    
+    let query: any = {};
+    if (role) query.role = role;
+    if (managerId) query.managerId = managerId;
+    
+    const users = await UserModel.find(query).lean();
     const sanitized = users.map(({ passwordHash, ...rest }) => rest);
     res.status(200).json(sanitized);
     return;
