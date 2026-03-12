@@ -71,6 +71,8 @@ export type UserProfile = {
   role: UserRole;
   roles?: UserRole[];
   suspended?: boolean;
+  deleted?: boolean;
+  deletedAt?: string;
   managerId?: string;
   strengths: string;
   weaknesses: string;
