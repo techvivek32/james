@@ -6,6 +6,7 @@ type User = {
   name: string;
   email: string;
   role: "admin" | "manager" | "sales" | "marketing";
+  managerId?: string;
 };
 
 type AuthContextType = {
@@ -51,7 +52,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       id: userData.id,
       name: userData.name,
       email: userData.email,
-      role: userData.role
+      role: userData.role,
+      managerId: userData.managerId
     };
 
     setUser(user);

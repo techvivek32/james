@@ -216,9 +216,20 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
     
     loadProgress();
   }, [courses, user]);
+  
   return (
-    <div className="training-center">
-      {/* Always show tabs */}
+    <>
+      {/* Share Modal - Render at top level */}
+      <ShareModal
+        isOpen={isShareModalOpen}
+        onClose={() => setIsShareModalOpen(false)}
+        title={selectedCourse?.pages?.find(p => p.id === activePageId)?.title || 'Lesson'}
+        shareUrl={`${typeof window !== 'undefined' ? window.location.origin : ''}/share/lesson/${activePageId || ''}`}
+        lessonId={activePageId || ''}
+      />
+      
+      <div className="training-center">
+        {/* Always show tabs */}
       <div style={{ display: 'flex', gap: 8, marginBottom: 24, borderBottom: '2px solid #e5e7eb' }}>
         <button
           type="button"
@@ -324,6 +335,7 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
         <TabContent />
       )}
     </div>
+    </>
   );
 
   function TabContent() {
@@ -736,15 +748,6 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
             </div>
           </div>
         )}
-        {/* Share Modal */}
-        {activePage && (
-          <ShareModal
-            isOpen={isShareModalOpen}
-            onClose={() => setIsShareModalOpen(false)}
-            title={activePage.title}
-            shareUrl={`${typeof window !== 'undefined' ? window.location.origin : ''}/share/lesson/${activePage.id}`}
-          />
-        )}
 
         <div className="course-pages-layout">
           <div className="course-pages-left" style={{ width: `${sidebarWidth}px`, minWidth: '200px', maxWidth: '600px' }}>
@@ -860,7 +863,13 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
                   <button
                     type="button"
                     className="btn-primary btn-small"
-                    onClick={() => setIsShareModalOpen(true)}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      console.log('Share button clicked! Current state:', isShareModalOpen);
+                      setIsShareModalOpen(true);
+                      console.log('After setState - should be true');
+                    }}
                     style={{ marginLeft: 'auto' }}
                   >
                     Share

@@ -701,14 +701,13 @@ export function ManagerOnlineTrainingPage(props: {
       )}
 
       {/* Share Modal */}
-      {activePageId && selectedCourse && (
-        <ShareModal
-          isOpen={isShareModalOpen}
-          onClose={() => setIsShareModalOpen(false)}
-          title={selectedCourse.pages?.find(p => p.id === activePageId)?.title || 'Lesson'}
-          shareUrl={`${typeof window !== 'undefined' ? window.location.origin : ''}/share/lesson/${activePageId}`}
-        />
-      )}
+      <ShareModal
+        isOpen={isShareModalOpen}
+        onClose={() => setIsShareModalOpen(false)}
+        title={selectedCourse?.pages?.find(p => p.id === activePageId)?.title || 'Lesson'}
+        shareUrl={`${typeof window !== 'undefined' ? window.location.origin : ''}/share/lesson/${activePageId || ''}`}
+        lessonId={activePageId || ''}
+      />
     </>
   );
 
@@ -1012,7 +1011,13 @@ export function ManagerOnlineTrainingPage(props: {
                   <button
                     type="button"
                     className="btn-primary btn-small"
-                    onClick={() => setIsShareModalOpen(true)}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      console.log('Share button clicked! Current state:', isShareModalOpen);
+                      setIsShareModalOpen(true);
+                      console.log('After setState - should be true');
+                    }}
                     style={{ marginLeft: 'auto' }}
                   >
                     Share
