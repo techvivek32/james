@@ -21,11 +21,8 @@ body {
   background: linear-gradient(180deg, #020617, #111827);
   color: #f9fafb;
   display: flex;
-  position: fixed;
-  top: 0;
-  left: 0;
-  bottom: 0;
-  z-index: 10;
+  position: relative;
+  flex-shrink: 0;
 }
 
 .sidebar {
@@ -175,10 +172,6 @@ body {
   width: 76px;
 }
 
-.app-root.sidebar-collapsed .app-main {
-  margin-left: 76px;
-}
-
 .app-root.sidebar-collapsed .sidebar {
   padding: 16px 10px;
 }
@@ -222,7 +215,6 @@ body {
   display: flex;
   flex-direction: column;
   background-color: #f4f4f5;
-  margin-left: 260px;
 }
 
 .app-header {
@@ -3815,7 +3807,7 @@ body {
   }
 
   .app-sidebar {
-    position: fixed;
+    position: fixed !important;
     top: 0;
     left: 0;
     height: 100vh;
@@ -3900,7 +3892,7 @@ body {
   }
 
   .app-sidebar {
-    position: fixed;
+    position: fixed !important;
     top: 0;
     left: 0;
     height: 100vh;
@@ -3973,14 +3965,6 @@ body {
     position: relative !important;
     transform: none !important;
     height: auto !important;
-  }
-
-  .app-main {
-    margin-left: 260px;
-  }
-
-  .app-root.sidebar-collapsed .app-main {
-    margin-left: 76px;
   }
 
   /* Hide panel name on desktop */
