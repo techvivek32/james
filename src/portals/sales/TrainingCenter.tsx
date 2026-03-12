@@ -728,6 +728,27 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
 
         <div className="course-pages-layout">
           <div className="course-pages-left" style={{ width: `${sidebarWidth}px`, minWidth: '200px', maxWidth: '600px' }}>
+            {/* Expand/Collapse All Buttons */}
+            {folders.length > 0 && (
+              <div style={{ display: 'flex', gap: '8px', padding: '8px 12px', borderBottom: '1px solid #e5e7eb' }}>
+                <button
+                  type="button"
+                  className="btn-secondary btn-small"
+                  onClick={() => setCollapsedFolders(new Set())}
+                  style={{ flex: 1, fontSize: '12px', padding: '4px 8px' }}
+                >
+                  Expand All
+                </button>
+                <button
+                  type="button"
+                  className="btn-secondary btn-small"
+                  onClick={() => setCollapsedFolders(new Set(folders.map(f => f.id)))}
+                  style={{ flex: 1, fontSize: '12px', padding: '4px 8px' }}
+                >
+                  Collapse All
+                </button>
+              </div>
+            )}
             <div className="course-pages-sidebar">
               {pages.filter((page) => !page.folderId).map((page) => {
                 const unlocked = isPageUnlocked(page.id);
