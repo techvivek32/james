@@ -1008,6 +1008,8 @@ export function ManagerOnlineTrainingPage(props: {
               <>
                 <div className="course-page-main-header">
                   <h2 className="course-page-title-input" style={{ border: "none", background: "none", padding: 0 }}>{activePage.title}</h2>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '16px', marginTop: '-8px' }}>
                   <button
                     type="button"
                     className="btn-primary btn-small"
@@ -1018,7 +1020,6 @@ export function ManagerOnlineTrainingPage(props: {
                       setIsShareModalOpen(true);
                       console.log('After setState - should be true');
                     }}
-                    style={{ marginLeft: 'auto' }}
                   >
                     Share
                   </button>
