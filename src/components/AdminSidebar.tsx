@@ -2,7 +2,6 @@ import { useRouter } from "next/router";
 import { Sidebar } from "./Sidebar";
 
 const sidebarItems = [
-  { id: "dashboard", label: "Dashboard" },
   { id: "socialMediaMetrics", label: "Social Media Executive View" },
   { id: "businessUnits", label: "Business Planner Executive View" },
   { id: "userManagement", label: "User Management" },
@@ -11,6 +10,7 @@ const sidebarItems = [
   { id: "courseAiBots", label: "Course AI Bots Builder" },
   { id: "aiBots", label: "Master AI Bot Builder" },
   // Hidden modules - don't delete
+  // { id: "dashboard", label: "Dashboard" },
   // { id: "roleHierarchy", label: "Role & Hierarchy Manager" },
   // { id: "materialsLibrary", label: "Marketing Materials Library" },
   // { id: "webTemplates", label: "Web Page Approval" },
