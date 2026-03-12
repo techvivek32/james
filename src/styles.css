@@ -661,16 +661,16 @@ body {
 .course-pages-layout {
   margin-top: 8px;
   display: flex;
-  gap: 16px;
+  gap: 0;
   min-width: 0;
   overflow: visible;
   height: calc(100vh - 250px);
 }
 
 .course-pages-left {
-  width: 220px;
   display: flex;
   flex-direction: column;
+  flex-shrink: 0;
 }
 
 .course-pages-course-header {

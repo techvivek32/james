@@ -48,6 +48,10 @@ export function CourseManagement(props: CourseEditorProps) {
   const [hasChanges, setHasChanges] = useState(false);
   const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
   const [draggedPageId, setDraggedPageId] = useState<string | null>(null);
+  const [sidebarWidth, setSidebarWidth] = useState(280);
+  const [isResizing, setIsResizing] = useState(false);
+  const [startX, setStartX] = useState(0);
+  const [startWidth, setStartWidth] = useState(280);
   const [dragOverFolderId, setDragOverFolderId] = useState<string | null>(null);
   const [dragOverPageId, setDragOverPageId] = useState<string | null>(null);
   const [dragOverPosition, setDragOverPosition] = useState<'above' | 'below' | null>(null);
@@ -229,6 +233,36 @@ export function CourseManagement(props: CourseEditorProps) {
       document.removeEventListener('mouseup', handleMouseUp);
     };
   }, [draggedPageId, draggedFolderId, draggedCourseId]);
+
+  // Resizer functionality
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!isResizing) return;
+      const delta = e.clientX - startX;
+      const newWidth = startWidth + delta;
+      if (newWidth >= 200 && newWidth <= 600) {
+        setSidebarWidth(newWidth);
+      }
+    };
+
+    const handleMouseUp = () => {
+      setIsResizing(false);
+    };
+
+    if (isResizing) {
+      document.addEventListener('mousemove', handleMouseMove);
+      document.addEventListener('mouseup', handleMouseUp);
+      document.body.style.cursor = 'ew-resize';
+      document.body.style.userSelect = 'none';
+    }
+
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
+    };
+  }, [isResizing, startX, startWidth]);
 
   useEffect(() => {
     if (bodyInputRef.current && activePageId) {
@@ -1963,7 +1997,7 @@ export function CourseManagement(props: CourseEditorProps) {
                           }
                           return (
                             <>
-                              <div className="course-pages-left">
+                              <div className="course-pages-left" style={{ width: `${sidebarWidth}px`, minWidth: '200px', maxWidth: '600px' }}>
                                 <div className="course-pages-course-header">
                                   <div className="course-pages-course-header-row">
                                     <div className="course-pages-course-title">{selectedCourse.title}</div>
@@ -2515,6 +2549,30 @@ export function CourseManagement(props: CourseEditorProps) {
                                 })}
                               </div>
                             </div>
+                            {/* Resizer */}
+                            <div 
+                              className="course-pages-resizer"
+                              onMouseDown={(e) => {
+                                setStartX(e.clientX);
+                                setStartWidth(sidebarWidth);
+                                setIsResizing(true);
+                              }}
+                              style={{
+                                width: '4px',
+                                cursor: 'ew-resize',
+                                backgroundColor: isResizing ? '#3b82f6' : '#e5e7eb',
+                                transition: isResizing ? 'none' : 'background-color 0.2s',
+                                flexShrink: 0,
+                                position: 'relative',
+                                zIndex: 10
+                              }}
+                              onMouseEnter={(e) => {
+                                if (!isResizing) e.currentTarget.style.backgroundColor = '#cbd5e1';
+                              }}
+                              onMouseLeave={(e) => {
+                                if (!isResizing) e.currentTarget.style.backgroundColor = '#e5e7eb';
+                              }}
+                            />
                               <div className="course-page-main">
                                 {activePage && (
                                   <>

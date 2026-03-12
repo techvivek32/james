@@ -36,6 +36,10 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
   const [assignedPlaylists, setAssignedPlaylists] = useState<any[]>([]);
   const [unreadAssignedCount, setUnreadAssignedCount] = useState(0);
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
+  const [sidebarWidth, setSidebarWidth] = useState(280);
+  const [isResizing, setIsResizing] = useState(false);
+  const [startX, setStartX] = useState(0);
+  const [startWidth, setStartWidth] = useState(280);
 
   // Handle lessonId from query parameter (shared lesson)
   useEffect(() => {
@@ -109,6 +113,36 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
       setSelectedAnswers({});
     }
   }, [activePageId, savedQuizResults, selectedCourse]);
+
+  // Resizer functionality
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!isResizing) return;
+      const delta = e.clientX - startX;
+      const newWidth = startWidth + delta;
+      if (newWidth >= 200 && newWidth <= 600) {
+        setSidebarWidth(newWidth);
+      }
+    };
+
+    const handleMouseUp = () => {
+      setIsResizing(false);
+    };
+
+    if (isResizing) {
+      document.addEventListener('mousemove', handleMouseMove);
+      document.addEventListener('mouseup', handleMouseUp);
+      document.body.style.cursor = 'ew-resize';
+      document.body.style.userSelect = 'none';
+    }
+
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
+    };
+  }, [isResizing, startX, startWidth]);
 
   const filteredCourses = useMemo(() => {
     const term = search.toLowerCase();
@@ -693,7 +727,7 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
         )}
 
         <div className="course-pages-layout">
-          <div className="course-pages-left">
+          <div className="course-pages-left" style={{ width: `${sidebarWidth}px`, minWidth: '200px', maxWidth: '600px' }}>
             <div className="course-pages-sidebar">
               {pages.filter((page) => !page.folderId).map((page) => {
                 const unlocked = isPageUnlocked(page.id);
@@ -753,6 +787,30 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
               })}
             </div>
           </div>
+          {/* Resizer */}
+          <div 
+            className="course-pages-resizer"
+            onMouseDown={(e) => {
+              setStartX(e.clientX);
+              setStartWidth(sidebarWidth);
+              setIsResizing(true);
+            }}
+            style={{
+              width: '4px',
+              cursor: 'ew-resize',
+              backgroundColor: isResizing ? '#3b82f6' : '#e5e7eb',
+              transition: isResizing ? 'none' : 'background-color 0.2s',
+              flexShrink: 0,
+              position: 'relative',
+              zIndex: 10
+            }}
+            onMouseEnter={(e) => {
+              if (!isResizing) e.currentTarget.style.backgroundColor = '#cbd5e1';
+            }}
+            onMouseLeave={(e) => {
+              if (!isResizing) e.currentTarget.style.backgroundColor = '#e5e7eb';
+            }}
+          />
           <div className="course-page-main">
             {activePage && (
               <>
