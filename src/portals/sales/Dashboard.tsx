@@ -6,21 +6,16 @@ export function SalesDashboard(props: { profile: UserProfile }) {
   const plan = props.profile.businessPlan;
   const incomeGoal = plan?.revenueGoal ?? 0;
   const dealsNeeded = plan?.dealsPerYear ?? 0;
-  const claimsNeeded = dealsNeeded; // 1:1 ratio from inspections to claims
-  const inspectionsNeeded = plan?.inspectionsNeeded ?? 0;
-  const conversationsNeeded = Math.ceil(inspectionsNeeded / 0.30); // 30% conversion rate
-  const doorsNeeded = plan?.doorsPerYear ?? 0;
-  const locationFromPlan =
-    plan && plan.territories.length > 0 ? plan.territories[0] : undefined;
-  const location = props.profile.territory ?? locationFromPlan ?? "";
+  const claimsNeeded = Math.round(dealsNeeded - (dealsNeeded * 0.25)); // 75% of deals
+  const inspectionsNeeded = Math.round(claimsNeeded - (claimsNeeded * 0.30)); // 70% of claims
+  
+  const location = props.profile.territory ?? "";
 
   const [isEditing, setIsEditing] = useState(false);
   const [incomeActual, setIncomeActual] = useState(0);
   const [dealsActual, setDealsActual] = useState(0);
   const [claimsActual, setClaimsActual] = useState(0);
   const [inspectionsActual, setInspectionsActual] = useState(0);
-  const [conversationsActual, setConversationsActual] = useState(0);
-  const [doorsActual, setDoorsActual] = useState(0);
 
   // Load actuals from database
   useEffect(() => {
@@ -35,8 +30,6 @@ export function SalesDashboard(props: { profile: UserProfile }) {
             setDealsActual(userPlan.actuals.dealsActual || 0);
             setClaimsActual(userPlan.actuals.claimsActual || 0);
             setInspectionsActual(userPlan.actuals.inspectionsActual || 0);
-            setConversationsActual(userPlan.actuals.conversationsActual || 0);
-            setDoorsActual(userPlan.actuals.doorsActual || 0);
           }
         }
       } catch (error) {
@@ -59,9 +52,7 @@ export function SalesDashboard(props: { profile: UserProfile }) {
             incomeActual,
             dealsActual,
             claimsActual,
-            inspectionsActual,
-            conversationsActual,
-            doorsActual
+            inspectionsActual
           }
         })
       });
@@ -78,8 +69,6 @@ export function SalesDashboard(props: { profile: UserProfile }) {
   const dealsDelta = dealsActual - dealsNeeded;
   const claimsDelta = claimsActual - claimsNeeded;
   const inspectionsDelta = inspectionsActual - inspectionsNeeded;
-  const conversationsDelta = conversationsActual - conversationsNeeded;
-  const doorsDelta = doorsActual - doorsNeeded;
 
   const comparisonItems = [
     {
@@ -87,7 +76,7 @@ export function SalesDashboard(props: { profile: UserProfile }) {
       label: "Income",
       goal: incomeGoal,
       actual: incomeActual,
-      format: (value: number) => `${value.toLocaleString()}`
+      format: (value: number) => `$${value.toLocaleString()}`
     },
     {
       id: "deals",
@@ -109,20 +98,6 @@ export function SalesDashboard(props: { profile: UserProfile }) {
       goal: inspectionsNeeded,
       actual: inspectionsActual,
       format: (value: number) => value.toLocaleString()
-    },
-    {
-      id: "conversations",
-      label: "Conversations",
-      goal: conversationsNeeded,
-      actual: conversationsActual,
-      format: (value: number) => value.toLocaleString()
-    },
-    {
-      id: "doors",
-      label: "Doors",
-      goal: doorsNeeded,
-      actual: doorsActual,
-      format: (value: number) => value.toLocaleString()
     }
   ];
 
@@ -130,9 +105,7 @@ export function SalesDashboard(props: { profile: UserProfile }) {
     incomeGoal, incomeActual,
     dealsNeeded, dealsActual,
     claimsNeeded, claimsActual,
-    inspectionsNeeded, inspectionsActual,
-    conversationsNeeded, conversationsActual,
-    doorsNeeded, doorsActual
+    inspectionsNeeded, inspectionsActual
   );
 
   return (
@@ -153,27 +126,23 @@ export function SalesDashboard(props: { profile: UserProfile }) {
       <div className="grid grid-4">
         <DashboardCard
           title="Income Goal"
-          value={`${incomeGoal.toLocaleString()}`}
+          value={`$${incomeGoal.toLocaleString()}`}
+          description="Per year"
         />
         <DashboardCard
           title="Deals Needed"
           value={dealsNeeded.toLocaleString()}
+          description="Per year"
         />
         <DashboardCard
           title="Claims Needed"
           value={claimsNeeded.toLocaleString()}
+          description="Per year"
         />
         <DashboardCard
           title="Inspections Needed"
           value={inspectionsNeeded.toLocaleString()}
-        />
-        <DashboardCard
-          title="Conversations Needed"
-          value={conversationsNeeded.toLocaleString()}
-        />
-        <DashboardCard
-          title="Doors Needed"
-          value={doorsNeeded.toLocaleString()}
+          description="Per year"
         />
       </div>
       <div className="sales-plan-heading">
@@ -209,6 +178,7 @@ export function SalesDashboard(props: { profile: UserProfile }) {
                 onChange={(e) => setIncomeActual(Number(e.target.value))}
                 style={{ marginTop: 8, width: '100%', boxSizing: 'border-box' }}
               />
+              <div style={{ fontSize: 12, color: '#666', marginTop: 4 }}>Per year</div>
             </div>
             <div className="card">
               <div className="card-title">Deals Actual</div>
@@ -219,6 +189,7 @@ export function SalesDashboard(props: { profile: UserProfile }) {
                 onChange={(e) => setDealsActual(Number(e.target.value))}
                 style={{ marginTop: 8, width: '100%', boxSizing: 'border-box' }}
               />
+              <div style={{ fontSize: 12, color: '#666', marginTop: 4 }}>Per year</div>
             </div>
             <div className="card">
               <div className="card-title">Claims Actual</div>
@@ -229,6 +200,7 @@ export function SalesDashboard(props: { profile: UserProfile }) {
                 onChange={(e) => setClaimsActual(Number(e.target.value))}
                 style={{ marginTop: 8, width: '100%', boxSizing: 'border-box' }}
               />
+              <div style={{ fontSize: 12, color: '#666', marginTop: 4 }}>Per year</div>
             </div>
             <div className="card">
               <div className="card-title">Inspections Actual</div>
@@ -239,50 +211,30 @@ export function SalesDashboard(props: { profile: UserProfile }) {
                 onChange={(e) => setInspectionsActual(Number(e.target.value))}
                 style={{ marginTop: 8, width: '100%', boxSizing: 'border-box' }}
               />
-            </div>
-            <div className="card">
-              <div className="card-title">Conversations Actual</div>
-              <input 
-                type="number" 
-                className="field-input" 
-                value={conversationsActual} 
-                onChange={(e) => setConversationsActual(Number(e.target.value))}
-                style={{ marginTop: 8, width: '100%', boxSizing: 'border-box' }}
-              />
-            </div>
-            <div className="card">
-              <div className="card-title">Doors Actual</div>
-              <input 
-                type="number" 
-                className="field-input" 
-                value={doorsActual} 
-                onChange={(e) => setDoorsActual(Number(e.target.value))}
-                style={{ marginTop: 8, width: '100%', boxSizing: 'border-box' }}
-              />
+              <div style={{ fontSize: 12, color: '#666', marginTop: 4 }}>Per year</div>
             </div>
           </>
         ) : (
           <>
             <DashboardCard
               title="Income Actual"
-              value={`${incomeActual.toLocaleString()}`}
+              value={`$${incomeActual.toLocaleString()}`}
+              description="Per year"
             />
-            <DashboardCard title="Deals Actual" value={String(dealsActual)} />
+            <DashboardCard 
+              title="Deals Actual" 
+              value={String(dealsActual)}
+              description="Per year"
+            />
             <DashboardCard
               title="Claims Actual"
               value={claimsActual.toLocaleString()}
+              description="Per year"
             />
             <DashboardCard
               title="Inspections Actual"
               value={inspectionsActual.toLocaleString()}
-            />
-            <DashboardCard
-              title="Conversations Actual"
-              value={conversationsActual.toLocaleString()}
-            />
-            <DashboardCard
-              title="Doors Actual"
-              value={doorsActual.toLocaleString()}
+              description="Per year"
             />
           </>
         )}
@@ -295,27 +247,23 @@ export function SalesDashboard(props: { profile: UserProfile }) {
       <div className="grid grid-4">
         <DashboardCard
           title="Income Delta"
-          value={`${incomeDelta.toLocaleString()}`}
+          value={`$${incomeDelta.toLocaleString()}`}
+          description="Per year"
         />
         <DashboardCard
           title="Deals Delta"
           value={dealsDelta.toLocaleString()}
+          description="Per year"
         />
         <DashboardCard
           title="Claims Delta"
           value={claimsDelta.toLocaleString()}
+          description="Per year"
         />
         <DashboardCard
           title="Inspections Delta"
           value={inspectionsDelta.toLocaleString()}
-        />
-        <DashboardCard
-          title="Conversations Delta"
-          value={conversationsDelta.toLocaleString()}
-        />
-        <DashboardCard
-          title="Doors Delta"
-          value={doorsDelta.toLocaleString()}
+          description="Per year"
         />
       </div>
       <div className="sales-chart-card">
