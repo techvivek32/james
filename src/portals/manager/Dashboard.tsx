@@ -197,75 +197,105 @@ export function ManagerDashboard(props: { teamMembers: UserProfile[] }) {
         </div>
         
         <div className="grid grid-3" style={{ gap: 16 }}>
-          <DashboardCard
-            title="Deals Actual"
-            value={editingActuals ? (
-              <input
-                type="number"
-                value={actualData.dealsActual}
-                onChange={(e: ChangeEvent<HTMLInputElement>) => 
-                  handleActualChange('dealsActual', Number(e.target.value))
-                }
-                style={{
-                  width: "100%",
-                  padding: "8px 12px",
-                  fontSize: 16,
-                  fontWeight: 600,
-                  border: "2px solid #3b82f6",
-                  borderRadius: 4,
-                  textAlign: "right",
-                  backgroundColor: "transparent"
-                }}
+          {editingActuals ? (
+            <>
+              <div className="dashboard-card">
+                <div className="dashboard-card-header">
+                  <span className="dashboard-card-title">Deals Actual</span>
+                </div>
+                <div className="dashboard-card-body">
+                  <input
+                    type="number"
+                    value={actualData.dealsActual}
+                    onChange={(e: ChangeEvent<HTMLInputElement>) => 
+                      handleActualChange('dealsActual', Number(e.target.value))
+                    }
+                    style={{
+                      width: "100%",
+                      padding: "8px 12px",
+                      fontSize: 16,
+                      fontWeight: 600,
+                      border: "2px solid #3b82f6",
+                      borderRadius: 4,
+                      textAlign: "right",
+                      backgroundColor: "transparent"
+                    }}
+                  />
+                  <span className="dashboard-card-description">Month to date</span>
+                </div>
+              </div>
+
+              <div className="dashboard-card">
+                <div className="dashboard-card-header">
+                  <span className="dashboard-card-title">Claims Actual</span>
+                </div>
+                <div className="dashboard-card-body">
+                  <input
+                    type="number"
+                    value={actualData.claimsActual}
+                    onChange={(e: ChangeEvent<HTMLInputElement>) => 
+                      handleActualChange('claimsActual', Number(e.target.value))
+                    }
+                    style={{
+                      width: "100%",
+                      padding: "8px 12px",
+                      fontSize: 16,
+                      fontWeight: 600,
+                      border: "2px solid #3b82f6",
+                      borderRadius: 4,
+                      textAlign: "right",
+                      backgroundColor: "transparent"
+                    }}
+                  />
+                  <span className="dashboard-card-description">Month to date</span>
+                </div>
+              </div>
+
+              <div className="dashboard-card">
+                <div className="dashboard-card-header">
+                  <span className="dashboard-card-title">Inspections Actual</span>
+                </div>
+                <div className="dashboard-card-body">
+                  <input
+                    type="number"
+                    value={actualData.inspectionsActual}
+                    onChange={(e: ChangeEvent<HTMLInputElement>) => 
+                      handleActualChange('inspectionsActual', Number(e.target.value))
+                    }
+                    style={{
+                      width: "100%",
+                      padding: "8px 12px",
+                      fontSize: 16,
+                      fontWeight: 600,
+                      border: "2px solid #3b82f6",
+                      borderRadius: 4,
+                      textAlign: "right",
+                      backgroundColor: "transparent"
+                    }}
+                  />
+                  <span className="dashboard-card-description">Month to date</span>
+                </div>
+              </div>
+            </>
+          ) : (
+            <>
+              <DashboardCard
+                title="Deals Actual"
+                value={actualData.dealsActual.toLocaleString()}
+                description="Month to date"
               />
-            ) : actualData.dealsActual.toLocaleString()}
-            description="Month to date"
-          />
-          <DashboardCard
-            title="Claims Actual"
-            value={editingActuals ? (
-              <input
-                type="number"
-                value={actualData.claimsActual}
-                onChange={(e: ChangeEvent<HTMLInputElement>) => 
-                  handleActualChange('claimsActual', Number(e.target.value))
-                }
-                style={{
-                  width: "100%",
-                  padding: "8px 12px",
-                  fontSize: 16,
-                  fontWeight: 600,
-                  border: "2px solid #3b82f6",
-                  borderRadius: 4,
-                  textAlign: "right",
-                  backgroundColor: "transparent"
-                }}
+              <DashboardCard
+                title="Claims Actual"
+                value={actualData.claimsActual.toLocaleString()}
+                description="Month to date"
               />
-            ) : actualData.claimsActual.toLocaleString()}
-            description="Month to date"
-          />
-          <DashboardCard
-            title="Inspections Actual"
-            value={editingActuals ? (
-              <input
-                type="number"
-                value={actualData.inspectionsActual}
-                onChange={(e: ChangeEvent<HTMLInputElement>) => 
-                  handleActualChange('inspectionsActual', Number(e.target.value))
-                }
-                style={{
-                  width: "100%",
-                  padding: "8px 12px",
-                  fontSize: 16,
-                  fontWeight: 600,
-                  border: "2px solid #3b82f6",
-                  borderRadius: 4,
-                  textAlign: "right",
-                  backgroundColor: "transparent"
-                }}
+              <DashboardCard
+                title="Inspections Actual"
+                value={actualData.inspectionsActual.toLocaleString()}
+                description="Month to date"
               />
-            ) : actualData.inspectionsActual.toLocaleString()}
-            description="Month to date"
-          />
+            </>
+          )}
         </div>
       </div>
 
@@ -276,33 +306,59 @@ export function ManagerDashboard(props: { teamMembers: UserProfile[] }) {
         </h2>
         
         <div className="grid grid-3" style={{ gap: 16 }}>
-          <DashboardCard
-            title="Deals Delta"
-            value={`${deltas.dealsDelta >= 0 ? '+' : ''}${deltas.dealsDelta.toLocaleString()}`}
-            description="Actual vs Goal"
+          <div 
+            className="dashboard-card"
             style={{ 
               backgroundColor: deltas.dealsDelta >= 0 ? "#d1fae5" : "#fee2e2",
               color: deltas.dealsDelta >= 0 ? "#065f46" : "#991b1b"
             }}
-          />
-          <DashboardCard
-            title="Claims Delta"
-            value={`${deltas.claimsDelta >= 0 ? '+' : ''}${deltas.claimsDelta.toLocaleString()}`}
-            description="Actual vs Goal"
+          >
+            <div className="dashboard-card-header">
+              <span className="dashboard-card-title">Deals Delta</span>
+            </div>
+            <div className="dashboard-card-body">
+              <span className="dashboard-card-value">
+                {deltas.dealsDelta >= 0 ? '+' : ''}{deltas.dealsDelta.toLocaleString()}
+              </span>
+              <span className="dashboard-card-description">Actual vs Goal</span>
+            </div>
+          </div>
+
+          <div 
+            className="dashboard-card"
             style={{ 
               backgroundColor: deltas.claimsDelta >= 0 ? "#d1fae5" : "#fee2e2",
               color: deltas.claimsDelta >= 0 ? "#065f46" : "#991b1b"
             }}
-          />
-          <DashboardCard
-            title="Inspections Delta"
-            value={`${deltas.inspectionsDelta >= 0 ? '+' : ''}${deltas.inspectionsDelta.toLocaleString()}`}
-            description="Actual vs Goal"
+          >
+            <div className="dashboard-card-header">
+              <span className="dashboard-card-title">Claims Delta</span>
+            </div>
+            <div className="dashboard-card-body">
+              <span className="dashboard-card-value">
+                {deltas.claimsDelta >= 0 ? '+' : ''}{deltas.claimsDelta.toLocaleString()}
+              </span>
+              <span className="dashboard-card-description">Actual vs Goal</span>
+            </div>
+          </div>
+
+          <div 
+            className="dashboard-card"
             style={{ 
               backgroundColor: deltas.inspectionsDelta >= 0 ? "#d1fae5" : "#fee2e2",
               color: deltas.inspectionsDelta >= 0 ? "#065f46" : "#991b1b"
             }}
-          />
+          >
+            <div className="dashboard-card-header">
+              <span className="dashboard-card-title">Inspections Delta</span>
+            </div>
+            <div className="dashboard-card-body">
+              <span className="dashboard-card-value">
+                {deltas.inspectionsDelta >= 0 ? '+' : ''}{deltas.inspectionsDelta.toLocaleString()}
+              </span>
+              <span className="dashboard-card-description">Actual vs Goal</span>
+            </div>
+          </div>
         </div>
       </div>
     </div>
