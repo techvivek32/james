@@ -153,7 +153,7 @@ export function BusinessUnitsManager(props: { users: UserProfile[] }) {
             <div className="grid grid-4" style={{ marginBottom: 24 }}>
               <DashboardCard
                 title="Total Income Goal"
-                value={`$${globalTotals.incomeGoal.toLocaleString()}`}
+                value={`${globalTotals.incomeGoal.toLocaleString()}`}
                 description="Sum of all committed reps"
               />
               <DashboardCard
@@ -221,7 +221,7 @@ export function BusinessUnitsManager(props: { users: UserProfile[] }) {
         </div>
       </div>
 
-      {/* Per-Manager Sections */}
+      {/* Per-Manager Tables */}
       {managers.length === 0 ? (
         <div className="panel">
           <div className="panel-header">
@@ -265,120 +265,156 @@ export function BusinessUnitsManager(props: { users: UserProfile[] }) {
 
           return (
             <div key={manager.id} className="panel" style={{ marginBottom: 16 }}>
-              <div className="panel-header" style={{ cursor: 'pointer' }} onClick={() => toggleManager(manager.id)}>
-                <div className="panel-header-row">
-                  <span>{manager.name} - Team Business Plans</span>
-                  <span style={{ fontSize: 18 }}>{expandedManagers.has(manager.id) ? '▼' : '▶'}</span>
+              <div className="panel-header">
+                <span>{manager.name} - Manager</span>
+              </div>
+              <div className="panel-body">
+                <div style={{ overflowX: "auto" }}>
+                  <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+                    <thead>
+                      <tr style={{ backgroundColor: "#f3f4f6", borderBottom: "2px solid #e5e7eb" }}>
+                        <th style={{ padding: 12, textAlign: "left", fontWeight: 600, color: "#111827" }}>Name</th>
+                        <th style={{ padding: 12, textAlign: "right", fontWeight: 600, color: "#111827" }}>Income Goal</th>
+                        <th style={{ padding: 12, textAlign: "right", fontWeight: 600, color: "#111827" }}>Deal Ave</th>
+                        <th style={{ padding: 12, textAlign: "right", fontWeight: 600, color: "#111827" }}>Deals/Year</th>
+                        <th style={{ padding: 12, textAlign: "right", fontWeight: 600, color: "#111827" }}>Deals/Month</th>
+                        <th style={{ padding: 12, textAlign: "right", fontWeight: 600, color: "#111827" }}>Claims/Year</th>
+                        <th style={{ padding: 12, textAlign: "right", fontWeight: 600, color: "#111827" }}>Claims/Month</th>
+                        <th style={{ padding: 12, textAlign: "right", fontWeight: 600, color: "#111827" }}>Inspections/Year</th>
+                        <th style={{ padding: 12, textAlign: "right", fontWeight: 600, color: "#111827" }}>Inspections/Month</th>
+                        <th style={{ padding: 12, textAlign: "center", fontWeight: 600, color: "#111827" }}>Status</th>
+                        <th style={{ padding: 12, textAlign: "center", fontWeight: 600, color: "#111827" }}>Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {/* Manager Row */}
+                      <tr style={{ borderBottom: "1px solid #e5e7eb", backgroundColor: "#f8fafc" }}>
+                        <td style={{ padding: 12, color: "#111827", fontWeight: 600 }}>
+                          {manager.name} (Manager)
+                        </td>
+                        <td style={{ padding: 12, textAlign: "right", color: "#374151", fontWeight: 600 }}>
+                          ${teamTotals.incomeGoal.toLocaleString()}
+                        </td>
+                        <td style={{ padding: 12, textAlign: "right", color: "#374151" }}>-</td>
+                        <td style={{ padding: 12, textAlign: "right", color: "#374151", fontWeight: 600 }}>
+                          {teamTotals.dealsPerYear.toLocaleString()}
+                        </td>
+                        <td style={{ padding: 12, textAlign: "right", color: "#374151", fontWeight: 600 }}>
+                          {teamTotals.dealsPerMonth % 1 !== 0 ? teamTotals.dealsPerMonth.toFixed(2) : teamTotals.dealsPerMonth.toLocaleString()}
+                        </td>
+                        <td style={{ padding: 12, textAlign: "right", color: "#374151", fontWeight: 600 }}>
+                          {teamTotals.claimsPerYear.toLocaleString()}
+                        </td>
+                        <td style={{ padding: 12, textAlign: "right", color: "#374151", fontWeight: 600 }}>
+                          {teamTotals.claimsPerMonth % 1 !== 0 ? teamTotals.claimsPerMonth.toFixed(2) : teamTotals.claimsPerMonth.toLocaleString()}
+                        </td>
+                        <td style={{ padding: 12, textAlign: "right", color: "#374151", fontWeight: 600 }}>
+                          {teamTotals.inspectionsPerYear.toLocaleString()}
+                        </td>
+                        <td style={{ padding: 12, textAlign: "right", color: "#374151", fontWeight: 600 }}>
+                          {teamTotals.inspectionsPerMonth % 1 !== 0 ? teamTotals.inspectionsPerMonth.toFixed(2) : teamTotals.inspectionsPerMonth.toLocaleString()}
+                        </td>
+                        <td style={{ padding: 12, textAlign: "center" }}>
+                          <span style={{ padding: "4px 8px", backgroundColor: "#e5e7eb", color: "#374151", borderRadius: 4, fontSize: 11, fontWeight: 600 }}>
+                            Team ({teamMembers.length})
+                          </span>
+                        </td>
+                        <td style={{ padding: 12, textAlign: "center" }}>
+                          <button
+                            onClick={() => toggleManager(manager.id)}
+                            style={{
+                              padding: "6px 12px",
+                              backgroundColor: "#10b981",
+                              color: "#ffffff",
+                              border: "none",
+                              borderRadius: 4,
+                              fontSize: 12,
+                              fontWeight: 600,
+                              cursor: "pointer"
+                            }}
+                          >
+                            See Team
+                          </button>
+                        </td>
+                      </tr>
+
+                      {/* Team Members Rows (when expanded) */}
+                      {expandedManagers.has(manager.id) && teamMembers.map((member, idx) => {
+                        const bp = member.businessPlan;
+                        const metrics = calculateMetrics(bp?.revenueGoal || 0, bp?.averageDealSize || 0);
+                        
+                        return (
+                          <tr key={`${manager.id}-${member.id}`} style={{ borderBottom: "1px solid #e5e7eb", backgroundColor: "#ffffff" }}>
+                            <td style={{ padding: 12, color: "#111827", fontWeight: 500, paddingLeft: 32 }}>
+                              └ {member.name}
+                            </td>
+                            <td style={{ padding: 12, textAlign: "right", color: "#374151" }}>
+                              ${(bp?.revenueGoal || 0).toLocaleString()}
+                            </td>
+                            <td style={{ padding: 12, textAlign: "right", color: "#374151" }}>
+                              ${(bp?.averageDealSize || 0).toLocaleString()}
+                            </td>
+                            <td style={{ padding: 12, textAlign: "right", color: "#374151" }}>
+                              {metrics.dealsPerYear.toLocaleString()}
+                            </td>
+                            <td style={{ padding: 12, textAlign: "right", color: "#374151" }}>
+                              {metrics.dealsPerMonth.toFixed(2)}
+                            </td>
+                            <td style={{ padding: 12, textAlign: "right", color: "#374151" }}>
+                              {metrics.claimsPerYear.toLocaleString()}
+                            </td>
+                            <td style={{ padding: 12, textAlign: "right", color: "#374151" }}>
+                              {metrics.claimsPerMonth.toFixed(2)}
+                            </td>
+                            <td style={{ padding: 12, textAlign: "right", color: "#374151" }}>
+                              {metrics.inspectionsPerYear.toLocaleString()}
+                            </td>
+                            <td style={{ padding: 12, textAlign: "right", color: "#374151" }}>
+                              {metrics.inspectionsPerMonth.toFixed(2)}
+                            </td>
+                            <td style={{ padding: 12, textAlign: "center" }}>
+                              <span style={{ 
+                                padding: "4px 8px", 
+                                backgroundColor: bp?.committed ? "#d1fae5" : "#fef3c7", 
+                                color: bp?.committed ? "#065f46" : "#78350f", 
+                                borderRadius: 4, 
+                                fontSize: 11, 
+                                fontWeight: 600 
+                              }}>
+                                {bp?.committed ? "Committed" : "Draft"}
+                              </span>
+                            </td>
+                            <td style={{ padding: 12, textAlign: "center" }}>
+                              <button
+                                onClick={() => {
+                                  setEditingUserId(member.id);
+                                  setEditForm({
+                                    incomeGoal: bp?.revenueGoal || 0,
+                                    dealAve: bp?.averageDealSize || 0,
+                                    workingDaysPerWeek: bp?.daysPerWeek || 5
+                                  });
+                                }}
+                                style={{
+                                  padding: "6px 12px",
+                                  backgroundColor: "#3b82f6",
+                                  color: "#ffffff",
+                                  border: "none",
+                                  borderRadius: 4,
+                                  fontSize: 12,
+                                  fontWeight: 600,
+                                  cursor: "pointer"
+                                }}
+                              >
+                                Edit
+                              </button>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
                 </div>
               </div>
-              {expandedManagers.has(manager.id) && (
-                <div className="panel-body">
-                  {/* Team Summary Cards */}
-                  <div style={{ marginBottom: 32 }}>
-                    <h3 style={{ fontSize: 14, fontWeight: 600, color: "#111827", margin: 0, marginBottom: 16 }}>
-                      Team Totals
-                    </h3>
-                    
-                    <div className="grid grid-4" style={{ marginBottom: 24 }}>
-                      <DashboardCard
-                        title="Total Income Goal"
-                        value={`$${teamTotals.incomeGoal.toLocaleString()}`}
-                        description="Sum of committed reps"
-                      />
-                      <DashboardCard
-                        title="Claims Ratio"
-                        value="25%"
-                        description="Hardcoded"
-                      />
-                      <DashboardCard
-                        title="Inspection Ratio"
-                        value="30%"
-                        description="Hardcoded"
-                      />
-                    </div>
-                  </div>
-
-                  {/* Team Sales Reps Table */}
-                  <div style={{ borderTop: "2px solid #e5e7eb", paddingTop: 24 }}>
-                    <h3 style={{ fontSize: 16, fontWeight: 600, color: "#111827", marginBottom: 16 }}>
-                      Sales Team Plans
-                    </h3>
-                    
-                    {teamMembers.length === 0 ? (
-                      <div className="panel-empty">No team members assigned.</div>
-                    ) : (
-                      <div style={{ overflowX: "auto" }}>
-                        <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
-                          <thead>
-                            <tr style={{ backgroundColor: "#f3f4f6", borderBottom: "2px solid #e5e7eb" }}>
-                              <th style={{ padding: 12, textAlign: "left", fontWeight: 600, color: "#111827" }}>Rep Name</th>
-                              <th style={{ padding: 12, textAlign: "right", fontWeight: 600, color: "#111827" }}>Income Goal</th>
-                              <th style={{ padding: 12, textAlign: "right", fontWeight: 600, color: "#111827" }}>Deal Ave</th>
-                              <th style={{ padding: 12, textAlign: "right", fontWeight: 600, color: "#111827" }}>Deals/Year</th>
-                              <th style={{ padding: 12, textAlign: "right", fontWeight: 600, color: "#111827" }}>Deals/Month</th>
-                              <th style={{ padding: 12, textAlign: "right", fontWeight: 600, color: "#111827" }}>Claims/Year</th>
-                              <th style={{ padding: 12, textAlign: "right", fontWeight: 600, color: "#111827" }}>Claims/Month</th>
-                              <th style={{ padding: 12, textAlign: "right", fontWeight: 600, color: "#111827" }}>Inspections/Year</th>
-                              <th style={{ padding: 12, textAlign: "right", fontWeight: 600, color: "#111827" }}>Inspections/Month</th>
-                              <th style={{ padding: 12, textAlign: "center", fontWeight: 600, color: "#111827" }}>Status</th>
-                              <th style={{ padding: 12, textAlign: "center", fontWeight: 600, color: "#111827" }}>Actions</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {teamMembers.map((member, idx) => {
-                              const bp = member.businessPlan;
-                              const metrics = calculateMetrics(bp?.revenueGoal || 0, bp?.averageDealSize || 0);
-                              
-                              return (
-                                <tr key={idx} style={{ borderBottom: "1px solid #e5e7eb", backgroundColor: idx % 2 === 0 ? "#ffffff" : "#f9fafb" }}>
-                                  <td style={{ padding: 12, color: "#111827", fontWeight: 500 }}>{member.name}</td>
-                                  <td style={{ padding: 12, textAlign: "right", color: "#374151" }}>${(bp?.revenueGoal || 0).toLocaleString()}</td>
-                                  <td style={{ padding: 12, textAlign: "right", color: "#374151" }}>${(bp?.averageDealSize || 0).toLocaleString()}</td>
-                                  <td style={{ padding: 12, textAlign: "right", color: "#374151" }}>{metrics.dealsPerYear.toLocaleString()}</td>
-                                  <td style={{ padding: 12, textAlign: "right", color: "#374151" }}>{metrics.dealsPerMonth.toFixed(2)}</td>
-                                  <td style={{ padding: 12, textAlign: "right", color: "#374151" }}>{metrics.claimsPerYear.toLocaleString()}</td>
-                                  <td style={{ padding: 12, textAlign: "right", color: "#374151" }}>{metrics.claimsPerMonth.toFixed(2)}</td>
-                                  <td style={{ padding: 12, textAlign: "right", color: "#374151" }}>{metrics.inspectionsPerYear.toLocaleString()}</td>
-                                  <td style={{ padding: 12, textAlign: "right", color: "#374151" }}>{metrics.inspectionsPerMonth.toFixed(2)}</td>
-                                  <td style={{ padding: 12, textAlign: "center" }}>
-                                    <span style={{ padding: "4px 8px", backgroundColor: bp?.committed ? "#d1fae5" : "#fef3c7", color: bp?.committed ? "#065f46" : "#78350f", borderRadius: 4, fontSize: 11, fontWeight: 600 }}>
-                                      {bp?.committed ? "Committed" : "Draft"}
-                                    </span>
-                                  </td>
-                                  <td style={{ padding: 12, textAlign: "center" }}>
-                                    <button
-                                      onClick={() => {
-                                        setEditingUserId(member.id);
-                                        setEditForm({
-                                          incomeGoal: bp?.revenueGoal || 0,
-                                          dealAve: bp?.averageDealSize || 0,
-                                          workingDaysPerWeek: bp?.daysPerWeek || 5
-                                        });
-                                      }}
-                                      style={{
-                                        padding: "6px 12px",
-                                        backgroundColor: "#3b82f6",
-                                        color: "#ffffff",
-                                        border: "none",
-                                        borderRadius: 4,
-                                        fontSize: 12,
-                                        fontWeight: 600,
-                                        cursor: "pointer"
-                                      }}
-                                    >
-                                      Edit
-                                    </button>
-                                  </td>
-                                </tr>
-                              );
-                            })}
-                          </tbody>
-                        </table>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              )}
             </div>
           );
         })
