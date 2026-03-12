@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { SocialMediaCharts } from "../../components/SocialMediaCharts";
 
 type SocialMetric = {
   _id?: string;
@@ -48,6 +49,10 @@ export function SocialMediaMetrics() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [showColumnModal, setShowColumnModal] = useState(false);
   const [columnName, setColumnName] = useState("");
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'configuration'>('dashboard');
+  const [selectedPlatform, setSelectedPlatform] = useState<string>("");
+  const [showChart, setShowChart] = useState(false);
+  const [showSocialDetails, setShowSocialDetails] = useState(true);
   const [columnDatatype, setColumnDatatype] = useState<"string" | "number" | "boolean" | "date">("string");
   const [editingColumnId, setEditingColumnId] = useState<string | null>(null);
   const [showColumnEditModal, setShowColumnEditModal] = useState(false);
@@ -335,6 +340,10 @@ export function SocialMediaMetrics() {
           console.log("First metric data:", JSON.stringify(data[0], null, 2));
         }
         setMetrics(data);
+        // Set default selected platform to first metric
+        if (data.length > 0 && !selectedPlatform) {
+          setSelectedPlatform(data[0].platform);
+        }
       } else {
         console.error("Failed to load metrics:", await res.text());
       }
@@ -373,6 +382,34 @@ export function SocialMediaMetrics() {
       }
       return m;
     }));
+  }
+
+  // Helper function to get column value from metric
+  function getColumnValue(metric: SocialMetric, columnName: string): any {
+    // Map column names to metric properties
+    const columnMap: Record<string, keyof SocialMetric> = {
+      "Followers": "followers",
+      "Posts (30d)": "posts30d",
+      "Views (30d)": "views30d"
+    };
+
+    const key = columnMap[columnName] || columnName;
+    return metric[key] ?? "N/A";
+  }
+
+  // Helper function to calculate column totals
+  function getColumnTotal(columnName: string): number {
+    const columnMap: Record<string, keyof SocialMetric> = {
+      "Followers": "followers",
+      "Posts (30d)": "posts30d",
+      "Views (30d)": "views30d"
+    };
+
+    const key = columnMap[columnName] || columnName;
+    return metrics.reduce((sum, metric) => {
+      const value = metric[key];
+      return sum + (typeof value === "number" ? value : 0);
+    }, 0);
   }
 
   async function deleteMetric(id: string) {
@@ -449,16 +486,94 @@ export function SocialMediaMetrics() {
   const totalPosts = metrics.reduce((sum, m) => sum + (m.posts30d || 0), 0);
   const totalViews = metrics.reduce((sum, m) => sum + (m.views30d || 0), 0);
 
-  // Calculate totals for all numeric columns dynamically
-  const getColumnTotal = (columnName: string): number => {
-    return metrics.reduce((sum, m) => {
-      const value = m[columnName];
-      return sum + (typeof value === 'number' ? value : 0);
-    }, 0);
-  };
-
   if (loading) {
     return <div className="panel-empty">Loading metrics...</div>;
+  }
+
+  // Render Dashboard View
+  function renderDashboardView() {
+    const socialPlatforms = metrics;
+    
+    return (
+      <>
+        {socialPlatforms.length === 0 ? (
+          <div className="panel-empty">
+            No social media metrics configured yet. Switch to the Configuration tab to add metrics.
+          </div>
+        ) : (
+          <>
+            <div className="grid grid-3" style={{ marginBottom: 16 }}>
+              {customColumns.map(col => {
+                if (col.datatype === "number") {
+                  const total = metrics.reduce((sum, m) => {
+                    const value = m[col.name];
+                    return sum + (typeof value === 'number' ? value : 0);
+                  }, 0);
+                  return (
+                    <div key={col.id} style={{ padding: 16, backgroundColor: "#f9fafb", borderRadius: 8, border: "1px solid #e5e7eb" }}>
+                      <div style={{ fontSize: 12, color: "#6b7280", marginBottom: 4 }}>Total {col.name}</div>
+                      <div style={{ fontSize: 24, fontWeight: 600, color: "#111827" }}>{total.toLocaleString()}</div>
+                    </div>
+                  );
+                }
+                return null;
+              })}
+            </div>
+
+            {showSocialDetails && (
+              <>
+                <div
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: `1fr ${customColumns.map(() => "1fr").join(" ")}`,
+                    gap: 12,
+                    fontSize: 12,
+                    fontWeight: 600,
+                    marginBottom: 8,
+                    padding: "12px 16px",
+                    borderBottom: "2px solid #e5e7eb",
+                    color: "#374151",
+                    backgroundColor: "#f9fafb"
+                  }}
+                >
+                  <div>Platform</div>
+                  {customColumns.map(col => (
+                    <div key={col.id} style={{ textAlign: "center" }}>{col.name}</div>
+                  ))}
+                </div>
+
+                {metrics.map((metric, index) => (
+                  <div
+                    key={metric.id}
+                    style={{
+                      display: "grid",
+                      gridTemplateColumns: `1fr ${customColumns.map(() => "1fr").join(" ")}`,
+                      gap: 12,
+                      alignItems: "center",
+                      padding: "12px 16px",
+                      borderBottom: "1px solid #f1f5f9",
+                      backgroundColor: index % 2 === 0 ? "#ffffff" : "#f9fafb",
+                      fontSize: 14
+                    }}
+                  >
+                    <div style={{ fontWeight: 500 }}>{metric.platformName}</div>
+                    {customColumns.map(col => (
+                      <div key={col.id} style={{ textAlign: "center", fontWeight: 500 }}>
+                        {col.datatype === "number" ? (metric[col.name] || 0).toLocaleString() : metric[col.name] || "-"}
+                      </div>
+                    ))}
+                  </div>
+                ))}
+              </>
+            )}
+            
+            <div style={{ marginTop: 24 }}>
+              <SocialMediaCharts platforms={metrics} customColumns={customColumns} />
+            </div>
+          </>
+        )}
+      </>
+    );
   }
 
   return (
@@ -467,36 +582,96 @@ export function SocialMediaMetrics() {
         <div className="panel-header-row">
           <span>Social Media Metrics Management</span>
           <div style={{ display: "flex", gap: 8 }}>
-            <button
-              type="button"
-              className="btn-primary btn-success btn-small"
-              onClick={addNewMetric}
-            >
-              + Add Platform
-            </button>
-            <button
-              type="button"
-              className="btn-primary btn-small"
-              onClick={() => setShowColumnModal(true)}
-            >
-              + Add Column
-            </button>
-            <button
-              type="button"
-              className="btn-primary btn-small"
-              onClick={saveMetrics}
-              disabled={saving}
-            >
-              {saving ? "Saving..." : "Save All Changes"}
-            </button>
+            {activeTab === 'configuration' && (
+              <>
+                <button
+                  type="button"
+                  className="btn-primary btn-success btn-small"
+                  onClick={addNewMetric}
+                >
+                  + Add Platform
+                </button>
+                <button
+                  type="button"
+                  className="btn-primary btn-small"
+                  onClick={() => setShowColumnModal(true)}
+                >
+                  + Add Column
+                </button>
+                <button
+                  type="button"
+                  className="btn-primary btn-small"
+                  onClick={saveMetrics}
+                  disabled={saving}
+                >
+                  {saving ? "Saving..." : "Save All Changes"}
+                </button>
+              </>
+            )}
           </div>
         </div>
       </div>
 
+      {/* Tab Navigation */}
+      <div style={{ 
+        display: 'flex', 
+        gap: '0', 
+        borderBottom: '2px solid #e5e7eb',
+        padding: '0 24px',
+        backgroundColor: '#fff'
+      }}>
+        <button
+          type="button"
+          onClick={() => setActiveTab('dashboard')}
+          style={{
+            padding: '12px 24px',
+            border: 'none',
+            background: 'none',
+            cursor: 'pointer',
+            fontSize: '14px',
+            fontWeight: activeTab === 'dashboard' ? '600' : '400',
+            color: activeTab === 'dashboard' ? '#3b82f6' : '#6b7280',
+            borderBottom: activeTab === 'dashboard' ? '2px solid #3b82f6' : '2px solid transparent',
+            marginBottom: '-2px',
+            transition: 'all 0.2s'
+          }}
+        >
+          Dashboard
+        </button>
+        <button
+          type="button"
+          onClick={() => setActiveTab('configuration')}
+          style={{
+            padding: '12px 24px',
+            border: 'none',
+            background: 'none',
+            cursor: 'pointer',
+            fontSize: '14px',
+            fontWeight: activeTab === 'configuration' ? '600' : '400',
+            color: activeTab === 'configuration' ? '#3b82f6' : '#6b7280',
+            borderBottom: activeTab === 'configuration' ? '2px solid #3b82f6' : '2px solid transparent',
+            marginBottom: '-2px',
+            transition: 'all 0.2s'
+          }}
+        >
+          Configuration
+        </button>
+      </div>
+
       <div className="panel-body">
-        {/* Add Column Modal */}
-        {showColumnModal && (
-          <div style={{
+        {activeTab === 'dashboard' ? (
+          /* Dashboard Tab Content */
+          <div>
+            <h3 style={{ marginBottom: '16px', fontSize: '18px', fontWeight: '600' }}>Social Media Dashboard</h3>
+            {/* Dashboard content will go here - for now showing the existing dashboard view */}
+            {renderDashboardView()}
+          </div>
+        ) : (
+          /* Configuration Tab Content */
+          <>
+            {/* Add Column Modal */}
+            {showColumnModal && (
+              <div style={{
             position: "fixed",
             top: 0,
             left: 0,
@@ -931,6 +1106,8 @@ export function SocialMediaMetrics() {
           <div style={{ marginTop: 16, padding: 12, backgroundColor: "#eff6ff", borderRadius: 6, fontSize: 12, color: "#1e40af" }}>
             💡 Tip: Click "Edit" to modify values, then click "Save All Changes" to update the database. These metrics will appear on the Admin Dashboard.
           </div>
+        )}
+          </>
         )}
       </div>
     </div>
