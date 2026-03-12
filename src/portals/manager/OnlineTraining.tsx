@@ -658,7 +658,74 @@ export function ManagerOnlineTrainingPage(props: {
     </>
   );
 
-  if (selectedCourse) {
+  return (
+    <>
+      {renderModals()}
+      <div className="training-center">
+        {/* Always show tabs */}
+        <div style={{ display: 'flex', gap: 8, marginBottom: 24, borderBottom: '2px solid #e5e7eb' }}>
+          <button
+            type="button"
+            onClick={() => {
+              setActiveTab('courses');
+              if (selectedCourse) {
+                setSelectedCourse(null);
+                setActivePageId(null);
+                setViewingPlaylist(null);
+              }
+            }}
+            style={{
+              padding: '16px 32px',
+              background: 'none',
+              border: 'none',
+              borderBottom: activeTab === 'courses' ? '2px solid #2563eb' : '2px solid transparent',
+              color: activeTab === 'courses' ? '#2563eb' : '#6b7280',
+              fontWeight: activeTab === 'courses' ? 600 : 400,
+              cursor: 'pointer',
+              marginBottom: '-2px',
+              fontSize: 18
+            }}
+          >
+            Courses
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setActiveTab('playlists');
+              if (selectedCourse) {
+                setSelectedCourse(null);
+                setActivePageId(null);
+                setViewingPlaylist(null);
+              }
+            }}
+            style={{
+              padding: '16px 32px',
+              background: 'none',
+              border: 'none',
+              borderBottom: activeTab === 'playlists' ? '2px solid #2563eb' : '2px solid transparent',
+              color: activeTab === 'playlists' ? '#2563eb' : '#6b7280',
+              fontWeight: activeTab === 'playlists' ? 600 : 400,
+              cursor: 'pointer',
+              marginBottom: '-2px',
+              fontSize: 18
+            }}
+          >
+            Playlists
+          </button>
+        </div>
+
+        {selectedCourse ? (
+          <CourseView />
+        ) : (
+          <TabContent />
+        )}
+      </div>
+    </>
+  );
+
+  function CourseView() {
+    if (!selectedCourse) return null;
+    
     let pages = (selectedCourse.pages ?? []).filter(p => p.status === 'published');
     
     // If viewing a playlist, filter to show only selected modules
@@ -738,46 +805,44 @@ export function ManagerOnlineTrainingPage(props: {
 
     return (
       <>
-        {renderModals()}
-        <div className="training-center">
-          <style>{`
-            .training-center [data-video-share],
-            .training-center [data-video-delete],
-            .training-center [data-image-delete] {
-              display: none !important;
-            }
-          `}</style>
-          <div className="panel-header">
-            <div className="panel-header-row">
-              <span>{selectedCourse.title}</span>
-              <div style={{ display: 'flex', gap: 8 }}>
-                {!viewingPlaylist && (
-                  <button type="button" className="btn-primary btn-small" onClick={() => setIsCreatePlaylistOpen(true)}>
-                    Make Playlist
-                  </button>
-                )}
-                <button 
-                  type="button" 
-                  className="btn-secondary btn-small" 
-                  onClick={() => { 
-                    setSelectedCourse(null); 
-                    setActivePageId(null);
-                    setViewingPlaylist(null);
-                    setActiveTab('playlists');
-                  }}
-                >
-                  View Playlists
+        <style>{`
+          .training-center [data-video-share],
+          .training-center [data-video-delete],
+          .training-center [data-image-delete] {
+            display: none !important;
+          }
+        `}</style>
+        <div className="panel-header">
+          <div className="panel-header-row">
+            <span>{selectedCourse.title}</span>
+            <div style={{ display: 'flex', gap: 8 }}>
+              {!viewingPlaylist && (
+                <button type="button" className="btn-primary btn-small" onClick={() => setIsCreatePlaylistOpen(true)}>
+                  Make Playlist
                 </button>
-                <button type="button" className="btn-secondary btn-small" onClick={() => { 
+              )}
+              <button 
+                type="button" 
+                className="btn-secondary btn-small" 
+                onClick={() => { 
                   setSelectedCourse(null); 
                   setActivePageId(null);
                   setViewingPlaylist(null);
-                }}>
-                  Back to Courses
-                </button>
-              </div>
+                  setActiveTab('playlists');
+                }}
+              >
+                View Playlists
+              </button>
+              <button type="button" className="btn-secondary btn-small" onClick={() => { 
+                setSelectedCourse(null); 
+                setActivePageId(null);
+                setViewingPlaylist(null);
+              }}>
+                Back to Courses
+              </button>
             </div>
           </div>
+        </div>
 
         <div className="course-pages-layout">
           <div className="course-pages-left">
@@ -1029,7 +1094,6 @@ export function ManagerOnlineTrainingPage(props: {
           {/* Temporarily hidden - Coming Soon */}
           {/* {activePage && !activePage.isQuiz && <LessonAIChat lessonTitle={activePage.title || selectedCourse.title} lessonContent={activePage.body} videoUrl={activePage.videoUrl} courseTitle={selectedCourse.title} allPages={pages} />} */}
         </div>
-        </div>
       </>
     );
   }
@@ -1038,45 +1102,70 @@ export function ManagerOnlineTrainingPage(props: {
     <>
       {renderModals()}
       <div className="training-center">
-        {/* Tabs */}
-      <div style={{ display: 'flex', gap: 8, marginBottom: 24, borderBottom: '2px solid #e5e7eb' }}>
-        <button
-          type="button"
-          onClick={() => setActiveTab('courses')}
-          style={{
-            padding: '16px 32px',
-            background: 'none',
-            border: 'none',
-            borderBottom: activeTab === 'courses' ? '2px solid #2563eb' : '2px solid transparent',
-            color: activeTab === 'courses' ? '#2563eb' : '#6b7280',
-            fontWeight: activeTab === 'courses' ? 600 : 400,
-            cursor: 'pointer',
-            marginBottom: '-2px',
-            fontSize: 18
-          }}
-        >
-          Courses
-        </button>
-        <button
-          type="button"
-          onClick={() => setActiveTab('playlists')}
-          style={{
-            padding: '16px 32px',
-            background: 'none',
-            border: 'none',
-            borderBottom: activeTab === 'playlists' ? '2px solid #2563eb' : '2px solid transparent',
-            color: activeTab === 'playlists' ? '#2563eb' : '#6b7280',
-            fontWeight: activeTab === 'playlists' ? 600 : 400,
-            cursor: 'pointer',
-            marginBottom: '-2px',
-            fontSize: 18
-          }}
-        >
-          Playlists
-        </button>
-      </div>
+        {/* Always show tabs */}
+        <div style={{ display: 'flex', gap: 8, marginBottom: 24, borderBottom: '2px solid #e5e7eb' }}>
+          <button
+            type="button"
+            onClick={() => {
+              setActiveTab('courses');
+              if (selectedCourse) {
+                setSelectedCourse(null);
+                setActivePageId(null);
+                setViewingPlaylist(null);
+              }
+            }}
+            style={{
+              padding: '16px 32px',
+              background: 'none',
+              border: 'none',
+              borderBottom: activeTab === 'courses' ? '2px solid #2563eb' : '2px solid transparent',
+              color: activeTab === 'courses' ? '#2563eb' : '#6b7280',
+              fontWeight: activeTab === 'courses' ? 600 : 400,
+              cursor: 'pointer',
+              marginBottom: '-2px',
+              fontSize: 18
+            }}
+          >
+            Courses
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setActiveTab('playlists');
+              if (selectedCourse) {
+                setSelectedCourse(null);
+                setActivePageId(null);
+                setViewingPlaylist(null);
+              }
+            }}
+            style={{
+              padding: '16px 32px',
+              background: 'none',
+              border: 'none',
+              borderBottom: activeTab === 'playlists' ? '2px solid #2563eb' : '2px solid transparent',
+              color: activeTab === 'playlists' ? '#2563eb' : '#6b7280',
+              fontWeight: activeTab === 'playlists' ? 600 : 400,
+              cursor: 'pointer',
+              marginBottom: '-2px',
+              fontSize: 18
+            }}
+          >
+            Playlists
+          </button>
+        </div>
 
-      {activeTab === 'courses' && (
+        {selectedCourse ? (
+          <CourseView />
+        ) : (
+          <TabContent />
+        )}
+      </div>
+    </>
+  );
+
+  function TabContent() {
+    if (activeTab === 'courses') {
+      return (
         <>
           <div className="grid grid-3" style={{ marginBottom: 16 }}>
             <DashboardCard
@@ -1091,66 +1180,67 @@ export function ManagerOnlineTrainingPage(props: {
             />
           </div>
           {isLoading ? (
-        <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '300px' }}>
-          <div style={{ textAlign: 'center' }}>
-            <div className="spinner" style={{ margin: '0 auto 16px' }}></div>
-            <div style={{ color: '#6b7280' }}>Loading courses...</div>
-          </div>
-        </div>
-      ) : publishedCourses.length === 0 ? (
-        <div className="panel" style={{ marginTop: 0 }}>
-          <div className="panel-body">
-            <div className="panel-empty">
-              No published trainings yet. Publish courses to track progress.
+            <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '300px' }}>
+              <div style={{ textAlign: 'center' }}>
+                <div className="spinner" style={{ margin: '0 auto 16px' }}></div>
+                <div style={{ color: '#6b7280' }}>Loading courses...</div>
+              </div>
             </div>
-          </div>
-        </div>
-      ) : (
-        <div className="training-card-grid">
-          {publishedCourses.map((course, index) => {
-            const progress = courseProgress[course.id] || { completed: 0, total: 0, isCompleted: false };
-            const percentage = progress.total > 0 ? Math.round((progress.completed / progress.total) * 100) : 0;
-            return (
-              <button
-                key={course.id}
-                type="button"
-                className="training-card"
-                onClick={() => setSelectedCourse(course)}
-                style={{ cursor: "pointer", border: "none", background: "none", padding: 0, textAlign: "left" }}
-              >
-                <div 
-                  className="training-card-image"
-                  style={
-                    course.coverImageUrl
-                      ? { backgroundImage: `url(${course.coverImageUrl})`, backgroundSize: "cover", backgroundPosition: "center" }
-                      : undefined
-                  }
-                >
-                  <div className="training-card-image-overlay">
-                    {course.tagline && (
-                      <span className="training-card-chip">
-                        {course.tagline}
-                      </span>
-                    )}
-                  </div>
+          ) : publishedCourses.length === 0 ? (
+            <div className="panel" style={{ marginTop: 0 }}>
+              <div className="panel-body">
+                <div className="panel-empty">
+                  No published trainings yet. Publish courses to track progress.
                 </div>
-                <div className="training-card-body">
-                  <div className="training-card-title">{course.title}</div>
-                  {progress.isCompleted && (
-                    <div style={{ color: "#10b981", fontSize: "14px", fontWeight: 600, marginTop: "8px" }}>
-                      ✓ Completed
+              </div>
+            </div>
+          ) : (
+            <div className="training-card-grid">
+              {publishedCourses.map((course, index) => {
+                const progress = courseProgress[course.id] || { completed: 0, total: 0, isCompleted: false };
+                return (
+                  <button
+                    key={course.id}
+                    type="button"
+                    className="training-card"
+                    onClick={() => setSelectedCourse(course)}
+                    style={{ cursor: "pointer", border: "none", background: "none", padding: 0, textAlign: "left" }}
+                  >
+                    <div 
+                      className="training-card-image"
+                      style={
+                        course.coverImageUrl
+                          ? { backgroundImage: `url(${course.coverImageUrl})`, backgroundSize: "cover", backgroundPosition: "center" }
+                          : undefined
+                      }
+                    >
+                      <div className="training-card-image-overlay">
+                        {course.tagline && (
+                          <span className="training-card-chip">
+                            {course.tagline}
+                          </span>
+                        )}
+                      </div>
                     </div>
-                  )}
-                </div>
-              </button>
-            );
-          })}
-        </div>
-      )}
+                    <div className="training-card-body">
+                      <div className="training-card-title">{course.title}</div>
+                      {progress.isCompleted && (
+                        <div style={{ color: "#10b981", fontSize: "14px", fontWeight: 600, marginTop: "8px" }}>
+                          ✓ Completed
+                        </div>
+                      )}
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          )}
         </>
-      )}
+      );
+    }
 
-      {activeTab === 'playlists' && (
+    if (activeTab === 'playlists') {
+      return (
         <div className="panel">
           <div className="panel-header">
             <span>My Playlists</span>
@@ -1217,13 +1307,8 @@ export function ManagerOnlineTrainingPage(props: {
                           className="btn-secondary"
                           style={{ padding: '14px 28px', fontSize: 17, fontWeight: 600 }}
                           onClick={() => {
-                            console.log('Assign button clicked!', playlist);
-                            console.log('Sales users available:', salesUsers);
-                            console.log('Setting assigningPlaylist to:', playlist);
-                            console.log('Setting isAssignModalOpen to: true');
                             setAssigningPlaylist(playlist);
                             setIsAssignModalOpen(true);
-                            console.log('State should be updated now');
                           }}
                         >
                           Assign
@@ -1250,8 +1335,9 @@ export function ManagerOnlineTrainingPage(props: {
             )}
           </div>
         </div>
-      )}
-      </div>
-    </>
-  );
+      );
+    }
+
+    return null;
+  }
 }
