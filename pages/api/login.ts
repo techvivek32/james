@@ -97,6 +97,11 @@ export default async function handler(
     return;
   }
 
+  if (user.deleted) {
+    res.status(403).json({ error: "Account has been deleted. Contact administrator." });
+    return;
+  }
+
   if (user.suspended) {
     res.status(403).json({ error: "Account suspended. Contact administrator." });
     return;

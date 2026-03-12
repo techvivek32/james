@@ -46,6 +46,8 @@ const userSchema = new Schema(
     roles: [String],
     managerId: String,
     suspended: Boolean,
+    deleted: { type: Boolean, default: false },
+    deletedAt: Date,
     strengths: String,
     weaknesses: String,
     bio: String,

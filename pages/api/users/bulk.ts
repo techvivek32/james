@@ -31,8 +31,12 @@ export default async function handler(
     const passwordById = new Map(
       existing.map((user) => [user.id, user.passwordHash])
     );
+    
+    // Don't delete users - they might be soft deleted
+    // Only delete users that are not in the list AND not deleted
     await UserModel.deleteMany({
-      id: { $nin: ids.length ? ids : ["__none__"] }
+      id: { $nin: ids.length ? ids : ["__none__"] },
+      deleted: { $ne: true }
     });
 
     await Promise.all(
@@ -66,7 +70,7 @@ export default async function handler(
       })
     );
 
-    const nextUsers = await UserModel.find().lean();
+    const nextUsers = await UserModel.find({ deleted: { $ne: true } }).lean();
     const sanitized = nextUsers.map(({ passwordHash, ...rest }) => rest);
     res.status(200).json(sanitized);
   } catch (error) {

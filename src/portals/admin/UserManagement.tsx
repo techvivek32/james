@@ -14,6 +14,15 @@ type UserEditorProps = {
 export function UserManagement(props: UserEditorProps) {
   const [draftUsers, setDraftUsers] = useState<UserProfile[]>(props.users);
   const [draftDeletedUsers, setDraftDeletedUsers] = useState<UserProfile[]>(props.deletedUsers);
+  
+  // Update when props change
+  useEffect(() => {
+    setDraftUsers(props.users);
+  }, [props.users]);
+  
+  useEffect(() => {
+    setDraftDeletedUsers(props.deletedUsers);
+  }, [props.deletedUsers]);
   const [isDirty, setIsDirty] = useState(false);
   const [saveNotice, setSaveNotice] = useState("");
   const saveNoticeTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -30,6 +39,7 @@ export function UserManagement(props: UserEditorProps) {
   const [showImportConfirm, setShowImportConfirm] = useState(false);
   const [showActiveUsers, setShowActiveUsers] = useState(true);
   const [showSuspendedUsers, setShowSuspendedUsers] = useState(true);
+  const [showDeletedUsers, setShowDeletedUsers] = useState(true);
   const [sortBy, setSortBy] = useState<"nameAsc" | "nameDesc" | "newest" | "oldest" | "lastModified">("nameAsc");
   const [showSortDropdown, setShowSortDropdown] = useState(false);
   const [assignedSalesUsers, setAssignedSalesUsers] = useState<any[]>([]);
@@ -246,17 +256,42 @@ export function UserManagement(props: UserEditorProps) {
     setSelectedUserId(newUser.id);
   }
 
-  function deleteUser(userId: string) {
-    const next = draftUsers.filter((u) => u.id !== userId);
+  async function deleteUser(userId: string) {
     const deleted = draftUsers.find((u) => u.id === userId);
-    if (deleted) setDraftDeletedUsers([...draftDeletedUsers, deleted]);
-    setDraftUsers(next);
-    setIsDirty(true);
-    if (!next.length) {
-      setSelectedUserId("");
-      return;
+    if (!deleted) return;
+    
+    // Immediately call API to soft delete
+    try {
+      await fetch(`/api/users/${userId}`, {
+        method: 'DELETE'
+      });
+      
+      // Reload both lists from server
+      const [usersRes, deletedRes] = await Promise.all([
+        fetch("/api/users?deleted=false"),
+        fetch("/api/users?deleted=true")
+      ]);
+      
+      if (usersRes.ok && deletedRes.ok) {
+        const activeUsers = await usersRes.json();
+        const deletedUsers = await deletedRes.json();
+        
+        setDraftUsers(activeUsers);
+        setDraftDeletedUsers(deletedUsers);
+        
+        // Notify parent to update
+        props.onUsersChange(activeUsers);
+        props.onDeletedUsersChange(deletedUsers);
+        
+        // Update selection
+        if (selectedUserId === userId) {
+          setSelectedUserId(activeUsers[0]?.id ?? "");
+        }
+      }
+    } catch (error) {
+      console.error('Failed to delete user:', error);
+      alert('Failed to delete user');
     }
-    if (selectedUserId === userId) setSelectedUserId(next[0].id);
   }
 
   function updateFeatureToggles(user: UserProfile, toggles: Partial<FeatureToggles>) {
@@ -568,25 +603,66 @@ export function UserManagement(props: UserEditorProps) {
           )}
           {draftDeletedUsers.length > 0 && (
             <div className="panel-section">
-              <div className="panel-section-title">Deleted Users</div>
-              <div className="list">
-                {draftDeletedUsers.map((user) => (
-                  <div key={user.id} className="list-item">
-                    <div style={{ flex: 1 }}>
-                      <div className="list-item-title">{user.name}</div>
-                      <div className="list-item-subtitle">{(user.roles || [user.role]).map(r => r.toUpperCase()).join(", ")} • {user.email}</div>
-                    </div>
-                    <button type="button" className="btn-secondary btn-success btn-small" onClick={() => {
-                      const restored = draftDeletedUsers.find((u) => u.id === user.id);
-                      if (restored) {
-                        setDraftUsers([...draftUsers, restored]);
-                        setDraftDeletedUsers(draftDeletedUsers.filter((u) => u.id !== user.id));
-                        setIsDirty(true);
-                      }
-                    }}>Restore User</button>
-                  </div>
-                ))}
+              <div className="panel-section-title" style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer" }} onClick={() => setShowDeletedUsers(!showDeletedUsers)}>
+                <span>{showDeletedUsers ? "▾" : "▸"}</span>
+                <span>🗑️ Deleted Users</span>
+                <span style={{ fontSize: 12, color: '#6b7280', fontWeight: 400 }}>({draftDeletedUsers.length})</span>
               </div>
+              {showDeletedUsers && (
+                <div className="list">
+                  {draftDeletedUsers.map((user) => (
+                    <div key={user.id} className="list-item" style={{ backgroundColor: '#fef2f2', borderLeft: '3px solid #ef4444' }}>
+                      <div style={{ flex: 1 }}>
+                        <div className="list-item-title">{user.name}</div>
+                        <div className="list-item-subtitle">{(user.roles || [user.role]).map(r => r.toUpperCase()).join(", ")} • {user.email}</div>
+                        {user.deletedAt && (
+                          <div style={{ fontSize: 11, color: '#9ca3af', marginTop: 4 }}>
+                            Deleted: {new Date(user.deletedAt).toLocaleDateString()}
+                          </div>
+                        )}
+                      </div>
+                      <button 
+                        type="button" 
+                        className="btn-secondary btn-success btn-small" 
+                        onClick={async () => {
+                          if (confirm(`Are you sure you want to restore ${user.name}?\n\nThis will allow them to log in again with all their data intact.`)) {
+                            try {
+                              await fetch(`/api/users/${user.id}`, {
+                                method: 'PATCH',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ action: 'restore' })
+                              });
+                              
+                              // Reload both lists from server
+                              const [usersRes, deletedRes] = await Promise.all([
+                                fetch("/api/users?deleted=false"),
+                                fetch("/api/users?deleted=true")
+                              ]);
+                              
+                              if (usersRes.ok && deletedRes.ok) {
+                                const activeUsers = await usersRes.json();
+                                const deletedUsers = await deletedRes.json();
+                                
+                                setDraftUsers(activeUsers);
+                                setDraftDeletedUsers(deletedUsers);
+                                
+                                // Notify parent to update
+                                props.onUsersChange(activeUsers);
+                                props.onDeletedUsersChange(deletedUsers);
+                              }
+                            } catch (error) {
+                              console.error('Failed to restore user:', error);
+                              alert('Failed to restore user');
+                            }
+                          }
+                        }}
+                      >
+                        Restore User
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           )}
         </div>

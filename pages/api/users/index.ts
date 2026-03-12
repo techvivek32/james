@@ -10,11 +10,18 @@ export default async function handler(
   await connectMongo();
 
   if (req.method === "GET") {
-    const { role, managerId } = req.query;
+    const { role, managerId, deleted } = req.query;
     
     let query: any = {};
     if (role) query.role = role;
     if (managerId) query.managerId = managerId;
+    
+    // Filter by deleted status
+    if (deleted === 'true') {
+      query.deleted = true;
+    } else if (deleted === 'false' || deleted === undefined) {
+      query.deleted = { $ne: true }; // Show non-deleted users by default
+    }
     
     const users = await UserModel.find(query).lean();
     const sanitized = users.map(({ passwordHash, ...rest }) => rest);

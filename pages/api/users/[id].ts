@@ -60,11 +60,30 @@ export default async function handler(
   }
 
   if (req.method === "DELETE") {
-    await UserModel.deleteOne({ id });
+    // Soft delete: mark as deleted instead of removing
+    await UserModel.findOneAndUpdate(
+      { id },
+      { deleted: true, deletedAt: new Date() }
+    );
     res.status(204).end();
     return;
   }
 
-  res.setHeader("Allow", "GET, PUT, DELETE");
+  if (req.method === "PATCH") {
+    // Restore deleted user
+    const { action } = req.body;
+    if (action === 'restore') {
+      await UserModel.findOneAndUpdate(
+        { id },
+        { deleted: false, deletedAt: null }
+      );
+      res.status(200).json({ success: true });
+      return;
+    }
+    res.status(400).json({ error: "Invalid action" });
+    return;
+  }
+
+  res.setHeader("Allow", "GET, PUT, DELETE, PATCH");
   res.status(405).end();
 }
