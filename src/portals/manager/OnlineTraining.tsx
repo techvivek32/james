@@ -266,7 +266,7 @@ export function ManagerOnlineTrainingPage(props: {
           zIndex: 9999 
         }}>
           <div className="dialog" style={{ 
-            maxWidth: 600, 
+            maxWidth: 700, 
             backgroundColor: 'white', 
             borderRadius: 8, 
             padding: 24,
@@ -284,30 +284,83 @@ export function ManagerOnlineTrainingPage(props: {
                 />
               </label>
               <div className="field">
-                <span className="field-label">Select Modules</span>
-                <div style={{ maxHeight: 300, overflowY: 'auto', border: '1px solid #e5e7eb', borderRadius: 8, padding: 12 }}>
-                  {((selectedCourse.pages ?? []).filter(p => p.status === 'published')).map((page) => {
-                    const folder = page.folderId ? (selectedCourse.folders ?? []).find(f => f.id === page.folderId) : null;
-                    const folderName = folder?.title || '';
-                    const displayName = folderName ? `${page.title} (${folderName})` : page.title;
+                <span className="field-label">Select Lessons & Quizzes</span>
+                <div style={{ maxHeight: 400, overflowY: 'auto', border: '1px solid #e5e7eb', borderRadius: 8, padding: 12 }}>
+                  {/* Pages without folders */}
+                  {((selectedCourse.pages ?? []).filter(p => p.status === 'published' && !p.folderId)).map((page) => (
+                    <label key={page.id} style={{ display: 'flex', alignItems: 'center', padding: '8px 0', cursor: 'pointer', marginLeft: 0 }}>
+                      <input
+                        type="checkbox"
+                        checked={selectedModules.has(page.id)}
+                        onChange={(e) => {
+                          const newSet = new Set(selectedModules);
+                          if (e.target.checked) {
+                            newSet.add(page.id);
+                          } else {
+                            newSet.delete(page.id);
+                          }
+                          setSelectedModules(newSet);
+                        }}
+                        style={{ marginRight: 8 }}
+                      />
+                      <span>{page.title}</span>
+                    </label>
+                  ))}
+                  
+                  {/* Folders with their pages */}
+                  {(selectedCourse.folders ?? []).map((folder) => {
+                    const folderPages = (selectedCourse.pages ?? []).filter(p => p.status === 'published' && p.folderId === folder.id);
+                    if (folderPages.length === 0) return null;
+                    
+                    const allFolderPagesSelected = folderPages.every(p => selectedModules.has(p.id));
+                    const someFolderPagesSelected = folderPages.some(p => selectedModules.has(p.id));
+                    
                     return (
-                      <label key={page.id} style={{ display: 'flex', alignItems: 'center', padding: '8px 0', cursor: 'pointer' }}>
-                        <input
-                          type="checkbox"
-                          checked={selectedModules.has(page.id)}
-                          onChange={(e) => {
-                            const newSet = new Set(selectedModules);
-                            if (e.target.checked) {
-                              newSet.add(page.id);
-                            } else {
-                              newSet.delete(page.id);
-                            }
-                            setSelectedModules(newSet);
-                          }}
-                          style={{ marginRight: 8 }}
-                        />
-                        <span>{displayName}</span>
-                      </label>
+                      <div key={folder.id} style={{ marginTop: 12 }}>
+                        <label style={{ display: 'flex', alignItems: 'center', padding: '8px 0', cursor: 'pointer', fontWeight: 600, backgroundColor: '#f3f4f6', paddingLeft: 8, borderRadius: 4 }}>
+                          <input
+                            type="checkbox"
+                            checked={allFolderPagesSelected}
+                            ref={(el) => {
+                              if (el) el.indeterminate = someFolderPagesSelected && !allFolderPagesSelected;
+                            }}
+                            onChange={(e) => {
+                              const newSet = new Set(selectedModules);
+                              if (e.target.checked) {
+                                // Select all pages in this folder
+                                folderPages.forEach(p => newSet.add(p.id));
+                              } else {
+                                // Deselect all pages in this folder
+                                folderPages.forEach(p => newSet.delete(p.id));
+                              }
+                              setSelectedModules(newSet);
+                            }}
+                            style={{ marginRight: 8 }}
+                          />
+                          <span>📁 {folder.title}</span>
+                        </label>
+                        <div style={{ marginLeft: 24 }}>
+                          {folderPages.map((page) => (
+                            <label key={page.id} style={{ display: 'flex', alignItems: 'center', padding: '6px 0', cursor: 'pointer' }}>
+                              <input
+                                type="checkbox"
+                                checked={selectedModules.has(page.id)}
+                                onChange={(e) => {
+                                  const newSet = new Set(selectedModules);
+                                  if (e.target.checked) {
+                                    newSet.add(page.id);
+                                  } else {
+                                    newSet.delete(page.id);
+                                  }
+                                  setSelectedModules(newSet);
+                                }}
+                                style={{ marginRight: 8 }}
+                              />
+                              <span style={{ fontSize: 14 }}>{page.isQuiz ? '📝' : '📄'} {page.title}</span>
+                            </label>
+                          ))}
+                        </div>
+                      </div>
                     );
                   })}
                 </div>
