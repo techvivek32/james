@@ -40,6 +40,7 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
   const [isResizing, setIsResizing] = useState(false);
   const [startX, setStartX] = useState(0);
   const [startWidth, setStartWidth] = useState(280);
+  const [isFirstPageVisit, setIsFirstPageVisit] = useState(true);
 
   // Handle lessonId from query parameter (shared lesson)
   useEffect(() => {
@@ -112,7 +113,26 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
       setQuizScore(null);
       setSelectedAnswers({});
     }
-  }, [activePageId, savedQuizResults, selectedCourse]);
+
+    // Enable autoplay after first page
+    if (isFirstPageVisit) {
+      setIsFirstPageVisit(false);
+    } else {
+      // Add autoplay to videos on subsequent pages
+      setTimeout(() => {
+        const iframes = document.querySelectorAll('.course-page-editor-body iframe');
+        iframes.forEach((iframe: any) => {
+          const src = iframe.src;
+          if (src && (src.includes('youtube.com') || src.includes('vimeo.com'))) {
+            const separator = src.includes('?') ? '&' : '?';
+            if (!src.includes('autoplay=1')) {
+              iframe.src = `${src}${separator}autoplay=1`;
+            }
+          }
+        });
+      }, 100);
+    }
+  }, [activePageId, savedQuizResults, selectedCourse, isFirstPageVisit]);
 
   // Resizer functionality
   useEffect(() => {
