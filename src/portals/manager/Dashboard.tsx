@@ -1,33 +1,65 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, ChangeEvent } from "react";
 import { DashboardCard } from "../../components/DashboardCard";
 import { UserProfile, BusinessPlan } from "../../types";
+import { useAuth } from "../../contexts/AuthContext";
 
 export function ManagerDashboard(props: { teamMembers: UserProfile[] }) {
   const [committedPlans, setCommittedPlans] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [actualData, setActualData] = useState<{[key: string]: number}>({
+    dealsActual: 0,
+    claimsActual: 0,
+    inspectionsActual: 0
+  });
+  const [editingActuals, setEditingActuals] = useState(false);
+  const { user } = useAuth();
 
   useEffect(() => {
     async function fetchTeamData() {
       try {
-        // Fetch business plans for all team members
-        const plansPromises = props.teamMembers.map(member =>
-          fetch(`/api/business-plan?userId=${member.id}`)
-            .then(r => r.json())
-            .then(data => {
-              const userPlan = data.find((p: any) => p.userId === member.id);
-              return {
-                userId: member.id,
-                userName: member.name,
-                businessPlan: userPlan?.businessPlan
-              };
-            })
-        );
+        // Get team members for this manager
+        const usersRes = await fetch("/api/users");
+        if (usersRes.ok) {
+          const allUsers = await usersRes.json();
+          const teamMembers = allUsers.filter((u: UserProfile) => u.managerId === user?.id && u.role === "sales");
+          
+          // Fetch business plans for team members
+          const plansPromises = teamMembers.map((member: UserProfile) =>
+            fetch(`/api/business-plan?userId=${member.id}`)
+              .then(r => r.json())
+              .then(data => {
+                const userPlan = data.find((p: any) => p.userId === member.id);
+                return {
+                  userId: member.id,
+                  userName: member.name,
+                  businessPlan: userPlan?.businessPlan
+                };
+              })
+          );
+          
+          const plans = await Promise.all(plansPromises);
+          
+          // Filter only committed plans
+          const committed = plans.filter(p => p.businessPlan?.committed);
+          setCommittedPlans(committed);
+        }
+
+        // Fetch existing actual data for current month/year
+        const currentMonth = new Date().getMonth() + 1;
+        const currentYear = new Date().getFullYear();
         
-        const plans = await Promise.all(plansPromises);
-        
-        // Filter only committed plans
-        const committed = plans.filter(p => p.businessPlan?.committed);
-        setCommittedPlans(committed);
+        const actualsRes = await fetch(`/api/manager-actuals?managerId=${user?.id}&month=${currentMonth}&year=${currentYear}`);
+        if (actualsRes.ok) {
+          const actualsData = await actualsRes.json();
+          if (actualsData.length > 0) {
+            const latest = actualsData[0];
+            setActualData({
+              dealsActual: latest.dealsActual || 0,
+              claimsActual: latest.claimsActual || 0,
+              inspectionsActual: latest.inspectionsActual || 0
+            });
+          }
+        }
       } catch (error) {
         console.error('Failed to fetch team data:', error);
       } finally {
@@ -35,189 +67,242 @@ export function ManagerDashboard(props: { teamMembers: UserProfile[] }) {
       }
     }
 
-    if (props.teamMembers.length > 0) {
+    if (user?.id) {
       fetchTeamData();
     } else {
       setLoading(false);
     }
-  }, [props.teamMembers]);
+  }, [user?.id]);
 
   // Calculate totals from committed plans
   const totals = committedPlans.reduce(
     (acc, plan) => {
       const bp = plan.businessPlan;
-      if (!bp) {
-        return acc;
-      }
+      if (!bp) return acc;
+      
       const dealsPerYear = bp.dealsPerYear || 0;
       const claimsPerYear = Math.round(dealsPerYear - (dealsPerYear * 0.25));
       const inspectionsPerYear = Math.round(claimsPerYear - (claimsPerYear * 0.30));
       
-      acc.incomeGoal += bp.revenueGoal || 0;
-      acc.dealsPerYear += dealsPerYear;
       acc.dealsPerMonth += dealsPerYear / 12;
-      acc.claimsPerYear += claimsPerYear;
       acc.claimsPerMonth += claimsPerYear / 12;
-      acc.inspectionsPerYear += inspectionsPerYear;
       acc.inspectionsPerMonth += inspectionsPerYear / 12;
       return acc;
     },
     {
-      incomeGoal: 0,
-      dealsPerYear: 0,
       dealsPerMonth: 0,
-      claimsPerYear: 0,
       claimsPerMonth: 0,
-      inspectionsPerYear: 0,
       inspectionsPerMonth: 0
     }
   );
+
+  // Calculate deltas
+  const deltas = {
+    dealsDelta: actualData.dealsActual - totals.dealsPerMonth,
+    claimsDelta: actualData.claimsActual - totals.claimsPerMonth,
+    inspectionsDelta: actualData.inspectionsActual - totals.inspectionsPerMonth
+  };
+
+  const handleSaveActuals = async () => {
+    try {
+      // Save the actual data to the database
+      const response = await fetch('/api/manager-actuals', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          managerId: user?.id,
+          actualData: actualData,
+          month: new Date().getMonth() + 1,
+          year: new Date().getFullYear()
+        })
+      });
+
+      if (response.ok) {
+        setEditingActuals(false);
+        // Optionally show success message
+        console.log('Actuals saved successfully');
+      } else {
+        console.error('Failed to save actuals');
+      }
+    } catch (error) {
+      console.error('Error saving actuals:', error);
+    }
+  };
+
+  const handleActualChange = (field: string, value: number) => {
+    setActualData(prev => ({
+      ...prev,
+      [field]: value
+    }));
+  };
 
   if (loading) {
     return <div style={{ padding: 24 }}>Loading team data...</div>;
   }
 
   return (
-    <div className="panel">
-      <div className="panel-header">
-        <span>Team Business Plans Overview</span>
+    <div style={{ padding: 24 }}>
+      {/* Team Goals Section */}
+      <div style={{ marginBottom: 32 }}>
+        <h2 style={{ fontSize: 18, fontWeight: 600, color: "#111827", marginBottom: 16 }}>
+          Team Goals
+        </h2>
+        
+        <div className="grid grid-3" style={{ gap: 16 }}>
+          <DashboardCard
+            title="Deals Needed"
+            value={Math.round(totals.dealsPerMonth).toLocaleString()}
+            description="Monthly target"
+          />
+          <DashboardCard
+            title="Claims Needed"
+            value={Math.round(totals.claimsPerMonth).toLocaleString()}
+            description="Monthly target"
+          />
+          <DashboardCard
+            title="Inspections Needed"
+            value={Math.round(totals.inspectionsPerMonth).toLocaleString()}
+            description="Monthly target"
+          />
+        </div>
       </div>
-      
-      <div className="panel-body">
-        {/* First Row - Totals */}
-        <div style={{ marginBottom: 32 }}>
-          <h3 style={{ fontSize: 14, fontWeight: 600, color: "#111827", margin: 0, marginBottom: 16 }}>
-            Team Totals
-          </h3>
-          
-          <div className="grid grid-4" style={{ marginBottom: 24 }}>
-            <DashboardCard
-              title="Total Income Goal"
-              value={`$${totals.incomeGoal.toLocaleString()}`}
-              description="Sum of all reps"
-            />
-            <DashboardCard
-              title="Claims Ratio"
-              value="25%"
-              description="Hardcoded"
-            />
-            <DashboardCard
-              title="Inspection Ratio"
-              value="30%"
-              description="Hardcoded"
-            />
-          </div>
+
+      {/* Team Actuals Section */}
+      <div style={{ marginBottom: 32 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+          <h2 style={{ fontSize: 18, fontWeight: 600, color: "#111827", margin: 0 }}>
+            Team Actuals
+          </h2>
+          <button
+            onClick={() => {
+              if (editingActuals) {
+                handleSaveActuals();
+              } else {
+                setEditingActuals(true);
+              }
+            }}
+            style={{
+              padding: "8px 16px",
+              backgroundColor: editingActuals ? "#10b981" : "#3b82f6",
+              color: "#ffffff",
+              border: "none",
+              borderRadius: 6,
+              fontSize: 13,
+              fontWeight: 600,
+              cursor: "pointer"
+            }}
+          >
+            {editingActuals ? "Save" : "Edit Actuals"}
+          </button>
         </div>
-
-        {/* Yearly Targets */}
-        <div style={{ borderTop: "2px solid #e5e7eb", paddingTop: 24, marginBottom: 24 }}>
-          <h3 style={{ fontSize: 16, fontWeight: 600, color: "#111827", marginBottom: 16 }}>
-            Yearly Targets
-          </h3>
-
-          <div className="grid grid-4" style={{ marginBottom: 24 }}>
-            <DashboardCard
-              title="Deals Per Year"
-              value={totals.dealsPerYear.toLocaleString()}
-              description="Total from all reps"
-            />
-            <DashboardCard
-              title="Claims Per Year"
-              value={totals.claimsPerYear.toLocaleString()}
-              description="Total from all reps"
-            />
-            <DashboardCard
-              title="Inspections Per Year"
-              value={totals.inspectionsPerYear.toLocaleString()}
-              description="Total from all reps"
-            />
-          </div>
+        
+        <div className="grid grid-3" style={{ gap: 16 }}>
+          <DashboardCard
+            title="Deals Actual"
+            value={editingActuals ? (
+              <input
+                type="number"
+                value={actualData.dealsActual}
+                onChange={(e: ChangeEvent<HTMLInputElement>) => 
+                  handleActualChange('dealsActual', Number(e.target.value))
+                }
+                style={{
+                  width: "100%",
+                  padding: "8px 12px",
+                  fontSize: 16,
+                  fontWeight: 600,
+                  border: "2px solid #3b82f6",
+                  borderRadius: 4,
+                  textAlign: "right",
+                  backgroundColor: "transparent"
+                }}
+              />
+            ) : actualData.dealsActual.toLocaleString()}
+            description="Month to date"
+          />
+          <DashboardCard
+            title="Claims Actual"
+            value={editingActuals ? (
+              <input
+                type="number"
+                value={actualData.claimsActual}
+                onChange={(e: ChangeEvent<HTMLInputElement>) => 
+                  handleActualChange('claimsActual', Number(e.target.value))
+                }
+                style={{
+                  width: "100%",
+                  padding: "8px 12px",
+                  fontSize: 16,
+                  fontWeight: 600,
+                  border: "2px solid #3b82f6",
+                  borderRadius: 4,
+                  textAlign: "right",
+                  backgroundColor: "transparent"
+                }}
+              />
+            ) : actualData.claimsActual.toLocaleString()}
+            description="Month to date"
+          />
+          <DashboardCard
+            title="Inspections Actual"
+            value={editingActuals ? (
+              <input
+                type="number"
+                value={actualData.inspectionsActual}
+                onChange={(e: ChangeEvent<HTMLInputElement>) => 
+                  handleActualChange('inspectionsActual', Number(e.target.value))
+                }
+                style={{
+                  width: "100%",
+                  padding: "8px 12px",
+                  fontSize: 16,
+                  fontWeight: 600,
+                  border: "2px solid #3b82f6",
+                  borderRadius: 4,
+                  textAlign: "right",
+                  backgroundColor: "transparent"
+                }}
+              />
+            ) : actualData.inspectionsActual.toLocaleString()}
+            description="Month to date"
+          />
         </div>
+      </div>
 
-        {/* Monthly Targets */}
-        <div style={{ borderTop: "2px solid #e5e7eb", paddingTop: 24, marginBottom: 24 }}>
-          <h3 style={{ fontSize: 16, fontWeight: 600, color: "#111827", marginBottom: 16 }}>
-            Monthly Targets
-          </h3>
-
-          <div className="grid grid-4" style={{ marginBottom: 24 }}>
-            <DashboardCard
-              title="Deals Per Month"
-              value={totals.dealsPerMonth % 1 !== 0 ? totals.dealsPerMonth.toFixed(2) : totals.dealsPerMonth.toLocaleString()}
-              description="Total from all reps"
-            />
-            <DashboardCard
-              title="Claims Per Month"
-              value={totals.claimsPerMonth % 1 !== 0 ? totals.claimsPerMonth.toFixed(2) : totals.claimsPerMonth.toLocaleString()}
-              description="Total from all reps"
-            />
-            <DashboardCard
-              title="Inspections Per Month"
-              value={totals.inspectionsPerMonth % 1 !== 0 ? totals.inspectionsPerMonth.toFixed(2) : totals.inspectionsPerMonth.toLocaleString()}
-              description="Total from all reps"
-            />
-          </div>
-        </div>
-
-        {/* Sales User Table */}
-        <div style={{ borderTop: "2px solid #e5e7eb", paddingTop: 24 }}>
-          <h3 style={{ fontSize: 16, fontWeight: 600, color: "#111827", marginBottom: 16 }}>
-            Sales Team Plans
-          </h3>
-          
-          <div style={{ overflowX: "auto" }}>
-            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
-              <thead>
-                <tr style={{ backgroundColor: "#f3f4f6", borderBottom: "2px solid #e5e7eb" }}>
-                  <th style={{ padding: 12, textAlign: "left", fontWeight: 600, color: "#111827" }}>Rep Name</th>
-                  <th style={{ padding: 12, textAlign: "right", fontWeight: 600, color: "#111827" }}>Income Goal</th>
-                  <th style={{ padding: 12, textAlign: "right", fontWeight: 600, color: "#111827" }}>Deal Ave</th>
-                  <th style={{ padding: 12, textAlign: "right", fontWeight: 600, color: "#111827" }}>Deals/Year</th>
-                  <th style={{ padding: 12, textAlign: "right", fontWeight: 600, color: "#111827" }}>Deals/Month</th>
-                  <th style={{ padding: 12, textAlign: "right", fontWeight: 600, color: "#111827" }}>Claims/Year</th>
-                  <th style={{ padding: 12, textAlign: "right", fontWeight: 600, color: "#111827" }}>Claims/Month</th>
-                  <th style={{ padding: 12, textAlign: "right", fontWeight: 600, color: "#111827" }}>Inspections/Year</th>
-                  <th style={{ padding: 12, textAlign: "right", fontWeight: 600, color: "#111827" }}>Inspections/Month</th>
-                  <th style={{ padding: 12, textAlign: "center", fontWeight: 600, color: "#111827" }}>Status</th>
-                </tr>
-              </thead>
-              <tbody>
-                {committedPlans.length > 0 ? (
-                  committedPlans.map((plan, idx) => {
-                    const bp = plan.businessPlan;
-                    const dealsPerYear = bp?.dealsPerYear || 0;
-                    const claimsPerYear = Math.round(dealsPerYear - (dealsPerYear * 0.25));
-                    const inspectionsPerYear = Math.round(claimsPerYear - (claimsPerYear * 0.30));
-                    
-                    return (
-                      <tr key={idx} style={{ borderBottom: "1px solid #e5e7eb", backgroundColor: idx % 2 === 0 ? "#ffffff" : "#f9fafb" }}>
-                        <td style={{ padding: 12, color: "#111827", fontWeight: 500 }}>{plan.userName}</td>
-                        <td style={{ padding: 12, textAlign: "right", color: "#374151" }}>${(bp?.revenueGoal || 0).toLocaleString()}</td>
-                        <td style={{ padding: 12, textAlign: "right", color: "#374151" }}>${(bp?.averageDealSize || 0).toLocaleString()}</td>
-                        <td style={{ padding: 12, textAlign: "right", color: "#374151" }}>{dealsPerYear.toLocaleString()}</td>
-                        <td style={{ padding: 12, textAlign: "right", color: "#374151" }}>{(dealsPerYear / 12).toFixed(2)}</td>
-                        <td style={{ padding: 12, textAlign: "right", color: "#374151" }}>{claimsPerYear.toLocaleString()}</td>
-                        <td style={{ padding: 12, textAlign: "right", color: "#374151" }}>{(claimsPerYear / 12).toFixed(2)}</td>
-                        <td style={{ padding: 12, textAlign: "right", color: "#374151" }}>{inspectionsPerYear.toLocaleString()}</td>
-                        <td style={{ padding: 12, textAlign: "right", color: "#374151" }}>{(inspectionsPerYear / 12).toFixed(2)}</td>
-                        <td style={{ padding: 12, textAlign: "center" }}>
-                          <span style={{ padding: "4px 8px", backgroundColor: "#d1fae5", color: "#065f46", borderRadius: 4, fontSize: 11, fontWeight: 600 }}>
-                            Committed
-                          </span>
-                        </td>
-                      </tr>
-                    );
-                  })
-                ) : (
-                  <tr>
-                    <td colSpan={10} style={{ padding: 24, textAlign: "center", color: "#6b7280" }}>
-                      No committed plans yet
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
+      {/* Team Delta Section */}
+      <div style={{ marginBottom: 32 }}>
+        <h2 style={{ fontSize: 18, fontWeight: 600, color: "#111827", marginBottom: 16 }}>
+          Team Delta
+        </h2>
+        
+        <div className="grid grid-3" style={{ gap: 16 }}>
+          <DashboardCard
+            title="Deals Delta"
+            value={`${deltas.dealsDelta >= 0 ? '+' : ''}${deltas.dealsDelta.toLocaleString()}`}
+            description="Actual vs Goal"
+            style={{ 
+              backgroundColor: deltas.dealsDelta >= 0 ? "#d1fae5" : "#fee2e2",
+              color: deltas.dealsDelta >= 0 ? "#065f46" : "#991b1b"
+            }}
+          />
+          <DashboardCard
+            title="Claims Delta"
+            value={`${deltas.claimsDelta >= 0 ? '+' : ''}${deltas.claimsDelta.toLocaleString()}`}
+            description="Actual vs Goal"
+            style={{ 
+              backgroundColor: deltas.claimsDelta >= 0 ? "#d1fae5" : "#fee2e2",
+              color: deltas.claimsDelta >= 0 ? "#065f46" : "#991b1b"
+            }}
+          />
+          <DashboardCard
+            title="Inspections Delta"
+            value={`${deltas.inspectionsDelta >= 0 ? '+' : ''}${deltas.inspectionsDelta.toLocaleString()}`}
+            description="Actual vs Goal"
+            style={{ 
+              backgroundColor: deltas.inspectionsDelta >= 0 ? "#d1fae5" : "#fee2e2",
+              color: deltas.inspectionsDelta >= 0 ? "#065f46" : "#991b1b"
+            }}
+          />
         </div>
       </div>
     </div>
