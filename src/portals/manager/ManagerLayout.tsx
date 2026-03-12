@@ -25,6 +25,7 @@ export function ManagerLayout({ children, currentView }: ManagerLayoutProps) {
           userName={user?.name ?? "Manager"}
           userId={user?.id}
           roleLabel="Manager"
+          panelName="Manager Portal"
           onLogout={logout}
         />
       }

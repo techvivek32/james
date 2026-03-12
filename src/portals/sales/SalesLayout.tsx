@@ -27,6 +27,7 @@ export function SalesLayout({ children, currentView, userName, userId }: SalesLa
           userName={userName ?? "Sales Rep"}
           userId={userId}
           roleLabel="Sales Rep"
+          panelName="Sales Portal"
           onLogout={logout}
           showProfileDropdown={true}
         />

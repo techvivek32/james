@@ -40,6 +40,7 @@ export function AdminLayout({ children, currentView }: AdminLayoutProps) {
           userName={user?.name ?? "Admin"}
           userId={user?.id}
           roleLabel="Admin"
+          panelName="Admin Portal"
           onLogout={logout}
         />
       }

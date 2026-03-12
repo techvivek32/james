@@ -10,6 +10,7 @@ type HeaderProps = {
   userId?: string;
   onLogout: () => void;
   showProfileDropdown?: boolean;
+  panelName?: string; // Add panel name prop
 };
 
 export function Header(props: HeaderProps) {
@@ -30,6 +31,12 @@ export function Header(props: HeaderProps) {
   return (
     <div className="header">
       <div className="header-titles">
+        {/* Show panel name on mobile/tablet next to hamburger menu */}
+        {props.panelName && (
+          <div className="header-panel-name">
+            {props.panelName}
+          </div>
+        )}
         <h1 className="header-title">{props.title}</h1>
         {props.subtitle && (
           <p className="header-subtitle">{props.subtitle}</p>

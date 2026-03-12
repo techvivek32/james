@@ -24,6 +24,7 @@ export function MarketingLayout({ children, currentView }: MarketingLayoutProps)
           subtitle="Marketing view"
           userName={user?.name ?? "Marketing"}
           roleLabel="Marketing"
+          panelName="Marketing Portal"
           onLogout={logout}
         />
       }
