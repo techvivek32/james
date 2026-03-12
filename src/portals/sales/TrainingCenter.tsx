@@ -54,7 +54,6 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
       }
     }
   }, [courses]);
-
   // Load playlists from localStorage
   useEffect(() => {
     const saved = localStorage.getItem('sales-playlists');
@@ -163,8 +162,325 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
     
     loadProgress();
   }, [courses, user]);
+  return (
+    <div className="training-center">
+      {/* Always show tabs */}
+      <div style={{ display: 'flex', gap: 8, marginBottom: 24, borderBottom: '2px solid #e5e7eb' }}>
+        <button
+          type="button"
+          onClick={() => {
+            setActiveTab('courses');
+            if (selectedCourse) {
+              setSelectedCourse(null);
+              setActivePageId(null);
+              setViewingPlaylist(null);
+            }
+          }}
+          style={{
+            padding: '16px 32px',
+            background: 'none',
+            border: 'none',
+            borderBottom: activeTab === 'courses' ? '2px solid #2563eb' : '2px solid transparent',
+            color: activeTab === 'courses' ? '#2563eb' : '#6b7280',
+            fontWeight: activeTab === 'courses' ? 600 : 400,
+            cursor: 'pointer',
+            marginBottom: '-2px',
+            fontSize: 18
+          }}
+        >
+          Courses
+        </button>
+        <button
+          type="button"
+          onClick={() => {
+            setActiveTab('myPlaylists');
+            if (selectedCourse) {
+              setSelectedCourse(null);
+              setActivePageId(null);
+              setViewingPlaylist(null);
+            }
+          }}
+          style={{
+            padding: '16px 32px',
+            background: 'none',
+            border: 'none',
+            borderBottom: activeTab === 'myPlaylists' ? '2px solid #2563eb' : '2px solid transparent',
+            color: activeTab === 'myPlaylists' ? '#2563eb' : '#6b7280',
+            fontWeight: activeTab === 'myPlaylists' ? 600 : 400,
+            cursor: 'pointer',
+            marginBottom: '-2px',
+            fontSize: 18
+          }}
+        >
+          My Playlists
+        </button>
+        <button
+          type="button"
+          onClick={() => {
+            setActiveTab('assignedPlaylists');
+            if (selectedCourse) {
+              setSelectedCourse(null);
+              setActivePageId(null);
+              setViewingPlaylist(null);
+            }
+            // Mark as viewed
+            if (user?.id) {
+              localStorage.setItem(`assigned-playlists-viewed-${user.id}`, 'true');
+              setUnreadAssignedCount(0);
+            }
+          }}
+          style={{
+            padding: '16px 32px',
+            background: 'none',
+            border: 'none',
+            borderBottom: activeTab === 'assignedPlaylists' ? '2px solid #2563eb' : '2px solid transparent',
+            color: activeTab === 'assignedPlaylists' ? '#2563eb' : '#6b7280',
+            fontWeight: activeTab === 'assignedPlaylists' ? 600 : 400,
+            cursor: 'pointer',
+            marginBottom: '-2px',
+            fontSize: 18,
+            position: 'relative',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 8
+          }}
+        >
+          Assigned Playlists
+          {unreadAssignedCount > 0 && (
+            <span style={{
+              backgroundColor: '#ef4444',
+              color: 'white',
+              borderRadius: '50%',
+              width: 28,
+              height: 28,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontSize: 14,
+              fontWeight: 600
+            }}>
+              {unreadAssignedCount}
+            </span>
+          )}
+        </button>
+      </div>
+      {selectedCourse ? (
+        <CourseView />
+      ) : (
+        <TabContent />
+      )}
+    </div>
+  );
 
-  if (selectedCourse) {
+  function TabContent() {
+    if (activeTab === 'courses') {
+      return (
+        <>
+          <div className="training-center-header">
+            <div className="panel-header">Training Center</div>
+            <div className="training-center-search">
+              <input
+                className="field-input"
+                placeholder="Search trainings"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+              />
+            </div>
+          </div>
+          {isLoading ? (
+            <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '300px' }}>
+              <div style={{ textAlign: 'center' }}>
+                <div className="spinner" style={{ margin: '0 auto 16px' }}></div>
+                <div style={{ color: '#6b7280' }}>Loading courses...</div>
+              </div>
+            </div>
+          ) : filteredCourses.length > 0 ? (
+            <div className="training-card-grid">
+              {filteredCourses.map((course: Course) => {
+                const progress = courseProgress[course.id] || { completed: 0, total: 0, isCompleted: false };
+                return (
+                  <button
+                    key={course.id}
+                    type="button"
+                    className="training-card"
+                    onClick={() => setSelectedCourse(course)}
+                    style={{ cursor: "pointer", border: "none", background: "none", padding: 0, textAlign: "left" }}
+                  >
+                    <div 
+                      className="training-card-image"
+                      style={
+                        course.coverImageUrl
+                          ? { backgroundImage: `url(${course.coverImageUrl})`, backgroundSize: "cover", backgroundPosition: "center" }
+                          : undefined
+                      }
+                    >
+                      <div className="training-card-image-overlay">
+                        {course.tagline && (
+                          <span className="training-card-chip">{course.tagline}</span>
+                        )}
+                      </div>
+                    </div>
+                    <div className="training-card-body">
+                      <div className="training-card-title">{course.title}</div>
+                      {progress.isCompleted && (
+                        <div style={{ color: "#10b981", fontSize: "14px", fontWeight: 600, marginTop: "8px" }}>
+                          ✓ Completed
+                        </div>
+                      )}
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="panel-empty">No trainings match your search yet.</div>
+          )}
+        </>
+      );
+    }
+    if (activeTab === 'myPlaylists') {
+      return (
+        <div className="panel">
+          <div className="panel-header">
+            <span>My Playlists</span>
+          </div>
+          <div className="panel-body">
+            {playlists.length === 0 ? (
+              <div style={{ textAlign: 'center', padding: '40px', color: '#6b7280' }}>
+                <div style={{ fontSize: '48px', marginBottom: '16px', opacity: 0.3 }}>📋</div>
+                <h3 style={{ fontSize: '20px', fontWeight: 600, color: '#374151', marginBottom: '8px' }}>
+                  No Playlists Yet
+                </h3>
+                <p>Create a playlist by clicking "Make Playlist" when viewing a course</p>
+              </div>
+            ) : (
+              <div style={{ display: 'grid', gap: 16 }}>
+                {playlists.map((playlist) => (
+                  <div key={playlist.id} className="card" style={{ padding: 16 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start' }}>
+                      <div style={{ flex: 1 }}>
+                        <div style={{ fontSize: 18, fontWeight: 600, marginBottom: 8, color: '#111827' }}>
+                          {playlist.name}
+                        </div>
+                        <div style={{ fontSize: 14, color: '#6b7280', marginBottom: 8 }}>
+                          Course: {playlist.courseName}
+                        </div>
+                        <div style={{ fontSize: 14, color: '#6b7280' }}>
+                          {playlist.selectedModules.length} module{playlist.selectedModules.length !== 1 ? 's' : ''}
+                        </div>
+                      </div>
+                      <div style={{ display: 'flex', gap: 12 }}>
+                        <button
+                          type="button"
+                          className="btn-primary"
+                          style={{ padding: '14px 28px', fontSize: 17, fontWeight: 600 }}
+                          onClick={() => {
+                            const course = courses.find(c => c.id === playlist.courseId);
+                            if (course) {
+                              setViewingPlaylist(playlist);
+                              setSelectedCourse(course);
+                            }
+                          }}
+                        >
+                          View
+                        </button>
+                        <button
+                          type="button"
+                          className="btn-ghost btn-danger"
+                          style={{ padding: '14px 28px', fontSize: 17, fontWeight: 600 }}
+                          onClick={() => {
+                            if (confirm('Delete this playlist?')) {
+                              const updated = playlists.filter(p => p.id !== playlist.id);
+                              setPlaylists(updated);
+                              localStorage.setItem('sales-playlists', JSON.stringify(updated));
+                            }
+                          }}
+                        >
+                          Delete
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      );
+    }
+    if (activeTab === 'assignedPlaylists') {
+      return (
+        <div className="panel">
+          <div className="panel-header">
+            <span>Assigned Playlists</span>
+          </div>
+          <div className="panel-body">
+            {assignedPlaylists.length === 0 ? (
+              <div style={{ textAlign: 'center', padding: '40px', color: '#6b7280' }}>
+                <div style={{ fontSize: '48px', marginBottom: '16px', opacity: 0.3 }}>📋</div>
+                <h3 style={{ fontSize: '20px', fontWeight: 600, color: '#374151', marginBottom: '8px' }}>
+                  No Assigned Playlists
+                </h3>
+                <p>Your manager hasn't assigned any playlists yet</p>
+              </div>
+            ) : (
+              <div style={{ display: 'grid', gap: 16 }}>
+                {assignedPlaylists.map((assignment) => (
+                  <div key={assignment._id} className="card" style={{ padding: 16 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start' }}>
+                      <div style={{ flex: 1 }}>
+                        <div style={{ fontSize: 18, fontWeight: 600, marginBottom: 8, color: '#111827' }}>
+                          {assignment.playlistName}
+                        </div>
+                        <div style={{ fontSize: 14, color: '#6b7280', marginBottom: 4 }}>
+                          Course: {assignment.courseName}
+                        </div>
+                        <div style={{ fontSize: 14, color: '#6b7280', marginBottom: 4 }}>
+                          {assignment.selectedModules.length} module{assignment.selectedModules.length !== 1 ? 's' : ''}
+                        </div>
+                        <div style={{ fontSize: 12, color: '#9ca3af', fontStyle: 'italic' }}>
+                          Assigned by: {assignment.managerName}
+                        </div>
+                      </div>
+                      <div style={{ display: 'flex', gap: 12 }}>
+                        <button
+                          type="button"
+                          className="btn-primary"
+                          style={{ padding: '14px 28px', fontSize: 17, fontWeight: 600 }}
+                          onClick={() => {
+                            const course = courses.find(c => c.id === assignment.courseId);
+                            if (course) {
+                              const playlist = {
+                                id: assignment.playlistId,
+                                name: assignment.playlistName,
+                                courseId: assignment.courseId,
+                                courseName: assignment.courseName,
+                                selectedModules: assignment.selectedModules,
+                                createdAt: assignment.createdAt
+                              };
+                              setViewingPlaylist(playlist);
+                              setSelectedCourse(course);
+                            }
+                          }}
+                        >
+                          View
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      );
+    }
+
+    return null;
+  }
+  function CourseView() {
+    if (!selectedCourse) return null;
+    
     let pages = (selectedCourse.pages ?? []).filter(p => p.status === 'published');
     
     // If viewing a playlist, filter to show only selected modules
@@ -230,7 +546,6 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
         body: JSON.stringify({ userId: user.id, courseId: selectedCourse.id, quizResults: updatedResults })
       }).catch(err => console.error("Failed to save quiz:", err));
     };
-
     const handleCompleteCourse = () => {
       if (!user || !selectedCourse) return;
       setCourseCompleted(true);
@@ -242,7 +557,7 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
     };
 
     return (
-      <div className="training-center">
+      <>
         <style>{`
           .training-center [data-video-share],
           .training-center [data-video-delete],
@@ -367,7 +682,6 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
             </div>
           </div>
         )}
-
         {/* Share Modal */}
         {activePage && (
           <ShareModal
@@ -621,296 +935,8 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
               </>
             )}
           </div>
-          {/* Temporarily hidden - Coming Soon */}
-          {/* {activePage && !activePage.isQuiz && <LessonAIChat lessonTitle={activePage.title || selectedCourse.title} lessonContent={activePage.body} videoUrl={activePage.videoUrl} courseTitle={selectedCourse.title} allPages={pages} />} */}
         </div>
-      </div>
+      </>
     );
   }
-
-  return (
-    <div className="training-center">
-      {/* Tabs */}
-      <div style={{ display: 'flex', gap: 8, marginBottom: 24, borderBottom: '2px solid #e5e7eb' }}>
-        <button
-          type="button"
-          onClick={() => setActiveTab('courses')}
-          style={{
-            padding: '16px 32px',
-            background: 'none',
-            border: 'none',
-            borderBottom: activeTab === 'courses' ? '2px solid #2563eb' : '2px solid transparent',
-            color: activeTab === 'courses' ? '#2563eb' : '#6b7280',
-            fontWeight: activeTab === 'courses' ? 600 : 400,
-            cursor: 'pointer',
-            marginBottom: '-2px',
-            fontSize: 18
-          }}
-        >
-          Courses
-        </button>
-        <button
-          type="button"
-          onClick={() => setActiveTab('myPlaylists')}
-          style={{
-            padding: '16px 32px',
-            background: 'none',
-            border: 'none',
-            borderBottom: activeTab === 'myPlaylists' ? '2px solid #2563eb' : '2px solid transparent',
-            color: activeTab === 'myPlaylists' ? '#2563eb' : '#6b7280',
-            fontWeight: activeTab === 'myPlaylists' ? 600 : 400,
-            cursor: 'pointer',
-            marginBottom: '-2px',
-            fontSize: 18
-          }}
-        >
-          My Playlists
-        </button>
-        <button
-          type="button"
-          onClick={() => {
-            setActiveTab('assignedPlaylists');
-            // Mark as viewed
-            if (user?.id) {
-              localStorage.setItem(`assigned-playlists-viewed-${user.id}`, 'true');
-              setUnreadAssignedCount(0);
-            }
-          }}
-          style={{
-            padding: '16px 32px',
-            background: 'none',
-            border: 'none',
-            borderBottom: activeTab === 'assignedPlaylists' ? '2px solid #2563eb' : '2px solid transparent',
-            color: activeTab === 'assignedPlaylists' ? '#2563eb' : '#6b7280',
-            fontWeight: activeTab === 'assignedPlaylists' ? 600 : 400,
-            cursor: 'pointer',
-            marginBottom: '-2px',
-            fontSize: 18,
-            position: 'relative',
-            display: 'flex',
-            alignItems: 'center',
-            gap: 8
-          }}
-        >
-          Assigned Playlists
-          {unreadAssignedCount > 0 && (
-            <span style={{
-              backgroundColor: '#ef4444',
-              color: 'white',
-              borderRadius: '50%',
-              width: 28,
-              height: 28,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              fontSize: 14,
-              fontWeight: 600
-            }}>
-              {unreadAssignedCount}
-            </span>
-          )}
-        </button>
-      </div>
-
-      {activeTab === 'courses' && (
-        <>
-          <div className="training-center-header">
-            <div className="panel-header">Training Center</div>
-            <div className="training-center-search">
-              <input
-                className="field-input"
-                placeholder="Search trainings"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-          />
-        </div>
-      </div>
-      {isLoading ? (
-        <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '300px' }}>
-          <div style={{ textAlign: 'center' }}>
-            <div className="spinner" style={{ margin: '0 auto 16px' }}></div>
-            <div style={{ color: '#6b7280' }}>Loading courses...</div>
-          </div>
-        </div>
-      ) : filteredCourses.length > 0 ? (
-        <div className="training-card-grid">
-          {filteredCourses.map((course: Course) => {
-            const progress = courseProgress[course.id] || { completed: 0, total: 0, isCompleted: false };
-            const percentage = progress.total > 0 ? Math.round((progress.completed / progress.total) * 100) : 0;
-            return (
-              <button
-                key={course.id}
-                type="button"
-                className="training-card"
-                onClick={() => setSelectedCourse(course)}
-                style={{ cursor: "pointer", border: "none", background: "none", padding: 0, textAlign: "left" }}
-              >
-                <div 
-                  className="training-card-image"
-                  style={
-                    course.coverImageUrl
-                      ? { backgroundImage: `url(${course.coverImageUrl})`, backgroundSize: "cover", backgroundPosition: "center" }
-                      : undefined
-                  }
-                >
-                  <div className="training-card-image-overlay">
-                    {course.tagline && (
-                      <span className="training-card-chip">{course.tagline}</span>
-                    )}
-                  </div>
-                </div>
-                <div className="training-card-body">
-                  <div className="training-card-title">{course.title}</div>
-                  {progress.isCompleted && (
-                    <div style={{ color: "#10b981", fontSize: "14px", fontWeight: 600, marginTop: "8px" }}>
-                      ✓ Completed
-                    </div>
-                  )}
-                </div>
-              </button>
-            );
-          })}
-        </div>
-      ) : (
-        <div className="panel-empty">No trainings match your search yet.</div>
-      )}
-        </>
-      )}
-
-      {activeTab === 'myPlaylists' && (
-        <div className="panel">
-          <div className="panel-header">
-            <span>My Playlists</span>
-          </div>
-          <div className="panel-body">
-            {playlists.length === 0 ? (
-              <div style={{ textAlign: 'center', padding: '40px', color: '#6b7280' }}>
-                <div style={{ fontSize: '48px', marginBottom: '16px', opacity: 0.3 }}>📋</div>
-                <h3 style={{ fontSize: '20px', fontWeight: 600, color: '#374151', marginBottom: '8px' }}>
-                  No Playlists Yet
-                </h3>
-                <p>Create a playlist by clicking "Make Playlist" when viewing a course</p>
-              </div>
-            ) : (
-              <div style={{ display: 'grid', gap: 16 }}>
-                {playlists.map((playlist) => (
-                  <div key={playlist.id} className="card" style={{ padding: 16 }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start' }}>
-                      <div style={{ flex: 1 }}>
-                        <div style={{ fontSize: 18, fontWeight: 600, marginBottom: 8, color: '#111827' }}>
-                          {playlist.name}
-                        </div>
-                        <div style={{ fontSize: 14, color: '#6b7280', marginBottom: 8 }}>
-                          Course: {playlist.courseName}
-                        </div>
-                        <div style={{ fontSize: 14, color: '#6b7280' }}>
-                          {playlist.selectedModules.length} module{playlist.selectedModules.length !== 1 ? 's' : ''}
-                        </div>
-                      </div>
-                      <div style={{ display: 'flex', gap: 12 }}>
-                        <button
-                          type="button"
-                          className="btn-primary"
-                          style={{ padding: '14px 28px', fontSize: 17, fontWeight: 600 }}
-                          onClick={() => {
-                            const course = courses.find(c => c.id === playlist.courseId);
-                            if (course) {
-                              setViewingPlaylist(playlist);
-                              setSelectedCourse(course);
-                            }
-                          }}
-                        >
-                          View
-                        </button>
-                        <button
-                          type="button"
-                          className="btn-ghost btn-danger"
-                          style={{ padding: '14px 28px', fontSize: 17, fontWeight: 600 }}
-                          onClick={() => {
-                            if (confirm('Delete this playlist?')) {
-                              const updated = playlists.filter(p => p.id !== playlist.id);
-                              setPlaylists(updated);
-                              localStorage.setItem('sales-playlists', JSON.stringify(updated));
-                            }
-                          }}
-                        >
-                          Delete
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-
-      {activeTab === 'assignedPlaylists' && (
-        <div className="panel">
-          <div className="panel-header">
-            <span>Assigned Playlists</span>
-          </div>
-          <div className="panel-body">
-            {assignedPlaylists.length === 0 ? (
-              <div style={{ textAlign: 'center', padding: '40px', color: '#6b7280' }}>
-                <div style={{ fontSize: '48px', marginBottom: '16px', opacity: 0.3 }}>📋</div>
-                <h3 style={{ fontSize: '20px', fontWeight: 600, color: '#374151', marginBottom: '8px' }}>
-                  No Assigned Playlists
-                </h3>
-                <p>Your manager hasn't assigned any playlists yet</p>
-              </div>
-            ) : (
-              <div style={{ display: 'grid', gap: 16 }}>
-                {assignedPlaylists.map((assignment) => (
-                  <div key={assignment._id} className="card" style={{ padding: 16 }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start' }}>
-                      <div style={{ flex: 1 }}>
-                        <div style={{ fontSize: 18, fontWeight: 600, marginBottom: 8, color: '#111827' }}>
-                          {assignment.playlistName}
-                        </div>
-                        <div style={{ fontSize: 14, color: '#6b7280', marginBottom: 4 }}>
-                          Course: {assignment.courseName}
-                        </div>
-                        <div style={{ fontSize: 14, color: '#6b7280', marginBottom: 4 }}>
-                          {assignment.selectedModules.length} module{assignment.selectedModules.length !== 1 ? 's' : ''}
-                        </div>
-                        <div style={{ fontSize: 12, color: '#9ca3af', fontStyle: 'italic' }}>
-                          Assigned by: {assignment.managerName}
-                        </div>
-                      </div>
-                      <div style={{ display: 'flex', gap: 12 }}>
-                        <button
-                          type="button"
-                          className="btn-primary"
-                          style={{ padding: '14px 28px', fontSize: 17, fontWeight: 600 }}
-                          onClick={() => {
-                            const course = courses.find(c => c.id === assignment.courseId);
-                            if (course) {
-                              const playlist = {
-                                id: assignment.playlistId,
-                                name: assignment.playlistName,
-                                courseId: assignment.courseId,
-                                courseName: assignment.courseName,
-                                selectedModules: assignment.selectedModules,
-                                createdAt: assignment.createdAt
-                              };
-                              setViewingPlaylist(playlist);
-                              setSelectedCourse(course);
-                            }
-                          }}
-                        >
-                          View
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-    </div>
-  );
 }
