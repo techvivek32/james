@@ -306,59 +306,21 @@ export function ManagerDashboard(props: { teamMembers: UserProfile[] }) {
         </h2>
         
         <div className="grid grid-3" style={{ gap: 16 }}>
-          <div 
-            className="dashboard-card"
-            style={{ 
-              backgroundColor: deltas.dealsDelta >= 0 ? "#d1fae5" : "#fee2e2",
-              color: deltas.dealsDelta >= 0 ? "#065f46" : "#991b1b"
-            }}
-          >
-            <div className="dashboard-card-header">
-              <span className="dashboard-card-title">Deals Delta</span>
-            </div>
-            <div className="dashboard-card-body">
-              <span className="dashboard-card-value">
-                {deltas.dealsDelta >= 0 ? '+' : ''}{deltas.dealsDelta.toLocaleString()}
-              </span>
-              <span className="dashboard-card-description">Actual vs Goal</span>
-            </div>
-          </div>
-
-          <div 
-            className="dashboard-card"
-            style={{ 
-              backgroundColor: deltas.claimsDelta >= 0 ? "#d1fae5" : "#fee2e2",
-              color: deltas.claimsDelta >= 0 ? "#065f46" : "#991b1b"
-            }}
-          >
-            <div className="dashboard-card-header">
-              <span className="dashboard-card-title">Claims Delta</span>
-            </div>
-            <div className="dashboard-card-body">
-              <span className="dashboard-card-value">
-                {deltas.claimsDelta >= 0 ? '+' : ''}{deltas.claimsDelta.toLocaleString()}
-              </span>
-              <span className="dashboard-card-description">Actual vs Goal</span>
-            </div>
-          </div>
-
-          <div 
-            className="dashboard-card"
-            style={{ 
-              backgroundColor: deltas.inspectionsDelta >= 0 ? "#d1fae5" : "#fee2e2",
-              color: deltas.inspectionsDelta >= 0 ? "#065f46" : "#991b1b"
-            }}
-          >
-            <div className="dashboard-card-header">
-              <span className="dashboard-card-title">Inspections Delta</span>
-            </div>
-            <div className="dashboard-card-body">
-              <span className="dashboard-card-value">
-                {deltas.inspectionsDelta >= 0 ? '+' : ''}{deltas.inspectionsDelta.toLocaleString()}
-              </span>
-              <span className="dashboard-card-description">Actual vs Goal</span>
-            </div>
-          </div>
+          <DashboardCard
+            title="Deals Delta"
+            value={`${deltas.dealsDelta >= 0 ? '+' : ''}${Math.round(deltas.dealsDelta).toLocaleString()}`}
+            description="Actual vs Goal"
+          />
+          <DashboardCard
+            title="Claims Delta"
+            value={`${deltas.claimsDelta >= 0 ? '+' : ''}${Math.round(deltas.claimsDelta).toLocaleString()}`}
+            description="Actual vs Goal"
+          />
+          <DashboardCard
+            title="Inspections Delta"
+            value={`${deltas.inspectionsDelta >= 0 ? '+' : ''}${Math.round(deltas.inspectionsDelta).toLocaleString()}`}
+            description="Actual vs Goal"
+          />
         </div>
       </div>
     </div>
