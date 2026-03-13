@@ -964,13 +964,6 @@ export function ManagerOnlineTrainingPage(props: {
             {/* Mobile Header */}
             <div className="course-modules-mobile-header">
               <h3>Course Modules</h3>
-              <button 
-                className="course-modules-mobile-close"
-                onClick={() => setIsMobileSidebarOpen(false)}
-                aria-label="Close menu"
-              >
-                ×
-              </button>
             </div>
             
             {/* Expand/Collapse All Buttons */}
@@ -1067,11 +1060,12 @@ export function ManagerOnlineTrainingPage(props: {
           {/* Mobile Toggle Button */}
           <button
             className="course-modules-mobile-toggle"
-            onClick={() => setIsMobileSidebarOpen(true)}
-            aria-label="Open course modules"
+            onClick={() => setIsMobileSidebarOpen(!isMobileSidebarOpen)}
+            aria-label={isMobileSidebarOpen ? "Close course modules" : "Open course modules"}
           >
-            ☰
+            {isMobileSidebarOpen ? '×' : '☰'}
           </button>
+          
           {/* Resizer */}
           <div 
             className="course-pages-resizer"
