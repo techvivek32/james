@@ -502,6 +502,13 @@ body {
   font-size: 14px;
 }
 
+/* Playlist Action Buttons - Default Desktop Styles */
+.playlist-action-btn {
+  padding: 14px 28px;
+  font-size: 17px;
+  font-weight: 600;
+}
+
 .panel-header-row {
   display: flex;
   align-items: center;
@@ -799,6 +806,51 @@ body {
   .course-modules-mobile-close:hover {
     background-color: #e5e7eb;
   }
+
+  /* Responsive Playlist Cards for Tablet - Horizontal Layout */
+  .playlist-grid {
+    gap: 14px !important;
+  }
+
+  .playlist-card {
+    padding: 14px !important;
+  }
+
+  .playlist-card-content {
+    align-items: flex-start !important;
+  }
+
+  .playlist-card-actions {
+    display: flex !important;
+    flex-direction: row !important;
+    gap: 8px !important;
+    flex-wrap: wrap !important;
+  }
+
+  .playlist-card-actions button,
+  .playlist-action-btn {
+    padding: 10px 16px !important;
+    font-size: 14px !important;
+    font-weight: 600 !important;
+    flex: 1 1 auto !important;
+    min-width: 80px !important;
+    white-space: nowrap !important;
+  }
+
+  /* Training Center Tabs for Tablet */
+  .training-center > div:first-child button {
+    padding: 14px 24px !important;
+    font-size: 16px !important;
+  }
+
+  /* Training Center Header for Tablet */
+  .training-center-header {
+    gap: 12px;
+  }
+
+  .training-center-header > div:last-child {
+    gap: 8px;
+  }
 }
 
 @media (max-width: 768px) {
@@ -827,6 +879,143 @@ body {
   .course-pages-left > div:first-child button {
     font-size: 11px !important;
     padding: 6px 8px !important;
+  }
+
+  /* Responsive Playlist Cards - Horizontal Layout for Mobile */
+  .playlist-grid {
+    gap: 12px !important;
+  }
+
+  .playlist-card {
+    padding: 12px !important;
+  }
+
+  .playlist-card-content {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 12px !important;
+  }
+
+  .playlist-card-info {
+    width: 100% !important;
+    flex: none !important;
+  }
+
+  .playlist-card-actions {
+    display: flex !important;
+    width: 100% !important;
+    flex-direction: row !important;
+    align-items: center !important;
+    gap: 6px !important;
+    flex-wrap: wrap !important;
+  }
+
+  /* Force buttons to be horizontal and compact */
+  .playlist-card-actions > button,
+  .playlist-card-actions > .btn-primary,
+  .playlist-card-actions > .btn-secondary,
+  .playlist-card-actions > .btn-ghost {
+    padding: 8px 12px !important;
+    font-size: 13px !important;
+    font-weight: 600 !important;
+    margin: 0 !important;
+    flex: 1 1 auto !important;
+    min-width: 70px !important;
+    max-width: none !important;
+    display: inline-block !important;
+    box-sizing: border-box !important;
+    white-space: nowrap !important;
+  }
+
+  .playlist-card-title {
+    font-size: 16px !important;
+  }
+
+  /* Training Center Tabs */
+  .training-center > div:first-child {
+    flex-wrap: wrap;
+    gap: 4px !important;
+    margin-bottom: 16px !important;
+  }
+
+  .training-center > div:first-child button {
+    padding: 12px 16px !important;
+    font-size: 15px !important;
+    flex: 1;
+    min-width: 120px;
+  }
+
+  /* Training Center Header */
+  .training-center-header {
+    flex-direction: column;
+    gap: 12px;
+    align-items: stretch !important;
+  }
+
+  .training-center-header .panel-header {
+    font-size: 20px !important;
+  }
+
+  .training-center-header > div:last-child {
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .training-center-header button {
+    width: 100%;
+  }
+}
+
+/* Medium mobile devices - Keep horizontal layout */
+@media (min-width: 481px) and (max-width: 640px) {
+  .playlist-card-actions {
+    display: flex !important;
+    flex-direction: row !important;
+    flex-wrap: wrap !important;
+  }
+
+  .playlist-card-actions > button,
+  .playlist-card-actions > .btn-primary,
+  .playlist-card-actions > .btn-secondary,
+  .playlist-card-actions > .btn-ghost {
+    flex: 1 1 auto !important;
+    padding: 9px 14px !important;
+    font-size: 13px !important;
+  }
+}
+
+@media (max-width: 480px) {
+  /* Extra small mobile devices - Smaller horizontal buttons */
+  .playlist-card {
+    padding: 10px !important;
+  }
+
+  .playlist-card-title {
+    font-size: 15px !important;
+  }
+
+  .playlist-card-info > div:not(.playlist-card-title) {
+    font-size: 12px !important;
+  }
+
+  .playlist-card-actions {
+    gap: 4px !important;
+  }
+
+  .playlist-card-actions > button,
+  .playlist-card-actions > .btn-primary,
+  .playlist-card-actions > .btn-secondary,
+  .playlist-card-actions > .btn-ghost {
+    padding: 7px 10px !important;
+    font-size: 12px !important;
+    min-width: 60px !important;
+  }
+
+  .training-center > div:first-child button {
+    padding: 10px 12px !important;
+    font-size: 14px !important;
+    min-width: 100px;
   }
 }
 

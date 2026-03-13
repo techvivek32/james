@@ -421,12 +421,12 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
                 <p>Create a playlist by clicking "Make Playlist" when viewing a course</p>
               </div>
             ) : (
-              <div style={{ display: 'grid', gap: 16 }}>
+              <div style={{ display: 'grid', gap: 16 }} className="playlist-grid">
                 {playlists.map((playlist) => (
-                  <div key={playlist.id} className="card" style={{ padding: 16 }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start' }}>
-                      <div style={{ flex: 1 }}>
-                        <div style={{ fontSize: 18, fontWeight: 600, marginBottom: 8, color: '#111827' }}>
+                  <div key={playlist.id} className="card playlist-card" style={{ padding: 16 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start' }} className="playlist-card-content">
+                      <div style={{ flex: 1 }} className="playlist-card-info">
+                        <div style={{ fontSize: 18, fontWeight: 600, marginBottom: 8, color: '#111827' }} className="playlist-card-title">
                           {playlist.name}
                         </div>
                         <div style={{ fontSize: 14, color: '#6b7280', marginBottom: 8 }}>
@@ -436,11 +436,10 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
                           {playlist.selectedModules.length} module{playlist.selectedModules.length !== 1 ? 's' : ''}
                         </div>
                       </div>
-                      <div style={{ display: 'flex', gap: 12 }}>
+                      <div style={{ display: 'flex', gap: 12 }} className="playlist-card-actions">
                         <button
                           type="button"
-                          className="btn-primary"
-                          style={{ padding: '14px 28px', fontSize: 17, fontWeight: 600 }}
+                          className="btn-primary playlist-action-btn"
                           onClick={() => {
                             const course = courses.find(c => c.id === playlist.courseId);
                             if (course) {
@@ -453,8 +452,7 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
                         </button>
                         <button
                           type="button"
-                          className="btn-ghost btn-danger"
-                          style={{ padding: '14px 28px', fontSize: 17, fontWeight: 600 }}
+                          className="btn-ghost btn-danger playlist-action-btn"
                           onClick={() => {
                             if (confirm('Delete this playlist?')) {
                               const updated = playlists.filter(p => p.id !== playlist.id);
@@ -491,12 +489,12 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
                 <p>Your manager hasn't assigned any playlists yet</p>
               </div>
             ) : (
-              <div style={{ display: 'grid', gap: 16 }}>
+              <div style={{ display: 'grid', gap: 16 }} className="playlist-grid">
                 {assignedPlaylists.map((assignment) => (
-                  <div key={assignment._id} className="card" style={{ padding: 16 }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start' }}>
-                      <div style={{ flex: 1 }}>
-                        <div style={{ fontSize: 18, fontWeight: 600, marginBottom: 8, color: '#111827' }}>
+                  <div key={assignment._id} className="card playlist-card" style={{ padding: 16 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start' }} className="playlist-card-content">
+                      <div style={{ flex: 1 }} className="playlist-card-info">
+                        <div style={{ fontSize: 18, fontWeight: 600, marginBottom: 8, color: '#111827' }} className="playlist-card-title">
                           {assignment.playlistName}
                         </div>
                         <div style={{ fontSize: 14, color: '#6b7280', marginBottom: 4 }}>
@@ -509,11 +507,10 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
                           Assigned by: {assignment.managerName}
                         </div>
                       </div>
-                      <div style={{ display: 'flex', gap: 12 }}>
+                      <div style={{ display: 'flex', gap: 12 }} className="playlist-card-actions">
                         <button
                           type="button"
-                          className="btn-primary"
-                          style={{ padding: '14px 28px', fontSize: 17, fontWeight: 600 }}
+                          className="btn-primary playlist-action-btn"
                           onClick={() => {
                             const course = courses.find(c => c.id === assignment.courseId);
                             if (course) {
