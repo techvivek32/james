@@ -41,6 +41,7 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
   const [startX, setStartX] = useState(0);
   const [startWidth, setStartWidth] = useState(280);
   const [isFirstPageVisit, setIsFirstPageVisit] = useState(true);
+  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
 
   // Handle lessonId from query parameter (shared lesson)
   useEffect(() => {
@@ -803,7 +804,27 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
         )}
 
         <div className="course-pages-layout">
-          <div className="course-pages-left" style={{ width: `${sidebarWidth}px`, minWidth: '200px', maxWidth: '600px' }}>
+          {/* Mobile Overlay */}
+          {isMobileSidebarOpen && (
+            <div 
+              className="course-modules-mobile-overlay active"
+              onClick={() => setIsMobileSidebarOpen(false)}
+            />
+          )}
+          
+          <div className={`course-pages-left ${isMobileSidebarOpen ? 'mobile-open' : ''}`} style={{ width: `${sidebarWidth}px`, minWidth: '200px', maxWidth: '600px' }}>
+            {/* Mobile Header */}
+            <div className="course-modules-mobile-header">
+              <h3>Course Modules</h3>
+              <button 
+                className="course-modules-mobile-close"
+                onClick={() => setIsMobileSidebarOpen(false)}
+                aria-label="Close menu"
+              >
+                ×
+              </button>
+            </div>
+            
             {/* Expand/Collapse All Buttons */}
             {folders.length > 0 && (
               <div style={{ display: 'flex', gap: '8px', padding: '8px 12px', borderBottom: '1px solid #e5e7eb' }}>
@@ -832,7 +853,12 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
                   <div
                     key={page.id}
                     className={activePage?.id === page.id ? "course-pages-item active" : "course-pages-item"}
-                    onClick={() => unlocked && setActivePageId(page.id)}
+                    onClick={() => {
+                      if (unlocked) {
+                        setActivePageId(page.id);
+                        setIsMobileSidebarOpen(false); // Close sidebar on mobile
+                      }
+                    }}
                     style={{ cursor: unlocked ? "pointer" : "not-allowed", opacity: unlocked ? 1 : 0.5 }}
                   >
                     <span className="course-pages-item-title">
@@ -870,7 +896,12 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
                         <div
                           key={page.id}
                           className={activePage?.id === page.id ? "course-pages-item course-pages-item-child active" : "course-pages-item course-pages-item-child"}
-                          onClick={() => unlocked && setActivePageId(page.id)}
+                          onClick={() => {
+                            if (unlocked) {
+                              setActivePageId(page.id);
+                              setIsMobileSidebarOpen(false); // Close sidebar on mobile
+                            }
+                          }}
                           style={{ cursor: unlocked ? "pointer" : "not-allowed", opacity: unlocked ? 1 : 0.5 }}
                         >
                           <span className="course-pages-item-title">
@@ -884,6 +915,15 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
               })}
             </div>
           </div>
+          
+          {/* Mobile Toggle Button */}
+          <button
+            className="course-modules-mobile-toggle"
+            onClick={() => setIsMobileSidebarOpen(true)}
+            aria-label="Open course modules"
+          >
+            ☰
+          </button>
           {/* Resizer */}
           <div 
             className="course-pages-resizer"
