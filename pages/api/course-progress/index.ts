@@ -1,6 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import { connectMongo } from "../../../src/lib/mongodb";
-import { CourseProgressModel } from "../../../src/lib/models/CourseProgress";
+import { UserProgressModel } from "../../../src/lib/models/UserProgress";
 
 export default async function handler(
   req: NextApiRequest,
@@ -16,7 +16,6 @@ export default async function handler(
       return;
     }
 
-    // Handle empty courseIds - return empty object
     if (!courseIds || (courseIds as string).trim() === '') {
       res.status(200).json({});
       return;
@@ -24,24 +23,22 @@ export default async function handler(
 
     try {
       const courseIdArray = (courseIds as string).split(',').filter(id => id.trim());
-      
-      // If no valid course IDs after filtering, return empty object
+
       if (courseIdArray.length === 0) {
         res.status(200).json({});
         return;
       }
-      
-      // Fetch progress for all courses in one query
-      const progressRecords = await CourseProgressModel.find({
+
+      // Read from UserProgress — same collection the frontend writes to
+      const progressRecords = await UserProgressModel.find({
         userId,
         courseId: { $in: courseIdArray }
       }).lean();
 
-      // Build response object
       const result: Record<string, any> = {};
-      
+
       courseIdArray.forEach(courseId => {
-        const progress = progressRecords.find(p => p.courseId === courseId);
+        const progress = progressRecords.find((p: any) => p.courseId === courseId);
         result[courseId] = progress || {
           completedPages: [],
           quizResults: [],
