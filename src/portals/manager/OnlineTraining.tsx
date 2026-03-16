@@ -196,29 +196,23 @@ export function ManagerOnlineTrainingPage(props: {
     };
   }, [isResizing, startX, startWidth]);
 
-  function getManagerCourseCompletion(course: Course) {
-    const userCode =
-      (props.currentUser.id.charCodeAt(0) || 0) +
-      (props.currentUser.name.charCodeAt(0) || 0);
-    const courseCode = course.id.charCodeAt(0) || 0;
-    const raw = (userCode * 5 + courseCode * 11) % 101;
-    return raw;
-  }
-
-  const managerCoursePercentages = publishedCourses.map((course) =>
-    getManagerCourseCompletion(course)
-  );
-
-  const managerAverageCompletion =
-    managerCoursePercentages.length > 0
-      ? Math.round(
-          managerCoursePercentages.reduce((sum, value) => sum + value, 0) /
-            managerCoursePercentages.length
-        )
-      : 0;
-
   const [courseProgress, setCourseProgress] = useState<Record<string, { completed: number; total: number; isCompleted: boolean }>>({});
   const [isLoadingProgress, setIsLoadingProgress] = useState(false);
+
+  // Real average completion across all courses (lesson pages only)
+  const managerAverageCompletion = (() => {
+    const coursesWithPages = publishedCourses.filter(c => {
+      const lessonCount = (c.pages || []).filter(p => p.status === 'published' && !p.isQuiz).length;
+      return lessonCount > 0;
+    });
+    if (coursesWithPages.length === 0) return 0;
+    const total = coursesWithPages.reduce((sum, course) => {
+      const p = courseProgress[course.id];
+      if (!p || p.total === 0) return sum;
+      return sum + Math.round((p.completed / p.total) * 100);
+    }, 0);
+    return Math.round(total / coursesWithPages.length);
+  })();
 
   useEffect(() => {
     const loadProgress = async () => {
