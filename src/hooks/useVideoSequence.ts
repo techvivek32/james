@@ -48,7 +48,8 @@ type VideoItem =
 
 export async function initVideoSequence(
   container: HTMLElement,
-  onAllEnded: () => void
+  onAllEnded: () => void,
+  autoPlay: boolean = true
 ): Promise<(() => void) | undefined> {
   if (typeof window === 'undefined') return;
 
@@ -77,7 +78,7 @@ export async function initVideoSequence(
         const sep = newSrc.includes('?') ? '&' : '?';
         newSrc += sep + 'api=1';
         // Only first item overall gets autoplay
-        if (items.length === 0) newSrc += '&autoplay=1';
+        if (items.length === 0 && autoPlay) newSrc += '&autoplay=1';
         iframe.src = newSrc;
         items.push({ type: 'vimeo', iframe });
       }
@@ -92,9 +93,10 @@ export async function initVideoSequence(
 
   function playItem(index: number) {
     if (index >= items.length) {
-      onAllEnded();
+      if (autoPlay) onAllEnded();
       return;
     }
+    if (!autoPlay) return; // manual mode - don't chain
     const item = items[index];
     if (item.type === 'yt') {
       if (item.ready && item.player) {
@@ -155,7 +157,7 @@ export async function initVideoSequence(
         width: '100%',
         height: '100%',
         playerVars: {
-          autoplay: globalIdx === 0 ? 1 : 0,
+          autoplay: (globalIdx === 0 && autoPlay) ? 1 : 0,
           enablejsapi: 1,
           rel: 0,
           modestbranding: 1,

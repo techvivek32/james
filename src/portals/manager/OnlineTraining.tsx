@@ -55,6 +55,12 @@ export function ManagerOnlineTrainingPage(props: {
   // Refs for video sequencing (must live at top level, not inside CourseView)
   const videoCleanupRef = useRef<(() => void) | undefined>(undefined);
   const videoCallbackRef = useRef<(() => void) | undefined>(undefined);
+  const [autoPlay, setAutoPlay] = useState<boolean>(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('manager-autoplay') !== 'false';
+    }
+    return true;
+  });
 
   // Handle lessonId from query parameter (shared lesson)
   useEffect(() => {
@@ -945,7 +951,7 @@ export function ManagerOnlineTrainingPage(props: {
         if (!container) return;
         const cleanup = await initVideoSequence(container, () => {
           videoCallbackRef.current?.();
-        });
+        }, autoPlay);
         videoCleanupRef.current = cleanup;
       }, 400);
 
@@ -954,7 +960,7 @@ export function ManagerOnlineTrainingPage(props: {
         videoCleanupRef.current?.();
         videoCleanupRef.current = undefined;
       };
-    }, [activePageId]);
+    }, [activePageId, autoPlay]);
     const handleCompleteCourse = () => {
       if (!props.currentUser || !selectedCourse) return;
       setCourseCompleted(true);
@@ -1002,6 +1008,29 @@ export function ManagerOnlineTrainingPage(props: {
               }}>
                 Back to Courses
               </button>
+              {/* Autoplay Toggle */}
+              <label style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', userSelect: 'none' }}>
+                <div
+                  onClick={() => {
+                    const next = !autoPlay;
+                    setAutoPlay(next);
+                    localStorage.setItem('manager-autoplay', String(next));
+                  }}
+                  style={{
+                    width: 40, height: 22, borderRadius: 11,
+                    backgroundColor: autoPlay ? '#2563eb' : '#d1d5db',
+                    position: 'relative', transition: 'background 0.2s', cursor: 'pointer', flexShrink: 0
+                  }}
+                >
+                  <div style={{
+                    position: 'absolute', top: 3, left: autoPlay ? 21 : 3,
+                    width: 16, height: 16, borderRadius: '50%',
+                    backgroundColor: '#fff', transition: 'left 0.2s',
+                    boxShadow: '0 1px 3px rgba(0,0,0,0.2)'
+                  }} />
+                </div>
+                <span style={{ fontSize: 13, color: '#374151', whiteSpace: 'nowrap' }}>Autoplay</span>
+              </label>
             </div>
           </div>
         </div>
