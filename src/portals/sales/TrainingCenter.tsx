@@ -1,8 +1,9 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import { Course } from "../../types";
 import { LessonAIChat } from "../../components/LessonAIChat";
 import { useAuth } from "../../contexts/AuthContext";
 import { ShareModal } from "../../components/ShareModal";
+import { initVideoSequence } from "../../hooks/useVideoSequence";
 
 type Playlist = {
   id: string;
@@ -42,6 +43,10 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
   const [startWidth, setStartWidth] = useState(280);
   const [isFirstPageVisit, setIsFirstPageVisit] = useState(true);
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
+
+  // Refs for video sequencing (must live at top level, not inside CourseView)
+  const videoCleanupRef = useRef<(() => void) | undefined>(undefined);
+  const videoCallbackRef = useRef<(() => void) | undefined>(undefined);
 
   // Handle lessonId from query parameter (shared lesson)
   useEffect(() => {
@@ -563,6 +568,48 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
     }
     const activePage = pages.find((p) => p.id === activePageId) ?? pages[0];
 
+    // Video sequence: init after page content renders
+    // Update callback ref whenever pages/completedPages/activePageId change
+    videoCallbackRef.current = () => {
+      const currentIndex = pages.findIndex(p => p.id === (activePageId ?? activePage?.id));
+      if (currentIndex < pages.length - 1) {
+        const newCompleted = new Set([...completedPages, pages[currentIndex].id]);
+        setCompletedPages(newCompleted);
+        if (user && selectedCourse) {
+          fetch('/api/progress', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ userId: user.id, courseId: selectedCourse.id, completedPages: Array.from(newCompleted) })
+          }).catch(() => {});
+        }
+        setActivePageId(pages[currentIndex + 1].id);
+        document.querySelector('.course-page-main')?.scrollTo({ top: 0, behavior: 'smooth' });
+      }
+    };
+
+    useEffect(() => {
+      if (!activePage || activePage.isQuiz) return;
+      // Cleanup previous
+      videoCleanupRef.current?.();
+      videoCleanupRef.current = undefined;
+
+      const timer = setTimeout(async () => {
+        const container = document.querySelector<HTMLElement>('.course-page-body-input');
+        if (!container) return;
+        // Pass a stable wrapper that always calls the latest callback
+        const cleanup = await initVideoSequence(container, () => {
+          videoCallbackRef.current?.();
+        });
+        videoCleanupRef.current = cleanup;
+      }, 400);
+
+      return () => {
+        clearTimeout(timer);
+        videoCleanupRef.current?.();
+        videoCleanupRef.current = undefined;
+      };
+    }, [activePageId]);
+
     const isPageUnlocked = (pageId: string) => {
       // All pages are unlocked for sales users - they can access any page
       return true;
@@ -582,6 +629,10 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
       
       if (currentIndex < pages.length - 1) {
         setActivePageId(pages[currentIndex + 1].id);
+        // Scroll to top of content
+        setTimeout(() => {
+          document.querySelector('.course-page-main')?.scrollTo({ top: 0, behavior: 'smooth' });
+        }, 100);
       }
     };
 
@@ -609,6 +660,14 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ userId: user.id, courseId: selectedCourse.id, quizResults: updatedResults })
       }).catch(err => console.error("Failed to save quiz:", err));
+
+      // Auto-advance to next page after quiz submit (2 second delay to show score)
+      const currentIndex = pages.findIndex(p => p.id === activePage.id);
+      if (currentIndex < pages.length - 1) {
+        setTimeout(() => {
+          handleNextPage();
+        }, 2000);
+      }
     };
     const handleCompleteCourse = () => {
       if (!user || !selectedCourse) return;
