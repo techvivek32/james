@@ -210,8 +210,10 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
           
           courses.forEach(course => {
             const courseData = data[course.id] || {};
-            const totalPages = course.pages?.length || 0;
-            const completedPages = courseData.completedPages?.length || 0;
+            const lessonPages = (course.pages || []).filter(p => p.status === 'published' && !p.isQuiz);
+            const totalPages = lessonPages.length;
+            const completedLessonIds = new Set(lessonPages.map(p => p.id));
+            const completedPages = (courseData.completedPages || []).filter((id: string) => completedLessonIds.has(id)).length;
             progressMap[course.id] = { 
               completed: completedPages, 
               total: totalPages,
@@ -398,11 +400,22 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
                         )}
                       </div>
                     </div>
-                    <div className="training-card-body">
+                  <div className="training-card-body">
                       <div className="training-card-title">{course.title}</div>
-                      {progress.isCompleted && (
-                        <div style={{ color: "#10b981", fontSize: "14px", fontWeight: 600, marginTop: "8px" }}>
-                          ✓ Completed
+                      {progress.total > 0 && (
+                        <div className="training-card-progress-row">
+                          <div className="training-card-progress-track">
+                            <div
+                              className="training-card-progress-fill"
+                              style={{
+                                width: `${Math.round((progress.completed / progress.total) * 100)}%`,
+                                background: progress.isCompleted ? '#10b981' : '#22c55e'
+                              }}
+                            />
+                          </div>
+                          <span className="training-card-progress-label">
+                            {progress.isCompleted ? '✓ 100%' : `${Math.round((progress.completed / progress.total) * 100)}%`}
+                          </span>
                         </div>
                       )}
                     </div>
@@ -579,14 +592,33 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
     videoCallbackRef.current = () => {
       const currentIndex = pages.findIndex(p => p.id === (activePageId ?? activePage?.id));
       if (currentIndex < pages.length - 1) {
-        const newCompleted = new Set([...completedPages, pages[currentIndex].id]);
-        setCompletedPages(newCompleted);
-        if (user && selectedCourse) {
-          fetch('/api/progress', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ userId: user.id, courseId: selectedCourse.id, completedPages: Array.from(newCompleted) })
-          }).catch(() => {});
+        const currentPage = pages[currentIndex];
+        // Only mark lesson pages as completed via video end
+        if (!currentPage.isQuiz) {
+          const newCompleted = new Set([...completedPages, currentPage.id]);
+          setCompletedPages(newCompleted);
+
+          // Update card progress immediately
+          const lessonPages = pages.filter(p => !p.isQuiz);
+          const completedLessons = lessonPages.filter(p => newCompleted.has(p.id)).length;
+          if (selectedCourse) {
+            setCourseProgress(prev => ({
+              ...prev,
+              [selectedCourse.id]: {
+                completed: completedLessons,
+                total: lessonPages.length,
+                isCompleted: prev[selectedCourse.id]?.isCompleted || false
+              }
+            }));
+          }
+
+          if (user && selectedCourse) {
+            fetch('/api/progress', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ userId: user.id, courseId: selectedCourse.id, completedPages: Array.from(newCompleted) })
+            }).catch(() => {});
+          }
         }
         setActivePageId(pages[currentIndex + 1].id);
         document.querySelector('.course-page-main')?.scrollTo({ top: 0, behavior: 'smooth' });
@@ -624,18 +656,34 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
     const handleNextPage = () => {
       if (!activePage || !user || !selectedCourse) return;
       const currentIndex = pages.findIndex(p => p.id === activePage.id);
-      const newCompleted = new Set([...completedPages, activePage.id]);
-      setCompletedPages(newCompleted);
-      
-      fetch('/api/progress', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId: user.id, courseId: selectedCourse.id, completedPages: Array.from(newCompleted) })
-      }).catch(err => console.error("Failed to save progress:", err));
-      
+
+      // Only mark lesson pages as completed (not quizzes)
+      let newCompleted = completedPages;
+      if (!activePage.isQuiz) {
+        newCompleted = new Set([...completedPages, activePage.id]);
+        setCompletedPages(newCompleted);
+
+        // Update the card progress state immediately
+        const lessonPages = pages.filter(p => !p.isQuiz);
+        const completedLessons = lessonPages.filter(p => newCompleted.has(p.id)).length;
+        setCourseProgress(prev => ({
+          ...prev,
+          [selectedCourse.id]: {
+            completed: completedLessons,
+            total: lessonPages.length,
+            isCompleted: prev[selectedCourse.id]?.isCompleted || false
+          }
+        }));
+
+        fetch('/api/progress', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ userId: user.id, courseId: selectedCourse.id, completedPages: Array.from(newCompleted) })
+        }).catch(err => console.error("Failed to save progress:", err));
+      }
+
       if (currentIndex < pages.length - 1) {
         setActivePageId(pages[currentIndex + 1].id);
-        // Scroll to top of content
         setTimeout(() => {
           document.querySelector('.course-page-main')?.scrollTo({ top: 0, behavior: 'smooth' });
         }, 100);
@@ -678,10 +726,34 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
     const handleCompleteCourse = () => {
       if (!user || !selectedCourse) return;
       setCourseCompleted(true);
+
+      // Mark the last lesson page as completed too
+      const lessonPages = pages.filter(p => !p.isQuiz);
+      let newCompleted = completedPages;
+      if (activePage && !activePage.isQuiz) {
+        newCompleted = new Set([...completedPages, activePage.id]);
+        setCompletedPages(newCompleted);
+      }
+
+      // Update card to 100% completed immediately
+      setCourseProgress(prev => ({
+        ...prev,
+        [selectedCourse.id]: {
+          completed: lessonPages.length,
+          total: lessonPages.length,
+          isCompleted: true
+        }
+      }));
+
       fetch('/api/progress', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId: user.id, courseId: selectedCourse.id, courseCompleted: true })
+        body: JSON.stringify({
+          userId: user.id,
+          courseId: selectedCourse.id,
+          completedPages: Array.from(newCompleted),
+          courseCompleted: true
+        })
       }).catch(err => console.error("Failed to complete course:", err));
     };
 
