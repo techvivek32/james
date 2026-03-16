@@ -148,7 +148,7 @@ export function ManagerDashboard(props: { teamMembers: UserProfile[] }) {
       const total = lessonPages.length;
       const lessonIds = new Set(lessonPages.map((p: any) => p.id));
 
-      const allProgress = await Promise.all(
+      const allProgress: any[] = await Promise.all(
         teamUsers.map((u: any) =>
           fetch(`/api/course-progress?userId=${u.id}&courseIds=${course.id}`)
             .then((r) => r.ok ? r.json() : {})
