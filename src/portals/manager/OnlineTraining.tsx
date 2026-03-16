@@ -30,7 +30,7 @@ export function ManagerOnlineTrainingPage(props: {
   const [quizScore, setQuizScore] = useState<{ correct: number; total: number } | null>(null);
   const [savedQuizResults, setSavedQuizResults] = useState<any[]>([]);
   const [courseCompleted, setCourseCompleted] = useState(false);
-  const [activeTab, setActiveTab] = useState<'courses' | 'playlists'>('courses');
+  const [activeTab, setActiveTab] = useState<'courses' | 'playlists' | 'team'>('courses');
   const [isCreatePlaylistOpen, setIsCreatePlaylistOpen] = useState(false);
   const [playlistName, setPlaylistName] = useState('');
   const [selectedModules, setSelectedModules] = useState<Set<string>>(new Set());
@@ -198,6 +198,8 @@ export function ManagerOnlineTrainingPage(props: {
 
   const [courseProgress, setCourseProgress] = useState<Record<string, { completed: number; total: number; isCompleted: boolean }>>({});
   const [isLoadingProgress, setIsLoadingProgress] = useState(false);
+  const [teamProgress, setTeamProgress] = useState<{ user: any; rows: { course: any; completed: number; total: number; isCompleted: boolean }[] }[]>([]);
+  const [isLoadingTeam, setIsLoadingTeam] = useState(false);
 
   // Real average completion across all courses (lesson pages only)
   const managerAverageCompletion = (() => {
@@ -255,6 +257,34 @@ export function ManagerOnlineTrainingPage(props: {
       setTimeout(() => loadProgress(), 0);
     }
   }, [publishedCourses, props.currentUser]);
+
+  // Load team progress when team tab is active
+  useEffect(() => {
+    if (activeTab !== 'team' || !props.currentUser?.id || publishedCourses.length === 0) return;
+    setIsLoadingTeam(true);
+    const courseIds = publishedCourses.map(c => c.id).join(',');
+    Promise.all([
+      fetch(`/api/users?role=sales&managerId=${props.currentUser.id}`).then(r => r.json()),
+    ]).then(async ([users]) => {
+      const teamUsers = (users || []).filter((u: any) => !u.deleted);
+      const results = await Promise.all(
+        teamUsers.map(async (user: any) => {
+          const res = await fetch(`/api/course-progress?userId=${user.id}&courseIds=${courseIds}`);
+          const progData = res.ok ? await res.json() : {};
+          const rows = publishedCourses.map(course => {
+            const lessonPages = (course.pages || []).filter((p: any) => p.status === 'published' && !p.isQuiz);
+            const total = lessonPages.length;
+            const lessonIds = new Set(lessonPages.map((p: any) => p.id));
+            const rec = progData[course.id] || {};
+            const completed = (rec.completedPages || []).filter((id: string) => lessonIds.has(id)).length;
+            return { course, completed, total, isCompleted: rec.courseCompleted || false };
+          }).filter(r => r.total > 0);
+          return { user, rows };
+        })
+      );
+      setTeamProgress(results);
+    }).catch(console.error).finally(() => setIsLoadingTeam(false));
+  }, [activeTab, props.currentUser?.id, publishedCourses]);
 
   // Render modals at top level so they work everywhere
   const renderModals = () => (
@@ -825,6 +855,30 @@ export function ManagerOnlineTrainingPage(props: {
             }}
           >
             Playlists
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setActiveTab('team');
+              if (selectedCourse) {
+                setSelectedCourse(null);
+                setActivePageId(null);
+                setViewingPlaylist(null);
+              }
+            }}
+            style={{
+              padding: '16px 32px',
+              background: 'none',
+              border: 'none',
+              borderBottom: activeTab === 'team' ? '2px solid #2563eb' : '2px solid transparent',
+              color: activeTab === 'team' ? '#2563eb' : '#6b7280',
+              fontWeight: activeTab === 'team' ? 600 : 400,
+              cursor: 'pointer',
+              marginBottom: '-2px',
+              fontSize: 18
+            }}
+          >
+            Team Progress
           </button>
         </div>
 
@@ -1484,6 +1538,30 @@ export function ManagerOnlineTrainingPage(props: {
           >
             Playlists
           </button>
+          <button
+            type="button"
+            onClick={() => {
+              setActiveTab('team');
+              if (selectedCourse) {
+                setSelectedCourse(null);
+                setActivePageId(null);
+                setViewingPlaylist(null);
+              }
+            }}
+            style={{
+              padding: '16px 32px',
+              background: 'none',
+              border: 'none',
+              borderBottom: activeTab === 'team' ? '2px solid #2563eb' : '2px solid transparent',
+              color: activeTab === 'team' ? '#2563eb' : '#6b7280',
+              fontWeight: activeTab === 'team' ? 600 : 400,
+              cursor: 'pointer',
+              marginBottom: '-2px',
+              fontSize: 18
+            }}
+          >
+            Team Progress
+          </button>
         </div>
 
         {selectedCourse ? (
@@ -1670,6 +1748,75 @@ export function ManagerOnlineTrainingPage(props: {
                     </div>
                   </div>
                 ))}
+              </div>
+            )}
+          </div>
+        </div>
+      );
+    }
+
+    if (activeTab === 'team') {
+      return (
+        <div className="panel">
+          <div className="panel-header"><span>Team Training Progress</span></div>
+          <div className="panel-body">
+            {isLoadingTeam ? (
+              <div style={{ textAlign: 'center', padding: 60, color: '#6b7280' }}>Loading...</div>
+            ) : teamProgress.length === 0 ? (
+              <div style={{ textAlign: 'center', padding: 60, color: '#9ca3af' }}>No team members found.</div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+                {publishedCourses.filter(c => (c.pages || []).some((p: any) => p.status === 'published' && !p.isQuiz)).map(course => {
+                  const lessonPages = (course.pages || []).filter((p: any) => p.status === 'published' && !p.isQuiz);
+                  const total = lessonPages.length;
+                  return (
+                    <div key={course.id} style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 12, overflow: 'hidden' }}>
+                      <div style={{ padding: '14px 20px', background: '#f8fafc', borderBottom: '1px solid #e5e7eb', fontWeight: 700, fontSize: 15, color: '#111827' }}>
+                        {course.title}
+                        <span style={{ fontWeight: 400, fontSize: 13, color: '#6b7280', marginLeft: 8 }}>{total} lesson{total !== 1 ? 's' : ''}</span>
+                      </div>
+                      <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                        <thead>
+                          <tr style={{ background: '#f1f5f9' }}>
+                            <th style={{ padding: '10px 20px', textAlign: 'left', fontSize: 13, fontWeight: 600, color: '#374151' }}>User Name</th>
+                            <th style={{ padding: '10px 20px', textAlign: 'left', fontSize: 13, fontWeight: 600, color: '#374151' }}>Course Progress</th>
+                            <th style={{ padding: '10px 20px', textAlign: 'left', fontSize: 13, fontWeight: 600, color: '#374151' }}>Lessons Completed</th>
+                            <th style={{ padding: '10px 20px', textAlign: 'left', fontSize: 13, fontWeight: 600, color: '#374151' }}>Status</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {teamProgress.map(({ user, rows }) => {
+                            const row = rows.find(r => r.course.id === course.id) || { completed: 0, total, isCompleted: false };
+                            const pct = total > 0 ? Math.round((row.completed / total) * 100) : 0;
+                            return (
+                              <tr key={user.id} style={{ borderTop: '1px solid #f1f5f9' }}>
+                                <td style={{ padding: '12px 20px', fontSize: 14, color: '#111827', fontWeight: 500 }}>{user.name}</td>
+                                <td style={{ padding: '12px 20px', minWidth: 160 }}>
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                                    <div style={{ flex: 1, height: 8, borderRadius: 999, background: '#e5e7eb', overflow: 'hidden' }}>
+                                      <div style={{ height: '100%', borderRadius: 999, background: row.isCompleted ? '#10b981' : '#22c55e', width: `${pct}%` }} />
+                                    </div>
+                                    <span style={{ fontSize: 13, fontWeight: 600, color: row.isCompleted ? '#10b981' : '#374151', minWidth: 36 }}>{pct}%</span>
+                                  </div>
+                                </td>
+                                <td style={{ padding: '12px 20px', fontSize: 14, color: '#374151' }}>{row.completed} / {total}</td>
+                                <td style={{ padding: '12px 20px' }}>
+                                  {row.isCompleted ? (
+                                    <span style={{ background: '#d1fae5', color: '#065f46', borderRadius: 999, padding: '3px 10px', fontSize: 12, fontWeight: 600 }}>✓ Completed</span>
+                                  ) : pct === 0 ? (
+                                    <span style={{ background: '#fee2e2', color: '#991b1b', borderRadius: 999, padding: '3px 10px', fontSize: 12, fontWeight: 600 }}>Not Started</span>
+                                  ) : (
+                                    <span style={{ background: '#fef3c7', color: '#92400e', borderRadius: 999, padding: '3px 10px', fontSize: 12, fontWeight: 600 }}>In Progress</span>
+                                  )}
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  );
+                })}
               </div>
             )}
           </div>
