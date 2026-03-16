@@ -1,6 +1,20 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { DashboardCard } from "../../components/DashboardCard";
 import { UserProfile } from "../../types";
+
+const MEDAL: Record<number, string> = { 1: "🥇", 2: "🥈", 3: "🥉" };
+
+type LeaderRow = {
+  id: string;
+  name: string;
+  email: string;
+  role: string;
+  done: number;
+  total: number;
+  pct: number;
+};
+
+type CourseOption = { id: string; title: string };
 
 export function SalesDashboard(props: { profile: UserProfile }) {
   const plan = props.profile.businessPlan;
@@ -16,6 +30,15 @@ export function SalesDashboard(props: { profile: UserProfile }) {
   const [dealsActual, setDealsActual] = useState(0);
   const [claimsActual, setClaimsActual] = useState(0);
   const [inspectionsActual, setInspectionsActual] = useState(0);
+
+  // Leaderboard state
+  const [lbCourses, setLbCourses] = useState<CourseOption[]>([]);
+  const [lbSelected, setLbSelected] = useState<CourseOption | null>(null);
+  const [lbRows, setLbRows] = useState<LeaderRow[]>([]);
+  const [lbLoading, setLbLoading] = useState(false);
+  const [lbPickerOpen, setLbPickerOpen] = useState(false);
+  const [lbSearch, setLbSearch] = useState("");
+  const lbPickerRef = useRef<HTMLDivElement>(null);
 
   // Load actuals from database
   useEffect(() => {
@@ -39,6 +62,92 @@ export function SalesDashboard(props: { profile: UserProfile }) {
     
     loadActuals();
   }, [props.profile.id]);
+
+  // Load courses for leaderboard
+  useEffect(() => {
+    fetch("/api/courses")
+      .then((r) => r.ok ? r.json() : [])
+      .then((data: any[]) => {
+        const published = data
+          .filter((c) => c.status === "published")
+          .map((c) => ({ id: c.id, title: c.title }));
+        setLbCourses(published);
+        if (published.length) loadLbLeaderboard(published[0], data);
+      })
+      .catch(console.error);
+  }, [props.profile.id]);
+
+  // Close picker on outside click
+  useEffect(() => {
+    function handler(e: MouseEvent) {
+      if (lbPickerRef.current && !lbPickerRef.current.contains(e.target as Node)) {
+        setLbPickerOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
+
+  async function loadLbLeaderboard(course: CourseOption, allCoursesData?: any[]) {
+    setLbLoading(true);
+    setLbSelected(course);
+    setLbPickerOpen(false);
+    setLbSearch("");
+    try {
+      const [coursesData, usersData] = await Promise.all([
+        allCoursesData
+          ? Promise.resolve(allCoursesData)
+          : fetch("/api/courses").then((r) => r.ok ? r.json() : []),
+        fetch("/api/users").then((r) => r.ok ? r.json() : []),
+      ]);
+
+      const fullCourse = (Array.isArray(coursesData) ? coursesData : []).find((c: any) => c.id === course.id);
+      const targetUsers = (Array.isArray(usersData) ? usersData : []).filter(
+        (u: any) =>
+          !u.deleted && !u.suspended &&
+          (u.role === "manager" || u.role === "sales" ||
+            (u.roles || []).some((r: string) => r === "manager" || r === "sales"))
+      );
+
+      if (!fullCourse || !targetUsers.length) { setLbRows([]); setLbLoading(false); return; }
+
+      const lessonPages = (fullCourse.pages || []).filter(
+        (p: any) => p.status === "published" && !p.isQuiz
+      );
+      const total = lessonPages.length;
+      const lessonIds = new Set(lessonPages.map((p: any) => p.id));
+
+      const allProgress = await Promise.all(
+        targetUsers.map((u: any) =>
+          fetch(`/api/course-progress?userId=${u.id}&courseIds=${course.id}`)
+            .then((r) => r.ok ? r.json() : {})
+            .catch(() => ({}))
+        )
+      );
+
+      const built: LeaderRow[] = targetUsers.map((u: any, i: number) => {
+        const rec = allProgress[i][course.id] || {};
+        const done = (rec.completedPages || []).filter((id: string) => lessonIds.has(id)).length;
+        const pct = total > 0 ? Math.round((done / total) * 100) : 0;
+        return {
+          id: u.id,
+          name: u.name || u.email,
+          email: u.email,
+          role: u.role || (u.roles || [])[0] || "",
+          done,
+          total,
+          pct,
+        };
+      });
+
+      built.sort((a, b) => b.pct - a.pct || a.name.localeCompare(b.name));
+      setLbRows(built);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLbLoading(false);
+    }
+  }
 
   async function handleSave() {
     try {
@@ -304,6 +413,233 @@ export function SalesDashboard(props: { profile: UserProfile }) {
           })}
         </div>
       </div>
+
+      {/* Training Leaderboard */}
+      {(() => {
+        const myRank = lbRows.findIndex((r) => r.id === props.profile.id);
+        const myRow = myRank >= 0 ? lbRows[myRank] : null;
+        const filteredCourses = lbCourses.filter((c) =>
+          c.title.toLowerCase().includes(lbSearch.toLowerCase())
+        );
+
+        return (
+          <div style={{ marginTop: 24 }}>
+            <div style={{
+              background: "#fff", border: "1px solid #e5e7eb",
+              borderRadius: 12, overflow: "hidden",
+              boxShadow: "0 1px 4px rgba(0,0,0,0.05)",
+            }}>
+              {/* Header with current user rank */}
+              <div style={{
+                padding: "16px 24px", background: "#f8fafc",
+                borderBottom: "1px solid #e5e7eb",
+                display: "flex", justifyContent: "space-between",
+                alignItems: "center", flexWrap: "wrap", gap: 12,
+              }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 16, flexWrap: "wrap" }}>
+                  <div>
+                    <div style={{ fontWeight: 700, fontSize: 16, color: "#111827" }}>🏆 Training Leaderboard</div>
+                    {lbSelected && (
+                      <div style={{ fontSize: 13, color: "#6b7280", marginTop: 2 }}>{lbSelected.title}</div>
+                    )}
+                  </div>
+                  {/* Current user rank badge */}
+                  {myRow && !lbLoading && (
+                    <div style={{
+                      display: "flex", alignItems: "center", gap: 10,
+                      background: "#eff6ff", border: "1px solid #bfdbfe",
+                      borderRadius: 10, padding: "8px 16px",
+                    }}>
+                      <span style={{ fontSize: 22 }}>
+                        {MEDAL[myRank + 1] || `#${myRank + 1}`}
+                      </span>
+                      <div>
+                        <div style={{ fontSize: 11, color: "#6b7280" }}>Your Rank</div>
+                        <div style={{ fontWeight: 700, fontSize: 14, color: "#1d4ed8" }}>
+                          {myRank + 1} of {lbRows.length}
+                        </div>
+                      </div>
+                      <div style={{ width: 1, height: 32, background: "#bfdbfe" }} />
+                      <div>
+                        <div style={{ fontSize: 11, color: "#6b7280" }}>Your Progress</div>
+                        <div style={{ fontWeight: 700, fontSize: 14, color: "#1d4ed8" }}>
+                          {myRow.pct}% &nbsp;
+                          <span style={{ fontWeight: 400, fontSize: 12, color: "#6b7280" }}>
+                            ({myRow.done}/{myRow.total} lessons)
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Course filter */}
+                <div style={{ position: "relative" }} ref={lbPickerRef}>
+                  <button
+                    onClick={() => setLbPickerOpen((p) => !p)}
+                    style={{
+                      display: "flex", alignItems: "center", gap: 8,
+                      padding: "8px 16px", borderRadius: 8,
+                      border: "1px solid #d1d5db", background: "#fff",
+                      fontSize: 13, fontWeight: 600, color: "#374151",
+                      cursor: "pointer",
+                    }}
+                  >
+                    🎯 Filter Course <span style={{ color: "#9ca3af" }}>▼</span>
+                  </button>
+
+                  {lbPickerOpen && (
+                    <div style={{
+                      position: "absolute", right: 0, top: "calc(100% + 6px)",
+                      width: 300, background: "#fff",
+                      border: "1px solid #e5e7eb", borderRadius: 10,
+                      boxShadow: "0 8px 24px rgba(0,0,0,0.12)",
+                      zIndex: 100, overflow: "hidden",
+                    }}>
+                      <div style={{ padding: "10px 12px", borderBottom: "1px solid #f3f4f6" }}>
+                        <input
+                          autoFocus
+                          value={lbSearch}
+                          onChange={(e) => setLbSearch(e.target.value)}
+                          placeholder="Search courses..."
+                          style={{
+                            width: "100%", padding: "7px 10px",
+                            border: "1px solid #d1d5db", borderRadius: 6,
+                            fontSize: 13, outline: "none", boxSizing: "border-box",
+                          }}
+                        />
+                      </div>
+                      <div style={{ maxHeight: 240, overflowY: "auto" }}>
+                        {filteredCourses.length === 0 ? (
+                          <div style={{ padding: 16, textAlign: "center", color: "#9ca3af", fontSize: 13 }}>No courses found</div>
+                        ) : (
+                          filteredCourses.map((c) => (
+                            <button
+                              key={c.id}
+                              onClick={() => loadLbLeaderboard(c)}
+                              style={{
+                                width: "100%", textAlign: "left",
+                                padding: "10px 16px", border: "none",
+                                background: lbSelected?.id === c.id ? "#eff6ff" : "#fff",
+                                color: lbSelected?.id === c.id ? "#2563eb" : "#111827",
+                                fontWeight: lbSelected?.id === c.id ? 600 : 400,
+                                fontSize: 13, cursor: "pointer",
+                                borderBottom: "1px solid #f9fafb",
+                              }}
+                            >
+                              {lbSelected?.id === c.id && "✓ "}{c.title}
+                            </button>
+                          ))
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Table */}
+              {lbLoading ? (
+                <div style={{ display: "flex", justifyContent: "center", alignItems: "center", height: 160 }}>
+                  <div style={{ textAlign: "center" }}>
+                    <div className="spinner" style={{ margin: "0 auto 10px" }} />
+                    <div style={{ color: "#6b7280", fontSize: 13 }}>Loading leaderboard...</div>
+                  </div>
+                </div>
+              ) : lbRows.length === 0 ? (
+                <div style={{ padding: 40, textAlign: "center", color: "#9ca3af" }}>
+                  <div style={{ fontSize: 36, marginBottom: 8 }}>🏆</div>
+                  No data available.
+                </div>
+              ) : (
+                <div style={{ overflowX: "auto" }}>
+                  <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+                    <thead>
+                      <tr style={{ background: "#f9fafb" }}>
+                        {["Rank", "User", "Role", "Lessons Completed", "Progress"].map((h) => (
+                          <th key={h} style={{
+                            padding: "11px 16px", textAlign: "left",
+                            fontWeight: 600, color: "#374151",
+                            borderBottom: "1px solid #e5e7eb",
+                            whiteSpace: "nowrap",
+                          }}>
+                            {h}
+                          </th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {lbRows.map((row, idx) => {
+                        const rank = idx + 1;
+                        const isMe = row.id === props.profile.id;
+                        return (
+                          <tr key={row.id} style={{
+                            background: isMe
+                              ? "#dbeafe"
+                              : rank === 1 ? "#fffbeb"
+                              : idx % 2 === 0 ? "#fff" : "#fafafa",
+                            outline: isMe ? "2px solid #3b82f6" : "none",
+                          }}>
+                            <td style={{ padding: "11px 16px", borderBottom: "1px solid #f3f4f6", width: 60 }}>
+                              {MEDAL[rank] ? (
+                                <span style={{ fontSize: 18 }}>{MEDAL[rank]}</span>
+                              ) : (
+                                <span style={{
+                                  display: "inline-flex", alignItems: "center", justifyContent: "center",
+                                  width: 24, height: 24, borderRadius: "50%",
+                                  background: isMe ? "#3b82f6" : "#f3f4f6",
+                                  color: isMe ? "#fff" : "#6b7280",
+                                  fontSize: 12, fontWeight: 700,
+                                }}>{rank}</span>
+                              )}
+                            </td>
+                            <td style={{ padding: "11px 16px", borderBottom: "1px solid #f3f4f6" }}>
+                              <div style={{ fontWeight: 600, color: "#111827", display: "flex", alignItems: "center", gap: 6 }}>
+                                {row.name}
+                                {isMe && (
+                                  <span style={{
+                                    fontSize: 10, fontWeight: 700, background: "#3b82f6",
+                                    color: "#fff", borderRadius: 999, padding: "1px 6px",
+                                  }}>YOU</span>
+                                )}
+                              </div>
+                              <div style={{ fontSize: 11, color: "#9ca3af" }}>{row.email}</div>
+                            </td>
+                            <td style={{ padding: "11px 16px", borderBottom: "1px solid #f3f4f6" }}>
+                              <span style={{
+                                padding: "2px 9px", borderRadius: 999, fontSize: 11, fontWeight: 600,
+                                background: row.role === "manager" ? "#ede9fe" : "#dbeafe",
+                                color: row.role === "manager" ? "#6d28d9" : "#1d4ed8",
+                                textTransform: "capitalize",
+                              }}>
+                                {row.role}
+                              </span>
+                            </td>
+                            <td style={{ padding: "11px 16px", borderBottom: "1px solid #f3f4f6", whiteSpace: "nowrap", color: "#374151" }}>
+                              {row.done} / {row.total}
+                            </td>
+                            <td style={{ padding: "11px 16px", borderBottom: "1px solid #f3f4f6", minWidth: 160 }}>
+                              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                                <div style={{ flex: 1, height: 8, borderRadius: 999, background: "#e5e7eb", overflow: "hidden" }}>
+                                  <div style={{
+                                    width: `${row.pct}%`, height: "100%",
+                                    background: row.pct === 100 ? "#10b981" : row.pct > 0 ? "#f59e0b" : "#e5e7eb",
+                                    transition: "width 0.3s",
+                                  }} />
+                                </div>
+                                <span style={{ fontSize: 12, fontWeight: 700, color: "#374151", minWidth: 36 }}>{row.pct}%</span>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 }
