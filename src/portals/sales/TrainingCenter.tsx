@@ -4,6 +4,7 @@ import { LessonAIChat } from "../../components/LessonAIChat";
 import { useAuth } from "../../contexts/AuthContext";
 import { ShareModal } from "../../components/ShareModal";
 import { initVideoSequence } from "../../hooks/useVideoSequence";
+import { PlaybookTimer } from "../../components/PlaybookTimer";
 
 type Playlist = {
   id: string;
@@ -766,6 +767,22 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
             display: none !important;
           }
         `}</style>
+        {user && (
+          <PlaybookTimer
+            userId={user.id}
+            courseId={selectedCourse.id}
+            courseTitle={selectedCourse.title}
+            onComplete={async () => {
+              const lessonPages = (selectedCourse.pages || []).filter(
+                (p: any) => p.status === "published" && !p.isQuiz
+              );
+              const total = lessonPages.length;
+              const done = lessonPages.filter((p: any) => completedPages.has(p.id)).length;
+              const pct = total > 0 ? Math.round((done / total) * 100) : 0;
+              return { pct, done, total };
+            }}
+          />
+        )}
         <div className="training-center-header">
           <div className="panel-header">{selectedCourse.title}</div>
           <div style={{ display: 'flex', gap: 8 }}>

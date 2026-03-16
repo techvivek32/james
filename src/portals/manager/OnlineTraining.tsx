@@ -4,6 +4,7 @@ import { AuthenticatedUser, Course } from "../../types";
 import { LessonAIChat } from "../../components/LessonAIChat";
 import { ShareModal } from "../../components/ShareModal";
 import { initVideoSequence } from "../../hooks/useVideoSequence";
+import { PlaybookTimer } from "../../components/PlaybookTimer";
 
 type Playlist = {
   id: string;
@@ -1090,6 +1091,20 @@ export function ManagerOnlineTrainingPage(props: {
             display: none !important;
           }
         `}</style>
+        <PlaybookTimer
+          userId={props.currentUser.id}
+          courseId={selectedCourse.id}
+          courseTitle={selectedCourse.title}
+          onComplete={async () => {
+            const lessonPages = (selectedCourse.pages || []).filter(
+              (p: any) => p.status === "published" && !p.isQuiz
+            );
+            const total = lessonPages.length;
+            const done = lessonPages.filter((p: any) => completedPages.has(p.id)).length;
+            const pct = total > 0 ? Math.round((done / total) * 100) : 0;
+            return { pct, done, total };
+          }}
+        />
         <div className="panel-header">
           <div className="panel-header-row">
             <span>{selectedCourse.title}</span>
