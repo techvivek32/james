@@ -2,7 +2,7 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { connectMongo } from "../../../src/lib/mongodb";
 import { UserRequestModel } from "../../../src/lib/models/UserRequest";
 import { UserModel } from "../../../src/lib/models/User";
-import { sendEmail, generateApprovalEmail, generateRejectionEmail } from "../../../src/lib/email";
+import { sendEmail, generateApprovalEmail, generateRejectionEmail, generateQuickStartEmail, generateQuickStartManagerEmail } from "../../../src/lib/email";
 
 export default async function handler(
   req: NextApiRequest,
@@ -123,6 +123,36 @@ export default async function handler(
           console.log("Approval email sent to:", userRequest.email);
         } catch (emailError: any) {
           console.error("Failed to send approval email:", emailError.message || emailError);
+        }
+
+        // Send 48-hour Quick Start onboarding email for sales users
+        if (userRequest.role === "sales") {
+          try {
+            const quickStartHtml = generateQuickStartEmail(userRequest.name);
+
+            await sendEmail({
+              to: userRequest.email,
+              subject: "Your 48-Hour Quick Start Plan",
+              html: quickStartHtml,
+            });
+
+            // Also send to assigned manager if one exists
+            if (newUser.managerId) {
+              const manager = await UserModel.findOne({ id: newUser.managerId }).lean();
+              if (manager?.email) {
+                const managerHtml = generateQuickStartManagerEmail(userRequest.name, manager.name || manager.email);
+                await sendEmail({
+                  to: manager.email,
+                  subject: `48-Hour Quick Start Plan – ${userRequest.name}`,
+                  html: managerHtml,
+                });
+              }
+            }
+
+            console.log("Quick Start onboarding email sent to:", userRequest.email);
+          } catch (emailError: any) {
+            console.error("Failed to send Quick Start email:", emailError.message || emailError);
+          }
         }
 
         res.status(200).json({ 

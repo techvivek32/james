@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { DashboardCard } from "../../components/DashboardCard";
 import { UserProfile } from "../../types";
+import { QuickStartChecklist } from "../../components/QuickStartChecklist";
 
 const MEDAL: Record<number, string> = { 1: "🥇", 2: "🥈", 3: "🥉" };
 
@@ -227,6 +228,7 @@ export function SalesDashboard(props: { profile: UserProfile }) {
           )}
         </div>
       </div>
+      <QuickStartChecklist profile={props.profile} />
       <div className="sales-plan-heading">
         <div className="sales-plan-summary-main">
           <div className="sales-plan-summary-name">Goals Committed to</div>

@@ -70,13 +70,17 @@ export default async function handler(
   }
 
   if (req.method === "PATCH") {
-    // Restore deleted user
     const { action } = req.body;
     if (action === 'restore') {
       await UserModel.findOneAndUpdate(
         { id },
         { deleted: false, deletedAt: null }
       );
+      res.status(200).json({ success: true });
+      return;
+    }
+    if (action === 'permanent-delete') {
+      await UserModel.deleteOne({ id });
       res.status(200).json({ success: true });
       return;
     }

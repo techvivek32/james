@@ -73,6 +73,7 @@ export type UserProfile = {
   suspended?: boolean;
   deleted?: boolean;
   deletedAt?: string;
+  createdAt?: string;
   managerId?: string;
   strengths: string;
   weaknesses: string;

@@ -713,44 +713,72 @@ export function UserManagement(props: UserEditorProps) {
                           </div>
                         )}
                       </div>
-                      <button 
-                        type="button" 
-                        className="btn-secondary btn-success btn-small" 
-                        onClick={async () => {
-                          if (confirm(`Are you sure you want to restore ${user.name}?\n\nThis will allow them to log in again with all their data intact.`)) {
-                            try {
-                              await fetch(`/api/users/${user.id}`, {
-                                method: 'PATCH',
-                                headers: { 'Content-Type': 'application/json' },
-                                body: JSON.stringify({ action: 'restore' })
-                              });
-                              
-                              // Reload both lists from server
-                              const [usersRes, deletedRes] = await Promise.all([
-                                fetch("/api/users?deleted=false"),
-                                fetch("/api/users?deleted=true")
-                              ]);
-                              
-                              if (usersRes.ok && deletedRes.ok) {
-                                const activeUsers = await usersRes.json();
-                                const deletedUsers = await deletedRes.json();
-                                
-                                setDraftUsers(activeUsers);
-                                setDraftDeletedUsers(deletedUsers);
-                                
-                                // Notify parent to update
-                                props.onUsersChange(activeUsers);
-                                props.onDeletedUsersChange(deletedUsers);
+                      <div style={{ display: "flex", gap: 6 }}>
+                        <button
+                          type="button"
+                          className="btn-secondary btn-success btn-small"
+                          onClick={async () => {
+                            if (confirm(`Restore ${user.name}? They will be able to log in again.`)) {
+                              try {
+                                await fetch(`/api/users/${user.id}`, {
+                                  method: 'PATCH',
+                                  headers: { 'Content-Type': 'application/json' },
+                                  body: JSON.stringify({ action: 'restore' })
+                                });
+                                const [usersRes, deletedRes] = await Promise.all([
+                                  fetch("/api/users?deleted=false"),
+                                  fetch("/api/users?deleted=true")
+                                ]);
+                                if (usersRes.ok && deletedRes.ok) {
+                                  const activeUsers = await usersRes.json();
+                                  const deletedUsers = await deletedRes.json();
+                                  setDraftUsers(activeUsers);
+                                  setDraftDeletedUsers(deletedUsers);
+                                  props.onUsersChange(activeUsers);
+                                  props.onDeletedUsersChange(deletedUsers);
+                                }
+                              } catch (error) {
+                                console.error('Failed to restore user:', error);
+                                alert('Failed to restore user');
                               }
-                            } catch (error) {
-                              console.error('Failed to restore user:', error);
-                              alert('Failed to restore user');
                             }
-                          }
-                        }}
-                      >
-                        Restore User
-                      </button>
+                          }}
+                        >
+                          Restore User
+                        </button>
+                        <button
+                          type="button"
+                          style={{ background: '#ef4444', color: '#fff', border: 'none', borderRadius: 6, padding: '4px 10px', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}
+                          onClick={async () => {
+                            if (confirm(`⚠️ PERMANENTLY DELETE ${user.name}?\n\nThis CANNOT be undone. All data will be lost forever.`)) {
+                              try {
+                                await fetch(`/api/users/${user.id}`, {
+                                  method: 'PATCH',
+                                  headers: { 'Content-Type': 'application/json' },
+                                  body: JSON.stringify({ action: 'permanent-delete' })
+                                });
+                                const [usersRes, deletedRes] = await Promise.all([
+                                  fetch("/api/users?deleted=false"),
+                                  fetch("/api/users?deleted=true")
+                                ]);
+                                if (usersRes.ok && deletedRes.ok) {
+                                  const activeUsers = await usersRes.json();
+                                  const deletedUsers = await deletedRes.json();
+                                  setDraftUsers(activeUsers);
+                                  setDraftDeletedUsers(deletedUsers);
+                                  props.onUsersChange(activeUsers);
+                                  props.onDeletedUsersChange(deletedUsers);
+                                }
+                              } catch (error) {
+                                console.error('Failed to permanently delete user:', error);
+                                alert('Failed to permanently delete user');
+                              }
+                            }
+                          }}
+                        >
+                          Delete Permanently
+                        </button>
+                      </div>
                     </div>
                   ))}
                 </div>

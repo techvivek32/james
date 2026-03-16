@@ -209,37 +209,61 @@ const UserManagementPage: NextPage = () => {
                         </div>
                       )}
                     </div>
-                    <button
-                      type="button"
-                      className="btn-secondary btn-success"
-                      onClick={async () => {
-                        if (confirm(`Are you sure you want to restore ${user.name}?\n\nThis will allow them to log in again with all their data intact.`)) {
-                          try {
-                            await fetch(`/api/users/${user.id}`, {
-                              method: 'PATCH',
-                              headers: { 'Content-Type': 'application/json' },
-                              body: JSON.stringify({ action: 'restore' })
-                            });
-                            
-                            // Reload both lists
-                            const [usersRes, deletedRes] = await Promise.all([
-                              fetch("/api/users?deleted=false"),
-                              fetch("/api/users?deleted=true")
-                            ]);
-                            
-                            if (usersRes.ok) setUsers(await usersRes.json());
-                            if (deletedRes.ok) setDeletedUsers(await deletedRes.json());
-                            
-                            alert(`${user.name} has been restored successfully!`);
-                          } catch (error) {
-                            console.error('Failed to restore user:', error);
-                            alert('Failed to restore user');
+                    <div style={{ display: 'flex', gap: 8 }}>
+                      <button
+                        type="button"
+                        className="btn-secondary btn-success"
+                        onClick={async () => {
+                          if (confirm(`Restore ${user.name}? They will be able to log in again.`)) {
+                            try {
+                              await fetch(`/api/users/${user.id}`, {
+                                method: 'PATCH',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ action: 'restore' })
+                              });
+                              const [usersRes, deletedRes] = await Promise.all([
+                                fetch("/api/users?deleted=false"),
+                                fetch("/api/users?deleted=true")
+                              ]);
+                              if (usersRes.ok) setUsers(await usersRes.json());
+                              if (deletedRes.ok) setDeletedUsers(await deletedRes.json());
+                              alert(`${user.name} has been restored successfully!`);
+                            } catch (error) {
+                              console.error('Failed to restore user:', error);
+                              alert('Failed to restore user');
+                            }
                           }
-                        }
-                      }}
-                    >
-                      Restore User
-                    </button>
+                        }}
+                      >
+                        Restore User
+                      </button>
+                      <button
+                        type="button"
+                        style={{ background: '#ef4444', color: '#fff', border: 'none', borderRadius: 6, padding: '8px 16px', fontSize: 14, fontWeight: 600, cursor: 'pointer' }}
+                        onClick={async () => {
+                          if (confirm(`⚠️ PERMANENTLY DELETE ${user.name}?\n\nThis CANNOT be undone. All data will be lost forever.`)) {
+                            try {
+                              await fetch(`/api/users/${user.id}`, {
+                                method: 'PATCH',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ action: 'permanent-delete' })
+                              });
+                              const [usersRes, deletedRes] = await Promise.all([
+                                fetch("/api/users?deleted=false"),
+                                fetch("/api/users?deleted=true")
+                              ]);
+                              if (usersRes.ok) setUsers(await usersRes.json());
+                              if (deletedRes.ok) setDeletedUsers(await deletedRes.json());
+                            } catch (error) {
+                              console.error('Failed to permanently delete user:', error);
+                              alert('Failed to permanently delete user');
+                            }
+                          }
+                        }}
+                      >
+                        Delete Permanently
+                      </button>
+                    </div>
                   </div>
                 ))}
               </div>

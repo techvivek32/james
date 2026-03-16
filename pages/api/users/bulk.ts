@@ -2,6 +2,7 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import bcrypt from "bcryptjs";
 import { connectMongo } from "../../../src/lib/mongodb";
 import { UserModel } from "../../../src/lib/models/User";
+import { sendEmail, generateQuickStartEmail, generateQuickStartManagerEmail } from "../../../src/lib/email";
 
 export default async function handler(
   req: NextApiRequest,
@@ -25,59 +26,112 @@ export default async function handler(
     const ids = users
       .map((user) => (user.id && user.id.length ? user.id : user.email))
       .filter(Boolean);
+
     const existing = await UserModel.find({ id: { $in: ids } })
       .select("id passwordHash")
       .lean();
-    const passwordById = new Map(
-      existing.map((user) => [user.id, user.passwordHash])
-    );
-    
-    // Don't delete users - they might be soft deleted
-    // Only delete users that are not in the list AND not deleted
+    const passwordById = new Map(existing.map((u) => [u.id, u.passwordHash]));
+    const existingIds  = new Set(existing.map((u) => u.id));
+
+    // Only remove active (non-deleted) users that are no longer in the list
     await UserModel.deleteMany({
       id: { $nin: ids.length ? ids : ["__none__"] },
-      deleted: { $ne: true }
+      deleted: { $ne: true },
     });
 
-    await Promise.all(
-      users.map(async (user) => {
+    // Upsert each user individually so one bad record doesn't kill the whole batch
+    for (const user of users) {
+      try {
         const nextId =
           typeof user.email === "string" && user.email.trim().length > 0
             ? user.email.trim()
             : user.id;
+
         const incomingPassword =
           typeof user.password === "string" && user.password.trim().length > 0
             ? user.password.trim()
             : "";
+
         const existingPassword = nextId ? passwordById.get(nextId) : undefined;
         const passwordHash =
           incomingPassword.length > 0
             ? await bcrypt.hash(incomingPassword, 10)
             : typeof user.passwordHash === "string" && user.passwordHash.length > 0
-              ? user.passwordHash
-              : existingPassword;
-        
+            ? user.passwordHash
+            : existingPassword;
+
         if (!passwordHash) {
-          throw new Error(`No password hash available for user: ${nextId}`);
+          console.warn(`[bulk] Skipping user with no password: ${nextId}`);
+          continue;
         }
-        
+
         const { password, ...rest } = user;
-        return UserModel.updateOne(
+        await UserModel.updateOne(
           { id: nextId },
           { ...rest, id: nextId, passwordHash },
           { upsert: true }
         );
-      })
-    );
+      } catch (userErr) {
+        console.error(`[bulk] Failed to upsert user ${user.email || user.id}:`, userErr);
+        // continue with next user
+      }
+    }
+
+    // Send Quick Start onboarding email to newly created sales users
+    try {
+      const newSalesUsers = users.filter((u) => {
+        if (u.role !== "sales") return false;
+        if (!u.email || !u.email.trim()) return false;
+        return !existingIds.has(u.email.trim()) && !existingIds.has(u.id);
+      });
+
+      console.log(`[bulk] New sales users to email: ${newSalesUsers.length}`);
+
+      for (const newUser of newSalesUsers) {
+        try {
+          const name = newUser.name || newUser.email;
+          const html = generateQuickStartEmail(name);
+
+          await sendEmail({
+            to: newUser.email.trim(),
+            subject: "Your 48-Hour Quick Start Plan",
+            html,
+          });
+          console.log(`[bulk] Quick Start email sent to: ${newUser.email}`);
+
+          if (newUser.managerId) {
+            const manager = await UserModel.findOne({
+              $or: [{ id: newUser.managerId }, { email: newUser.managerId }],
+            }).lean();
+            if (manager?.email) {
+              const managerHtml = generateQuickStartManagerEmail(name, manager.name || manager.email);
+              await sendEmail({
+                to: manager.email,
+                subject: `48-Hour Quick Start Plan – ${name}`,
+                html: managerHtml,
+              });
+              console.log(`[bulk] Quick Start email sent to manager: ${manager.email}`);
+            } else {
+              console.log(`[bulk] Manager not found for managerId: ${newUser.managerId}`);
+            }
+          }
+        } catch (emailErr) {
+          console.error(`[bulk] Email failed for ${newUser.email}:`, emailErr);
+        }
+      }
+    } catch (emailSectionErr) {
+      console.error("[bulk] Email section error:", emailSectionErr);
+      // Never let email errors cause a 500
+    }
 
     const nextUsers = await UserModel.find({ deleted: { $ne: true } }).lean();
     const sanitized = nextUsers.map(({ passwordHash, ...rest }) => rest);
     res.status(200).json(sanitized);
   } catch (error) {
     console.error("Bulk user update error:", error);
-    res.status(500).json({ 
-      error: "Failed to update users", 
-      message: error instanceof Error ? error.message : "Unknown error" 
+    res.status(500).json({
+      error: "Failed to update users",
+      message: error instanceof Error ? error.message : "Unknown error",
     });
   }
 }

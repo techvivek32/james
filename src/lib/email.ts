@@ -425,3 +425,75 @@ If you have any questions or would like to discuss this decision, please contact
 
   return { html, text };
 }
+
+export function generateQuickStartEmail(name: string): string {
+  return `
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"></head>
+<body style="margin:0;padding:0;font-family:Arial,sans-serif;background:#f3f4f6;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f3f4f6;padding:40px 0;">
+    <tr><td align="center">
+      <table width="600" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:8px;box-shadow:0 2px 4px rgba(0,0,0,0.1);">
+        <tr>
+          <td style="padding:40px 40px 30px;text-align:center;">
+            <h1 style="margin:0 0 4px;color:#111827;font-size:22px;font-weight:700;">Miller Storm Operating System</h1>
+          </td>
+        </tr>
+        <tr>
+          <td style="padding:0 40px 40px;">
+            <p style="margin:0 0 20px;color:#374151;font-size:16px;line-height:1.6;">Hi ${name},</p>
+            <p style="margin:0 0 20px;color:#374151;font-size:16px;line-height:1.6;">Welcome to Miller Storm.</p>
+            <p style="margin:0 0 20px;color:#374151;font-size:16px;line-height:1.6;">Your goal in the first 48 hours is simple:</p>
+            <p style="margin:0 0 20px;color:#374151;font-size:16px;line-height:1.6;">Complete training and get into the field.</p>
+            <p style="margin:0 0 20px;color:#374151;font-size:16px;line-height:1.6;">Your Quick Start Success Path is available inside the Miller Storm Operating System.</p>
+            <p style="margin:0;color:#374151;font-size:16px;line-height:1.6;">Your manager has also received this plan so you can coordinate your ride-along.</p>
+          </td>
+        </tr>
+        <tr>
+          <td style="padding:20px 40px 40px;border-top:1px solid #e5e7eb;">
+            <p style="margin:0;color:#9ca3af;font-size:12px;text-align:center;">© 2026-2027 Miller Storm. All Rights Reserved.</p>
+          </td>
+        </tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>`;
+}
+
+export function generateQuickStartManagerEmail(hireName: string, managerName: string): string {
+  return `
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"></head>
+<body style="margin:0;padding:0;font-family:Arial,sans-serif;background:#f3f4f6;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f3f4f6;padding:40px 0;">
+    <tr><td align="center">
+      <table width="600" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:8px;box-shadow:0 2px 4px rgba(0,0,0,0.1);">
+        <tr>
+          <td style="padding:40px 40px 30px;text-align:center;">
+            <h1 style="margin:0 0 4px;color:#111827;font-size:22px;font-weight:700;">Miller Storm Operating System</h1>
+          </td>
+        </tr>
+        <tr>
+          <td style="padding:0 40px 40px;">
+            <p style="margin:0 0 20px;color:#374151;font-size:16px;line-height:1.6;">Hi ${managerName},</p>
+            <p style="margin:0 0 20px;color:#374151;font-size:16px;line-height:1.6;">A new sales rep has joined your team: <strong>${hireName}</strong>.</p>
+            <p style="margin:0 0 20px;color:#374151;font-size:16px;line-height:1.6;">Their goal in the first 48 hours is simple:</p>
+            <p style="margin:0 0 20px;color:#374151;font-size:16px;line-height:1.6;">Complete training and get into the field.</p>
+            <p style="margin:0 0 20px;color:#374151;font-size:16px;line-height:1.6;">Their 48-Hour Quick Start Success Path is available inside the Miller Storm Operating System.</p>
+            <p style="margin:0;color:#374151;font-size:16px;line-height:1.6;">Please coordinate their ride-along as soon as possible.</p>
+          </td>
+        </tr>
+        <tr>
+          <td style="padding:20px 40px 40px;border-top:1px solid #e5e7eb;">
+            <p style="margin:0;color:#9ca3af;font-size:12px;text-align:center;">© 2026-2027 Miller Storm. All Rights Reserved.</p>
+          </td>
+        </tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>`;
+}
