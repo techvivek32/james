@@ -4,6 +4,7 @@ import { Sidebar } from "./Sidebar";
 const sidebarItems = [
   { id: "socialMediaMetrics", label: "Social Media Executive View" },
   { id: "businessUnits", label: "Business Planner Executive View" },
+  { id: "trainingExecutive", label: "Training Center Executive View" },
   { id: "userManagement", label: "User Management" },
   { id: "courseManagement", label: "Course Builder" },
   { id: "appsTools", label: "Apps & Tool Builder" },
