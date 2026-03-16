@@ -43,6 +43,31 @@ export function UserManagement(props: UserEditorProps) {
   const [sortBy, setSortBy] = useState<"nameAsc" | "nameDesc" | "newest" | "oldest" | "lastModified">("nameAsc");
   const [showSortDropdown, setShowSortDropdown] = useState(false);
   const [assignedSalesUsers, setAssignedSalesUsers] = useState<any[]>([]);
+  const [showTrainingModal, setShowTrainingModal] = useState(false);
+  const [trainingModalData, setTrainingModalData] = useState<{ course: any; completed: number; total: number; isCompleted: boolean }[]>([]);
+  const [isLoadingTrainingModal, setIsLoadingTrainingModal] = useState(false);
+
+  function openTrainingProgress(user: UserProfile) {
+    setShowTrainingModal(true);
+    setTrainingModalData([]);
+    setIsLoadingTrainingModal(true);
+    fetch('/api/courses').then(r => r.json()).then(async (courses) => {
+      const published = (courses || []).filter((c: any) => c.status === 'published');
+      if (!published.length) { setTrainingModalData([]); setIsLoadingTrainingModal(false); return; }
+      const courseIds = published.map((c: any) => c.id).join(',');
+      const progRes = await fetch(`/api/course-progress?userId=${user.id}&courseIds=${courseIds}`);
+      const progData = progRes.ok ? await progRes.json() : {};
+      const rows = published.map((course: any) => {
+        const lessonPages = (course.pages || []).filter((p: any) => p.status === 'published' && !p.isQuiz);
+        const total = lessonPages.length;
+        const lessonIds = new Set(lessonPages.map((p: any) => p.id));
+        const rec = progData[course.id] || {};
+        const completed = (rec.completedPages || []).filter((id: string) => lessonIds.has(id)).length;
+        return { course, completed, total, isCompleted: rec.courseCompleted || false };
+      }).filter((r: any) => r.total > 0);
+      setTrainingModalData(rows);
+    }).catch(console.error).finally(() => setIsLoadingTrainingModal(false));
+  }
 
   const featureToggleKeysByRole: Record<UserProfile["role"], (keyof FeatureToggles)[]> = {
     admin: ["dashboard", "userManagement", "roleHierarchy", "businessUnits", "salesOverview", "marketingOverview", "courseManagement", "materialsLibrary", "approvalWorkflows", "aiBots", "webTemplates", "webText", "appsTools", "socialMediaMetrics"],
@@ -426,6 +451,73 @@ export function UserManagement(props: UserEditorProps) {
 
   return (
     <div className="admin-user-management">
+      {/* Training Progress Modal */}
+      {showTrainingModal && (
+        <div style={{
+          position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.5)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          zIndex: 9999, padding: 16
+        }}>
+          <div style={{
+            background: '#fff', borderRadius: 12, width: '100%', maxWidth: 560,
+            maxHeight: '85vh', display: 'flex', flexDirection: 'column',
+            boxShadow: '0 20px 40px rgba(0,0,0,0.15)'
+          }}>
+            {/* Modal Header */}
+            <div style={{ padding: '20px 24px', borderBottom: '1px solid #e5e7eb', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0 }}>
+              <div>
+                <div style={{ fontWeight: 700, fontSize: 18, color: '#111827' }}>Training Progress</div>
+                <div style={{ fontSize: 13, color: '#6b7280', marginTop: 2 }}>{draftUsers.find(u => u.id === selectedUserId)?.name}</div>
+              </div>
+              <button type="button" onClick={() => setShowTrainingModal(false)} style={{ background: 'none', border: 'none', fontSize: 22, cursor: 'pointer', color: '#6b7280', lineHeight: 1, padding: 4 }}>×</button>
+            </div>
+            {/* Modal Body */}
+            <div style={{ overflowY: 'auto', padding: '20px 24px', flex: 1 }}>
+              {isLoadingTrainingModal ? (
+                <div style={{ textAlign: 'center', padding: 40, color: '#6b7280' }}>Loading...</div>
+              ) : trainingModalData.length === 0 ? (
+                <div style={{ textAlign: 'center', padding: 40, color: '#9ca3af' }}>
+                  <div style={{ fontSize: 40, marginBottom: 12 }}>📚</div>
+                  No course progress found.
+                </div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                  {trainingModalData.map(({ course, completed, total, isCompleted }) => {
+                    const pct = total > 0 ? Math.round((completed / total) * 100) : 0;
+                    return (
+                      <div key={course.id} style={{ border: '1px solid #e5e7eb', borderRadius: 10, padding: '16px 18px' }}>
+                        <div style={{ fontWeight: 600, fontSize: 15, color: '#111827', marginBottom: 10 }}>{course.title}</div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, marginBottom: 8, flexWrap: 'wrap', gap: 4 }}>
+                          <span style={{ color: '#374151' }}>Lessons Completed: <strong>{completed} / {total}</strong></span>
+                          <span style={{
+                            padding: '2px 10px', borderRadius: 999, fontSize: 12, fontWeight: 600,
+                            background: isCompleted ? '#d1fae5' : pct === 0 ? '#fee2e2' : '#fef3c7',
+                            color: isCompleted ? '#065f46' : pct === 0 ? '#991b1b' : '#92400e'
+                          }}>
+                            {isCompleted ? '✓ Completed' : pct === 0 ? 'Not Started' : 'In Progress'}
+                          </span>
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                          <div style={{ flex: 1, height: 8, borderRadius: 999, background: '#e5e7eb', overflow: 'hidden' }}>
+                            <div style={{ height: '100%', borderRadius: 999, background: isCompleted ? '#10b981' : '#22c55e', width: `${pct}%`, transition: 'width 0.3s' }} />
+                          </div>
+                          <span style={{ fontSize: 13, fontWeight: 700, color: isCompleted ? '#10b981' : '#374151', minWidth: 36 }}>
+                            Course Progress: {pct}%
+                          </span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+            {/* Modal Footer */}
+            <div style={{ padding: '14px 24px', borderTop: '1px solid #e5e7eb', display: 'flex', justifyContent: 'flex-end', flexShrink: 0 }}>
+              <button type="button" className="btn-secondary btn-small" onClick={() => setShowTrainingModal(false)}>Close</button>
+            </div>
+          </div>
+        </div>
+      )}
       <div className="panel-header" style={{ marginBottom: 16 }}>
         <div className="panel-header-row">
           <span>User Management</span>
@@ -674,6 +766,11 @@ export function UserManagement(props: UserEditorProps) {
               <div className="panel-header-row">
                 <span>User Details{selectedUser.suspended && <span style={{ color: "#dc2626", marginLeft: 8 }}>• SUSPENDED</span>}</span>
                 <div className="panel-header-actions">
+                  {(selectedUser.roles || [selectedUser.role]).some(r => r === 'manager' || r === 'sales') && (
+                    <button type="button" className="btn-secondary btn-small" onClick={() => openTrainingProgress(selectedUser)}>
+                      📊 Training Progress
+                    </button>
+                  )}
                   <button type="button" className="btn-primary btn-small" disabled={!isDirty || !!emailError} onClick={() => {
                     if (emailError) {
                       emailInputRef.current?.focus();
