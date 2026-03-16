@@ -9,7 +9,11 @@ type CourseEditorProps = {
 
 export function CourseManagement(props: CourseEditorProps) {
   const [selectedCourseId, setSelectedCourseId] = useState(props.courses[0]?.id ?? "");
-  const [viewMode, setViewMode] = useState<"grid" | "detail">("grid");
+  const [viewMode, setViewMode] = useState<"grid" | "detail" | "progress">("grid");
+  const [progressCourseId, setProgressCourseId] = useState<string | null>(null);
+  const [progressData, setProgressData] = useState<any[]>([]);
+  const [progressUsers, setProgressUsers] = useState<any[]>([]);
+  const [isLoadingProgress, setIsLoadingProgress] = useState(false);
   const [page, setPage] = useState(1);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const imageFileInputRef = useRef<HTMLInputElement | null>(null);
@@ -980,6 +984,91 @@ export function CourseManagement(props: CourseEditorProps) {
     setDraggedCourseId(null);
   };
 
+  if (viewMode === "progress") {
+    const course = props.courses.find(c => c.id === progressCourseId);
+    const lessonPages = (course?.pages || []).filter(p => p.status === 'published' && !p.isQuiz);
+    const totalLessons = lessonPages.length;
+    const lessonIds = new Set(lessonPages.map(p => p.id));
+
+    // Build per-user rows: all non-admin users
+    const rows = progressUsers
+      .filter(u => u.role !== 'admin')
+      .map(user => {
+        const record = progressData.find((p: any) => p.userId === user.id);
+        const completedLessons = record
+          ? (record.completedPages || []).filter((id: string) => lessonIds.has(id)).length
+          : 0;
+        const pct = totalLessons > 0 ? Math.round((completedLessons / totalLessons) * 100) : 0;
+        return { user, completedLessons, pct, courseCompleted: record?.courseCompleted || false };
+      })
+      .sort((a, b) => b.pct - a.pct);
+
+    return (
+      <div className="admin-course-grid-page">
+        <div className="panel-header">
+          <div className="panel-header-row">
+            <span>Course Progress — {course?.title}</span>
+            <button type="button" className="btn-ghost btn-small" onClick={() => setViewMode("grid")}>
+              ← Back to courses
+            </button>
+          </div>
+        </div>
+        <div className="panel-body">
+          <div style={{ marginBottom: 16, color: '#6b7280', fontSize: 14 }}>
+            {totalLessons} lesson page{totalLessons !== 1 ? 's' : ''} (quizzes excluded) · {rows.length} users
+          </div>
+          {isLoadingProgress ? (
+            <div style={{ textAlign: 'center', padding: 60, color: '#6b7280' }}>Loading...</div>
+          ) : rows.length === 0 ? (
+            <div style={{ textAlign: 'center', padding: 60, color: '#9ca3af' }}>No users found.</div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              {rows.map(({ user, completedLessons, pct, courseCompleted }) => (
+                <div key={user.id} style={{
+                  display: 'flex', alignItems: 'center', gap: 16,
+                  padding: '14px 18px', background: '#fff',
+                  border: '1px solid #e5e7eb', borderRadius: 10,
+                  boxShadow: '0 1px 3px rgba(0,0,0,0.04)'
+                }}>
+                  {/* Avatar */}
+                  <div style={{
+                    width: 40, height: 40, borderRadius: '50%',
+                    background: '#e0e7ff', display: 'flex', alignItems: 'center',
+                    justifyContent: 'center', fontWeight: 700, color: '#4f46e5',
+                    fontSize: 16, flexShrink: 0
+                  }}>
+                    {user.name?.charAt(0).toUpperCase() || '?'}
+                  </div>
+                  {/* Name + role */}
+                  <div style={{ minWidth: 160, flexShrink: 0 }}>
+                    <div style={{ fontWeight: 600, fontSize: 14, color: '#111827' }}>{user.name}</div>
+                    <div style={{ fontSize: 12, color: '#9ca3af', textTransform: 'capitalize' }}>{user.role}</div>
+                  </div>
+                  {/* Progress bar */}
+                  <div style={{ flex: 1 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4, fontSize: 13, color: '#374151' }}>
+                      <span>{completedLessons} / {totalLessons} lessons</span>
+                      <span style={{ fontWeight: 600, color: courseCompleted ? '#10b981' : '#2563eb' }}>
+                        {courseCompleted ? '✓ Completed' : `${pct}%`}
+                      </span>
+                    </div>
+                    <div style={{ height: 8, borderRadius: 999, background: '#e5e7eb', overflow: 'hidden' }}>
+                      <div style={{
+                        height: '100%', borderRadius: 999,
+                        background: courseCompleted ? '#10b981' : '#22c55e',
+                        width: `${pct}%`, transition: 'width 0.3s'
+                      }} />
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
+
   if (viewMode === "grid") {
     return (
       <div className="admin-course-grid-page">
@@ -1048,6 +1137,30 @@ export function CourseManagement(props: CourseEditorProps) {
                           {course.description.length > 50 ? course.description.substring(0, 50) + "..." : course.description}
                         </div>
                       )}
+                      <button
+                        type="button"
+                        className="btn-secondary btn-small"
+                        style={{ marginTop: 10, width: '100%', fontSize: 12 }}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setProgressCourseId(course.id);
+                          setProgressData([]);
+                          setProgressUsers([]);
+                          setIsLoadingProgress(true);
+                          setViewMode("progress");
+                          // Load progress data
+                          Promise.all([
+                            fetch(`/api/admin/course-progress?courseId=${course.id}`).then(r => r.json()),
+                            fetch(`/api/users`).then(r => r.json())
+                          ]).then(([prog, users]) => {
+                            setProgressData(prog);
+                            setProgressUsers(users.filter((u: any) => !u.deleted));
+                          }).catch(console.error)
+                            .finally(() => setIsLoadingProgress(false));
+                        }}
+                      >
+                        📊 Track Progress
+                      </button>
                     </div>
                   </button>
                 ))}
