@@ -51,6 +51,48 @@ export function CourseManagement(props: CourseEditorProps) {
   const [newCourseData, setNewCourseData] = useState<Course | null>(null);
   const [hasChanges, setHasChanges] = useState(false);
   const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
+  // 3-step delete modal
+  type DeleteStep = 'choose' | 'select' | 'confirm';
+  type DeleteTarget = 'lesson' | 'module' | 'course';
+  const [deleteStep, setDeleteStep] = useState<DeleteStep>('choose');
+  const [deleteTarget, setDeleteTarget] = useState<DeleteTarget | null>(null);
+  const [deleteSelectedIds, setDeleteSelectedIds] = useState<Set<string>>(new Set());
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+
+  function openDeleteModal() {
+    setDeleteStep('choose');
+    setDeleteTarget(null);
+    setDeleteSelectedIds(new Set());
+    setIsDeleteModalOpen(true);
+  }
+  function closeDeleteModal() {
+    setIsDeleteModalOpen(false);
+    setDeleteTarget(null);
+    setDeleteSelectedIds(new Set());
+    setDeleteStep('choose');
+  }
+  function confirmDelete() {
+    if (!selectedCourse) return;
+    if (deleteTarget === 'course') {
+      deleteCourse(selectedCourse.id);
+    } else if (deleteTarget === 'lesson') {
+      const nextPages = (selectedCourse.pages ?? []).filter(p => !deleteSelectedIds.has(p.id));
+      updateCourse({ ...selectedCourse, pages: nextPages });
+      if (activePageId && deleteSelectedIds.has(activePageId)) {
+        const fallback = nextPages[nextPages.length - 1] ?? nextPages[0];
+        setActivePageId(fallback ? fallback.id : null);
+      }
+    } else if (deleteTarget === 'module') {
+      const remainingFolders = (selectedCourse.folders ?? []).filter(f => !deleteSelectedIds.has(f.id));
+      const remainingPages = (selectedCourse.pages ?? []).filter(p => !deleteSelectedIds.has(p.folderId ?? ''));
+      updateCourse({ ...selectedCourse, folders: remainingFolders, pages: remainingPages });
+      if (activePageId && !remainingPages.some(p => p.id === activePageId)) {
+        const fallback = remainingPages[remainingPages.length - 1] ?? remainingPages[0];
+        setActivePageId(fallback ? fallback.id : null);
+      }
+    }
+    closeDeleteModal();
+  }
   const [draggedPageId, setDraggedPageId] = useState<string | null>(null);
   const [sidebarWidth, setSidebarWidth] = useState(280);
   const [isResizing, setIsResizing] = useState(false);
@@ -1185,64 +1227,150 @@ export function CourseManagement(props: CourseEditorProps) {
           onClose={() => setToastMessage(null)}
         />
       )}
-      {isDeleteConfirmOpen && selectedCourse && (
-        <div className="overlay">
-          <div className="dialog" style={{ maxWidth: "500px" }}>
-            <div className="dialog-title" style={{ color: "#dc2626", display: "flex", alignItems: "center", gap: "8px" }}>
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <circle cx="12" cy="12" r="10"/>
-                <line x1="12" y1="8" x2="12" y2="12"/>
-                <line x1="12" y1="16" x2="12.01" y2="16"/>
-              </svg>
-              Delete Course
-            </div>
-            <div style={{ padding: "16px 0" }}>
-              <p style={{ margin: "0 0 12px 0", fontSize: "14px", color: "#374151", fontWeight: 500 }}>
-                Are you sure you want to delete this course?
-              </p>
-              <div style={{ 
-                padding: "12px", 
-                backgroundColor: "#fef2f2", 
-                borderRadius: "8px", 
-                border: "1px solid #fecaca",
-                marginBottom: "12px"
-              }}>
-                <div style={{ fontSize: "14px", fontWeight: 600, color: "#991b1b", marginBottom: "4px" }}>
-                  {selectedCourse.title}
+      {isDeleteModalOpen && selectedCourse && (
+        <div className="overlay" style={{ zIndex: 9999 }}>
+          <div className="dialog" style={{ maxWidth: 520 }}>
+
+            {/* ── Step 1: Choose what to delete ── */}
+            {deleteStep === 'choose' && (
+              <>
+                <div className="dialog-title" style={{ color: '#dc2626', display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                  Delete Content
                 </div>
-                {selectedCourse.pages && selectedCourse.pages.length > 0 && (
-                  <div style={{ fontSize: "12px", color: "#dc2626" }}>
-                    This will delete {selectedCourse.pages.length} lesson{selectedCourse.pages.length !== 1 ? 's' : ''} and all associated content.
+                <div style={{ padding: '16px 0' }}>
+                  <p style={{ margin: '0 0 16px', fontSize: 14, color: '#374151' }}>What would you like to delete from <strong>{selectedCourse.title}</strong>?</p>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                    {(['lesson', 'module', 'course'] as DeleteTarget[]).map(t => (
+                      <button
+                        key={t}
+                        type="button"
+                        onClick={() => {
+                          setDeleteTarget(t);
+                          setDeleteSelectedIds(new Set());
+                          setDeleteStep(t === 'course' ? 'confirm' : 'select');
+                        }}
+                        style={{
+                          padding: '14px 16px', border: '2px solid #e5e7eb', borderRadius: 8,
+                          background: '#fff', cursor: 'pointer', textAlign: 'left',
+                          fontSize: 14, fontWeight: 500, color: '#111827',
+                          display: 'flex', alignItems: 'center', gap: 10
+                        }}
+                      >
+                        <span style={{ fontSize: 20 }}>{t === 'lesson' ? '📄' : t === 'module' ? '📁' : '🗑️'}</span>
+                        {t === 'lesson' ? 'Lesson / Quiz Pages' : t === 'module' ? 'Module (Folder)' : 'Entire Course'}
+                      </button>
+                    ))}
                   </div>
-                )}
-              </div>
-              <p style={{ margin: "0", fontSize: "13px", color: "#6b7280" }}>
-                ⚠️ This action cannot be undone. All course content, lessons, and student progress will be permanently deleted.
-              </p>
-            </div>
-            <div className="dialog-footer">
-              <div />
-              <div className="dialog-actions">
-                <button
-                  type="button"
-                  className="btn-secondary btn-cancel"
-                  onClick={() => setIsDeleteConfirmOpen(false)}
-                >
-                  Cancel
-                </button>
-                <button
-                  type="button"
-                  className="btn-secondary btn-danger-solid"
-                  onClick={() => {
-                    deleteCourse(selectedCourse.id);
-                    setIsDeleteConfirmOpen(false);
-                    setViewMode("grid");
-                  }}
-                >
-                  Delete Course
-                </button>
-              </div>
-            </div>
+                </div>
+                <div className="dialog-actions">
+                  <button type="button" className="btn-secondary" onClick={closeDeleteModal}>Cancel</button>
+                </div>
+              </>
+            )}
+
+            {/* ── Step 2: Select items ── */}
+            {deleteStep === 'select' && deleteTarget && (
+              <>
+                <div className="dialog-title" style={{ color: '#dc2626', display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                  Select {deleteTarget === 'lesson' ? 'Lessons / Quizzes' : 'Modules'} to Delete
+                </div>
+                <div style={{ padding: '16px 0' }}>
+                  {(() => {
+                    const listItems = deleteTarget === 'lesson'
+                      ? (selectedCourse.pages ?? []).map(p => ({ id: p.id, label: `${p.isQuiz ? '📝' : '📄'} ${p.title}`, sub: p.folderId ? (selectedCourse.folders ?? []).find(f => f.id === p.folderId)?.title : undefined }))
+                      : (selectedCourse.folders ?? []).map(f => {
+                          const cnt = (selectedCourse.pages ?? []).filter(p => p.folderId === f.id).length;
+                          return { id: f.id, label: `📁 ${f.title}`, sub: `${cnt} lesson${cnt !== 1 ? 's' : ''}` };
+                        });
+                    const allSelected = listItems.length > 0 && listItems.every(i => deleteSelectedIds.has(i.id));
+                    return (
+                      <>
+                        {listItems.length === 0 ? (
+                          <p style={{ color: '#6b7280', fontSize: 14 }}>No {deleteTarget === 'lesson' ? 'lessons' : 'modules'} found.</p>
+                        ) : (
+                          <>
+                            <label style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 0', borderBottom: '1px solid #e5e7eb', marginBottom: 8, cursor: 'pointer', fontSize: 13, fontWeight: 600, color: '#374151' }}>
+                              <input type="checkbox" checked={allSelected} onChange={() => {
+                                if (allSelected) setDeleteSelectedIds(new Set());
+                                else setDeleteSelectedIds(new Set(listItems.map(i => i.id)));
+                              }} />
+                              Select All
+                            </label>
+                            <div style={{ maxHeight: 280, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 4 }}>
+                              {listItems.map(item => (
+                                <label key={item.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 10px', borderRadius: 6, cursor: 'pointer', background: deleteSelectedIds.has(item.id) ? '#fef2f2' : '#f9fafb', border: `1px solid ${deleteSelectedIds.has(item.id) ? '#fecaca' : '#e5e7eb'}` }}>
+                                  <input type="checkbox" checked={deleteSelectedIds.has(item.id)} onChange={() => {
+                                    const next = new Set(deleteSelectedIds);
+                                    if (next.has(item.id)) next.delete(item.id); else next.add(item.id);
+                                    setDeleteSelectedIds(next);
+                                  }} />
+                                  <div>
+                                    <div style={{ fontSize: 13, fontWeight: 500, color: '#111827' }}>{item.label}</div>
+                                    {item.sub && <div style={{ fontSize: 11, color: '#6b7280' }}>{item.sub}</div>}
+                                  </div>
+                                </label>
+                              ))}
+                            </div>
+                          </>
+                        )}
+                      </>
+                    );
+                  })()}
+                </div>
+                <div className="dialog-actions">
+                  <button type="button" className="btn-secondary" onClick={() => setDeleteStep('choose')}>← Back</button>
+                  <button
+                    type="button"
+                    className="btn-secondary btn-danger-solid"
+                    disabled={deleteSelectedIds.size === 0}
+                    onClick={() => setDeleteStep('confirm')}
+                  >
+                    Continue →
+                  </button>
+                </div>
+              </>
+            )}
+
+            {/* ── Step 3: Final confirmation ── */}
+            {deleteStep === 'confirm' && deleteTarget && (
+              <>
+                <div className="dialog-title" style={{ color: '#dc2626', display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                  Confirm Delete
+                </div>
+                <div style={{ padding: '16px 0' }}>
+                  <p style={{ margin: '0 0 12px', fontSize: 14, color: '#374151', fontWeight: 500 }}>
+                    Are you sure you want to delete {deleteTarget === 'course' ? 'this entire course' : deleteTarget === 'lesson' ? `${deleteSelectedIds.size} lesson${deleteSelectedIds.size !== 1 ? 's' : ''}` : `${deleteSelectedIds.size} module${deleteSelectedIds.size !== 1 ? 's' : ''}`}?
+                  </p>
+                  <div style={{ padding: 12, backgroundColor: '#fef2f2', borderRadius: 8, border: '1px solid #fecaca', marginBottom: 12 }}>
+                    {deleteTarget === 'course' ? (
+                      <>
+                        <div style={{ fontSize: 14, fontWeight: 600, color: '#991b1b', marginBottom: 4 }}>{selectedCourse.title}</div>
+                        <div style={{ fontSize: 12, color: '#dc2626' }}>This will delete all {(selectedCourse.pages ?? []).length} lesson(s) and all associated content.</div>
+                      </>
+                    ) : deleteTarget === 'lesson' ? (
+                      <ul style={{ margin: 0, padding: '0 0 0 16px', fontSize: 13, color: '#991b1b' }}>
+                        {(selectedCourse.pages ?? []).filter(p => deleteSelectedIds.has(p.id)).map(p => <li key={p.id}>{p.title}</li>)}
+                      </ul>
+                    ) : (
+                      <ul style={{ margin: 0, padding: '0 0 0 16px', fontSize: 13, color: '#991b1b' }}>
+                        {(selectedCourse.folders ?? []).filter(f => deleteSelectedIds.has(f.id)).map(f => <li key={f.id}>{f.title}</li>)}
+                      </ul>
+                    )}
+                  </div>
+                  <p style={{ margin: 0, fontSize: 13, color: '#6b7280' }}>⚠️ This action cannot be undone.</p>
+                </div>
+                <div className="dialog-actions">
+                  <button type="button" className="btn-secondary" onClick={deleteTarget === 'course' ? closeDeleteModal : () => setDeleteStep('select')}>Cancel</button>
+                  <button type="button" className="btn-secondary btn-danger-solid" onClick={confirmDelete}>
+                    Confirm Delete
+                  </button>
+                </div>
+              </>
+            )}
+
           </div>
         </div>
       )}
@@ -1904,8 +2032,8 @@ export function CourseManagement(props: CourseEditorProps) {
                   <button type="button" className="btn-ghost btn-small" onClick={() => setViewMode("grid")}>
                     Back to courses
                   </button>
-                  <button type="button" className="btn-ghost btn-danger" onClick={() => setIsDeleteConfirmOpen(true)}>
-                    Delete Course
+                  <button type="button" className="btn-ghost btn-danger" onClick={() => openDeleteModal()}>
+                    Delete
                   </button>
                 </div>
               </div>
@@ -2329,13 +2457,11 @@ export function CourseManagement(props: CourseEditorProps) {
                                           type="button"
                                           className="course-page-menu-item course-page-menu-item-danger"
                                           onClick={() => {
-                                            const nextPages = pages.filter((p) => p.id !== page.id);
-                                            updateCourse({ ...selectedCourse, pages: nextPages });
+                                            setDeleteTarget('lesson');
+                                            setDeleteSelectedIds(new Set([page.id]));
+                                            setDeleteStep('confirm');
+                                            setIsDeleteModalOpen(true);
                                             setOpenPageMenuId(null);
-                                            if (activePageId === page.id) {
-                                              const fallback = nextPages[nextPages.length - 1] ?? nextPages[0];
-                                              setActivePageId(fallback ? fallback.id : null);
-                                            }
                                           }}
                                         >
                                           Delete
@@ -2520,15 +2646,11 @@ export function CourseManagement(props: CourseEditorProps) {
                                               type="button"
                                               className="course-page-menu-item course-page-menu-item-danger"
                                               onClick={() => {
-                                                const remainingFolders = folders.filter((item) => item.id !== folder.id);
-                                                const remainingPages = pages.filter((page) => page.folderId !== folder.id);
-                                                const nextCourse: Course = { ...selectedCourse, folders: remainingFolders, pages: remainingPages };
-                                                updateCourse(nextCourse);
+                                                setDeleteTarget('module');
+                                                setDeleteSelectedIds(new Set([folder.id]));
+                                                setDeleteStep('confirm');
+                                                setIsDeleteModalOpen(true);
                                                 setOpenFolderMenuId(null);
-                                                if (activePageId && !remainingPages.some((page) => page.id === activePageId)) {
-                                                  const fallback = remainingPages[remainingPages.length - 1] ?? remainingPages[0];
-                                                  setActivePageId(fallback ? fallback.id : null);
-                                                }
                                               }}
                                             >
                                               Delete Module  
@@ -2663,13 +2785,11 @@ export function CourseManagement(props: CourseEditorProps) {
                                                 type="button"
                                                 className="course-page-menu-item course-page-menu-item-danger"
                                                 onClick={() => {
-                                                  const nextPages = pages.filter((p) => p.id !== page.id);
-                                                  updateCourse({ ...selectedCourse, pages: nextPages });
+                                                  setDeleteTarget('lesson');
+                                                  setDeleteSelectedIds(new Set([page.id]));
+                                                  setDeleteStep('confirm');
+                                                  setIsDeleteModalOpen(true);
                                                   setOpenPageMenuId(null);
-                                                  if (activePageId === page.id) {
-                                                    const fallback = nextPages[nextPages.length - 1] ?? nextPages[0];
-                                                    setActivePageId(fallback ? fallback.id : null);
-                                                  }
                                                 }}
                                               >
                                                 Delete
