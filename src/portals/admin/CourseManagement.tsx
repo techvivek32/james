@@ -13,6 +13,8 @@ export function CourseManagement(props: CourseEditorProps) {
   const [progressCourseId, setProgressCourseId] = useState<string | null>(null);
   const [progressData, setProgressData] = useState<any[]>([]);
   const [progressUsers, setProgressUsers] = useState<any[]>([]);
+  const [progressSearch, setProgressSearch] = useState('');
+  const [progressRoleFilter, setProgressRoleFilter] = useState('all');
   const [isLoadingProgress, setIsLoadingProgress] = useState(false);
   const [page, setPage] = useState(1);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
@@ -1033,7 +1035,7 @@ export function CourseManagement(props: CourseEditorProps) {
     const lessonIds = new Set(lessonPages.map(p => p.id));
 
     // Build per-user rows: all non-admin users
-    const rows = progressUsers
+    const allRows = progressUsers
       .filter(u => u.role !== 'admin')
       .map(user => {
         const record = progressData.find((p: any) => p.userId === user.id);
@@ -1044,6 +1046,18 @@ export function CourseManagement(props: CourseEditorProps) {
         return { user, completedLessons, pct, courseCompleted: record?.courseCompleted || false };
       })
       .sort((a, b) => b.pct - a.pct);
+
+    // Apply search + role filter
+    const rows = allRows.filter(({ user }) => {
+      const matchesName = user.name?.toLowerCase().includes(progressSearch.toLowerCase());
+      const matchesRole = progressRoleFilter === 'all' || user.role === progressRoleFilter;
+      return matchesName && matchesRole;
+    });
+
+    // Unique roles for the filter dropdown
+    const availableRoles = Array.from(new Set(
+      progressUsers.filter(u => u.role !== 'admin').map(u => u.role).filter(Boolean)
+    )) as string[];
 
     return (
       <div className="admin-course-grid-page">
@@ -1056,13 +1070,38 @@ export function CourseManagement(props: CourseEditorProps) {
           </div>
         </div>
         <div className="panel-body">
+          {/* Search + Role filter */}
+          <div style={{ display: 'flex', gap: 12, marginBottom: 16, flexWrap: 'wrap' }}>
+            <input
+              className="field-input"
+              placeholder="Search by name..."
+              value={progressSearch}
+              onChange={e => setProgressSearch(e.target.value)}
+              style={{ flex: 1, minWidth: 200 }}
+            />
+            <select
+              className="field-input"
+              value={progressRoleFilter}
+              onChange={e => setProgressRoleFilter(e.target.value)}
+              style={{ minWidth: 140 }}
+            >
+              <option value="all">All Roles</option>
+              {availableRoles.map(role => (
+                <option key={role} value={role} style={{ textTransform: 'capitalize' }}>
+                  {role.charAt(0).toUpperCase() + role.slice(1)}
+                </option>
+              ))}
+            </select>
+          </div>
           <div style={{ marginBottom: 16, color: '#6b7280', fontSize: 14 }}>
-            {totalLessons} lesson page{totalLessons !== 1 ? 's' : ''} (quizzes excluded) · {rows.length} users
+            {totalLessons} lesson page{totalLessons !== 1 ? 's' : ''} (quizzes excluded) · {rows.length}{rows.length !== allRows.length ? ` of ${allRows.length}` : ''} users
           </div>
           {isLoadingProgress ? (
             <div style={{ textAlign: 'center', padding: 60, color: '#6b7280' }}>Loading...</div>
           ) : rows.length === 0 ? (
-            <div style={{ textAlign: 'center', padding: 60, color: '#9ca3af' }}>No users found.</div>
+            <div style={{ textAlign: 'center', padding: 60, color: '#9ca3af' }}>
+              {allRows.length === 0 ? 'No users found.' : 'No users match your search.'}
+            </div>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
               {rows.map(({ user, completedLessons, pct, courseCompleted }) => (
@@ -1188,6 +1227,8 @@ export function CourseManagement(props: CourseEditorProps) {
                           setProgressCourseId(course.id);
                           setProgressData([]);
                           setProgressUsers([]);
+                          setProgressSearch('');
+                          setProgressRoleFilter('all');
                           setIsLoadingProgress(true);
                           setViewMode("progress");
                           // Load progress data
