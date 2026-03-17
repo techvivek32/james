@@ -116,7 +116,7 @@ export function PlaybookTimer({ userId, courseId, courseTitle, onComplete }: Pro
         border: "1px solid #e5e7eb", borderRadius: 8, marginBottom: 12,
       }}>
         <span style={{ fontSize: 18 }}>⏱️</span>
-        <span style={{ fontSize: 13, color: "#374151", fontWeight: 500 }}>Playbook Training Timer</span>
+        <span style={{ fontSize: 13, color: "#374151", fontWeight: 500 }}>Training Timer</span>
         <button
           onClick={() => setState("picking")}
           style={{

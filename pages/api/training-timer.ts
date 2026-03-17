@@ -52,7 +52,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         <div style="font-family:sans-serif;max-width:600px;margin:0 auto;padding:24px">
           <h2 style="color:#111827">Training Timer Completed – Status Update</h2>
           <p style="color:#374151;font-size:15px">
-            The Playbook training timer for <strong>${user.name}</strong> has completed.
+            The training timer for <strong>${user.name}</strong> has completed.
           </p>
           ${isFullyComplete
             ? `<p style="color:#10b981;font-size:15px;font-weight:600">✅ The training was completed successfully!</p>`
@@ -66,8 +66,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           <p style="color:#9ca3af;font-size:12px">Miller Storm OS – Training Center</p>
         </div>`;
       const text = isFullyComplete
-        ? `The Playbook training timer for ${user.name} has completed.\nThe training was completed successfully!`
-        : `The Playbook training timer for ${user.name} has completed.\nCompletion Status: ${progressPct}%\nLessons Completed: ${lessonsCompleted} / ${lessonsTotal}`;
+        ? `The training timer for ${user.name} has completed.\nThe training was completed successfully!`
+        : `The training timer for ${user.name} has completed.\nCompletion Status: ${progressPct}%\nLessons Completed: ${lessonsCompleted} / ${lessonsTotal}`;
 
       await Promise.all(recipients.map(to => sendEmail({ to, subject, html, text })));
       return res.status(200).json({ ok: true });
