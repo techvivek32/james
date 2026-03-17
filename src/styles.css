@@ -1347,7 +1347,7 @@ body {
 .course-page-body-input video {
   margin: 0 !important;
   display: block;
-  width: 100% !important;
+  max-width: 100% !important;
   height: auto !important;
   aspect-ratio: 16 / 9;
   border-radius: 0 !important;
@@ -1358,8 +1358,8 @@ body {
 /* Target the video container divs - make them responsive */
 .course-page-body-input div[style*="aspect-ratio: 16/9"],
 .course-page-body-input div[style*="aspect-ratio: 16 / 9"] {
-  margin: 0 !important;
-  width: 100% !important;
+  margin: 0 auto !important;
+  width: 75% !important;
   border-radius: 0 !important;
   background: transparent !important;
   overflow: visible !important;
@@ -1372,9 +1372,9 @@ body {
 
 /* Override the max-width on the outer video container */
 .course-page-body-input div[data-video-type] {
-  max-width: 100% !important;
-  width: 100% !important;
-  margin: 0 !important;
+  max-width: 75% !important;
+  width: 75% !important;
+  margin: 0 auto !important;
   overflow: visible !important;
   padding: 0 !important;
 }
@@ -1385,11 +1385,33 @@ body {
   height: 100% !important;
 }
 
+/* Reduce video container divs to 75% width */
+.course-page-body-input div[style*="aspect-ratio: 16/9"],
+.course-page-body-input div[style*="aspect-ratio: 16 / 9"] {
+  margin: 0 auto !important;
+  width: 75% !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  overflow: visible !important;
+  height: auto !important;
+  min-height: auto !important;
+  position: relative !important;
+  padding: 0 !important;
+}
+
 /* Specific handling for YouTube iframes */
 .course-page-body-input iframe[src*="youtube.com"],
 .course-page-body-input iframe[src*="youtu.be"] {
   width: 100% !important;
   height: 100% !important;
+}
+
+/* Standalone iframes/videos (not inside aspect-ratio containers) at 75% */
+.course-page-body-input > iframe,
+.course-page-body-input > video {
+  width: 75% !important;
+  margin-left: auto !important;
+  margin-right: auto !important;
 }
 
 .course-page-body-input img {
