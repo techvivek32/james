@@ -162,25 +162,7 @@ export function ManagerOnlineTrainingPage(props: {
       setSelectedAnswers({});
     }
 
-    // Enable autoplay after first page
-    if (isFirstPageVisit) {
-      setIsFirstPageVisit(false);
-    } else {
-      // Add autoplay to videos on subsequent pages
-      setTimeout(() => {
-        const iframes = document.querySelectorAll('.course-page-editor-body iframe');
-        iframes.forEach((iframe: any) => {
-          const src = iframe.src;
-          if (src && (src.includes('youtube.com') || src.includes('vimeo.com'))) {
-            const separator = src.includes('?') ? '&' : '?';
-            if (!src.includes('autoplay=1')) {
-              iframe.src = `${src}${separator}autoplay=1`;
-            }
-          }
-        });
-      }, 100);
-    }
-  }, [activePageId, savedQuizResults, selectedCourse, isFirstPageVisit]);
+  }, [activePageId, savedQuizResults, selectedCourse]);
 
   // Resizer functionality
   useEffect(() => {
@@ -211,6 +193,93 @@ export function ManagerOnlineTrainingPage(props: {
       document.body.style.userSelect = '';
     };
   }, [isResizing, startX, startWidth]);
+
+  // ── Video auto-advance (parent level so effect is stable) ──────────────────
+  // When the last video on a lesson page ends, mark it complete and go to next page.
+  useEffect(() => {
+    if (!selectedCourse || !activePageId) return;
+
+    let pages = (selectedCourse.pages ?? []).filter(p => p.status === 'published');
+    if (viewingPlaylist) {
+      pages = pages.filter(p => viewingPlaylist.selectedModules.includes(p.id));
+    }
+
+    const activePage = pages.find(p => p.id === activePageId);
+    if (!activePage || activePage.isQuiz) return;
+
+    // Cleanup any previous sequence
+    videoCleanupRef.current?.();
+    videoCleanupRef.current = undefined;
+
+    const timer = setTimeout(async () => {
+      const container = document.querySelector<HTMLElement>('.course-page-body-input');
+      if (!container) return;
+
+      const cleanup = await initVideoSequence(
+        container,
+        () => {
+          // Called when all videos on this lesson page have ended
+          // Re-read pages fresh from current state via closure
+          let currentPages = (selectedCourse.pages ?? []).filter(p => p.status === 'published');
+          if (viewingPlaylist) {
+            currentPages = currentPages.filter(p => viewingPlaylist.selectedModules.includes(p.id));
+          }
+          const currentIndex = currentPages.findIndex(p => p.id === activePageId);
+          if (currentIndex === -1) return;
+
+          // Mark current lesson as completed
+          const currentPage = currentPages[currentIndex];
+          if (!currentPage.isQuiz) {
+            const newCompleted = new Set([...completedPages, currentPage.id]);
+            setCompletedPages(newCompleted);
+            const lessonPages = currentPages.filter(p => !p.isQuiz);
+            const completedLessons = lessonPages.filter(p => newCompleted.has(p.id)).length;
+            setCourseProgress(prev => ({
+              ...prev,
+              [selectedCourse.id]: {
+                completed: completedLessons,
+                total: lessonPages.length,
+                isCompleted: prev[selectedCourse.id]?.isCompleted || false
+              }
+            }));
+            fetch('/api/progress', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                userId: props.currentUser.id,
+                courseId: selectedCourse.id,
+                completedPages: Array.from(newCompleted)
+              })
+            }).catch(() => {});
+          }
+
+          // Navigate to next page (lesson or quiz)
+          if (currentIndex < currentPages.length - 1) {
+            setActivePageId(currentPages[currentIndex + 1].id);
+            // Expand the folder of the next page if it's in a collapsed folder
+            const nextPage = currentPages[currentIndex + 1];
+            if (nextPage.folderId) {
+              setCollapsedFolders(prev => {
+                const next = new Set(prev);
+                next.delete(nextPage.folderId!);
+                return next;
+              });
+            }
+            document.querySelector('.course-page-main')?.scrollTo({ top: 0, behavior: 'smooth' });
+          }
+        },
+        autoPlay
+      );
+      videoCleanupRef.current = cleanup;
+    }, 800);
+
+    return () => {
+      clearTimeout(timer);
+      videoCleanupRef.current?.();
+      videoCleanupRef.current = undefined;
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activePageId, autoPlay, selectedCourse?.id, viewingPlaylist?.id]);
 
   const [courseProgress, setCourseProgress] = useState<Record<string, { completed: number; total: number; isCompleted: boolean }>>({});
   const [isLoadingProgress, setIsLoadingProgress] = useState(false);
@@ -1007,65 +1076,7 @@ export function ManagerOnlineTrainingPage(props: {
       }
     };
 
-    // Video sequence: init after page content renders
-    // Update callback ref whenever pages/completedPages/activePageId change
-    videoCallbackRef.current = () => {
-      const currentIndex = pages.findIndex(p => p.id === (activePageId ?? activePage?.id));
-      if (currentIndex < pages.length - 1) {
-        const currentPage = pages[currentIndex];
-        // Only mark lesson pages as completed via video end
-        if (!currentPage.isQuiz) {
-          const newCompleted = new Set([...completedPages, currentPage.id]);
-          setCompletedPages(newCompleted);
-
-          // Update card progress immediately
-          const lessonPages = pages.filter(p => !p.isQuiz);
-          const completedLessons = lessonPages.filter(p => newCompleted.has(p.id)).length;
-          if (selectedCourse) {
-            setCourseProgress(prev => ({
-              ...prev,
-              [selectedCourse.id]: {
-                completed: completedLessons,
-                total: lessonPages.length,
-                isCompleted: prev[selectedCourse.id]?.isCompleted || false
-              }
-            }));
-          }
-
-          if (props.currentUser && selectedCourse) {
-            fetch('/api/progress', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ userId: props.currentUser.id, courseId: selectedCourse.id, completedPages: Array.from(newCompleted) })
-            }).catch(() => {});
-          }
-        }
-        setActivePageId(pages[currentIndex + 1].id);
-        document.querySelector('.course-page-main')?.scrollTo({ top: 0, behavior: 'smooth' });
-      }
-    };
-
-    useEffect(() => {
-      if (!activePage || activePage.isQuiz) return;
-      // Cleanup previous
-      videoCleanupRef.current?.();
-      videoCleanupRef.current = undefined;
-
-      const timer = setTimeout(async () => {
-        const container = document.querySelector<HTMLElement>('.course-page-body-input');
-        if (!container) return;
-        const cleanup = await initVideoSequence(container, () => {
-          videoCallbackRef.current?.();
-        }, autoPlay);
-        videoCleanupRef.current = cleanup;
-      }, 400);
-
-      return () => {
-        clearTimeout(timer);
-        videoCleanupRef.current?.();
-        videoCleanupRef.current = undefined;
-      };
-    }, [activePageId, autoPlay]);
+    // Video sequence is handled at parent component level (useEffect above CourseView)
     const handleCompleteCourse = () => {
       if (!props.currentUser || !selectedCourse) return;
       setCourseCompleted(true);
