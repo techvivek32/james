@@ -25,6 +25,7 @@ export function ManagerOnlineTrainingPage(props: {
   const [selectedCourse, setSelectedCourse] = useState<Course | null>(null);
   const [activePageId, setActivePageId] = useState<string | null>(null);
   const [collapsedFolders, setCollapsedFolders] = useState<Set<string>>(new Set());
+  const [courseViewInitialized, setCourseViewInitialized] = useState<string | null>(null);
   const [selectedAnswers, setSelectedAnswers] = useState<Record<string, number>>({});
   const [completedPages, setCompletedPages] = useState<Set<string>>(new Set());
   const [quizSubmitted, setQuizSubmitted] = useState(false);
@@ -129,6 +130,20 @@ export function ManagerOnlineTrainingPage(props: {
         .catch(err => console.error("Failed to load progress:", err));
     }
   }, [selectedCourse, props.currentUser]);
+
+  // Collapse all folders by default when entering a course; expand only the active lesson's folder
+  useEffect(() => {
+    if (!selectedCourse || courseViewInitialized === selectedCourse.id) return;
+    const folders = selectedCourse.folders ?? [];
+    if (folders.length === 0) return;
+    const pages = (selectedCourse.pages ?? []).filter(p => p.status === 'published');
+    const currentPageId = activePageId ?? pages[0]?.id;
+    const activeFolderId = pages.find(p => p.id === currentPageId)?.folderId;
+    const allCollapsed = new Set(folders.map(f => f.id));
+    if (activeFolderId) allCollapsed.delete(activeFolderId);
+    setCollapsedFolders(allCollapsed);
+    setCourseViewInitialized(selectedCourse.id);
+  }, [selectedCourse, activePageId, courseViewInitialized]);
 
   useEffect(() => {
     if (!activePageId || !selectedCourse) return;
@@ -817,6 +832,7 @@ export function ManagerOnlineTrainingPage(props: {
                 setSelectedCourse(null);
                 setActivePageId(null);
                 setViewingPlaylist(null);
+                setCourseViewInitialized(null);
               }
             }}
             style={{
@@ -841,6 +857,7 @@ export function ManagerOnlineTrainingPage(props: {
                 setSelectedCourse(null);
                 setActivePageId(null);
                 setViewingPlaylist(null);
+                setCourseViewInitialized(null);
               }
             }}
             style={{
@@ -865,6 +882,7 @@ export function ManagerOnlineTrainingPage(props: {
                 setSelectedCourse(null);
                 setActivePageId(null);
                 setViewingPlaylist(null);
+                setCourseViewInitialized(null);
               }
             }}
             style={{
@@ -1121,6 +1139,7 @@ export function ManagerOnlineTrainingPage(props: {
                   setSelectedCourse(null); 
                   setActivePageId(null);
                   setViewingPlaylist(null);
+                  setCourseViewInitialized(null);
                   setActiveTab('playlists');
                 }}
               >
@@ -1130,6 +1149,7 @@ export function ManagerOnlineTrainingPage(props: {
                 setSelectedCourse(null); 
                 setActivePageId(null);
                 setViewingPlaylist(null);
+                setCourseViewInitialized(null);
               }}>
                 Back to Courses
               </button>
@@ -1513,6 +1533,7 @@ export function ManagerOnlineTrainingPage(props: {
                 setSelectedCourse(null);
                 setActivePageId(null);
                 setViewingPlaylist(null);
+                setCourseViewInitialized(null);
               }
             }}
             style={{
@@ -1537,6 +1558,7 @@ export function ManagerOnlineTrainingPage(props: {
                 setSelectedCourse(null);
                 setActivePageId(null);
                 setViewingPlaylist(null);
+                setCourseViewInitialized(null);
               }
             }}
             style={{
@@ -1561,6 +1583,7 @@ export function ManagerOnlineTrainingPage(props: {
                 setSelectedCourse(null);
                 setActivePageId(null);
                 setViewingPlaylist(null);
+                setCourseViewInitialized(null);
               }
             }}
             style={{
