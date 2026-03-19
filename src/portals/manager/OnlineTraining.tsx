@@ -63,6 +63,9 @@ export function ManagerOnlineTrainingPage(props: {
     }
     return true;
   });
+  // Ref so the video sequence always reads the live autoPlay value without re-initing
+  const autoPlayRef = useRef(autoPlay);
+  autoPlayRef.current = autoPlay;
 
   // Handle lessonId from query parameter (shared lesson)
   useEffect(() => {
@@ -265,14 +268,17 @@ export function ManagerOnlineTrainingPage(props: {
 
     const timer = setTimeout(async () => {
       const container = document.querySelector<HTMLElement>('.course-page-body-input');
-      if (!container) return;
+      if (!container) {
+        console.log('[VideoSeq] container .course-page-body-input not found');
+        return;
+      }
       const cleanup = await initVideoSequence(
         container,
-        () => onVideoEndedRef.current(),  // always calls the latest version
-        autoPlay
+        () => onVideoEndedRef.current(),
+        autoPlayRef
       );
       videoCleanupRef.current = cleanup;
-    }, 800);
+    }, 1200);
 
     return () => {
       clearTimeout(timer);
@@ -280,7 +286,7 @@ export function ManagerOnlineTrainingPage(props: {
       videoCleanupRef.current = undefined;
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activePageId, autoPlay, selectedCourse?.id, viewingPlaylist?.id]);
+  }, [activePageId, selectedCourse?.id, viewingPlaylist?.id]);
 
   const [courseProgress, setCourseProgress] = useState<Record<string, { completed: number; total: number; isCompleted: boolean }>>({});
   const [isLoadingProgress, setIsLoadingProgress] = useState(false);
@@ -1416,7 +1422,7 @@ export function ManagerOnlineTrainingPage(props: {
                   <div className="course-page-editor-body">
                     <div
                       className="course-page-body-input"
-                      dangerouslySetInnerHTML={{ __html: activePage.body || "" }}
+                      dangerouslySetInnerHTML={{ __html: (activePage.body || "").replace(/(<iframe[^>]*vimeo[^>]*)loading="lazy"/gi, '$1') }}
                       style={{
                         padding: "12px",
                         border: "1px solid #ddd",

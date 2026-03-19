@@ -8,6 +8,7 @@
     "start": "next start -p 6789"
   },
   "dependencies": {
+    "@vimeo/player": "^2.30.3",
     "bcryptjs": "^3.0.3",
     "formidable": "^3.5.4",
     "mongoose": "^9.2.1",
