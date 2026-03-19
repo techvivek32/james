@@ -13,7 +13,7 @@ type AppToolItem = {
   category: 'apps' | 'tools' | 'other';
 };
 
-export function AppsToolsViewer() {
+export function AppsToolsViewer({ portal = 'sales' }: { portal?: 'sales' | 'manager' }) {
   const [apps, setApps] = useState<AppToolItem[]>([]);
   const [tools, setTools] = useState<AppToolItem[]>([]);
   const [other, setOther] = useState<AppToolItem[]>([]);
@@ -50,7 +50,7 @@ export function AppsToolsViewer() {
         <div className="panel-body">
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(350px, 1fr))", gap: 20 }}>
             {items.map((item) => (
-              <Link key={item._id} href={`/sales/apps-tools/${item._id}`} style={{ textDecoration: 'none', color: 'inherit' }}>
+              <Link key={item._id} href={`/${portal}/apps-tools/${item._id}`} style={{ textDecoration: 'none', color: 'inherit' }}>
                 <div className="card" style={{ padding: 0, overflow: "hidden", cursor: "pointer", transition: "transform 0.2s", height: "100%" }}>
                   <div style={{ 
                     width: "100%", 
