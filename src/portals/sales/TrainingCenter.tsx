@@ -478,7 +478,11 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
                     key={course.id}
                     type="button"
                     className="training-card"
-                    onClick={() => setSelectedCourse(course)}
+                    onClick={() => {
+                      const firstPage = (course.pages ?? []).filter(p => p.status === 'published')[0];
+                      setActivePageId(firstPage?.id ?? null);
+                      setSelectedCourse(course);
+                    }}
                     style={{ cursor: "pointer", border: "none", background: "none", padding: 0, textAlign: "left" }}
                   >
                     <div 
@@ -562,6 +566,10 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
                           onClick={() => {
                             const course = courses.find(c => c.id === playlist.courseId);
                             if (course) {
+                              const playlistPages = (course.pages ?? [])
+                                .filter(p => p.status === 'published' && playlist.selectedModules.includes(p.id))
+                                .sort((a, b) => playlist.selectedModules.indexOf(a.id) - playlist.selectedModules.indexOf(b.id));
+                              setActivePageId(playlistPages[0]?.id ?? null);
                               setViewingPlaylist(playlist);
                               setSelectedCourse(course);
                             }
@@ -641,6 +649,10 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
                                 selectedModules: assignment.selectedModules,
                                 createdAt: assignment.createdAt
                               };
+                              const playlistPages = (course.pages ?? [])
+                                .filter(p => p.status === 'published' && assignment.selectedModules.includes(p.id))
+                                .sort((a, b) => assignment.selectedModules.indexOf(a.id) - assignment.selectedModules.indexOf(b.id));
+                              setActivePageId(playlistPages[0]?.id ?? null);
                               setViewingPlaylist(playlist);
                               setSelectedCourse(course);
                             }
