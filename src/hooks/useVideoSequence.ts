@@ -1,11 +1,16 @@
 /**
  * initVideoSequence
  *
- * Finds all YouTube / Vimeo iframes and HTML5 <video> elements inside `container`.
- * - Multiple videos play one by one automatically (when autoPlay is ON)
- * - When the last video ends → calls onAllEnded() to advance to the next lesson
- * - autoPlay only controls whether the NEXT video in the same lesson auto-starts;
- *   onAllEnded() is ALWAYS called when the last video finishes regardless of autoPlay
+ * For each Vimeo/YouTube/HTML5 video in a lesson:
+ *  - Detects when each video ends
+ *  - If autoPlay ON: starts the next video automatically
+ *  - When the LAST video ends: always calls onAllEnded() to go to next lesson
+ *
+ * Strategy:
+ *  - Vimeo: replace iframe with a new one that has api=1, wait for load, then
+ *    subscribe to 'finish' via postMessage. Use 'ready' event as confirmation.
+ *  - YouTube: use IFrame API (replaces iframe with YT.Player div)
+ *  - HTML5: use 'ended' event
  */
 
 declare global {
@@ -18,8 +23,7 @@ declare global {
   }
 }
 
-// ─── YouTube IFrame API loader (singleton) ────────────────────────────────────
-
+// ── YouTube API loader ────────────────────────────────────────────────────────
 function loadYTApi(): Promise<void> {
   return new Promise((resolve) => {
     if (typeof window === 'undefined') return;
@@ -47,22 +51,26 @@ function extractYTVideoId(src: string): string | null {
   return m ? m[1] : null;
 }
 
-// ─── Types ────────────────────────────────────────────────────────────────────
+// ── Build a clean Vimeo embed URL with api=1 ──────────────────────────────────
+function buildVimeoSrc(originalSrc: string, isFirst: boolean, autoPlay: boolean): string {
+  // Strip all params we'll re-add
+  const [base] = originalSrc.split('?');
+  const params = new URLSearchParams();
+  params.set('api', '1');
+  if (isFirst && autoPlay) {
+    params.set('autoplay', '1');
+    params.set('muted', '1'); // required for browser autoplay policy
+  }
+  return `${base}?${params.toString()}`;
+}
 
-type VimeoItem = {
-  type: 'vimeo';
-  iframe: HTMLIFrameElement;
-  ready: boolean;       // true after we receive the 'ready' event from Vimeo
-  pendingPlay: boolean; // true if we want to play but aren't ready yet
-};
+// ── Types ─────────────────────────────────────────────────────────────────────
+type VimeoEntry = { type: 'vimeo'; iframe: HTMLIFrameElement; seqIdx: number; ready: boolean; pendingPlay: boolean };
+type YTEntry    = { type: 'yt';    seqIdx: number; player: any; ready: boolean; pendingPlay: boolean };
+type H5Entry    = { type: 'html5'; seqIdx: number; video: HTMLVideoElement };
+type Entry = VimeoEntry | YTEntry | H5Entry;
 
-type VideoItem =
-  | { type: 'yt';    player: any; ready: boolean; pendingPlay: boolean }
-  | VimeoItem
-  | { type: 'html5'; video: HTMLVideoElement };
-
-// ─── Main export ──────────────────────────────────────────────────────────────
-
+// ── Main ──────────────────────────────────────────────────────────────────────
 export async function initVideoSequence(
   container: HTMLElement,
   onAllEnded: () => void,
@@ -71,130 +79,110 @@ export async function initVideoSequence(
   if (typeof window === 'undefined') return;
 
   const allEls = Array.from(container.querySelectorAll<HTMLElement>('iframe, video'));
-  const items: VideoItem[] = [];
-  const ytEls: { el: HTMLIFrameElement; globalIdx: number }[] = [];
+  const entries: Entry[] = [];
+  const ytRaw: { el: HTMLIFrameElement; seqIdx: number }[] = [];
 
-  // ── Collect items ─────────────────────────────────────────────────────────
+  // ── 1. Collect & replace Vimeo iframes ────────────────────────────────────
   allEls.forEach(el => {
-    if (el.tagName === 'IFRAME') {
-      const iframe = el as HTMLIFrameElement;
-      const src = iframe.src || '';
+    if (el.tagName !== 'IFRAME' && el.tagName !== 'VIDEO') return;
 
-      if (src.includes('youtube.com') || src.includes('youtu.be')) {
-        const idx = items.length;
-        items.push({ type: 'yt', player: null, ready: false, pendingPlay: false });
-        ytEls.push({ el: iframe, globalIdx: idx });
-
-      } else if (src.includes('vimeo.com')) {
-        // Add api=1 so Vimeo accepts postMessage commands & events
-        let newSrc = src
-          .replace(/[&?]autoplay=\d/g, '')
-          .replace(/[&?]api=\d/g, '')
-          .replace(/\?&/, '?')
-          .replace(/[?&]$/, '');
-        const sep = newSrc.includes('?') ? '&' : '?';
-        newSrc += `${sep}api=1`;
-        // First video autoplays when autoPlay is on
-        if (items.length === 0 && autoPlay) newSrc += '&autoplay=1';
-        iframe.src = newSrc;
-        items.push({ type: 'vimeo', iframe, ready: false, pendingPlay: false });
-      }
-
-    } else if (el.tagName === 'VIDEO') {
+    if (el.tagName === 'VIDEO') {
       const video = el as HTMLVideoElement;
-      if (items.length > 0) video.autoplay = false;
-      items.push({ type: 'html5', video });
-    }
-  });
-
-  if (items.length === 0) return;
-
-  const total = items.length;
-
-  // ── playItem: trigger playback of item at `index` ─────────────────────────
-  function playItem(index: number) {
-    if (index >= total) {
-      // All videos done — always advance to next lesson
-      onAllEnded();
+      const seqIdx = entries.length;
+      if (seqIdx > 0) video.autoplay = false;
+      entries.push({ type: 'html5', seqIdx, video });
       return;
     }
 
-    // autoPlay=false: don't auto-start next video, but onAllEnded still fires above
-    if (!autoPlay) return;
+    const iframe = el as HTMLIFrameElement;
+    const src = iframe.src || '';
 
-    const item = items[index];
-
-    if (item.type === 'yt') {
-      if (item.ready && item.player) {
-        item.player.playVideo();
-      } else {
-        item.pendingPlay = true;
-      }
-
-    } else if (item.type === 'vimeo') {
-      if (item.ready) {
-        item.iframe.contentWindow?.postMessage(
-          JSON.stringify({ method: 'play' }),
-          'https://player.vimeo.com'
-        );
-      } else {
-        item.pendingPlay = true;
-      }
-
-    } else if (item.type === 'html5') {
-      item.video.play().catch(() => {});
+    if (src.includes('youtube.com') || src.includes('youtu.be')) {
+      const seqIdx = entries.length;
+      entries.push({ type: 'yt', seqIdx, player: null, ready: false, pendingPlay: false });
+      ytRaw.push({ el: iframe, seqIdx });
+      return;
     }
-  }
 
-  // ── Wire HTML5 ended ──────────────────────────────────────────────────────
-  items.forEach((item, idx) => {
-    if (item.type === 'html5') {
-      item.video.addEventListener('ended', () => playItem(idx + 1));
+    if (src.includes('vimeo.com')) {
+      const seqIdx = entries.length;
+      const isFirst = seqIdx === 0;
+      const newSrc = buildVimeoSrc(src, isFirst, autoPlay);
+
+      // Create a brand-new iframe with api=1 already in the URL
+      // so we never need to reload it
+      const newIframe = document.createElement('iframe');
+      newIframe.src = newSrc;
+      newIframe.style.cssText = iframe.style.cssText || 'width:100%;height:100%;border:none;';
+      newIframe.setAttribute('allow', 'autoplay; fullscreen; picture-in-picture');
+      newIframe.setAttribute('allowfullscreen', '');
+      // Copy width/height attributes if present
+      if (iframe.width) newIframe.width = iframe.width;
+      if (iframe.height) newIframe.height = iframe.height;
+
+      iframe.parentNode?.replaceChild(newIframe, iframe);
+
+      entries.push({ type: 'vimeo', seqIdx, iframe: newIframe, ready: false, pendingPlay: false });
     }
   });
 
-  // ── Wire Vimeo via postMessage ────────────────────────────────────────────
-  // Vimeo requires:
-  //   1. iframe src has api=1
-  //   2. After iframe loads, send addEventListener for 'finish' (and 'ready')
-  //   3. Listen for { event: 'ready' } → then subscribe to finish
-  //   4. Listen for { event: 'finish' } → call playItem(idx + 1)
-  //
-  // We identify which iframe sent the message by matching iframe elements
-  // against event.source (WindowProxy).
+  if (entries.length === 0) return;
+  const total = entries.length;
 
-  const vimeoItems = items
-    .map((item, idx) => ({ item, idx }))
-    .filter(({ item }) => item.type === 'vimeo') as { item: VimeoItem; idx: number }[];
+  // ── 2. playItem ───────────────────────────────────────────────────────────
+  function playItem(idx: number) {
+    if (idx >= total) {
+      onAllEnded();
+      return;
+    }
+    if (!autoPlay) return; // don't chain; onAllEnded still fires above when idx>=total
 
-  const vimeoHandler = (event: MessageEvent) => {
-    // Only handle messages from Vimeo
+    const e = entries[idx];
+    if (e.type === 'yt') {
+      if (e.ready && e.player) e.player.playVideo();
+      else e.pendingPlay = true;
+    } else if (e.type === 'vimeo') {
+      if (e.ready) {
+        e.iframe.contentWindow?.postMessage(JSON.stringify({ method: 'play' }), 'https://player.vimeo.com');
+      } else {
+        e.pendingPlay = true;
+      }
+    } else {
+      e.video.play().catch(() => {});
+    }
+  }
+
+  // ── 3. HTML5 ──────────────────────────────────────────────────────────────
+  entries.forEach(e => {
+    if (e.type === 'html5') {
+      e.video.addEventListener('ended', () => playItem(e.seqIdx + 1));
+    }
+  });
+
+  // ── 4. Vimeo postMessage ──────────────────────────────────────────────────
+  const vimeoEntries = entries.filter((e): e is VimeoEntry => e.type === 'vimeo');
+
+  const msgHandler = (event: MessageEvent) => {
     if (!event.origin.includes('vimeo.com')) return;
-
     let data: any;
-    try {
-      data = typeof event.data === 'string' ? JSON.parse(event.data) : event.data;
-    } catch { return; }
-
+    try { data = typeof event.data === 'string' ? JSON.parse(event.data) : event.data; }
+    catch { return; }
     if (!data) return;
 
-    // Find which vimeo item sent this message
-    const match = vimeoItems.find(({ item }) => item.iframe.contentWindow === event.source);
-    if (!match) return;
-
-    const { item, idx } = match;
+    // Match by contentWindow reference
+    const entry = vimeoEntries.find(e => e.iframe.contentWindow === event.source);
+    if (!entry) return;
 
     if (data.event === 'ready') {
-      // Vimeo player is ready — subscribe to finish event
-      item.ready = true;
-      item.iframe.contentWindow?.postMessage(
+      entry.ready = true;
+      // Subscribe to finish
+      entry.iframe.contentWindow?.postMessage(
         JSON.stringify({ method: 'addEventListener', value: 'finish' }),
         'https://player.vimeo.com'
       );
-      // If we were waiting to play this item, do it now
-      if (item.pendingPlay) {
-        item.pendingPlay = false;
-        item.iframe.contentWindow?.postMessage(
+      if (entry.pendingPlay) {
+        entry.pendingPlay = false;
+        entry.iframe.contentWindow?.postMessage(
           JSON.stringify({ method: 'play' }),
           'https://player.vimeo.com'
         );
@@ -202,33 +190,31 @@ export async function initVideoSequence(
     }
 
     if (data.event === 'finish') {
-      playItem(idx + 1);
+      playItem(entry.seqIdx + 1);
     }
   };
 
-  window.addEventListener('message', vimeoHandler);
+  window.addEventListener('message', msgHandler);
 
-  // Send initial addEventListener for 'ready' to each Vimeo iframe
-  // We do this after a short tick to ensure the iframe src has been set
-  vimeoItems.forEach(({ item }) => {
-    // Use onload if not yet loaded, otherwise send immediately
-    const sendReady = () => {
-      item.iframe.contentWindow?.postMessage(
+  // Subscribe to 'ready' for each Vimeo iframe after it loads
+  vimeoEntries.forEach(e => {
+    const sendReadySub = () => {
+      e.iframe.contentWindow?.postMessage(
         JSON.stringify({ method: 'addEventListener', value: 'ready' }),
         'https://player.vimeo.com'
       );
     };
-    if (item.iframe.contentWindow) {
-      sendReady();
-    }
-    item.iframe.addEventListener('load', sendReady, { once: true });
+    // The new iframe hasn't loaded yet — wait for load event
+    e.iframe.addEventListener('load', () => {
+      // Small delay to ensure Vimeo player JS is initialised inside the iframe
+      setTimeout(sendReadySub, 200);
+    }, { once: true });
   });
 
-  // ── Wire YouTube via IFrame API ───────────────────────────────────────────
-  if (ytEls.length > 0) {
+  // ── 5. YouTube ────────────────────────────────────────────────────────────
+  if (ytRaw.length > 0) {
     await loadYTApi();
-
-    ytEls.forEach(({ el: iframe, globalIdx }) => {
+    ytRaw.forEach(({ el: iframe, seqIdx }) => {
       const videoId = extractYTVideoId(iframe.src);
       if (!videoId) return;
 
@@ -236,45 +222,28 @@ export async function initVideoSequence(
       wrapper.style.width = '100%';
       wrapper.style.height = '100%';
       wrapper.style.minHeight = '315px';
-      wrapper.style.display = 'block';
-      const divId = `yt-seq-${Date.now()}-${globalIdx}`;
+      const divId = `yt-${Date.now()}-${seqIdx}`;
       wrapper.id = divId;
       iframe.parentNode?.replaceChild(wrapper, iframe);
 
-      const ytItem = items[globalIdx] as Extract<VideoItem, { type: 'yt' }>;
-
+      const ytEntry = entries[seqIdx] as YTEntry;
       const player = new window.YT.Player(divId, {
         videoId,
         width: '100%',
         height: '100%',
-        playerVars: {
-          autoplay: (globalIdx === 0 && autoPlay) ? 1 : 0,
-          enablejsapi: 1,
-          rel: 0,
-          modestbranding: 1,
-        },
+        playerVars: { autoplay: seqIdx === 0 && autoPlay ? 1 : 0, enablejsapi: 1, rel: 0 },
         events: {
           onReady: () => {
-            ytItem.ready = true;
-            ytItem.player = player;
-            if (ytItem.pendingPlay) {
-              ytItem.pendingPlay = false;
-              player.playVideo();
-            }
+            ytEntry.ready = true;
+            ytEntry.player = player;
+            if (ytEntry.pendingPlay) { ytEntry.pendingPlay = false; player.playVideo(); }
           },
-          onStateChange: (e: any) => {
-            if (e.data === 0) { // ENDED
-              playItem(globalIdx + 1);
-            }
-          },
+          onStateChange: (ev: any) => { if (ev.data === 0) playItem(seqIdx + 1); },
         },
       });
-
-      ytItem.player = player;
+      ytEntry.player = player;
     });
   }
 
-  return () => {
-    window.removeEventListener('message', vimeoHandler);
-  };
+  return () => window.removeEventListener('message', msgHandler);
 }
