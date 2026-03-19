@@ -83,9 +83,26 @@ function waitForLoad(iframe: HTMLIFrameElement): Promise<void> {
 }
 
 type Entry =
-  | { type: 'vimeo'; seqIdx: number; player: VimeoPlayer }
-  | { type: 'yt';    seqIdx: number; player: any; ready: boolean; pendingPlay: boolean }
-  | { type: 'html5'; seqIdx: number; video: HTMLVideoElement };
+  | { type: 'vimeo'; seqIdx: number; player: VimeoPlayer; el: HTMLIFrameElement }
+  | { type: 'yt';    seqIdx: number; player: any; ready: boolean; pendingPlay: boolean; el: HTMLIFrameElement }
+  | { type: 'html5'; seqIdx: number; video: HTMLVideoElement; el: HTMLVideoElement };
+
+/** Scroll the next video into view smoothly inside the lesson scroll container */
+function scrollToEntry(entry: Entry) {
+  const el = entry.el;
+  // Walk up to find the video wrapper div (the aspect-ratio container)
+  const wrapper = el.closest<HTMLElement>('div[style*="aspect-ratio"], div[data-video-type]') || el;
+  // Scroll within .course-page-main if it exists, otherwise use the element's own scrollIntoView
+  const scrollContainer = document.querySelector<HTMLElement>('.course-page-main');
+  if (scrollContainer) {
+    const containerTop = scrollContainer.getBoundingClientRect().top;
+    const wrapperTop = wrapper.getBoundingClientRect().top;
+    const offset = wrapperTop - containerTop + scrollContainer.scrollTop - 24; // 24px breathing room
+    scrollContainer.scrollTo({ top: offset, behavior: 'smooth' });
+  } else {
+    wrapper.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }
+}
 
 /**
  * @param container   - The DOM element containing the lesson body
@@ -113,7 +130,7 @@ export async function initVideoSequence(
       const video = el as HTMLVideoElement;
       const seqIdx = entries.length;
       video.autoplay = false; // we control playback manually
-      entries.push({ type: 'html5', seqIdx, video });
+      entries.push({ type: 'html5', seqIdx, video, el: video });
       return;
     }
     if (el.tagName === 'IFRAME') {
@@ -121,13 +138,13 @@ export async function initVideoSequence(
       const src = iframe.src || '';
       if (src.includes('youtube.com') || src.includes('youtu.be')) {
         const seqIdx = entries.length;
-        entries.push({ type: 'yt', seqIdx, player: null, ready: false, pendingPlay: false });
+        entries.push({ type: 'yt', seqIdx, player: null, ready: false, pendingPlay: false, el: iframe });
         ytRaw.push({ el: iframe, seqIdx });
         return;
       }
       if (src.includes('vimeo.com')) {
         const seqIdx = entries.length;
-        entries.push({ type: 'vimeo', seqIdx, player: null as any });
+        entries.push({ type: 'vimeo', seqIdx, player: null as any, el: iframe });
         vimeoRaw.push({ iframe, seqIdx });
       }
     }
@@ -136,20 +153,19 @@ export async function initVideoSequence(
   if (entries.length === 0) return;
   const total = entries.length;
 
-  // ── playItem: play video at idx if autoPlay is on ─────────────────────────
+  // ── playItem: scroll to + play video at idx if autoPlay is on ───────────────
   function playItem(idx: number) {
     if (idx >= total) {
       onAllEnded();
       return;
     }
-    // Always call onAllEnded for the last video regardless of autoPlay
-    if (idx === total - 1 && !autoPlayRef.current) {
-      // Don't auto-play the last one, but when it ends naturally onAllEnded fires
-      return;
-    }
     if (!autoPlayRef.current) return; // autoPlay off — don't chain
 
     const e = entries[idx];
+
+    // Scroll the next video into view before playing
+    scrollToEntry(e);
+
     if (e.type === 'vimeo') {
       e.player.play().catch(() => {});
     } else if (e.type === 'yt') {
@@ -172,10 +188,8 @@ export async function initVideoSequence(
 
         vp.on('ended', () => {
           if (seqIdx === total - 1) {
-            // Last video: always navigate to next lesson
             onAllEnded();
           } else {
-            // Middle video: only chain if autoPlay is on
             if (autoPlayRef.current) playItem(seqIdx + 1);
           }
         });
