@@ -20,7 +20,8 @@ type AdminViewId =
   | "appsTools"
   | "socialMediaMetrics"
   | "webText"
-  | "trainingExecutive";
+  | "trainingExecutive"
+  | "messaging";
 
 type AdminLayoutProps = {
   children: React.ReactNode;
