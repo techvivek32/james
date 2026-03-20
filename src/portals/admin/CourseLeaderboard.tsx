@@ -11,6 +11,8 @@ type LeaderRow = {
 };
 
 type CourseOption = { id: string; title: string };
+type LessonPage = { id: string; title: string };
+type UserOption = { id: string; name: string; email: string };
 
 const MEDAL: Record<number, string> = { 1: "🥇", 2: "🥈", 3: "🥉" };
 
@@ -24,11 +26,22 @@ export function CourseLeaderboard() {
   const [search, setSearch] = useState("");
   const pickerRef = useRef<HTMLDivElement>(null);
 
+  // Override modal state
+  const [showOverride, setShowOverride] = useState(false);
+  const [overrideUsers, setOverrideUsers] = useState<UserOption[]>([]);
+  const [overrideSelectedUser, setOverrideSelectedUser] = useState<UserOption | null>(null);
+  const [overrideLessons, setOverrideLessons] = useState<LessonPage[]>([]);
+  const [overrideChecked, setOverrideChecked] = useState<Set<string>>(new Set());
+  const [overrideLoading, setOverrideLoading] = useState(false);
+  const [overrideSaving, setOverrideSaving] = useState(false);
+  const [allCoursesRaw, setAllCoursesRaw] = useState<any[]>([]);
+
   // Load courses on mount
   useEffect(() => {
     fetch("/api/courses")
       .then((r) => r.ok ? r.json() : [])
       .then((data: any[]) => {
+        setAllCoursesRaw(data);
         const published = data
           .filter((c) => c.status === "published")
           .map((c) => ({ id: c.id, title: c.title }));
@@ -104,13 +117,98 @@ export function CourseLeaderboard() {
         };
       });
 
-      // Sort descending by pct
       built.sort((a, b) => b.pct - a.pct || a.name.localeCompare(b.name));
       setRows(built);
     } catch (err) {
       console.error(err);
     } finally {
       setIsLoading(false);
+    }
+  }
+
+  // Open override modal
+  async function openOverride() {
+    if (!selectedCourse) return;
+    setShowOverride(true);
+    setOverrideSelectedUser(null);
+    setOverrideChecked(new Set());
+    setOverrideLoading(true);
+    try {
+      const usersRes = await fetch("/api/users").then((r) => r.ok ? r.json() : []);
+      const eligible = (Array.isArray(usersRes) ? usersRes : [])
+        .filter((u: any) => !u.deleted && !u.suspended &&
+          (u.role === "manager" || u.role === "sales" ||
+            (u.roles || []).some((r: string) => r === "manager" || r === "sales")))
+        .map((u: any) => ({ id: u.id, name: u.name || u.email, email: u.email }));
+      setOverrideUsers(eligible);
+
+      // Build lesson list from raw course data
+      const raw = allCoursesRaw.find((c: any) => c.id === selectedCourse.id);
+      const lessons: LessonPage[] = raw
+        ? (raw.pages || [])
+            .filter((p: any) => p.status === "published" && !p.isQuiz)
+            .map((p: any) => ({ id: p.id, title: p.title || `Lesson ${p.order ?? ""}` }))
+        : [];
+      setOverrideLessons(lessons);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setOverrideLoading(false);
+    }
+  }
+
+  // When user is selected in override, load their existing progress
+  async function selectOverrideUser(user: UserOption) {
+    setOverrideSelectedUser(user);
+    if (!selectedCourse) return;
+    try {
+      const res = await fetch(`/api/course-progress?userId=${user.id}&courseIds=${selectedCourse.id}`);
+      const data = res.ok ? await res.json() : {};
+      const completed: string[] = data[selectedCourse.id]?.completedPages || [];
+      setOverrideChecked(new Set(completed));
+    } catch {
+      setOverrideChecked(new Set());
+    }
+  }
+
+  function toggleLesson(id: string) {
+    setOverrideChecked((prev) => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+  }
+
+  function selectAll() {
+    setOverrideChecked(new Set(overrideLessons.map((l) => l.id)));
+  }
+
+  function selectNone() {
+    setOverrideChecked(new Set());
+  }
+
+  async function saveOverride() {
+    if (!overrideSelectedUser || !selectedCourse) return;
+    setOverrideSaving(true);
+    try {
+      const completedPages = Array.from(overrideChecked);
+      const allDone = completedPages.length === overrideLessons.length && overrideLessons.length > 0;
+      await fetch("/api/progress", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          userId: overrideSelectedUser.id,
+          courseId: selectedCourse.id,
+          completedPages,
+          ...(allDone ? { courseCompleted: true } : {}),
+        }),
+      });
+      setShowOverride(false);
+      await loadLeaderboard(selectedCourse);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setOverrideSaving(false);
     }
   }
 
@@ -149,6 +247,7 @@ export function CourseLeaderboard() {
         background: "#fff", border: "1px solid #e5e7eb",
         borderRadius: 12, overflow: "hidden",
         boxShadow: "0 1px 4px rgba(0,0,0,0.05)",
+        position: "relative",
       }}>
         {/* Header row */}
         <div style={{
@@ -163,6 +262,35 @@ export function CourseLeaderboard() {
               <div style={{ fontSize: 13, color: "#6b7280", marginTop: 2 }}>{selectedCourse.title}</div>
             )}
           </div>
+
+          {/* Header right side buttons */}
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+
+          {/* Override button */}
+          <button
+            onClick={openOverride}
+            title="Progress Override"
+            style={{
+              display: "flex", alignItems: "center", gap: 6,
+              padding: "8px 16px", borderRadius: 8,
+              border: "1px solid #6d28d9",
+              background: "linear-gradient(135deg, #7c3aed, #4f46e5)",
+              cursor: "pointer", fontSize: 13, color: "#fff",
+              fontWeight: 600,
+              boxShadow: "0 2px 8px rgba(124,58,237,0.35)",
+              transition: "box-shadow 0.2s, transform 0.15s",
+            }}
+            onMouseEnter={e => {
+              e.currentTarget.style.boxShadow = "0 4px 16px rgba(124,58,237,0.55)";
+              e.currentTarget.style.transform = "translateY(-1px)";
+            }}
+            onMouseLeave={e => {
+              e.currentTarget.style.boxShadow = "0 2px 8px rgba(124,58,237,0.35)";
+              e.currentTarget.style.transform = "translateY(0)";
+            }}
+          >
+            ⚙ Override
+          </button>
 
           {/* Course filter button + picker */}
           <div style={{ position: "relative" }} ref={pickerRef}>
@@ -187,7 +315,6 @@ export function CourseLeaderboard() {
                 boxShadow: "0 8px 24px rgba(0,0,0,0.12)",
                 zIndex: 100, overflow: "hidden",
               }}>
-                {/* Search */}
                 <div style={{ padding: "10px 12px", borderBottom: "1px solid #f3f4f6" }}>
                   <input
                     autoFocus
@@ -201,7 +328,6 @@ export function CourseLeaderboard() {
                     }}
                   />
                 </div>
-                {/* Course list */}
                 <div style={{ maxHeight: 260, overflowY: "auto" }}>
                   {filteredCourses.length === 0 ? (
                     <div style={{ padding: "16px", textAlign: "center", color: "#9ca3af", fontSize: 13 }}>
@@ -229,6 +355,7 @@ export function CourseLeaderboard() {
                 </div>
               </div>
             )}
+          </div>
           </div>
         </div>
 
@@ -270,7 +397,6 @@ export function CourseLeaderboard() {
                     <tr key={row.id} style={{
                       background: isTop3 ? (rank === 1 ? "#fffbeb" : rank === 2 ? "#f9fafb" : "#fafafa") : idx % 2 === 0 ? "#fff" : "#fafafa",
                     }}>
-                      {/* Rank */}
                       <td style={{ padding: "11px 16px", borderBottom: "1px solid #f3f4f6", width: 60 }}>
                         <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
                           {MEDAL[rank] ? (
@@ -285,12 +411,10 @@ export function CourseLeaderboard() {
                           )}
                         </div>
                       </td>
-                      {/* User */}
                       <td style={{ padding: "11px 16px", borderBottom: "1px solid #f3f4f6" }}>
                         <div style={{ fontWeight: 600, color: "#111827" }}>{row.name}</div>
                         <div style={{ fontSize: 11, color: "#9ca3af" }}>{row.email}</div>
                       </td>
-                      {/* Role */}
                       <td style={{ padding: "11px 16px", borderBottom: "1px solid #f3f4f6" }}>
                         <span style={{
                           padding: "2px 9px", borderRadius: 999, fontSize: 11, fontWeight: 600,
@@ -301,11 +425,9 @@ export function CourseLeaderboard() {
                           {row.role}
                         </span>
                       </td>
-                      {/* Lessons */}
                       <td style={{ padding: "11px 16px", borderBottom: "1px solid #f3f4f6", whiteSpace: "nowrap", color: "#374151" }}>
                         {row.done} / {row.total}
                       </td>
-                      {/* Progress bar */}
                       <td style={{ padding: "11px 16px", borderBottom: "1px solid #f3f4f6", minWidth: 160 }}>
                         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                           <div style={{ flex: 1, height: 8, borderRadius: 999, background: "#e5e7eb", overflow: "hidden" }}>
@@ -325,7 +447,183 @@ export function CourseLeaderboard() {
             </table>
           </div>
         )}
+
       </div>
+
+      {/* Override Modal */}
+      {showOverride && (
+        <div style={{
+          position: "fixed", inset: 0, zIndex: 1000,
+          background: "rgba(0,0,0,0.45)",
+          display: "flex", alignItems: "center", justifyContent: "center",
+          padding: 16,
+        }}>
+          <div style={{
+            background: "#fff", borderRadius: 14,
+            width: "100%", maxWidth: 560,
+            maxHeight: "90vh", display: "flex", flexDirection: "column",
+            boxShadow: "0 20px 60px rgba(0,0,0,0.25)",
+            overflow: "hidden",
+          }}>
+            {/* Modal header */}
+            <div style={{
+              padding: "18px 24px", borderBottom: "1px solid #e5e7eb",
+              display: "flex", justifyContent: "space-between", alignItems: "center",
+              background: "#f8fafc",
+            }}>
+              <div>
+                <div style={{ fontWeight: 700, fontSize: 15, color: "#111827" }}>Progress Override</div>
+                {selectedCourse && (
+                  <div style={{ fontSize: 12, color: "#6b7280", marginTop: 2 }}>{selectedCourse.title}</div>
+                )}
+              </div>
+              <button
+                onClick={() => setShowOverride(false)}
+                style={{
+                  background: "none", border: "none", cursor: "pointer",
+                  fontSize: 20, color: "#9ca3af", lineHeight: 1, padding: 4,
+                }}
+              >×</button>
+            </div>
+
+            {/* Modal body */}
+            <div style={{ flex: 1, overflowY: "auto", padding: "20px 24px" }}>
+              {overrideLoading ? (
+                <div style={{ textAlign: "center", padding: 40, color: "#6b7280", fontSize: 13 }}>
+                  Loading...
+                </div>
+              ) : (
+                <>
+                  {/* User picker */}
+                  <div style={{ marginBottom: 20 }}>
+                    <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "#374151", marginBottom: 6 }}>
+                      Select User
+                    </label>
+                    <select
+                      value={overrideSelectedUser?.id || ""}
+                      onChange={(e) => {
+                        const u = overrideUsers.find((x) => x.id === e.target.value);
+                        if (u) selectOverrideUser(u);
+                      }}
+                      style={{
+                        width: "100%", padding: "9px 12px",
+                        border: "1px solid #d1d5db", borderRadius: 8,
+                        fontSize: 13, color: "#111827", background: "#fff",
+                        outline: "none", cursor: "pointer",
+                      }}
+                    >
+                      <option value="">— Choose a user —</option>
+                      {overrideUsers.map((u) => (
+                        <option key={u.id} value={u.id}>{u.name} ({u.email})</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* Lesson checklist */}
+                  {overrideSelectedUser && (
+                    <div>
+                      <div style={{
+                        display: "flex", justifyContent: "space-between", alignItems: "center",
+                        marginBottom: 10,
+                      }}>
+                        <label style={{ fontSize: 12, fontWeight: 600, color: "#374151" }}>
+                          Lesson Completions ({overrideChecked.size} / {overrideLessons.length})
+                        </label>
+                        <div style={{ display: "flex", gap: 8 }}>
+                          <button
+                            onClick={selectAll}
+                            style={{
+                              fontSize: 11, padding: "4px 10px", borderRadius: 6,
+                              border: "1px solid #d1d5db", background: "#f9fafb",
+                              color: "#374151", cursor: "pointer", fontWeight: 600,
+                            }}
+                          >All</button>
+                          <button
+                            onClick={selectNone}
+                            style={{
+                              fontSize: 11, padding: "4px 10px", borderRadius: 6,
+                              border: "1px solid #d1d5db", background: "#f9fafb",
+                              color: "#374151", cursor: "pointer", fontWeight: 600,
+                            }}
+                          >None</button>
+                        </div>
+                      </div>
+
+                      {overrideLessons.length === 0 ? (
+                        <div style={{ fontSize: 13, color: "#9ca3af", textAlign: "center", padding: "20px 0" }}>
+                          No published lessons found for this course.
+                        </div>
+                      ) : (
+                        <div style={{
+                          border: "1px solid #e5e7eb", borderRadius: 8,
+                          overflow: "hidden", maxHeight: 320, overflowY: "auto",
+                        }}>
+                          {overrideLessons.map((lesson, idx) => {
+                            const checked = overrideChecked.has(lesson.id);
+                            return (
+                              <label
+                                key={lesson.id}
+                                style={{
+                                  display: "flex", alignItems: "center", gap: 12,
+                                  padding: "10px 14px", cursor: "pointer",
+                                  background: checked ? "#f0fdf4" : idx % 2 === 0 ? "#fff" : "#fafafa",
+                                  borderBottom: idx < overrideLessons.length - 1 ? "1px solid #f3f4f6" : "none",
+                                  transition: "background 0.15s",
+                                }}
+                              >
+                                <input
+                                  type="checkbox"
+                                  checked={checked}
+                                  onChange={() => toggleLesson(lesson.id)}
+                                  style={{ width: 15, height: 15, accentColor: "#10b981", cursor: "pointer" }}
+                                />
+                                <span style={{ fontSize: 13, color: "#111827", flex: 1 }}>{lesson.title}</span>
+                                {checked && (
+                                  <span style={{ fontSize: 11, color: "#10b981", fontWeight: 600 }}>✓ Done</span>
+                                )}
+                              </label>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+
+            {/* Modal footer */}
+            <div style={{
+              padding: "14px 24px", borderTop: "1px solid #e5e7eb",
+              display: "flex", justifyContent: "flex-end", gap: 10,
+              background: "#f8fafc",
+            }}>
+              <button
+                onClick={() => setShowOverride(false)}
+                style={{
+                  padding: "8px 18px", borderRadius: 8,
+                  border: "1px solid #d1d5db", background: "#fff",
+                  fontSize: 13, fontWeight: 600, color: "#374151",
+                  cursor: "pointer",
+                }}
+              >Cancel</button>
+              <button
+                onClick={saveOverride}
+                disabled={!overrideSelectedUser || overrideSaving}
+                style={{
+                  padding: "8px 20px", borderRadius: 8,
+                  border: "none",
+                  background: !overrideSelectedUser || overrideSaving ? "#d1d5db" : "#2563eb",
+                  fontSize: 13, fontWeight: 600, color: "#fff",
+                  cursor: !overrideSelectedUser || overrideSaving ? "not-allowed" : "pointer",
+                }}
+              >
+                {overrideSaving ? "Saving..." : "Save Changes"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
