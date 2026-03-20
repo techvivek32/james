@@ -1359,7 +1359,7 @@ body {
 .course-page-body-input div[style*="aspect-ratio: 16/9"],
 .course-page-body-input div[style*="aspect-ratio: 16 / 9"] {
   margin: 0 auto !important;
-  width: 75% !important;
+  width: 85% !important;
   border-radius: 0 !important;
   background: transparent !important;
   overflow: visible !important;
@@ -1372,8 +1372,8 @@ body {
 
 /* Override the max-width on the outer video container */
 .course-page-body-input div[data-video-type] {
-  max-width: 75% !important;
-  width: 75% !important;
+  max-width: 85% !important;
+  width: 85% !important;
   margin: 0 auto !important;
   overflow: visible !important;
   padding: 0 !important;
@@ -1385,11 +1385,11 @@ body {
   height: 100% !important;
 }
 
-/* Reduce video container divs to 75% width */
+/* Reduce video container divs to 85% width */
 .course-page-body-input div[style*="aspect-ratio: 16/9"],
 .course-page-body-input div[style*="aspect-ratio: 16 / 9"] {
   margin: 0 auto !important;
-  width: 75% !important;
+  width: 85% !important;
   border-radius: 0 !important;
   background: transparent !important;
   overflow: visible !important;
@@ -1406,10 +1406,10 @@ body {
   height: 100% !important;
 }
 
-/* Standalone iframes/videos (not inside aspect-ratio containers) at 75% */
+/* Standalone iframes/videos (not inside aspect-ratio containers) at 85% */
 .course-page-body-input > iframe,
 .course-page-body-input > video {
-  width: 75% !important;
+  width: 85% !important;
   margin-left: auto !important;
   margin-right: auto !important;
 }
