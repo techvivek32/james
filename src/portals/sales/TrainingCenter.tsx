@@ -115,16 +115,12 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
   }, [selectedCourse, user]);
 
   // Collapse all folders by default when entering a course; expand only the active lesson's folder
+  // Collapse all folders by default when entering a course
   useEffect(() => {
     if (!selectedCourse || courseViewInitialized === selectedCourse.id) return;
     const folders = selectedCourse.folders ?? [];
     if (folders.length === 0) return;
-    const pages = (selectedCourse.pages ?? []).filter(p => p.status === 'published');
-    const currentPageId = activePageId ?? pages[0]?.id;
-    const activeFolderId = pages.find(p => p.id === currentPageId)?.folderId;
-    const allCollapsed = new Set(folders.map(f => f.id));
-    if (activeFolderId) allCollapsed.delete(activeFolderId);
-    setCollapsedFolders(allCollapsed);
+    setCollapsedFolders(new Set(folders.map(f => f.id)));
     setCourseViewInitialized(selectedCourse.id);
   }, [selectedCourse, activePageId, courseViewInitialized]);
 
