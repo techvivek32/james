@@ -1,8 +1,6 @@
 const nextConfig = {
   reactStrictMode: true,
-  eslint: {
-    ignoreDuringBuilds: true
-  }
+  transpilePackages: ["react-simple-maps"],
 };
 
 export default nextConfig;

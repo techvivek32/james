@@ -1,5 +1,8 @@
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/router";
+import dynamic from "next/dynamic";
+
+const WorldMap = dynamic(() => import("../../components/WorldMap"), { ssr: false, loading: () => <div style={{ width: "100%", height: "100%", background: "#f3f4f6", borderRadius: "8px", display: "flex", alignItems: "center", justifyContent: "center", color: "#9ca3af", fontSize: "13px" }}>Loading map...</div> });
 
 type TrainingLink = {
   id: string;
@@ -296,7 +299,7 @@ function BotDetailView({ bot, activeView, setActiveView, onSave, saving, onBack,
   const sidebarContent = (
     <>
       <div style={{ padding: "20px 20px 16px", borderBottom: "1px solid #e5e7eb" }}>
-        <button onClick={onBack} style={{ background: "none", border: "none", cursor: "pointer", color: "#6b7280", fontSize: "14px", padding: 0, display: "flex", alignItems: "center", gap: "6px", marginBottom: "16px", fontWeight: 500 }}>
+        <button onClick={onBack} style={{ background: "none", border: "none", cursor: "pointer", color: "#6b7280", fontSize: "15px", padding: 0, display: "flex", alignItems: "center", gap: "6px", marginBottom: "16px", fontWeight: 500 }}>
           ← All Bots
         </button>
         <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
@@ -305,20 +308,20 @@ function BotDetailView({ bot, activeView, setActiveView, onSave, saving, onBack,
               ? <img src={bot.botAvatarUrl} alt="avatar" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
               : "🤖"}
           </div>
-          <div style={{ fontWeight: 700, fontSize: "15px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", color: "#1f2937" }}>{bot.botTitle || bot.name}</div>
+          <div style={{ fontWeight: 700, fontSize: "16px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", color: "#1f2937" }}>{bot.botTitle || bot.name}</div>
         </div>
       </div>
       <nav style={{ padding: "10px 0", flex: 1, overflowY: "auto" }}>
         {navItems.map(item => (
           <div key={item.id}>
             {item.section && (
-              <div style={{ padding: "14px 20px 6px", fontSize: "11px", fontWeight: 700, color: "#9ca3af", letterSpacing: "0.1em" }}>{item.section}</div>
+              <div style={{ padding: "14px 20px 6px", fontSize: "12px", fontWeight: 700, color: "#9ca3af", letterSpacing: "0.1em" }}>{item.section}</div>
             )}
             <button
               onClick={() => handleNavSelect(item.id)}
               style={{
                 width: "100%", textAlign: "left", padding: "11px 20px", border: "none", cursor: "pointer",
-                fontSize: "14px", fontWeight: activeView === item.id ? 600 : 500,
+                fontSize: "15px", fontWeight: activeView === item.id ? 600 : 500,
                 background: activeView === item.id ? "#f3f4f6" : "transparent",
                 color: activeView === item.id ? "#1f2937" : "#4b5563",
                 borderLeft: activeView === item.id ? "3px solid #1f2937" : "3px solid transparent",
@@ -326,7 +329,7 @@ function BotDetailView({ bot, activeView, setActiveView, onSave, saving, onBack,
                 transition: "background 0.15s"
               }}
             >
-              <span style={{ fontSize: "17px", width: "22px", textAlign: "center" }}>{item.icon}</span>
+              <span style={{ fontSize: "18px", width: "22px", textAlign: "center" }}>{item.icon}</span>
               {item.label}
             </button>
           </div>
@@ -413,34 +416,296 @@ function BotDetailView({ bot, activeView, setActiveView, onSave, saving, onBack,
   );
 }
 
+// ─── World Map Card ───────────────────────────────────────────────────────────
+
+function WorldMapCard() {
+  return (
+    <div style={{ background: "#fff", borderRadius: "14px", border: "1px solid #e5e7eb", padding: "22px 24px", overflow: "hidden" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "12px" }}>
+        <div style={{ width: 32, height: 32, borderRadius: "50%", background: "#f3f4f6", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "15px" }}>🌐</div>
+        <div>
+          <div style={{ fontSize: "13px", color: "#9ca3af" }}>Popular Countries</div>
+          <div style={{ fontSize: "11px", color: "#d1d5db" }}>Last 28 days</div>
+        </div>
+      </div>
+      <div style={{ width: "100%", height: "380px", borderRadius: "8px", overflow: "hidden", background: "#f8fafc" }}>
+        <WorldMap />
+      </div>
+      <div style={{ display: "flex", alignItems: "center", gap: "8px", marginTop: "10px" }}>
+        <span style={{ fontSize: "10px", color: "#9ca3af" }}>0</span>
+        <div style={{ flex: 1, height: "5px", borderRadius: "3px", background: "linear-gradient(to right, #e0f2fe, #38bdf8, #818cf8, #f472b6, #fb923c, #4ade80)" }} />
+        <span style={{ fontSize: "10px", color: "#9ca3af" }}>∞</span>
+      </div>
+    </div>
+  );
+}
+
+
 // ─── Overview Panel ──────────────────────────────────────────────────────────
 
 function OverviewPanel({ bot }: { bot: AiBot }) {
+  const totalChars = (bot.trainingLinks || []).reduce((s: number, l: any) => s + (l.chars || 0), 0);
+  const maxChars = 1_000_000;
+
+  const statCards = [
+    {
+      icon: "⏱",
+      label: "Today's Users and time",
+      values: [
+        { num: 0, sub: "Users" },
+        { num: bot.totalMessages || 0, sub: "Messages" },
+      ],
+    },
+    {
+      icon: "💬",
+      label: "Message",
+      values: [{ num: `${bot.totalMessages || 0} / 50`, sub: "Has sent" }],
+      corner: "💬",
+    },
+    {
+      icon: "👥",
+      label: "Leads",
+      values: [{ num: 0, sub: "Generated" }],
+      corner: "⚙️",
+    },
+    {
+      icon: "📝",
+      label: "Training",
+      values: [{ num: `${totalChars.toLocaleString()} / 1M`, sub: "Characters used" }],
+      corner: "✏️",
+    },
+  ];
+
   return (
     <div style={{ padding: "32px" }} className="bot-panel-padding">
-      <h2 style={{ fontSize: "20px", fontWeight: 700, marginBottom: "24px" }}>Overview</h2>
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "16px", marginBottom: "32px" }} className="bot-overview-grid">
-        {[
-          { label: "Training Sources", value: bot.trainingLinks?.length || 0, icon: "🔗" },
-          { label: "Total Messages", value: bot.totalMessages || 0, icon: "💬" },
-          { label: "Q&A Pairs", value: bot.qaItems?.length || 0, icon: "❓" },
-        ].map(stat => (
-          <div key={stat.label} style={{ background: "#fff", borderRadius: "12px", padding: "20px", border: "1px solid #e5e7eb" }}>
-            <div style={{ fontSize: "28px", marginBottom: "8px" }}>{stat.icon}</div>
-            <div style={{ fontSize: "28px", fontWeight: 700, color: "#1f2937" }}>{stat.value}</div>
-            <div style={{ fontSize: "13px", color: "#6b7280", marginTop: "4px" }}>{stat.label}</div>
+      <h2 style={{ fontSize: "22px", fontWeight: 700, marginBottom: "24px", color: "#1f2937" }}>Overview</h2>
+
+      {/* 2×2 stat grid */}
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px", marginBottom: "20px" }}>
+        {statCards.map((card, ci) => (
+          <div key={ci} style={{ background: "#fff", borderRadius: "14px", padding: "22px 24px", border: "1px solid #e5e7eb", position: "relative", minHeight: "120px" }}>
+            {/* corner icon */}
+            {card.corner && (
+              <div style={{ position: "absolute", top: "16px", right: "16px", fontSize: "18px", color: "#d1d5db" }}>{card.corner}</div>
+            )}
+            {/* top icon + label */}
+            <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "14px" }}>
+              <div style={{ width: 32, height: 32, borderRadius: "50%", background: "#f3f4f6", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "15px" }}>{card.icon}</div>
+              <span style={{ fontSize: "13px", color: "#9ca3af" }}>{card.label}</span>
+            </div>
+            {/* values row */}
+            <div style={{ display: "flex", gap: "32px" }}>
+              {card.values.map((v, vi) => (
+                <div key={vi}>
+                  <div style={{ fontSize: "28px", fontWeight: 700, color: "#1f2937", lineHeight: 1 }}>{v.num}</div>
+                  <div style={{ fontSize: "12px", color: "#9ca3af", marginTop: "4px" }}>{v.sub}</div>
+                </div>
+              ))}
+            </div>
           </div>
         ))}
       </div>
-      <div style={{ background: "#fff", borderRadius: "12px", padding: "20px", border: "1px solid #e5e7eb" }}>
-        <div style={{ fontWeight: 600, marginBottom: "12px" }}>Bot Details</div>
-        <div style={{ display: "grid", gap: "8px", fontSize: "14px" }}>
-          <div style={{ display: "flex", gap: "8px" }}><span style={{ color: "#6b7280", width: "120px" }}>Name:</span><span>{bot.name}</span></div>
-          <div style={{ display: "flex", gap: "8px" }}><span style={{ color: "#6b7280", width: "120px" }}>Model:</span><span>{bot.model || "gpt-4o-mini"}</span></div>
-          <div style={{ display: "flex", gap: "8px" }}><span style={{ color: "#6b7280", width: "120px" }}>Creativity:</span><span>{bot.creativity || 0}%</span></div>
-          <div style={{ display: "flex", gap: "8px" }}><span style={{ color: "#6b7280", width: "120px" }}>Assigned To:</span><span>{bot.assignedRoles?.join(", ") || "Not assigned"}</span></div>
+
+      {/* World map card */}
+      <WorldMapCard />
+    </div>
+  );
+}
+
+// ─── Chat History Panel ───────────────────────────────────────────────────────
+
+// ─── Date Range Picker ───────────────────────────────────────────────────────
+
+const MONTHS = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+const DAYS   = ["Su","Mo","Tu","We","Th","Fr","Sa"];
+
+function fmt(d: Date) {
+  return `${MONTHS[d.getMonth()].slice(0,3)} ${d.getDate()}`;
+}
+
+function startOfDay(d: Date) {
+  const c = new Date(d); c.setHours(0,0,0,0); return c;
+}
+
+function DateRangePicker({ from, to, onChange }: {
+  from: Date | null; to: Date | null;
+  onChange: (from: Date, to: Date) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [hoverDate, setHoverDate] = useState<Date | null>(null);
+  const [selecting, setSelecting] = useState<Date | null>(null); // first click
+  const today = startOfDay(new Date());
+  const [viewMonth, setViewMonth] = useState(today.getMonth());
+  const [viewYear, setViewYear]   = useState(today.getFullYear());
+  const ref = useRef<HTMLDivElement>(null);
+
+  // Close on outside click
+  useEffect(() => {
+    function h(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    }
+    document.addEventListener("mousedown", h);
+    return () => document.removeEventListener("mousedown", h);
+  }, []);
+
+  function applyPreset(label: string) {
+    const now = startOfDay(new Date());
+    let f: Date, t: Date;
+    if (label === "Current week") {
+      const day = now.getDay();
+      f = new Date(now); f.setDate(now.getDate() - day);
+      t = new Date(f); t.setDate(f.getDate() + 6);
+    } else if (label === "Last 7 Days") {
+      t = now; f = new Date(now); f.setDate(now.getDate() - 6);
+    } else if (label === "Current month") {
+      f = new Date(now.getFullYear(), now.getMonth(), 1);
+      t = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+    } else if (label === "Last 3 months") {
+      t = now; f = new Date(now); f.setMonth(now.getMonth() - 3);
+    } else { // Current Year
+      f = new Date(now.getFullYear(), 0, 1);
+      t = new Date(now.getFullYear(), 11, 31);
+    }
+    setViewMonth(f.getMonth()); setViewYear(f.getFullYear());
+    setSelecting(null);
+    onChange(f, t);
+    setOpen(false);
+  }
+
+  function handleDayClick(d: Date) {
+    if (!selecting) {
+      setSelecting(d);
+    } else {
+      const [f, t] = d < selecting ? [d, selecting] : [selecting, d];
+      setSelecting(null);
+      onChange(f, t);
+      setOpen(false);
+    }
+  }
+
+  // Build calendar days
+  const firstDay = new Date(viewYear, viewMonth, 1).getDay();
+  const daysInMonth = new Date(viewYear, viewMonth + 1, 0).getDate();
+  const cells: (Date | null)[] = [];
+  for (let i = 0; i < firstDay; i++) cells.push(null);
+  for (let d = 1; d <= daysInMonth; d++) cells.push(new Date(viewYear, viewMonth, d));
+
+  function inRange(d: Date) {
+    const rangeEnd = selecting ? (hoverDate || selecting) : to;
+    const rangeStart = selecting || from;
+    if (!rangeStart || !rangeEnd) return false;
+    const [s, e] = rangeStart <= rangeEnd ? [rangeStart, rangeEnd] : [rangeEnd, rangeStart];
+    return d > s && d < e;
+  }
+  function isStart(d: Date) {
+    const s = selecting || from;
+    return !!s && startOfDay(s).getTime() === d.getTime();
+  }
+  function isEnd(d: Date) {
+    const e = selecting ? (hoverDate || selecting) : to;
+    return !!e && startOfDay(e).getTime() === d.getTime();
+  }
+
+  const label = from && to ? `${fmt(from)}  →  ${fmt(to)}` : "Select date range";
+
+  return (
+    <div ref={ref} style={{ position: "relative" }}>
+      {/* Trigger */}
+      <button
+        onClick={() => setOpen(p => !p)}
+        style={{
+          display: "flex", alignItems: "center", gap: "10px",
+          padding: "9px 16px", border: `2px solid ${open ? "#3b82f6" : "#e5e7eb"}`,
+          borderRadius: "10px", background: "#fff", cursor: "pointer",
+          fontSize: "14px", fontWeight: 500, color: "#1f2937",
+          whiteSpace: "nowrap", transition: "border-color 0.15s"
+        }}
+      >
+        <span style={{ fontSize: "16px" }}>📅</span>
+        {label}
+        <span style={{ fontSize: "11px", color: "#6b7280", marginLeft: "2px" }}>{open ? "▲" : "▼"}</span>
+      </button>
+
+      {/* Dropdown */}
+      {open && (
+        <div style={{
+          position: "absolute", top: "calc(100% + 8px)", left: 0, zIndex: 500,
+          background: "#fff", borderRadius: "14px", boxShadow: "0 8px 32px rgba(0,0,0,0.15)",
+          border: "1px solid #e5e7eb", display: "flex", overflow: "hidden", minWidth: "560px"
+        }}>
+          {/* Presets */}
+          <div style={{ width: "160px", borderRight: "1px solid #f3f4f6", padding: "12px 0", flexShrink: 0 }}>
+            {["Current week","Last 7 Days","Current month","Last 3 months","Current Year"].map(p => (
+              <button key={p} onClick={() => applyPreset(p)} style={{
+                width: "100%", textAlign: "left", padding: "11px 20px",
+                border: "none", background: "none", cursor: "pointer",
+                fontSize: "14px", color: "#374151", fontWeight: 400,
+                transition: "background 0.1s"
+              }}
+                onMouseEnter={e => (e.currentTarget.style.background = "#f9fafb")}
+                onMouseLeave={e => (e.currentTarget.style.background = "none")}
+              >{p}</button>
+            ))}
+          </div>
+
+          {/* Calendar */}
+          <div style={{ padding: "20px 24px", flex: 1 }}>
+            {/* Month nav */}
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "16px" }}>
+              <button onClick={() => {
+                let m = viewMonth - 1, y = viewYear;
+                if (m < 0) { m = 11; y--; }
+                setViewMonth(m); setViewYear(y);
+              }} style={{ background: "none", border: "none", cursor: "pointer", fontSize: "18px", color: "#6b7280", padding: "4px 8px" }}>‹</button>
+              <span style={{ fontWeight: 700, fontSize: "16px", color: "#1f2937" }}>{MONTHS[viewMonth]} {viewYear}</span>
+              <button onClick={() => {
+                let m = viewMonth + 1, y = viewYear;
+                if (m > 11) { m = 0; y++; }
+                setViewMonth(m); setViewYear(y);
+              }} style={{ background: "none", border: "none", cursor: "pointer", fontSize: "18px", color: "#6b7280", padding: "4px 8px" }}>›</button>
+            </div>
+
+            {/* Day headers */}
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", marginBottom: "6px" }}>
+              {DAYS.map(d => (
+                <div key={d} style={{ textAlign: "center", fontSize: "12px", color: "#9ca3af", fontWeight: 600, padding: "4px 0" }}>{d}</div>
+              ))}
+            </div>
+
+            {/* Day cells */}
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: "2px" }}>
+              {cells.map((d, i) => {
+                if (!d) return <div key={`e-${i}`} />;
+                const start = isStart(d), end = isEnd(d), range = inRange(d);
+                const isToday = d.getTime() === today.getTime();
+                const bg = start || end ? "#3b82f6" : range ? "#dbeafe" : "transparent";
+                const color = start || end ? "#fff" : range ? "#1d4ed8" : "#1f2937";
+                return (
+                  <div
+                    key={d.getTime()}
+                    onClick={() => handleDayClick(d)}
+                    onMouseEnter={() => selecting && setHoverDate(d)}
+                    onMouseLeave={() => selecting && setHoverDate(null)}
+                    style={{
+                      textAlign: "center", padding: "7px 4px", borderRadius: "8px",
+                      cursor: "pointer", fontSize: "14px", fontWeight: isToday ? 700 : 400,
+                      background: bg, color,
+                      border: isToday && !start && !end ? "1.5px solid #3b82f6" : "1.5px solid transparent",
+                      transition: "background 0.1s"
+                    }}
+                  >{d.getDate()}</div>
+                );
+              })}
+            </div>
+
+            {selecting && (
+              <div style={{ marginTop: "12px", fontSize: "12px", color: "#6b7280", textAlign: "center" }}>
+                Click a second date to complete the range
+              </div>
+            )}
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }
@@ -453,6 +718,8 @@ function ChatHistoryPanel({ bot }: { bot: AiBot }) {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [roleFilter, setRoleFilter] = useState("all");
+  const [dateFrom, setDateFrom] = useState<Date | null>(null);
+  const [dateTo, setDateTo]     = useState<Date | null>(null);
 
   useEffect(() => { loadChats(); }, [bot.id]);
 
@@ -470,7 +737,13 @@ function ChatHistoryPanel({ bot }: { bot: AiBot }) {
       c.userEmail?.toLowerCase().includes(search.toLowerCase()) ||
       c.title?.toLowerCase().includes(search.toLowerCase());
     const matchRole = roleFilter === "all" || c.userRole === roleFilter;
-    return matchSearch && matchRole;
+    let matchDate = true;
+    if (dateFrom || dateTo) {
+      const d = new Date(c.updatedAt); d.setHours(0,0,0,0);
+      if (dateFrom && d < dateFrom) matchDate = false;
+      if (dateTo) { const end = new Date(dateTo); end.setHours(23,59,59,999); if (d > end) matchDate = false; }
+    }
+    return matchSearch && matchRole && matchDate;
   });
 
   if (selectedChat) {
@@ -508,12 +781,22 @@ function ChatHistoryPanel({ bot }: { bot: AiBot }) {
       <h2 style={{ fontSize: "20px", fontWeight: 700, marginBottom: "8px" }}>Chat History</h2>
       <p style={{ color: "#6b7280", fontSize: "14px", marginBottom: "24px" }}>All conversations with this bot</p>
 
-      <div style={{ display: "flex", gap: "12px", marginBottom: "20px", flexWrap: "wrap" }}>
+      <div style={{ display: "flex", gap: "12px", marginBottom: "20px", flexWrap: "wrap", alignItems: "center" }}>
         <input
           value={search} onChange={e => setSearch(e.target.value)}
-          placeholder="Search by name, email, or title..."
-          style={{ flex: 1, minWidth: "200px", padding: "10px 14px", border: "1px solid #e5e7eb", borderRadius: "8px", fontSize: "14px", outline: "none" }}
+          placeholder="Search..."
+          style={{ width: "320px", padding: "9px 12px", border: "1px solid #e5e7eb", borderRadius: "8px", fontSize: "13px", outline: "none" }}
         />
+        <DateRangePicker
+          from={dateFrom} to={dateTo}
+          onChange={(f, t) => { setDateFrom(f); setDateTo(t); }}
+        />
+        {(dateFrom || dateTo) && (
+          <button onClick={() => { setDateFrom(null); setDateTo(null); }}
+            style={{ padding: "9px 14px", border: "1px solid #e5e7eb", borderRadius: "8px", background: "#fff", cursor: "pointer", fontSize: "13px", color: "#6b7280" }}>
+            ✕ Clear
+          </button>
+        )}
         <select value={roleFilter} onChange={e => setRoleFilter(e.target.value)}
           style={{ padding: "10px 14px", border: "1px solid #e5e7eb", borderRadius: "8px", fontSize: "14px", background: "#fff", cursor: "pointer" }}>
           <option value="all">All Roles</option>
@@ -1203,7 +1486,7 @@ function AppearancePanel({ bot, onSave, saving }: { bot: AiBot; onSave: (u: Part
     setImmediatelyOpenChat(bot.immediatelyOpenChat ?? false);
     setAvatarPreview(bot.botAvatarUrl || "");
     setAvatarFile(null);
-  });
+  }, [bot.id]);
 
   function addSuggestion() {
     if (!suggestionInput.trim()) return;
@@ -1491,7 +1774,7 @@ function DeployPanel({ bot, onSave, saving, onGoToSettings }: { bot: AiBot; onSa
     if (prevIdRef.current === bot.id) return;
     prevIdRef.current = bot.id;
     setAssignedRoles(bot.assignedRoles || []);
-  });
+  }, [bot.id]);
 
   const origin = typeof window !== "undefined" ? window.location.origin : "";
   const botUrl = `${origin}/bot/${bot.id}`;
@@ -1620,7 +1903,7 @@ function SettingsPanel({ bot, onSave, saving, onDelete }: { bot: AiBot; onSave: 
     setTimezone(bot.timezone || "UTC+05:30 New Delhi, Mumbai, Chennai");
     setPasswordProtection(bot.passwordProtection ?? false);
     setTeamMembers(bot.teamMembers || []);
-  });
+  }, [bot.id]);
 
   function addTeamMember() {
     const email = teamMemberEmail.trim();
@@ -1832,7 +2115,7 @@ function Modal({ children, onClose }: { children: React.ReactNode; onClose: () =
 }
 
 const card: React.CSSProperties = { background: "#fff", borderRadius: "12px", padding: "20px", border: "1px solid #e5e7eb" };
-const inputStyle: React.CSSProperties = { width: "100%", padding: "10px 12px", border: "1px solid #d1d5db", borderRadius: "8px", fontSize: "14px", outline: "none", boxSizing: "border-box", fontFamily: "inherit" };
-const btnPrimary: React.CSSProperties = { padding: "10px 20px", background: "#1f2937", color: "#fff", border: "none", borderRadius: "8px", fontSize: "14px", fontWeight: 600, cursor: "pointer" };
-const btnSecondary: React.CSSProperties = { padding: "10px 20px", background: "#fff", color: "#374151", border: "1px solid #d1d5db", borderRadius: "8px", fontSize: "14px", fontWeight: 500, cursor: "pointer" };
+const inputStyle: React.CSSProperties = { width: "100%", padding: "10px 12px", border: "1px solid #d1d5db", borderRadius: "8px", fontSize: "15px", outline: "none", boxSizing: "border-box", fontFamily: "inherit" };
+const btnPrimary: React.CSSProperties = { padding: "10px 20px", background: "#1f2937", color: "#fff", border: "none", borderRadius: "8px", fontSize: "15px", fontWeight: 600, cursor: "pointer" };
+const btnSecondary: React.CSSProperties = { padding: "10px 20px", background: "#fff", color: "#374151", border: "1px solid #d1d5db", borderRadius: "8px", fontSize: "15px", fontWeight: 500, cursor: "pointer" };
 const botCard: React.CSSProperties = { background: "#fff", borderRadius: "12px", padding: "20px", border: "1px solid #e5e7eb", cursor: "pointer", transition: "box-shadow 0.2s" };
