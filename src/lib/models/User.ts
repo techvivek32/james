@@ -41,7 +41,7 @@ const userSchema = new Schema(
   {
     id: { type: String, required: true, unique: true },
     name: { type: String, required: true },
-    email: { type: String, required: true },
+    email: { type: String, required: true, index: true },
     role: { type: String, required: true },
     roles: [String],
     managerId: String,
@@ -71,6 +71,12 @@ const userSchema = new Schema(
     featureToggles: { type: Schema.Types.Mixed, required: true }
   },
   { timestamps: true }
+);
+
+// Unique email only among active (non-deleted) users
+userSchema.index(
+  { email: 1 },
+  { unique: true, partialFilterExpression: { deleted: { $ne: true } } }
 );
 
 export const UserModel = models.User || model("User", userSchema);

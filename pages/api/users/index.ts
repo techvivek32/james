@@ -35,6 +35,21 @@ export default async function handler(
         ? await bcrypt.hash(password.trim(), 10)
         : passwordHash;
 
+    // Check if a deleted user with same email exists — restore + update instead of creating new
+    if (rest.email) {
+      const existingDeleted = await UserModel.findOne({ email: rest.email, deleted: true });
+      if (existingDeleted) {
+        const restored = await UserModel.findOneAndUpdate(
+          { id: existingDeleted.id },
+          { ...rest, id: existingDeleted.id, passwordHash: hashedPassword, deleted: false, deletedAt: null },
+          { returnDocument: "after" }
+        ).lean();
+        const { passwordHash: _rph, ...safeRestored } = restored;
+        res.status(201).json(safeRestored);
+        return;
+      }
+    }
+
     const created = await UserModel.create({ ...rest, id, passwordHash: hashedPassword });
     const createdObj = created.toObject();
     const { passwordHash: _ph, ...safeUser } = createdObj;
