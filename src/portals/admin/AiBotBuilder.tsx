@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import { useRouter } from "next/router";
 
 type TrainingLink = {
   id: string;
@@ -26,23 +27,95 @@ type AiBot = {
   systemPrompt: string;
   totalChats: number;
   totalMessages: number;
+  // Appearance
+  botTitle: string;
+  displayMessage: string;
+  displayMessageEnabled: boolean;
+  welcomeMessage: string;
+  placeholder: string;
+  suggestions: string[];
+  removeSuggestionsAfterFirst: boolean;
+  colorTheme: string;
+  botAvatarUrl: string;
+  showWelcomePopup: boolean;
+  leadCollection: boolean;
+  privacyPolicyEnabled: boolean;
+  privacyActionText: string;
+  privacyLinkText: string;
+  privacyLink: string;
+  chatIconSize: number;
+  enterMessage: string;
+  attentionSound: string;
+  attentionAnimation: string;
+  immediatelyOpenChat: boolean;
+  // Settings
+  isPublic: boolean;
+  timezone: string;
+  rateLimit: boolean;
+  domainRestriction: boolean;
+  allowedDomains: string;
+  passwordProtection: boolean;
+  teamMembers: string[];
 };
 
-type BotView = "overview" | "chat-history" | "links" | "text" | "qa" | "tune" | "test" | "deploy";
+type BotView = "overview" | "chat-history" | "links" | "text" | "qa" | "tune" | "test" | "appearance" | "deploy" | "settings";
 
 export function AiBotBuilder() {
+  const router = useRouter();
   const [bots, setBots] = useState<AiBot[]>([]);
   const [selectedBot, setSelectedBot] = useState<AiBot | null>(null);
   const [activeView, setActiveView] = useState<BotView>("links");
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [newBotName, setNewBotName] = useState("");
   const [saving, setSaving] = useState(false);
+  const [botsLoaded, setBotsLoaded] = useState(false);
 
-  useEffect(() => { loadBots(); }, []);
+  // Load bots, then restore selected bot + view from URL
+  useEffect(() => {
+    loadBots();
+  }, []);
+
+  // Once bots are loaded, restore from URL query params
+  useEffect(() => {
+    if (!botsLoaded) return;
+    const { bot: botId, view } = router.query as { bot?: string; view?: string };
+    if (botId) {
+      const found = bots.find(b => b.id === botId);
+      if (found) {
+        setSelectedBot(found);
+        setActiveView((view as BotView) || "links");
+      } else {
+        // Bot not found — clear URL and stay on list
+        router.replace("/admin/ai-bots", undefined, { shallow: true });
+      }
+    }
+  }, [botsLoaded]);
 
   async function loadBots() {
     const res = await fetch("/api/ai-bots");
-    if (res.ok) setBots(await res.json());
+    if (res.ok) {
+      const data = await res.json();
+      setBots(data);
+      setBotsLoaded(true);
+    }
+  }
+
+  function selectBot(bot: AiBot, view: BotView = "links") {
+    setSelectedBot(bot);
+    setActiveView(view);
+    router.push(`/admin/ai-bots?bot=${bot.id}&view=${view}`, undefined, { shallow: true });
+  }
+
+  function changeView(view: BotView) {
+    setActiveView(view);
+    if (selectedBot) {
+      router.push(`/admin/ai-bots?bot=${selectedBot.id}&view=${view}`, undefined, { shallow: true });
+    }
+  }
+
+  function goBack() {
+    setSelectedBot(null);
+    router.push("/admin/ai-bots", undefined, { shallow: true });
   }
 
   async function createBot() {
@@ -55,8 +128,7 @@ export function AiBotBuilder() {
     if (res.ok) {
       const bot = await res.json();
       setBots(prev => [bot, ...prev]);
-      setSelectedBot(bot);
-      setActiveView("links");
+      selectBot(bot, "links");
       setShowCreateModal(false);
       setNewBotName("");
     }
@@ -65,24 +137,27 @@ export function AiBotBuilder() {
   async function saveBot(updates: Partial<AiBot>) {
     if (!selectedBot) return;
     setSaving(true);
-    const res = await fetch(`/api/ai-bots/${selectedBot.id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(updates)
-    });
-    if (res.ok) {
-      const updated = await res.json();
-      setSelectedBot(updated);
-      setBots(prev => prev.map(b => b.id === updated.id ? updated : b));
+    try {
+      const res = await fetch(`/api/ai-bots/${selectedBot.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(updates)
+      });
+      if (res.ok) {
+        const updated = await res.json();
+        setSelectedBot(updated);
+        setBots(prev => prev.map(b => b.id === updated.id ? updated : b));
+      }
+    } finally {
+      setSaving(false);
     }
-    setSaving(false);
   }
 
   async function deleteBot(botId: string) {
     if (!confirm("Delete this bot?")) return;
     await fetch(`/api/ai-bots/${botId}`, { method: "DELETE" });
     setBots(prev => prev.filter(b => b.id !== botId));
-    if (selectedBot?.id === botId) setSelectedBot(null);
+    if (selectedBot?.id === botId) goBack();
   }
 
   if (selectedBot) {
@@ -90,10 +165,14 @@ export function AiBotBuilder() {
       <BotDetailView
         bot={selectedBot}
         activeView={activeView}
-        setActiveView={setActiveView}
+        setActiveView={changeView}
         onSave={saveBot}
         saving={saving}
-        onBack={() => setSelectedBot(null)}
+        onBack={goBack}
+        onDeleteBot={(botId) => {
+          setBots(prev => prev.filter(b => b.id !== botId));
+          goBack();
+        }}
       />
     );
   }
@@ -120,12 +199,16 @@ export function AiBotBuilder() {
       ) : (
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: "16px" }}>
           {bots.map(bot => (
-            <div key={bot.id} style={botCard} onClick={() => { setSelectedBot(bot); setActiveView("links"); }}>
+            <div key={bot.id} style={botCard} onClick={() => { selectBot(bot, "links"); }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
                 <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-                  <div style={{ width: 40, height: 40, borderRadius: "50%", background: "#1f2937", display: "flex", alignItems: "center", justifyContent: "center", color: "white", fontSize: "18px" }}>🤖</div>
+                  <div style={{ width: 40, height: 40, borderRadius: "50%", background: "#1f2937", display: "flex", alignItems: "center", justifyContent: "center", color: "white", fontSize: "18px", overflow: "hidden", flexShrink: 0 }}>
+                    {bot.botAvatarUrl
+                      ? <img src={bot.botAvatarUrl} alt="avatar" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                      : "🤖"}
+                  </div>
                   <div>
-                    <div style={{ fontWeight: 600, fontSize: "15px" }}>{bot.name}</div>
+                    <div style={{ fontWeight: 600, fontSize: "15px" }}>{bot.botTitle || bot.name}</div>
                     <div style={{ fontSize: "12px", color: "#6b7280", marginTop: "2px" }}>
                       {bot.trainingLinks?.length || 0} sources · {bot.totalMessages || 0} messages
                     </div>
@@ -179,13 +262,14 @@ export function AiBotBuilder() {
 
 // ─── Bot Detail View ────────────────────────────────────────────────────────
 
-function BotDetailView({ bot, activeView, setActiveView, onSave, saving, onBack }: {
+function BotDetailView({ bot, activeView, setActiveView, onSave, saving, onBack, onDeleteBot }: {
   bot: AiBot;
   activeView: BotView;
   setActiveView: (v: BotView) => void;
   onSave: (updates: Partial<AiBot>) => void;
   saving: boolean;
   onBack: () => void;
+  onDeleteBot: (botId: string) => void;
 }) {
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
 
@@ -197,7 +281,9 @@ function BotDetailView({ bot, activeView, setActiveView, onSave, saving, onBack 
     { id: "qa",            label: "Q&A",           icon: "❓" },
     { id: "tune",          label: "Tune AI",       icon: "⚙️", section: "BEHAVIOUR" },
     { id: "test",          label: "Test Your Bot", icon: "🧪" },
-    { id: "deploy",        label: "Deploy",        icon: "🚀", section: "DEPLOYMENT" },
+    { id: "appearance",    label: "Appearance",    icon: "🎨", section: "DEPLOYMENT" },
+    { id: "deploy",        label: "Deploy",        icon: "🚀" },
+    { id: "settings",      label: "Settings",      icon: "🔧", section: "ADVANCED" },
   ];
 
   const activeItem = navItems.find(n => n.id === activeView);
@@ -214,8 +300,12 @@ function BotDetailView({ bot, activeView, setActiveView, onSave, saving, onBack 
           ← All Bots
         </button>
         <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-          <div style={{ width: 44, height: 44, borderRadius: "50%", background: "#1f2937", display: "flex", alignItems: "center", justifyContent: "center", color: "white", fontSize: "20px", flexShrink: 0 }}>🤖</div>
-          <div style={{ fontWeight: 700, fontSize: "15px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", color: "#1f2937" }}>{bot.name}</div>
+          <div style={{ width: 44, height: 44, borderRadius: "50%", background: "#1f2937", display: "flex", alignItems: "center", justifyContent: "center", color: "white", fontSize: "20px", flexShrink: 0, overflow: "hidden" }}>
+            {bot.botAvatarUrl
+              ? <img src={bot.botAvatarUrl} alt="avatar" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+              : "🤖"}
+          </div>
+          <div style={{ fontWeight: 700, fontSize: "15px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", color: "#1f2937" }}>{bot.botTitle || bot.name}</div>
         </div>
       </div>
       <nav style={{ padding: "10px 0", flex: 1, overflowY: "auto" }}>
@@ -296,7 +386,9 @@ function BotDetailView({ bot, activeView, setActiveView, onSave, saving, onBack 
           {activeView === "qa"           && <QAPanel bot={bot} onSave={onSave} saving={saving} />}
           {activeView === "tune"         && <TunePanel bot={bot} onSave={onSave} saving={saving} />}
           {activeView === "test"         && <TestPanel bot={bot} />}
-          {activeView === "deploy"       && <DeployPanel bot={bot} onSave={onSave} saving={saving} />}
+          {activeView === "appearance"   && <AppearancePanel bot={bot} onSave={onSave} saving={saving} />}
+          {activeView === "deploy"       && <DeployPanel bot={bot} onSave={onSave} saving={saving} onGoToSettings={() => setActiveView("settings")} />}
+          {activeView === "settings"     && <SettingsPanel bot={bot} onSave={onSave} saving={saving} onDelete={() => onDeleteBot(bot.id)} />}
         </div>
       </div>
 
@@ -899,11 +991,518 @@ function TestPanel({ bot }: { bot: AiBot }) {
   );
 }
 
+// ─── Appearance Panel ─────────────────────────────────────────────────────────
+
+const COLOR_THEMES = ["#3b82f6","#1f2937","#7c3aed","#0f766e","#15803d","#ca8a04","#ea580c","#dc2626","#be185d","#9333ea"];
+
+// Maps sound name → Web Audio API tone sequence: [frequency, duration][]
+function playAttentionSound(sound: string) {
+  if (sound === "None" || typeof window === "undefined") return;
+  try {
+    const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
+    const sequences: Record<string, [number, number][]> = {
+      Chime:  [[523, 0.12], [659, 0.12], [784, 0.2]],
+      Bell:   [[880, 0.05], [880, 0.3]],
+      Pop:    [[400, 0.04], [600, 0.08]],
+      Ding:   [[1047, 0.25]],
+    };
+    const seq = sequences[sound] || sequences["Ding"];
+    let t = ctx.currentTime;
+    seq.forEach(([freq, dur]) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.frequency.value = freq;
+      osc.type = "sine";
+      gain.gain.setValueAtTime(0.4, t);
+      gain.gain.exponentialRampToValueAtTime(0.001, t + dur);
+      osc.start(t);
+      osc.stop(t + dur);
+      t += dur + 0.02;
+    });
+  } catch { /* ignore if AudioContext not available */ }
+}
+
+// CSS animation name for each option
+const ANIMATION_MAP: Record<string, string> = {
+  Bounce: "ag-bounce",
+  Pulse:  "ag-pulse",
+  Shake:  "ag-shake",
+  Wiggle: "ag-wiggle",
+};
+
+function ChatPreview({ botTitle, welcomeMessage, suggestions, placeholder, colorTheme, avatarPreview, chatIconSize, showWelcomePopup, attentionAnimation, attentionSound }: {
+  botTitle: string; welcomeMessage: string; suggestions: string[]; placeholder: string;
+  colorTheme: string; avatarPreview: string; chatIconSize: number; showWelcomePopup: boolean;
+  attentionAnimation: string; attentionSound: string;
+}) {
+  // Play sound whenever attentionSound changes (and isn't None)
+  useEffect(() => {
+    if (attentionSound !== "None") playAttentionSound(attentionSound);
+  }, [attentionSound]);
+
+  const animClass = ANIMATION_MAP[attentionAnimation] || "";
+
+  const avatar = avatarPreview
+    ? <img src={avatarPreview} alt="avatar" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+    : <span style={{ fontSize: "16px" }}>🤖</span>;
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: "12px", userSelect: "none" }}>
+      {/* Chat window */}
+      <div style={{ width: "300px", borderRadius: "16px", overflow: "hidden", boxShadow: "0 8px 32px rgba(0,0,0,0.18)", border: "1px solid #e5e7eb", background: "#fff", display: "flex", flexDirection: "column" }}>
+        {/* Header */}
+        <div style={{ background: colorTheme, padding: "14px 16px", display: "flex", alignItems: "center", gap: "10px" }}>
+          <div style={{ width: 34, height: 34, borderRadius: "50%", background: "rgba(255,255,255,0.25)", display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden", flexShrink: 0 }}>
+            {avatar}
+          </div>
+          <div style={{ color: "#fff", fontWeight: 700, fontSize: "14px", flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+            {botTitle || "My Bot"}
+          </div>
+          <div style={{ color: "rgba(255,255,255,0.7)", fontSize: "18px", cursor: "pointer" }}>✕</div>
+        </div>
+
+        {/* Messages area */}
+        <div style={{ flex: 1, padding: "16px", background: "#f9fafb", display: "flex", flexDirection: "column", gap: "10px", minHeight: "200px" }}>
+          <div style={{ display: "flex", alignItems: "flex-start", gap: "8px" }}>
+            <div style={{ width: 28, height: 28, borderRadius: "50%", background: colorTheme, display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden", flexShrink: 0, fontSize: "13px" }}>
+              {avatarPreview ? <img src={avatarPreview} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : "🤖"}
+            </div>
+            <div style={{ background: "#fff", border: "1px solid #e5e7eb", padding: "9px 12px", borderRadius: "4px 14px 14px 14px", fontSize: "13px", color: "#1f2937", maxWidth: "200px", lineHeight: "1.5", boxShadow: "0 1px 3px rgba(0,0,0,0.06)" }}>
+              {welcomeMessage || "Hi, How can I help you today?"}
+            </div>
+          </div>
+          {suggestions.length > 0 && (
+            <div style={{ display: "flex", flexWrap: "wrap", gap: "6px", marginLeft: "36px" }}>
+              {suggestions.slice(0, 3).map((s, i) => (
+                <span key={i} style={{ padding: "4px 10px", border: `1px solid ${colorTheme}`, borderRadius: "20px", fontSize: "11px", color: colorTheme, background: "#fff", cursor: "pointer" }}>{s}</span>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Input bar */}
+        <div style={{ padding: "10px 12px", borderTop: "1px solid #e5e7eb", background: "#fff", display: "flex", alignItems: "center", gap: "8px" }}>
+          <div style={{ flex: 1, padding: "8px 12px", background: "#f3f4f6", borderRadius: "20px", fontSize: "12px", color: "#9ca3af" }}>
+            {placeholder || "Ask me anything..."}
+          </div>
+          <div style={{ width: 30, height: 30, borderRadius: "50%", background: colorTheme, display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontSize: "14px", flexShrink: 0 }}>➤</div>
+        </div>
+      </div>
+
+      {/* Launcher + popup */}
+      <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: "8px" }}>
+        {showWelcomePopup && (
+          <div style={{ background: "#fff", border: "1px solid #e5e7eb", borderRadius: "12px", padding: "10px 14px", fontSize: "12px", color: "#374151", maxWidth: "220px", boxShadow: "0 4px 12px rgba(0,0,0,0.1)", lineHeight: "1.5" }}>
+            {welcomeMessage || "Hi, How can I help you today?"}
+          </div>
+        )}
+
+        {/* Animated launcher button */}
+        <div
+          className={animClass || undefined}
+          style={{ width: chatIconSize, height: chatIconSize, borderRadius: "50%", background: colorTheme, display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 4px 16px rgba(0,0,0,0.2)", overflow: "hidden", cursor: "pointer" }}
+        >
+          {avatarPreview ? <img src={avatarPreview} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : <span style={{ fontSize: Math.round(chatIconSize * 0.4) + "px" }}>🤖</span>}
+        </div>
+
+        {/* Animation label badge */}
+        {attentionAnimation !== "None" && (
+          <div style={{ fontSize: "10px", color: "#6b7280", background: "#f3f4f6", padding: "2px 8px", borderRadius: "10px" }}>
+            ▶ {attentionAnimation}
+          </div>
+        )}
+      </div>
+
+      <style>{`
+        @keyframes ag-bounce {
+          0%, 100% { transform: translateY(0); }
+          30% { transform: translateY(-14px); }
+          60% { transform: translateY(-6px); }
+        }
+        @keyframes ag-pulse {
+          0%, 100% { transform: scale(1); box-shadow: 0 4px 16px rgba(0,0,0,0.2); }
+          50% { transform: scale(1.15); box-shadow: 0 6px 24px rgba(0,0,0,0.3); }
+        }
+        @keyframes ag-shake {
+          0%, 100% { transform: rotate(0deg); }
+          15% { transform: rotate(-12deg); }
+          30% { transform: rotate(12deg); }
+          45% { transform: rotate(-8deg); }
+          60% { transform: rotate(8deg); }
+          75% { transform: rotate(-4deg); }
+          90% { transform: rotate(4deg); }
+        }
+        @keyframes ag-wiggle {
+          0%, 100% { transform: rotate(0deg) scale(1); }
+          25% { transform: rotate(-8deg) scale(1.05); }
+          75% { transform: rotate(8deg) scale(1.05); }
+        }
+        .ag-bounce { animation: ag-bounce 1s ease infinite; }
+        .ag-pulse  { animation: ag-pulse  1.5s ease infinite; }
+        .ag-shake  { animation: ag-shake  0.8s ease infinite; }
+        .ag-wiggle { animation: ag-wiggle 0.6s ease infinite; }
+      `}</style>
+    </div>
+  );
+}
+
+function AppearancePanel({ bot, onSave, saving }: { bot: AiBot; onSave: (u: Partial<AiBot>) => void; saving: boolean }) {
+  const [botTitle, setBotTitle] = useState(bot.botTitle || bot.name || "");
+  const [displayMessage, setDisplayMessage] = useState(bot.displayMessage || "");
+  const [displayMessageEnabled, setDisplayMessageEnabled] = useState(bot.displayMessageEnabled ?? false);
+  const [welcomeMessage, setWelcomeMessage] = useState(bot.welcomeMessage || "Hi, How can I help you today?");
+  const [welcomeEnabled, setWelcomeEnabled] = useState(true);
+  const [showWelcomePopup, setShowWelcomePopup] = useState(bot.showWelcomePopup ?? true);
+  const [suggestions, setSuggestions] = useState<string[]>(bot.suggestions || []);
+  const [suggestionsEnabled, setSuggestionsEnabled] = useState(true);
+  const [suggestionInput, setSuggestionInput] = useState("");
+  const [removeSuggestionsAfterFirst, setRemoveSuggestionsAfterFirst] = useState(bot.removeSuggestionsAfterFirst ?? false);
+  const [placeholder, setPlaceholder] = useState(bot.placeholder || "Ask me anything...");
+  const [placeholderEnabled, setPlaceholderEnabled] = useState(true);
+  const [leadCollection, setLeadCollection] = useState(bot.leadCollection ?? false);
+  const [privacyPolicyEnabled, setPrivacyPolicyEnabled] = useState(bot.privacyPolicyEnabled ?? true);
+  const [privacyActionText, setPrivacyActionText] = useState(bot.privacyActionText || "Read our");
+  const [privacyLinkText, setPrivacyLinkText] = useState(bot.privacyLinkText || "Privacy Policy");
+  const [privacyLink, setPrivacyLink] = useState(bot.privacyLink || "https://yoursite.com/privacy");
+  const [colorTheme, setColorTheme] = useState(bot.colorTheme || "#3b82f6");
+  const [chatIconSize, setChatIconSize] = useState(bot.chatIconSize || 60);
+  const [enterMessage, setEnterMessage] = useState(bot.enterMessage || "Chat Now");
+  const [attentionSound, setAttentionSound] = useState(bot.attentionSound || "None");
+  const [attentionAnimation, setAttentionAnimation] = useState(bot.attentionAnimation || "None");
+  const [immediatelyOpenChat, setImmediatelyOpenChat] = useState(bot.immediatelyOpenChat ?? false);
+  const avatarRef = useRef<HTMLInputElement>(null);
+  const [avatarPreview, setAvatarPreview] = useState(bot.botAvatarUrl || "");
+  const [avatarFile, setAvatarFile] = useState<File | null>(null);
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
+
+  // Re-sync ONLY when switching to a different bot (not after save of same bot)
+  const prevBotIdRef = useRef<string>("");
+  useEffect(() => {
+    if (prevBotIdRef.current === bot.id) return; // same bot — don't overwrite user edits
+    prevBotIdRef.current = bot.id;
+    setBotTitle(bot.botTitle || bot.name || "");
+    setDisplayMessage(bot.displayMessage || "");
+    setDisplayMessageEnabled(bot.displayMessageEnabled ?? false);
+    setWelcomeMessage(bot.welcomeMessage || "Hi, How can I help you today?");
+    setShowWelcomePopup(bot.showWelcomePopup ?? true);
+    setSuggestions(bot.suggestions || []);
+    setRemoveSuggestionsAfterFirst(bot.removeSuggestionsAfterFirst ?? false);
+    setPlaceholder(bot.placeholder || "Ask me anything...");
+    setLeadCollection(bot.leadCollection ?? false);
+    setPrivacyPolicyEnabled(bot.privacyPolicyEnabled ?? true);
+    setPrivacyActionText(bot.privacyActionText || "Read our");
+    setPrivacyLinkText(bot.privacyLinkText || "Privacy Policy");
+    setPrivacyLink(bot.privacyLink || "https://yoursite.com/privacy");
+    setColorTheme(bot.colorTheme || "#3b82f6");
+    setChatIconSize(bot.chatIconSize || 60);
+    setEnterMessage(bot.enterMessage || "Chat Now");
+    setAttentionSound(bot.attentionSound || "None");
+    setAttentionAnimation(bot.attentionAnimation || "None");
+    setImmediatelyOpenChat(bot.immediatelyOpenChat ?? false);
+    setAvatarPreview(bot.botAvatarUrl || "");
+    setAvatarFile(null);
+  });
+
+  function addSuggestion() {
+    if (!suggestionInput.trim()) return;
+    setSuggestions(prev => [...prev, suggestionInput.trim()]);
+    setSuggestionInput("");
+  }
+
+  function handleAvatarChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setAvatarFile(file);
+    // Show local preview immediately
+    const reader = new FileReader();
+    reader.onload = () => setAvatarPreview(reader.result as string);
+    reader.readAsDataURL(file);
+    if (avatarRef.current) avatarRef.current.value = "";
+  }
+
+  async function save() {
+    let finalAvatarUrl = bot.botAvatarUrl || "";
+
+    // Upload avatar to /uploads if a new file was selected
+    if (avatarFile) {
+      setUploadingAvatar(true);
+      try {
+        const fd = new FormData();
+        fd.append("file", avatarFile);
+        const res = await fetch("/api/ai-bots/upload-avatar", { method: "POST", body: fd });
+        if (res.ok) {
+          const data = await res.json();
+          finalAvatarUrl = data.url;
+          setAvatarPreview(finalAvatarUrl);
+          setAvatarFile(null);
+        }
+      } finally {
+        setUploadingAvatar(false);
+      }
+    }
+
+    onSave({
+      botTitle, displayMessage, displayMessageEnabled, welcomeMessage, showWelcomePopup,
+      placeholder, suggestions, removeSuggestionsAfterFirst, colorTheme, leadCollection,
+      privacyPolicyEnabled, privacyActionText, privacyLinkText, privacyLink,
+      chatIconSize, enterMessage, attentionSound, attentionAnimation, immediatelyOpenChat,
+      botAvatarUrl: finalAvatarUrl
+    });
+  }
+
+  const rowStyle: React.CSSProperties = { display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "6px" };
+  const sectionLabel: React.CSSProperties = { fontWeight: 600, fontSize: "15px" };
+  const sectionSub: React.CSSProperties = { fontSize: "12px", color: "#6b7280", marginTop: "2px" };
+
+  return (
+    <div style={{ padding: "32px" }} className="bot-panel-padding">
+      <h2 style={{ fontSize: "20px", fontWeight: 700, marginBottom: "4px" }}>Appearance</h2>
+      <p style={{ color: "#6b7280", fontSize: "14px", marginBottom: "28px" }}>Customize the look and feel of your chatbot interface here.</p>
+
+      <div style={{ display: "flex", gap: "32px", alignItems: "flex-start" }} className="bot-appearance-layout">
+
+        {/* ── Left: Settings form ── */}
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: "1px", background: "#e5e7eb", borderRadius: "12px", overflow: "hidden", border: "1px solid #e5e7eb" }}>
+
+        {/* Title */}
+        <div style={{ background: "#fff", padding: "18px 20px" }}>
+          <div style={rowStyle}>
+            <div><div style={sectionLabel}>Title</div><div style={sectionSub}>To be shown in the chat window</div></div>
+            <Toggle value={true} onChange={() => {}} />
+          </div>
+          <input value={botTitle} onChange={e => setBotTitle(e.target.value)} style={{ ...inputStyle, marginTop: "10px" }} placeholder="e.g. Support Bot" />
+        </div>
+
+        {/* Display Message */}
+        <div style={{ background: "#fff", padding: "18px 20px" }}>
+          <div style={rowStyle}>
+            <div><div style={sectionLabel}>Display Message</div><div style={sectionSub}>To be shown in the response output</div></div>
+            <Toggle value={displayMessageEnabled} onChange={setDisplayMessageEnabled} />
+          </div>
+          {displayMessageEnabled && <input value={displayMessage} onChange={e => setDisplayMessage(e.target.value)} style={{ ...inputStyle, marginTop: "10px" }} placeholder="Enter display message..." />}
+        </div>
+
+        {/* Welcome Message */}
+        <div style={{ background: "#fff", padding: "18px 20px" }}>
+          <div style={rowStyle}>
+            <div><div style={sectionLabel}>Welcome Message</div><div style={sectionSub}>The introductory message from the chatbot</div></div>
+            <Toggle value={welcomeEnabled} onChange={setWelcomeEnabled} />
+          </div>
+          {welcomeEnabled && <input value={welcomeMessage} onChange={e => setWelcomeMessage(e.target.value)} style={{ ...inputStyle, marginTop: "10px" }} placeholder="Hi, How can I help you today?" />}
+        </div>
+
+        {/* Welcome Message Popup */}
+        <div style={{ background: "#fff", padding: "18px 20px" }}>
+          <div style={rowStyle}>
+            <div><div style={sectionLabel}>Welcome Message Popup</div><div style={sectionSub}>Show introductory message above chat launch circle</div></div>
+            <Toggle value={showWelcomePopup} onChange={setShowWelcomePopup} />
+          </div>
+        </div>
+
+        {/* Suggestions */}
+        <div style={{ background: "#fff", padding: "18px 20px" }}>
+          <div style={rowStyle}>
+            <div><div style={sectionLabel}>Suggestions</div><div style={sectionSub}>Questions to be shown to user (1 suggestion per line)</div></div>
+            <Toggle value={suggestionsEnabled} onChange={setSuggestionsEnabled} />
+          </div>
+          {suggestionsEnabled && (
+            <>
+              <div style={{ display: "flex", gap: "8px", marginTop: "10px" }}>
+                <input value={suggestionInput} onChange={e => setSuggestionInput(e.target.value)} onKeyDown={e => e.key === "Enter" && addSuggestion()} placeholder="Enter suggestion..." style={{ ...inputStyle, marginBottom: 0, flex: 1 }} />
+                <button onClick={addSuggestion} style={btnSecondary}>Add</button>
+              </div>
+              {suggestions.length > 0 && (
+                <div style={{ display: "flex", flexWrap: "wrap", gap: "8px", marginTop: "10px" }}>
+                  {suggestions.map((s, i) => (
+                    <span key={i} style={{ display: "flex", alignItems: "center", gap: "6px", padding: "4px 10px", background: "#f3f4f6", borderRadius: "20px", fontSize: "13px" }}>
+                      {s}
+                      <button onClick={() => setSuggestions(p => p.filter((_, idx) => idx !== i))} style={{ background: "none", border: "none", cursor: "pointer", color: "#ef4444", fontSize: "14px", padding: 0, lineHeight: 1 }}>×</button>
+                    </span>
+                  ))}
+                </div>
+              )}
+              <label style={{ display: "flex", alignItems: "center", gap: "8px", marginTop: "12px", cursor: "pointer", fontSize: "13px", color: "#374151" }}>
+                <input type="checkbox" checked={removeSuggestionsAfterFirst} onChange={e => setRemoveSuggestionsAfterFirst(e.target.checked)} style={{ accentColor: "#3b82f6" }} />
+                Remove Suggestion List after first User message is sent
+              </label>
+            </>
+          )}
+        </div>
+
+        {/* Placeholder */}
+        <div style={{ background: "#fff", padding: "18px 20px" }}>
+          <div style={rowStyle}>
+            <div><div style={sectionLabel}>Placeholder</div><div style={sectionSub}>To be shown in the query input</div></div>
+            <Toggle value={placeholderEnabled} onChange={setPlaceholderEnabled} />
+          </div>
+          {placeholderEnabled && <input value={placeholder} onChange={e => setPlaceholder(e.target.value)} style={{ ...inputStyle, marginTop: "10px" }} placeholder="Ask me anything..." />}
+        </div>
+
+        {/* Lead Collection */}
+        <div style={{ background: "#fff", padding: "18px 20px" }}>
+          <div style={rowStyle}>
+            <div><div style={sectionLabel}>Lead Collection</div><div style={sectionSub}>Collect leads before or during a conversation</div></div>
+            <Toggle value={leadCollection} onChange={setLeadCollection} />
+          </div>
+        </div>
+
+        {/* Privacy Policy */}
+        <div style={{ background: "#fff", padding: "18px 20px" }}>
+          <div style={rowStyle}>
+            <div><div style={sectionLabel}>Privacy Policy</div><div style={sectionSub}>Add privacy policy link to your chat widget</div></div>
+            <Toggle value={privacyPolicyEnabled} onChange={setPrivacyPolicyEnabled} />
+          </div>
+          {privacyPolicyEnabled && (
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 2fr", gap: "10px", marginTop: "12px" }} className="bot-tune-model-grid">
+              <div>
+                <div style={{ fontSize: "12px", color: "#6b7280", marginBottom: "4px" }}>Action text</div>
+                <input value={privacyActionText} onChange={e => setPrivacyActionText(e.target.value)} style={inputStyle} placeholder="Read our" />
+              </div>
+              <div>
+                <div style={{ fontSize: "12px", color: "#6b7280", marginBottom: "4px" }}>Link text</div>
+                <input value={privacyLinkText} onChange={e => setPrivacyLinkText(e.target.value)} style={inputStyle} placeholder="Privacy Policy" />
+              </div>
+              <div>
+                <div style={{ fontSize: "12px", color: "#6b7280", marginBottom: "4px" }}>Link</div>
+                <input value={privacyLink} onChange={e => setPrivacyLink(e.target.value)} style={inputStyle} placeholder="https://yoursite.com/privacy" />
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Branding */}
+        <div style={{ background: "#fff", padding: "18px 20px" }}>
+          <div style={{ fontWeight: 600, fontSize: "15px", marginBottom: "4px" }}>Branding</div>
+          <div style={{ fontSize: "12px", color: "#6b7280", marginBottom: "16px" }}>Upload your avatar and set colors</div>
+          <div style={{ display: "flex", gap: "24px", flexWrap: "wrap", alignItems: "flex-start" }}>
+            {/* Avatar upload */}
+            <div style={{ textAlign: "center" }}>
+              <div
+                onClick={() => avatarRef.current?.click()}
+                style={{ width: 80, height: 80, borderRadius: "50%", background: avatarPreview ? "transparent" : "#f3f4f6", border: avatarFile ? "2px solid #3b82f6" : "2px dashed #d1d5db", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden", marginBottom: "6px" }}
+              >
+                {avatarPreview ? <img src={avatarPreview} alt="avatar" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : <span style={{ fontSize: "28px" }}>🤖</span>}
+              </div>
+              <div style={{ fontSize: "11px", color: avatarFile ? "#3b82f6" : "#6b7280" }}>
+                {avatarFile ? `✓ ${avatarFile.name}` : "Chatbot Avatar"}
+              </div>
+              <div style={{ fontSize: "10px", color: "#9ca3af", marginTop: "2px" }}>Click to change</div>
+              <input ref={avatarRef} type="file" accept="image/*" style={{ display: "none" }} onChange={handleAvatarChange} />
+            </div>
+            {/* Icon size + enter message */}
+            <div style={{ flex: 1, minWidth: "200px" }}>
+              <div style={{ fontSize: "13px", color: "#6b7280", marginBottom: "6px" }}>Chat Icon Size</div>
+              <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "16px" }}>
+                <input type="range" min={40} max={80} value={chatIconSize} onChange={e => setChatIconSize(Number(e.target.value))} style={{ flex: 1, accentColor: "#3b82f6" }} />
+                <span style={{ fontSize: "13px", fontWeight: 600, minWidth: "40px" }}>{chatIconSize}px</span>
+              </div>
+              <div style={{ fontSize: "13px", color: "#6b7280", marginBottom: "6px" }}>Enter message for live chat</div>
+              <input value={enterMessage} onChange={e => setEnterMessage(e.target.value)} style={inputStyle} placeholder="Chat Now" />
+            </div>
+          </div>
+        </div>
+
+          {/* Color Theme */}
+          <div style={{ background: "#fff", padding: "18px 20px" }}>
+            <div style={{ fontWeight: 600, fontSize: "15px", marginBottom: "4px" }}>Color Theme</div>
+            <div style={{ display: "flex", gap: "10px", flexWrap: "wrap", marginTop: "12px" }}>
+              {COLOR_THEMES.map(c => (
+                <button key={c} onClick={() => setColorTheme(c)} style={{ width: 36, height: 36, borderRadius: "50%", background: c, border: "none", cursor: "pointer", boxShadow: colorTheme === c ? `0 0 0 2px #fff, 0 0 0 4px ${c}` : "none", transition: "box-shadow 0.15s" }} />
+              ))}
+            </div>
+          </div>
+
+        {/* Attention Grabbers */}
+        <div style={{ background: "#fff", padding: "18px 20px" }}>
+          <div style={{ fontWeight: 600, fontSize: "15px", marginBottom: "4px" }}>Attention Grabbers</div>
+          <div style={{ fontSize: "12px", color: "#6b7280", marginBottom: "16px" }}>Draw users attention to your chatbot</div>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px", marginBottom: "12px" }} className="bot-links-grid">
+            <div>
+              <div style={{ fontSize: "12px", color: "#6b7280", marginBottom: "6px" }}>Sound to play when the widget appears</div>
+              <select value={attentionSound} onChange={e => setAttentionSound(e.target.value)} style={inputStyle}>
+                {["None","Chime","Bell","Pop","Ding"].map(s => <option key={s}>{s}</option>)}
+              </select>
+            </div>
+            <div>
+              <div style={{ fontSize: "12px", color: "#6b7280", marginBottom: "6px" }}>Animation for chatbot avatar icon</div>
+              <select value={attentionAnimation} onChange={e => setAttentionAnimation(e.target.value)} style={inputStyle}>
+                {["None","Bounce","Pulse","Shake","Wiggle"].map(a => <option key={a}>{a}</option>)}
+              </select>
+            </div>
+          </div>
+          <label style={{ display: "flex", alignItems: "center", gap: "8px", cursor: "pointer", fontSize: "13px", color: "#374151" }}>
+            <input type="checkbox" checked={immediatelyOpenChat} onChange={e => setImmediatelyOpenChat(e.target.checked)} style={{ accentColor: "#3b82f6" }} />
+            Immediately Open Chat Window (Desktop Only)
+          </label>
+        </div>
+
+      </div>{/* end settings accordion */}
+        </div>{/* end left column */}
+
+        {/* ── Right: Live Preview ── */}
+        <div style={{ width: "320px", flexShrink: 0, position: "sticky", top: "20px" }} className="bot-appearance-preview">
+          <div style={{ fontSize: "12px", fontWeight: 600, color: "#9ca3af", letterSpacing: "0.08em", marginBottom: "12px", textTransform: "uppercase" }}>Live Preview</div>
+          <ChatPreview
+            botTitle={botTitle}
+            welcomeMessage={welcomeMessage}
+            suggestions={suggestions}
+            placeholder={placeholder}
+            colorTheme={colorTheme}
+            avatarPreview={avatarPreview}
+            chatIconSize={chatIconSize}
+            showWelcomePopup={showWelcomePopup}
+            attentionAnimation={attentionAnimation}
+            attentionSound={attentionSound}
+          />
+        </div>
+
+      </div>{/* end two-column layout */}
+
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: "24px" }}>
+        <button onClick={() => { setBotTitle(bot.name); setWelcomeMessage("Hi, How can I help you today?"); setColorTheme("#3b82f6"); setSuggestions([]); setPlaceholder("Ask me anything..."); }} style={btnSecondary}>Reset Appearance</button>
+        <button onClick={save} disabled={saving || uploadingAvatar} style={{ ...btnPrimary, opacity: saving || uploadingAvatar ? 0.7 : 1 }}>
+          {uploadingAvatar ? "Uploading avatar..." : saving ? "Saving..." : "Save Changes"}
+        </button>
+      </div>
+
+      <style>{`
+        @media (max-width: 900px) {
+          .bot-appearance-layout { flex-direction: column !important; }
+          .bot-appearance-preview { width: 100% !important; position: static !important; order: -1; }
+        }
+      `}</style>
+    </div>
+  );
+}
+
 // ─── Deploy Panel ─────────────────────────────────────────────────────────────
 
-function DeployPanel({ bot, onSave, saving }: { bot: AiBot; onSave: (u: Partial<AiBot>) => void; saving: boolean }) {
+function DeployPanel({ bot, onSave, saving, onGoToSettings }: { bot: AiBot; onSave: (u: Partial<AiBot>) => void; saving: boolean; onGoToSettings: () => void }) {
   const [assignedRoles, setAssignedRoles] = useState<string[]>(bot.assignedRoles || []);
+  const [copied, setCopied] = useState<string | null>(null);
   const roles = ["manager", "sales", "marketing"];
+
+  // Re-sync when bot prop updates
+  const prevIdRef = useRef<string>("");
+  useEffect(() => {
+    if (prevIdRef.current === bot.id) return;
+    prevIdRef.current = bot.id;
+    setAssignedRoles(bot.assignedRoles || []);
+  });
+
+  const origin = typeof window !== "undefined" ? window.location.origin : "";
+  const botUrl = `${origin}/bot/${bot.id}`;
+  const scriptTag = `<script defer src="${origin}/bot-widget.js" data-bot-id="${bot.id}"></script>`;
+  const iframeTag = `<iframe style="width:400px;height:580px;" src="${botUrl}"></iframe>`;
+
+  function copy(text: string, key: string) {
+    navigator.clipboard.writeText(text);
+    setCopied(key);
+    setTimeout(() => setCopied(null), 2000);
+  }
 
   function toggleRole(role: string) {
     setAssignedRoles(prev => prev.includes(role) ? prev.filter(r => r !== role) : [...prev, role]);
@@ -911,11 +1510,21 @@ function DeployPanel({ bot, onSave, saving }: { bot: AiBot; onSave: (u: Partial<
 
   return (
     <div style={{ padding: "32px" }} className="bot-panel-padding">
-      <h2 style={{ fontSize: "20px", fontWeight: 700, marginBottom: "8px" }}>Deploy</h2>
-      <p style={{ color: "#6b7280", fontSize: "14px", marginBottom: "24px" }}>Assign this bot to user panels so they can chat with it</p>
-      <div style={card}>
-        <div style={{ fontWeight: 600, marginBottom: "16px" }}>Assign to Panels</div>
-        <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+      <h2 style={{ fontSize: "20px", fontWeight: 700, marginBottom: "4px" }}>Deploy</h2>
+      <p style={{ color: "#6b7280", fontSize: "14px", marginBottom: "20px" }}>Choose from these 3 simple ways to use your chatbot.</p>
+
+      {/* Not public banner */}
+      {!bot.isPublic && (
+        <div style={{ background: "#fef2f2", border: "1px solid #fecaca", borderRadius: "8px", padding: "14px 18px", marginBottom: "20px", fontSize: "13px", color: "#991b1b", display: "flex", alignItems: "center", gap: "8px" }}>
+          ⚠️ This bot is not public. Only the owner can access it. Go to <button onClick={onGoToSettings} style={{ background: "none", border: "none", cursor: "pointer", color: "#1d4ed8", textDecoration: "underline", fontSize: "13px", padding: 0 }}>Settings</button> to make it public.
+        </div>
+      )}
+
+      {/* Assign to Panels */}
+      <div style={{ ...card, marginBottom: "20px" }}>
+        <div style={{ fontWeight: 600, fontSize: "15px", marginBottom: "4px" }}>Assign to Panels</div>
+        <div style={{ fontSize: "13px", color: "#6b7280", marginBottom: "14px" }}>Choose which portals can access this bot</div>
+        <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
           {roles.map(role => (
             <label key={role} style={{ display: "flex", alignItems: "center", gap: "12px", cursor: "pointer", padding: "12px", borderRadius: "8px", border: `1px solid ${assignedRoles.includes(role) ? "#1f2937" : "#e5e7eb"}`, background: assignedRoles.includes(role) ? "#f9fafb" : "#fff" }}>
               <input type="checkbox" checked={assignedRoles.includes(role)} onChange={() => toggleRole(role)} style={{ width: "16px", height: "16px", accentColor: "#1f2937" }} />
@@ -926,13 +1535,286 @@ function DeployPanel({ bot, onSave, saving }: { bot: AiBot; onSave: (u: Partial<
             </label>
           ))}
         </div>
-        <div style={{ marginTop: "20px", display: "flex", justifyContent: "flex-end" }}>
-          <button onClick={() => onSave({ assignedRoles })} disabled={saving} style={btnPrimary}>
-            {saving ? "Saving..." : "Save Deployment"}
+        <div style={{ marginTop: "14px", display: "flex", justifyContent: "flex-end" }}>
+          <button onClick={() => onSave({ assignedRoles })} disabled={saving} style={btnPrimary}>{saving ? "Saving..." : "Save"}</button>
+        </div>
+      </div>
+
+      {/* Direct Link */}
+      <div style={{ ...card, marginBottom: "20px", display: "flex", gap: "24px", alignItems: "flex-start", flexWrap: "wrap" }}>
+        {/* Illustration */}
+        <div style={{ width: 120, height: 90, background: "#eff6ff", borderRadius: "10px", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, fontSize: "36px" }}>💬</div>
+        <div style={{ flex: 1, minWidth: "200px" }}>
+          <div style={{ fontWeight: 600, fontSize: "15px", marginBottom: "4px" }}>Direct Link</div>
+          <div style={{ fontSize: "13px", color: "#6b7280", marginBottom: "14px" }}>Share access to your chatbot by using the link below or with the QR code.</div>
+          <div style={{ display: "flex", gap: "8px", alignItems: "center", marginBottom: "12px" }}>
+            <div style={{ flex: 1, padding: "10px 12px", background: "#f9fafb", border: "1px solid #e5e7eb", borderRadius: "8px", fontSize: "13px", color: "#374151", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{botUrl}</div>
+            <button onClick={() => copy(botUrl, "link")} style={{ ...btnSecondary, padding: "10px 14px", flexShrink: 0 }}>{copied === "link" ? "✓ Copied" : "📋 Copy"}</button>
+          </div>
+          <button style={{ ...btnPrimary, background: "#3b82f6", display: "flex", alignItems: "center", gap: "6px", fontSize: "13px", padding: "8px 14px" }}>
+            ⬇ Download QR
           </button>
         </div>
       </div>
+
+      {/* Add to Website */}
+      <div style={{ ...card, marginBottom: "20px", display: "flex", gap: "24px", alignItems: "flex-start", flexWrap: "wrap" }}>
+        <div style={{ width: 120, height: 90, background: "#f0fdf4", borderRadius: "10px", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, fontSize: "36px" }}>🌐</div>
+        <div style={{ flex: 1, minWidth: "200px" }}>
+          <div style={{ fontWeight: 600, fontSize: "15px", marginBottom: "4px" }}>Add to a Website</div>
+          <div style={{ fontSize: "13px", color: "#6b7280", marginBottom: "14px" }}>Add the code below to the header of your website to display the chatbot on all pages.</div>
+          <div style={{ display: "flex", gap: "8px", alignItems: "flex-start" }}>
+            <div style={{ flex: 1, padding: "12px", background: "#1f2937", borderRadius: "8px", fontSize: "12px", color: "#a5f3fc", fontFamily: "monospace", wordBreak: "break-all", lineHeight: "1.6" }}>{scriptTag}</div>
+            <button onClick={() => copy(scriptTag, "script")} style={{ ...btnSecondary, padding: "10px 14px", flexShrink: 0 }}>{copied === "script" ? "✓" : "📋"}</button>
+          </div>
+        </div>
+      </div>
+
+      {/* Display Inside Webpage */}
+      <div style={{ ...card, display: "flex", gap: "24px", alignItems: "flex-start", flexWrap: "wrap" }}>
+        <div style={{ width: 120, height: 90, background: "#faf5ff", borderRadius: "10px", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, fontSize: "36px" }}>🖥️</div>
+        <div style={{ flex: 1, minWidth: "200px" }}>
+          <div style={{ fontWeight: 600, fontSize: "15px", marginBottom: "4px" }}>Display Inside Webpage</div>
+          <div style={{ fontSize: "13px", color: "#6b7280", marginBottom: "14px" }}>Display the open chatbot window inside a webpage with an iframe, ready to use.</div>
+          <div style={{ display: "flex", gap: "8px", alignItems: "flex-start" }}>
+            <div style={{ flex: 1, padding: "12px", background: "#1f2937", borderRadius: "8px", fontSize: "12px", color: "#a5f3fc", fontFamily: "monospace", wordBreak: "break-all", lineHeight: "1.6" }}>{iframeTag}</div>
+            <button onClick={() => copy(iframeTag, "iframe")} style={{ ...btnSecondary, padding: "10px 14px", flexShrink: 0 }}>{copied === "iframe" ? "✓" : "📋"}</button>
+          </div>
+        </div>
+      </div>
     </div>
+  );
+}
+
+// ─── Settings Panel ───────────────────────────────────────────────────────────
+
+const TIMEZONES = [
+  "UTC", "UTC-05:00 Eastern Time", "UTC-06:00 Central Time", "UTC-07:00 Mountain Time",
+  "UTC-08:00 Pacific Time", "UTC+00:00 London", "UTC+01:00 Paris/Berlin",
+  "UTC+05:30 New Delhi, Mumbai, Chennai", "UTC+08:00 Beijing/Singapore", "UTC+09:00 Tokyo",
+];
+
+function SettingsPanel({ bot, onSave, saving, onDelete }: { bot: AiBot; onSave: (u: Partial<AiBot>) => void; saving: boolean; onDelete: () => void }) {
+  const [botName, setBotName] = useState(bot.name || "");
+  const [isPublic, setIsPublic] = useState(bot.isPublic ?? false);
+  const [rateLimit, setRateLimit] = useState(bot.rateLimit ?? false);
+  const [domainRestriction, setDomainRestriction] = useState(bot.domainRestriction ?? false);
+  const [allowedDomains, setAllowedDomains] = useState(bot.allowedDomains || "");
+  const [timezone, setTimezone] = useState(bot.timezone || "UTC+05:30 New Delhi, Mumbai, Chennai");
+  const [passwordProtection, setPasswordProtection] = useState(bot.passwordProtection ?? false);
+  const [teamMemberEmail, setTeamMemberEmail] = useState("");
+  const [teamMembers, setTeamMembers] = useState<string[]>(bot.teamMembers || []);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+
+  // Re-sync when bot prop updates (e.g. after name save)
+  const prevSIdRef = useRef<string>("");
+  useEffect(() => {
+    if (prevSIdRef.current === bot.id) return;
+    prevSIdRef.current = bot.id;
+    setBotName(bot.name || "");
+    setIsPublic(bot.isPublic ?? false);
+    setRateLimit(bot.rateLimit ?? false);
+    setDomainRestriction(bot.domainRestriction ?? false);
+    setAllowedDomains(bot.allowedDomains || "");
+    setTimezone(bot.timezone || "UTC+05:30 New Delhi, Mumbai, Chennai");
+    setPasswordProtection(bot.passwordProtection ?? false);
+    setTeamMembers(bot.teamMembers || []);
+  });
+
+  function addTeamMember() {
+    const email = teamMemberEmail.trim();
+    if (!email || teamMembers.includes(email)) return;
+    const updated = [...teamMembers, email];
+    setTeamMembers(updated);
+    setTeamMemberEmail("");
+    onSave({ teamMembers: updated });
+  }
+
+  function removeTeamMember(email: string) {
+    const updated = teamMembers.filter(e => e !== email);
+    setTeamMembers(updated);
+    onSave({ teamMembers: updated });
+  }
+
+  async function handleDelete() {
+    if (!confirmDelete) return;
+    setDeleting(true);
+    try {
+      await fetch(`/api/ai-bots/${bot.id}`, { method: "DELETE" });
+      onDelete();
+    } catch {
+      setDeleting(false);
+    }
+  }
+
+  const sCard: React.CSSProperties = { ...card, height: "fit-content" };
+
+  return (
+    <div style={{ padding: "32px" }} className="bot-panel-padding">
+      <h2 style={{ fontSize: "20px", fontWeight: 700, marginBottom: "4px" }}>Settings</h2>
+      <p style={{ color: "#6b7280", fontSize: "14px", marginBottom: "28px" }}>Use these settings to add security, team members, custom domains and to delete your chatbot.</p>
+
+      {/* Top row: Basic + Security + Email Branding + Custom Domain */}
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "20px", marginBottom: "20px" }} className="bot-overview-grid">
+
+        {/* Basic */}
+        <div style={sCard}>
+          <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "16px" }}>
+            <span style={{ fontSize: "18px" }}>⚙️</span>
+            <div style={{ fontWeight: 700, fontSize: "15px" }}>Basic</div>
+          </div>
+          <div style={{ fontSize: "13px", color: "#6b7280", marginBottom: "8px" }}>Enter a name for your bot</div>
+          <input value={botName} onChange={e => setBotName(e.target.value)} style={inputStyle} placeholder="Bot name" />
+          <label style={{ display: "flex", alignItems: "center", gap: "10px", marginTop: "14px", cursor: "pointer" }}>
+            <Toggle value={isPublic} onChange={setIsPublic} />
+            <span style={{ fontSize: "14px" }}>Make it Public</span>
+          </label>
+          <button onClick={() => onSave({ name: botName, isPublic })} disabled={saving} style={{ ...btnPrimary, marginTop: "16px", width: "100%" }}>{saving ? "Saving..." : "Save"}</button>
+        </div>
+
+        {/* Security */}
+        <div style={sCard}>
+          <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "16px" }}>
+            <span style={{ fontSize: "18px" }}>🔒</span>
+            <div style={{ fontWeight: 700, fontSize: "15px" }}>Security</div>
+          </div>
+          <label style={{ display: "flex", alignItems: "flex-start", gap: "10px", marginBottom: "12px", cursor: "pointer" }}>
+            <Toggle value={domainRestriction} onChange={setDomainRestriction} />
+            <span style={{ fontSize: "13px", lineHeight: "1.4" }}>Allow these domains only to add the chatbot to their website.</span>
+          </label>
+          {domainRestriction && (
+            <textarea value={allowedDomains} onChange={e => setAllowedDomains(e.target.value)} placeholder="example.com&#10;another.com" style={{ ...inputStyle, minHeight: "60px", resize: "vertical", marginBottom: "10px" } as any} />
+          )}
+          <label style={{ display: "flex", alignItems: "center", gap: "10px", cursor: "pointer" }}>
+            <Toggle value={rateLimit} onChange={setRateLimit} />
+            <span style={{ fontSize: "13px" }}>Enable rate limiting</span>
+          </label>
+          <button onClick={() => onSave({ rateLimit, domainRestriction, allowedDomains })} disabled={saving} style={{ ...btnPrimary, marginTop: "16px", width: "100%" }}>{saving ? "Saving..." : "Save"}</button>
+        </div>
+
+        {/* Email Branding */}
+        <div style={sCard}>
+          <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "12px" }}>
+            <span style={{ fontSize: "18px" }}>✉️</span>
+            <div style={{ fontWeight: 700, fontSize: "15px" }}>Email Branding</div>
+          </div>
+          <p style={{ fontSize: "13px", color: "#6b7280", marginBottom: "16px" }}>Customize email notifications sent from your chatbot with your own branding.</p>
+          <div style={{ padding: "10px 14px", background: "#f9fafb", borderRadius: "8px", fontSize: "12px", color: "#6b7280", border: "1px solid #e5e7eb" }}>Not available on current plan</div>
+        </div>
+      </div>
+
+      {/* Second row: Password Protection + Timezone + Custom Domain + Delete */}
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "20px", marginBottom: "20px" }} className="bot-overview-grid">
+
+        {/* Password Protection */}
+        <div style={sCard}>
+          <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "16px" }}>
+            <span style={{ fontSize: "18px" }}>🔑</span>
+            <div style={{ fontWeight: 700, fontSize: "15px" }}>Password Protection</div>
+          </div>
+          <label style={{ display: "flex", alignItems: "center", gap: "10px", cursor: "pointer" }}>
+            <Toggle value={passwordProtection} onChange={setPasswordProtection} />
+            <span style={{ fontSize: "13px" }}>Enable Password Access</span>
+          </label>
+          <button onClick={() => onSave({ passwordProtection })} disabled={saving} style={{ ...btnPrimary, marginTop: "16px", width: "100%" }}>{saving ? "Saving..." : "Save"}</button>
+        </div>
+
+        {/* Timezone */}
+        <div style={sCard}>
+          <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "16px" }}>
+            <span style={{ fontSize: "18px" }}>🌐</span>
+            <div style={{ fontWeight: 700, fontSize: "15px" }}>Timezone</div>
+          </div>
+          <div style={{ fontSize: "13px", color: "#6b7280", marginBottom: "8px" }}>Select the timezone for your bot</div>
+          <select value={timezone} onChange={e => setTimezone(e.target.value)} style={inputStyle}>
+            {TIMEZONES.map(tz => <option key={tz} value={tz}>{tz}</option>)}
+          </select>
+          <div style={{ fontSize: "12px", color: "#3b82f6", marginTop: "6px" }}>Current selection: {timezone}</div>
+          <button onClick={() => onSave({ timezone })} disabled={saving} style={{ ...btnPrimary, marginTop: "16px", width: "100%" }}>{saving ? "Saving..." : "Save"}</button>
+        </div>
+
+        {/* Custom Domain */}
+        <div style={sCard}>
+          <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "12px" }}>
+            <span style={{ fontSize: "18px" }}>🌍</span>
+            <div style={{ fontWeight: 700, fontSize: "15px" }}>Custom Domain</div>
+          </div>
+          <p style={{ fontSize: "13px", color: "#6b7280", marginBottom: "16px" }}>Host your chatbot on your own custom domain.</p>
+          <div style={{ padding: "10px 14px", background: "#f9fafb", borderRadius: "8px", fontSize: "12px", color: "#6b7280", border: "1px solid #e5e7eb" }}>Not available on current plan</div>
+        </div>
+      </div>
+
+      {/* Team Members */}
+      <div style={{ ...card, marginBottom: "20px" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "8px" }}>
+          <span style={{ fontSize: "18px" }}>👥</span>
+          <div style={{ fontWeight: 700, fontSize: "15px" }}>Team Members</div>
+        </div>
+        <p style={{ fontSize: "13px", color: "#6b7280", marginBottom: "16px" }}>Add team members to help manage this chatbot. Enter their email below and click the plus icon.</p>
+        <div style={{ display: "flex", gap: "8px", marginBottom: "16px" }}>
+          <input
+            value={teamMemberEmail}
+            onChange={e => setTeamMemberEmail(e.target.value)}
+            onKeyDown={e => e.key === "Enter" && addTeamMember()}
+            placeholder="Enter email to add a team member"
+            style={{ ...inputStyle, marginBottom: 0, flex: 1 }}
+          />
+          <button onClick={addTeamMember} style={{ ...btnPrimary, padding: "10px 16px", background: "#3b82f6" }}>+</button>
+        </div>
+        {teamMembers.length === 0 ? (
+          <div style={{ textAlign: "center", padding: "32px 20px", color: "#9ca3af", background: "#f9fafb", borderRadius: "8px" }}>
+            <div style={{ fontSize: "14px", fontWeight: 500, color: "#374151", marginBottom: "4px" }}>No team members are available</div>
+            <div style={{ fontSize: "12px" }}>Once you add team members to your bot, they will appear here</div>
+          </div>
+        ) : (
+          <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+            {teamMembers.map(email => (
+              <div key={email} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 14px", background: "#f9fafb", borderRadius: "8px", border: "1px solid #e5e7eb" }}>
+                <span style={{ fontSize: "13px" }}>✉️ {email}</span>
+                <button onClick={() => removeTeamMember(email)} style={{ background: "none", border: "none", cursor: "pointer", color: "#ef4444", fontSize: "14px" }}>🗑</button>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Delete Chatbot */}
+      <div style={{ ...card, border: "1px solid #fecaca" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "12px" }}>
+          <span style={{ fontSize: "18px" }}>🗑️</span>
+          <div style={{ fontWeight: 700, fontSize: "15px", color: "#dc2626" }}>Delete Chatbot</div>
+        </div>
+        <p style={{ fontSize: "13px", color: "#6b7280", marginBottom: "16px" }}>Deleting a bot is a permanent action that cannot be reversed. Deleting the bot will delete all documents indexed against it and all history.</p>
+        <label style={{ display: "flex", alignItems: "flex-start", gap: "10px", cursor: "pointer", marginBottom: "16px" }}>
+          <input type="checkbox" checked={confirmDelete} onChange={e => setConfirmDelete(e.target.checked)} style={{ marginTop: "2px", accentColor: "#dc2626" }} />
+          <span style={{ fontSize: "13px", color: "#374151" }}>Yes, I want to delete this bot and all its data permanently.</span>
+        </label>
+        <button onClick={handleDelete} disabled={!confirmDelete || deleting} style={{ ...btnPrimary, background: confirmDelete ? "#dc2626" : "#e5e7eb", color: confirmDelete ? "#fff" : "#9ca3af", cursor: confirmDelete ? "pointer" : "not-allowed" }}>
+          {deleting ? "Deleting..." : "Delete"}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ─── Toggle helper ────────────────────────────────────────────────────────────
+
+function Toggle({ value, onChange }: { value: boolean; onChange: (v: boolean) => void }) {
+  return (
+    <button
+      onClick={() => onChange(!value)}
+      style={{
+        width: 44, height: 24, borderRadius: "12px", border: "none", cursor: "pointer", flexShrink: 0,
+        background: value ? "#3b82f6" : "#d1d5db", position: "relative", transition: "background 0.2s"
+      }}
+    >
+      <span style={{
+        position: "absolute", top: 3, left: value ? 22 : 3, width: 18, height: 18,
+        borderRadius: "50%", background: "#fff", transition: "left 0.2s",
+        boxShadow: "0 1px 3px rgba(0,0,0,0.2)"
+      }} />
+    </button>
   );
 }
 
