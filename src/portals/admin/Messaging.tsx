@@ -108,6 +108,39 @@ export function Messaging() {
         </div>
       </div>
 
+      {/* Variables card */}
+      <div style={{
+        background: "#fff", border: "1px solid #e5e7eb", borderRadius: 12,
+        padding: "16px 20px", marginBottom: 24, boxShadow: "0 1px 4px rgba(0,0,0,0.05)",
+      }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
+          <span style={{ fontSize: 15 }}>🔧</span>
+          <span style={{ fontSize: 14, fontWeight: 600, color: "#111827" }}>Dynamic Variables</span>
+          <span style={{ fontSize: 12, color: "#9ca3af", marginLeft: "auto" }}>Click to copy</span>
+        </div>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+          {VARIABLES.map(v => (
+            <span
+              key={v}
+              className="sms-var"
+              onClick={() => navigator.clipboard?.writeText(v)}
+              title="Click to copy"
+              style={{
+                background: "#e0e7ff", color: "#3730a3",
+                padding: "4px 10px", borderRadius: 6,
+                fontSize: 13, fontFamily: "monospace", fontWeight: 500,
+                border: "1px solid #c7d2fe", cursor: "pointer",
+                transition: "background 0.15s",
+              }}
+            >
+              {v}
+            </span>
+          ))}
+        </div>
+        <div style={{ fontSize: 12, color: "#9ca3af", marginTop: 10 }}>
+          Max 200 characters per template. Variables are replaced with live data when the SMS is sent.
+        </div>
+      </div>
 
       {/* Template cards */}
       <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
