@@ -1,6 +1,6 @@
 import type { NextPage } from "next";
 import { SalesLayout } from "../../src/portals/sales/SalesLayout";
-// import { AiChatPanel } from "../../src/portals/sales/AiChatPanel";
+import { BotChatWidget } from "../../src/components/BotChatWidget";
 import { useAuth } from "../../src/contexts/AuthContext";
 
 const AiChat: NextPage = () => {
@@ -9,35 +9,11 @@ const AiChat: NextPage = () => {
 
   return (
     <SalesLayout currentView="aiChat" userName={user.name} userId={user.id}>
-      {/* <AiChatPanel /> */}
-      <div style={{ 
-        display: 'flex', 
-        flexDirection: 'column', 
-        alignItems: 'center', 
-        justifyContent: 'center', 
-        minHeight: '60vh',
-        textAlign: 'center'
-      }}>
-        <div style={{ 
-          fontSize: '48px', 
-          marginBottom: '24px' 
-        }}>
-          🚧
-        </div>
-        <h1 style={{ 
-          fontSize: '32px', 
-          fontWeight: 600, 
-          color: '#111827',
-          marginBottom: '12px'
-        }}>
-          Coming Soon
-        </h1>
-        <p style={{ 
-          fontSize: '16px', 
-          color: '#6b7280' 
-        }}>
-          This feature is under development
-        </p>
+      <div className="page-header">
+        <h1 className="page-title">AI Assistant</h1>
+      </div>
+      <div style={{ padding: "0 24px 24px" }}>
+        <BotChatWidget role="sales" />
       </div>
     </SalesLayout>
   );

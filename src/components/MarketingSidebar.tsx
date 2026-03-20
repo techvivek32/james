@@ -6,7 +6,8 @@ const sidebarItems = [
   { id: "assets", label: "Marketing Assets" },
   { id: "approvals", label: "Approval Queue" },
   { id: "socialMetrics", label: "Social Metrics" },
-  { id: "apps-tools", label: "Apps & Tools" }
+  { id: "apps-tools", label: "Apps & Tools" },
+  { id: "ai-chat", label: "AI Assistant" }
 ];
 
 type MarketingSidebarProps = {

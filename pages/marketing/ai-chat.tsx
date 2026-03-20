@@ -1,18 +1,18 @@
 import type { NextPage } from "next";
-import { ManagerLayout } from "../../src/portals/manager/ManagerLayout";
+import { MarketingLayout } from "../../src/portals/marketing/MarketingLayout";
 import { BotChatWidget } from "../../src/components/BotChatWidget";
 
-const JaysAiClonePage: NextPage = () => {
+const MarketingAiChat: NextPage = () => {
   return (
-    <ManagerLayout currentView="jays-ai-clone">
+    <MarketingLayout currentView="ai-chat">
       <div className="page-header">
         <h1 className="page-title">AI Assistant</h1>
       </div>
       <div style={{ padding: "0 24px 24px" }}>
-        <BotChatWidget role="manager" />
+        <BotChatWidget role="marketing" />
       </div>
-    </ManagerLayout>
+    </MarketingLayout>
   );
 };
 
-export default JaysAiClonePage;
+export default MarketingAiChat;
