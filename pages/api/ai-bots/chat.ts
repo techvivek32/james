@@ -18,6 +18,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   // Build system prompt from all training data
   let systemContent = bot.systemPrompt || `You are a helpful AI assistant named ${bot.name}.`;
 
+  const hasTrainingData = bot.trainingText?.trim() || bot.trainingLinks?.length > 0 || bot.qaItems?.length > 0;
+
+  if (hasTrainingData) {
+    systemContent += `\n\nIMPORTANT: You are limited to the topics and subject matter covered in the training content below. Always respond naturally to greetings, small talk, and conversational messages (like "hi", "hello", "how are you", "thanks", etc.). For actual questions or information requests, only answer if they are clearly related to the topics in the training content. If someone asks about a completely unrelated subject, politely say: "I can only assist with topics covered in my training material." Do not answer unrelated factual or technical questions.`;
+  }
+
   if (bot.trainingText?.trim()) {
     systemContent += `\n\nTRAINING CONTENT:\n${bot.trainingText}`;
   }
