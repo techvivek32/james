@@ -21,7 +21,8 @@ type AdminViewId =
   | "socialMediaMetrics"
   | "webText"
   | "trainingExecutive"
-  | "messaging";
+  | "messaging"
+  | "leaderboard";
 
 type AdminLayoutProps = {
   children: React.ReactNode;

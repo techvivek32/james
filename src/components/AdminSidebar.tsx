@@ -11,6 +11,7 @@ const sidebarItems = [
   { id: "courseAiBots", label: "Course AI Bots Builder" },
   { id: "aiBots", label: "Master AI Bot Builder" },
   { id: "messaging", label: "SMS Configuration" },
+  { id: "leaderboard", label: "Sales Leaderboard" },
   // Hidden modules - don't delete
   // { id: "dashboard", label: "Dashboard" },
   // { id: "roleHierarchy", label: "Role & Hierarchy Manager" },
