@@ -517,15 +517,19 @@ function OverviewPanel({ bot }: { bot: AiBot }) {
 // ─── Live Chat Panel ──────────────────────────────────────────────────────────
 
 function LiveChatPanel({ bot }: { bot: AiBot }) {
+  type Attachment = { name: string; url: string; type: string };
+  type Msg = { role: "user"|"assistant"; content: string; timestamp: string; attachments?: Attachment[] };
   const [chatSessions, setChatSessions] = useState<any[]>([]);
   const [currentChatId, setCurrentChatId] = useState(() => `admin-live-${bot.id}-${Date.now()}`);
-  const [messages, setMessages] = useState<{ role: "user"|"assistant"; content: string; timestamp: string }[]>([]);
+  const [messages, setMessages] = useState<Msg[]>([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
+  const [attachments, setAttachments] = useState<Attachment[]>([]);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [suggestionsDismissed, setSuggestionsDismissed] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const fileRef = useRef<HTMLInputElement>(null);
 
   const theme      = (bot as any).colorTheme || "#3b82f6";
   const botTitle   = (bot as any).botTitle || bot.name;
@@ -548,7 +552,7 @@ function LiveChatPanel({ bot }: { bot: AiBot }) {
   function newChatId() { return `admin-live-${bot.id}-${Date.now()}`; }
 
   function startNewChat() {
-    setMessages([]); setInput(""); setSuggestionsDismissed(false);
+    setMessages([]); setInput(""); setAttachments([]); setSuggestionsDismissed(false);
     setCurrentChatId(newChatId());
   }
 
@@ -568,17 +572,17 @@ function LiveChatPanel({ bot }: { bot: AiBot }) {
 
   async function send(prefill?: string) {
     const text = prefill ?? input.trim();
-    if (!text || loading) return;
-    const userMsg = { role: "user" as const, content: text, timestamp: new Date().toISOString() };
+    if ((!text && attachments.length === 0) || loading) return;
+    const userMsg: Msg = { role: "user", content: text, timestamp: new Date().toISOString(), attachments: attachments.length > 0 ? [...attachments] : undefined };
     const newMessages = [...messages, userMsg];
-    setMessages(newMessages); setInput("");
+    setMessages(newMessages); setInput(""); setAttachments([]);
     if ((bot as any).removeSuggestionsAfterFirst) setSuggestionsDismissed(true);
     if (textareaRef.current) textareaRef.current.style.height = "52px";
     setLoading(true);
     try {
       const res = await fetch("/api/ai-bots/chat", {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ botId: bot.id, messages: newMessages, chatId: currentChatId, userId: "admin", userName: "Admin", userEmail: "", userRole: "admin" })
+        body: JSON.stringify({ botId: bot.id, messages: newMessages.map(m => ({ role: m.role, content: m.content })), chatId: currentChatId, userId: "admin", userName: "Admin", userEmail: "", userRole: "admin" })
       });
       const data = await res.json();
       setMessages(prev => [...prev, { role: "assistant", content: data.message || "Error", timestamp: new Date().toISOString() }]);
@@ -586,6 +590,14 @@ function LiveChatPanel({ bot }: { bot: AiBot }) {
     } catch {
       setMessages(prev => [...prev, { role: "assistant", content: "Failed to get response.", timestamp: new Date().toISOString() }]);
     } finally { setLoading(false); }
+  }
+
+  function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]; if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => setAttachments(prev => [...prev, { name: file.name, url: reader.result as string, type: file.type }]);
+    reader.readAsDataURL(file);
+    if (fileRef.current) fileRef.current.value = "";
   }
 
   function handleKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
@@ -675,10 +687,22 @@ function LiveChatPanel({ bot }: { bot: AiBot }) {
                     <div style={{ width: 36, height: 36, borderRadius: "50%", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: "16px", background: m.role === "user" ? "#1f2937" : theme, color: "#fff", overflow: "hidden" }}>
                       {m.role === "user" ? "👤" : (avatarUrl ? <img src={avatarUrl} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : "🤖")}
                     </div>
-                    <div style={{ flex: 1, maxWidth: "85%" }}>
-                      <div style={{ padding: "12px 16px", borderRadius: m.role === "user" ? "18px 18px 4px 18px" : "18px 18px 18px 4px", background: m.role === "user" ? "#1f2937" : "#f9fafb", color: m.role === "user" ? "#fff" : "#1f2937", fontSize: "15px", lineHeight: "1.6", border: m.role === "assistant" ? "1px solid #e5e7eb" : "none", whiteSpace: "pre-wrap" }}>
-                        {m.content}
-                      </div>
+                    <div style={{ flex: 1, maxWidth: "85%", display: "flex", flexDirection: "column", gap: "6px", alignItems: m.role === "user" ? "flex-end" : "flex-start" }}>
+                      {(m as any).attachments?.length > 0 && (
+                        <div style={{ display: "flex", gap: "6px", flexWrap: "wrap", justifyContent: m.role === "user" ? "flex-end" : "flex-start" }}>
+                          {(m as any).attachments.map((att: any, ai: number) => (
+                            <div key={ai} style={{ padding: "5px 10px", background: m.role === "user" ? "rgba(31,41,55,0.1)" : "#f3f4f6", borderRadius: "8px", fontSize: "12px", color: "#374151", display: "flex", alignItems: "center", gap: "5px" }}>
+                              {att.type?.startsWith("image/") ? <img src={att.url} alt={att.name} style={{ width: 36, height: 36, objectFit: "cover", borderRadius: "4px" }} /> : <span>📎</span>}
+                              <span style={{ maxWidth: 100, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{att.name}</span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                      {m.content && (
+                        <div style={{ padding: "12px 16px", borderRadius: m.role === "user" ? "18px 18px 4px 18px" : "18px 18px 18px 4px", background: m.role === "user" ? "#1f2937" : "#f9fafb", color: m.role === "user" ? "#fff" : "#1f2937", fontSize: "15px", lineHeight: "1.6", border: m.role === "assistant" ? "1px solid #e5e7eb" : "none", whiteSpace: "pre-wrap" }}>
+                          {m.content}
+                        </div>
+                      )}
                     </div>
                   </div>
                 ))}
@@ -702,11 +726,25 @@ function LiveChatPanel({ bot }: { bot: AiBot }) {
           {/* Input */}
           <div style={{ padding: "16px 24px", borderTop: "1px solid #f3f4f6", flexShrink: 0 }}>
             <div style={{ maxWidth: "760px", margin: "0 auto" }}>
+              {attachments.length > 0 && (
+                <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", marginBottom: "10px" }}>
+                  {attachments.map((att, i) => (
+                    <div key={i} style={{ display: "flex", alignItems: "center", gap: "6px", padding: "5px 10px", background: "#f3f4f6", borderRadius: "8px", fontSize: "12px" }}>
+                      {att.type.startsWith("image/") ? <img src={att.url} alt={att.name} style={{ width: 32, height: 32, objectFit: "cover", borderRadius: "4px" }} /> : <span>📎</span>}
+                      <span style={{ maxWidth: 100, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{att.name}</span>
+                      <button onClick={() => setAttachments(prev => prev.filter((_,idx) => idx !== i))} style={{ background: "none", border: "none", cursor: "pointer", color: "#ef4444", fontSize: "16px", padding: 0, lineHeight: 1 }}>×</button>
+                    </div>
+                  ))}
+                </div>
+              )}
+              <input ref={fileRef} type="file" accept="image/*,.pdf,.docx,.doc,.txt,.csv,.xlsx" style={{ display: "none" }} onChange={handleFile} />
               <div style={{ display: "flex", alignItems: "flex-end", gap: "10px", background: "#f9fafb", borderRadius: "14px", border: "1px solid #e5e7eb", padding: "8px 12px" }}>
+                <button onClick={() => fileRef.current?.click()} title="Attach file"
+                  style={{ width: 32, height: 32, borderRadius: "50%", border: "none", background: "#e5e7eb", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "20px", fontWeight: 300, flexShrink: 0, lineHeight: 1 }}>+</button>
                 <textarea ref={textareaRef} value={input} onChange={autoResize} onKeyDown={handleKeyDown} placeholder={ph} rows={1}
                   style={{ flex: 1, border: "none", outline: "none", background: "transparent", fontSize: "14px", resize: "none", lineHeight: "1.6", fontFamily: "inherit", height: "52px", maxHeight: "200px", overflowY: "auto", padding: "8px 0", color: "#1f2937" }} />
-                <button onClick={() => send()} disabled={loading || !input.trim()}
-                  style={{ width: 34, height: 34, borderRadius: "50%", border: "none", cursor: loading || !input.trim() ? "not-allowed" : "pointer", background: loading || !input.trim() ? "#e5e7eb" : theme, color: loading || !input.trim() ? "#9ca3af" : "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "16px", flexShrink: 0 }}>↑</button>
+                <button onClick={() => send()} disabled={loading || (!input.trim() && attachments.length === 0)}
+                  style={{ width: 34, height: 34, borderRadius: "50%", border: "none", cursor: loading || (!input.trim() && attachments.length === 0) ? "not-allowed" : "pointer", background: loading || (!input.trim() && attachments.length === 0) ? "#e5e7eb" : theme, color: loading || (!input.trim() && attachments.length === 0) ? "#9ca3af" : "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "16px", flexShrink: 0 }}>↑</button>
               </div>
               <div style={{ textAlign: "center", fontSize: "11px", color: "#d1d5db", marginTop: "8px" }}>Enter to send · Shift+Enter for new line</div>
             </div>
@@ -1404,40 +1442,45 @@ function TunePanel({ bot, onSave, saving }: { bot: AiBot; onSave: (u: Partial<Ai
 // ─── Test Your Bot Panel ──────────────────────────────────────────────────────
 
 function TestPanel({ bot }: { bot: AiBot }) {
-  const [messages, setMessages] = useState<{ role: "user" | "assistant"; content: string }[]>([]);
+  type Attachment = { name: string; url: string; type: string };
+  type Msg = { role: "user" | "assistant"; content: string; attachments?: Attachment[] };
+  const [messages, setMessages] = useState<Msg[]>([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
+  const [attachments, setAttachments] = useState<Attachment[]>([]);
   const bottomRef = useRef<HTMLDivElement>(null);
+  const fileRef = useRef<HTMLInputElement>(null);
   const color = (bot as any).colorTheme || "#3b82f6";
 
   useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages]);
-
-  // Show welcome message on load
   useEffect(() => {
-    const welcome = (bot as any).welcomeMessage || "Hi, How can I help you today?";
-    setMessages([{ role: "assistant", content: welcome }]);
+    setMessages([{ role: "assistant", content: (bot as any).welcomeMessage || "Hi, How can I help you today?" }]);
   }, [bot.id]);
 
+  function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]; if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => setAttachments(prev => [...prev, { name: file.name, url: reader.result as string, type: file.type }]);
+    reader.readAsDataURL(file);
+    if (fileRef.current) fileRef.current.value = "";
+  }
+
   async function send() {
-    if (!input.trim() || loading) return;
-    const userMsg = input.trim();
-    setInput("");
-    const newMessages = [...messages, { role: "user" as const, content: userMsg }];
-    setMessages(newMessages);
+    if ((!input.trim() && attachments.length === 0) || loading) return;
+    const userMsg: Msg = { role: "user", content: input.trim(), attachments: attachments.length > 0 ? [...attachments] : undefined };
+    const newMessages = [...messages, userMsg];
+    setMessages(newMessages); setInput(""); setAttachments([]);
     setLoading(true);
     try {
       const res = await fetch("/api/ai-bots/chat", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ botId: bot.id, messages: newMessages })
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ botId: bot.id, messages: newMessages.map(m => ({ role: m.role, content: m.content })) })
       });
       const data = await res.json();
       setMessages(prev => [...prev, { role: "assistant", content: data.message || data.error || "Error" }]);
     } catch {
       setMessages(prev => [...prev, { role: "assistant", content: "Failed to get response." }]);
-    } finally {
-      setLoading(false);
-    }
+    } finally { setLoading(false); }
   }
 
   const avatar = (bot as any).botAvatarUrl
@@ -1451,36 +1494,37 @@ function TestPanel({ bot }: { bot: AiBot }) {
           <h2 style={{ fontSize: "20px", fontWeight: 700, marginBottom: "4px" }}>Test Your Bot</h2>
           <p style={{ color: "#6b7280", fontSize: "14px", margin: 0 }}>Here you can use your chatbot and compare AI models to see which gives you the best responses.</p>
         </div>
-        <button onClick={() => setMessages([{ role: "assistant", content: (bot as any).welcomeMessage || "Hi, How can I help you today?" }])} style={btnSecondary}>Clear all chats</button>
+        <button onClick={() => { setMessages([{ role: "assistant", content: (bot as any).welcomeMessage || "Hi, How can I help you today?" }]); setAttachments([]); }} style={btnSecondary}>Clear all chats</button>
       </div>
 
-      {/* Chat window styled like the screenshot */}
       <div style={{ flex: 1, display: "flex", justifyContent: "center", alignItems: "flex-start" }}>
         <div style={{ width: "100%", maxWidth: "520px", borderRadius: "16px", overflow: "hidden", boxShadow: "0 4px 24px rgba(0,0,0,0.10)", border: "1px solid #e5e7eb", background: "#fff", display: "flex", flexDirection: "column", height: "calc(100vh - 220px)", minHeight: "600px" }}>
-          {/* Header */}
           <div style={{ background: color, padding: "12px 16px", display: "flex", alignItems: "center", gap: "10px" }}>
-            <div style={{ width: 32, height: 32, borderRadius: "50%", background: "rgba(255,255,255,0.25)", display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden", flexShrink: 0 }}>
-              {avatar}
-            </div>
+            <div style={{ width: 32, height: 32, borderRadius: "50%", background: "rgba(255,255,255,0.25)", display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden", flexShrink: 0 }}>{avatar}</div>
             <span style={{ color: "#fff", fontWeight: 600, fontSize: "15px", flex: 1 }}>{(bot as any).botTitle || bot.name}</span>
           </div>
 
-          {/* Messages */}
           <div style={{ flex: 1, overflowY: "auto", padding: "20px", display: "flex", flexDirection: "column", gap: "12px", background: "#f8fafc" }}>
             {messages.map((m, i) => (
               <div key={i} style={{ display: "flex", justifyContent: m.role === "user" ? "flex-end" : "flex-start", alignItems: "flex-end", gap: "8px" }}>
                 {m.role === "assistant" && (
-                  <div style={{ width: 28, height: 28, borderRadius: "50%", background: color, display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden", flexShrink: 0 }}>
-                    {avatar}
-                  </div>
+                  <div style={{ width: 28, height: 28, borderRadius: "50%", background: color, display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden", flexShrink: 0 }}>{avatar}</div>
                 )}
-                <div style={{
-                  maxWidth: "72%", padding: "10px 14px", borderRadius: m.role === "user" ? "16px 16px 4px 16px" : "16px 16px 16px 4px",
-                  fontSize: "16px", lineHeight: "1.6",
-                  background: m.role === "user" ? color : "#fff",
-                  color: m.role === "user" ? "#fff" : "#1f2937",
-                  boxShadow: "0 1px 4px rgba(0,0,0,0.07)"
-                }}>{m.content}</div>
+                <div style={{ display: "flex", flexDirection: "column", alignItems: m.role === "user" ? "flex-end" : "flex-start", gap: "6px", maxWidth: "72%" }}>
+                  {m.attachments && m.attachments.length > 0 && (
+                    <div style={{ display: "flex", gap: "6px", flexWrap: "wrap", justifyContent: m.role === "user" ? "flex-end" : "flex-start" }}>
+                      {m.attachments.map((att, ai) => (
+                        <div key={ai} style={{ padding: "5px 10px", background: m.role === "user" ? "rgba(255,255,255,0.2)" : "#f3f4f6", borderRadius: "8px", fontSize: "12px", color: m.role === "user" ? "#fff" : "#374151", display: "flex", alignItems: "center", gap: "5px" }}>
+                          {att.type.startsWith("image/") ? <img src={att.url} alt={att.name} style={{ width: 36, height: 36, objectFit: "cover", borderRadius: "4px" }} /> : <span>📎</span>}
+                          <span style={{ maxWidth: 100, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{att.name}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  {m.content && (
+                    <div style={{ padding: "10px 14px", borderRadius: m.role === "user" ? "16px 16px 4px 16px" : "16px 16px 16px 4px", fontSize: "16px", lineHeight: "1.6", background: m.role === "user" ? color : "#fff", color: m.role === "user" ? "#fff" : "#1f2937", boxShadow: "0 1px 4px rgba(0,0,0,0.07)" }}>{m.content}</div>
+                  )}
+                </div>
               </div>
             ))}
             {loading && (
@@ -1492,19 +1536,28 @@ function TestPanel({ bot }: { bot: AiBot }) {
             <div ref={bottomRef} />
           </div>
 
-          {/* Input */}
-          <div style={{ padding: "12px 16px", borderTop: "1px solid #e5e7eb", display: "flex", gap: "8px", background: "#fff" }}>
-            <input
-              value={input} onChange={e => setInput(e.target.value)}
-              onKeyDown={e => e.key === "Enter" && !e.shiftKey && send()}
+          {/* Attachment preview */}
+          {attachments.length > 0 && (
+            <div style={{ padding: "8px 16px", borderTop: "1px solid #f3f4f6", display: "flex", gap: "8px", flexWrap: "wrap", background: "#fff" }}>
+              {attachments.map((att, i) => (
+                <div key={i} style={{ display: "flex", alignItems: "center", gap: "6px", padding: "5px 10px", background: "#f3f4f6", borderRadius: "8px", fontSize: "12px" }}>
+                  {att.type.startsWith("image/") ? <img src={att.url} alt={att.name} style={{ width: 32, height: 32, objectFit: "cover", borderRadius: "4px" }} /> : <span>📎</span>}
+                  <span style={{ maxWidth: 100, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{att.name}</span>
+                  <button onClick={() => setAttachments(prev => prev.filter((_,idx) => idx !== i))} style={{ background: "none", border: "none", cursor: "pointer", color: "#ef4444", fontSize: "16px", padding: 0, lineHeight: 1 }}>×</button>
+                </div>
+              ))}
+            </div>
+          )}
+
+          <div style={{ padding: "12px 16px", borderTop: "1px solid #e5e7eb", display: "flex", gap: "8px", alignItems: "center", background: "#fff" }}>
+            <input ref={fileRef} type="file" accept="image/*,.pdf,.docx,.doc,.txt,.csv,.xlsx" style={{ display: "none" }} onChange={handleFile} />
+            <button onClick={() => fileRef.current?.click()} title="Attach file"
+              style={{ width: 34, height: 34, borderRadius: "50%", border: "none", background: "#f3f4f6", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "18px", flexShrink: 0 }}>+</button>
+            <input value={input} onChange={e => setInput(e.target.value)} onKeyDown={e => e.key === "Enter" && !e.shiftKey && send()}
               placeholder={(bot as any).placeholder || "Ask me anything..."}
-              style={{ ...inputStyle, flex: 1, marginBottom: 0, borderRadius: "20px", padding: "10px 16px" }}
-            />
-            <button
-              onClick={send}
-              disabled={loading || !input.trim()}
-              style={{ width: 40, height: 40, borderRadius: "50%", background: color, border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", opacity: loading || !input.trim() ? 0.5 : 1, flexShrink: 0 }}
-            >
+              style={{ ...inputStyle, flex: 1, marginBottom: 0, borderRadius: "20px", padding: "10px 16px" }} />
+            <button onClick={send} disabled={loading || (!input.trim() && attachments.length === 0)}
+              style={{ width: 40, height: 40, borderRadius: "50%", background: color, border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", opacity: loading || (!input.trim() && attachments.length === 0) ? 0.5 : 1, flexShrink: 0 }}>
               <span style={{ color: "#fff", fontSize: "16px" }}>➤</span>
             </button>
           </div>
