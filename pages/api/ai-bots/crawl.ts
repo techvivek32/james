@@ -159,73 +159,75 @@ async function fetchYouTubeTranscript(url: string): Promise<string> {
 
   const captionsData = await captionsListRes.json();
   const items = captionsData.items || [];
-
-  if (items.length === 0) throw new Error("No captions available for this video. Enable captions on the video first.");
+  if (items.length === 0) throw new Error("No captions available for this video.");
 
   // Prefer English, fallback to first available
   const track = items.find((t: any) => t.snippet?.language === "en") ||
                 items.find((t: any) => t.snippet?.language?.startsWith("en")) ||
                 items[0];
 
-  const trackId = track.id;
-  const lang = track.snippet?.language || "unknown";
+  const lang = track.snippet?.language || "en";
 
-  // Step 2: Download caption track content
-  const captionDownloadRes = await fetch(
-    `https://www.googleapis.com/youtube/v3/captions/${trackId}?tfmt=srt&key=${apiKey}`,
-    { headers: { "Accept": "text/plain" } }
-  );
+  // Step 2: Fetch transcript via timedtext API (no OAuth needed)
+  const timedTextUrl = `https://www.youtube.com/api/timedtext?v=${videoId}&lang=${lang}&fmt=json3&xorb=2&xobt=3&xovt=3`;
+  const ttRes = await fetch(timedTextUrl, {
+    headers: {
+      "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120.0.0.0 Safari/537.36",
+      "Accept-Language": "en-US,en;q=0.9",
+      "Referer": `https://www.youtube.com/watch?v=${videoId}`
+    }
+  });
 
-  if (!captionDownloadRes.ok) {
-    // Caption download requires OAuth for non-owner videos — fallback to timedtext
-    return await fetchYouTubeTimedText(videoId, lang, url);
+  if (ttRes.ok) {
+    const contentType = ttRes.headers.get("content-type") || "";
+    if (contentType.includes("json") || contentType.includes("text")) {
+      const raw = await ttRes.text();
+      if (raw && raw.trim().startsWith("{")) {
+        const json = JSON.parse(raw);
+        const events = json?.events || [];
+        const text = events
+          .filter((e: any) => e.segs)
+          .flatMap((e: any) => e.segs.map((s: any) => s.utf8 || ""))
+          .filter((s: string) => s.trim() && s.trim() !== "\n")
+          .join(" ")
+          .replace(/\s+/g, " ")
+          .trim();
+
+        if (text.length > 0) {
+          const langNote = lang !== "en" ? ` [Language: ${lang}]` : "";
+          return `YouTube Video Transcript${langNote} (${url}):\n\n${text}`;
+        }
+      }
+    }
   }
 
-  const srtText = await captionDownloadRes.text();
-  if (!srtText || srtText.trim().length === 0) {
-    return await fetchYouTubeTimedText(videoId, lang, url);
-  }
-
-  // Parse SRT format — remove timestamps and sequence numbers
-  const transcript = srtText
-    .replace(/\d+\n\d{2}:\d{2}:\d{2},\d{3} --> \d{2}:\d{2}:\d{2},\d{3}\n/g, "")
-    .replace(/<[^>]+>/g, "")
-    .replace(/\n+/g, " ")
-    .trim();
-
-  const langNote = lang !== "en" ? ` [Language: ${lang}]` : "";
-  return `YouTube Video Transcript${langNote} (${url}):\n\n${transcript}`;
-}
-
-async function fetchYouTubeTimedText(videoId: string, lang: string, originalUrl: string): Promise<string> {
-  // Fallback: use timedtext API with fmt=json3
-  const timedTextUrl = `https://www.youtube.com/api/timedtext?v=${videoId}&lang=${lang}&fmt=json3`;
-  const res = await fetch(timedTextUrl, {
+  // Step 3: Fallback — try XML format
+  const xmlUrl = `https://www.youtube.com/api/timedtext?v=${videoId}&lang=${lang}`;
+  const xmlRes = await fetch(xmlUrl, {
     headers: {
       "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120.0.0.0 Safari/537.36",
       "Referer": `https://www.youtube.com/watch?v=${videoId}`
     }
   });
 
-  if (!res.ok) throw new Error("Could not fetch transcript. The video may have restricted captions.");
+  if (xmlRes.ok) {
+    const xml = await xmlRes.text();
+    if (xml && xml.includes("<text")) {
+      const segments = [...xml.matchAll(/<text[^>]*>([\s\S]*?)<\/text>/g)]
+        .map(m => m[1]
+          .replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">")
+          .replace(/&#39;/g, "'").replace(/&quot;/g, '"')
+          .replace(/<[^>]+>/g, "").trim())
+        .filter(Boolean);
 
-  const contentType = res.headers.get("content-type") || "";
-  if (!contentType.includes("json")) throw new Error("YouTube blocked transcript access from this server. Try adding the video transcript manually via the Text section.");
+      if (segments.length > 0) {
+        const langNote = lang !== "en" ? ` [Language: ${lang}]` : "";
+        return `YouTube Video Transcript${langNote} (${url}):\n\n${segments.join(" ")}`;
+      }
+    }
+  }
 
-  const json = await res.json();
-  const events = json?.events || [];
-  const text = events
-    .filter((e: any) => e.segs)
-    .flatMap((e: any) => e.segs.map((s: any) => s.utf8))
-    .filter((s: string) => s && s.trim() !== "\n")
-    .join(" ")
-    .replace(/\s+/g, " ")
-    .trim();
-
-  if (!text) throw new Error("Transcript is empty. Try adding the video transcript manually via the Text section.");
-
-  const langNote = lang !== "en" ? ` [Language: ${lang}]` : "";
-  return `YouTube Video Transcript${langNote} (${originalUrl}):\n\n${text}`;
+  throw new Error("Could not fetch transcript. YouTube is blocking server-side access. Please copy the transcript manually from YouTube and paste it in the Text section.");
 }
 
 function extractYouTubeId(url: string): string | null {
