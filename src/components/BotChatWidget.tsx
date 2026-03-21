@@ -18,6 +18,8 @@ type AiBot = {
   attentionSound: string;
   attentionAnimation: string;
   immediatelyOpenChat: boolean;
+  displayMessage: string;
+  displayMessageEnabled: boolean;
 };
 type Attachment = { name: string; url: string; type: string };
 type Message = { role: "user" | "assistant"; content: string; attachments?: Attachment[]; timestamp?: string };
@@ -207,6 +209,7 @@ export function BotChatWidget({ role }: { role: string }) {
   const botTitle   = selectedBot?.botTitle || selectedBot?.name || "AI Assistant";
   const avatarUrl  = selectedBot?.botAvatarUrl || "";
   const welcome    = selectedBot?.welcomeMessage || "Hi, How can I help you today?";
+  const displayMsg = selectedBot?.displayMessageEnabled ? selectedBot?.displayMessage || "" : "";
   const ph         = selectedBot?.placeholder || "Ask anything";
   const suggestions = (!suggestionsDismissed && messages.length === 0) ? (selectedBot?.suggestions || []) : [];
   const animClass  = ANIM_MAP[selectedBot?.attentionAnimation || ""] || "";
@@ -294,6 +297,7 @@ export function BotChatWidget({ role }: { role: string }) {
                 <AvatarImg size={iconSize} fontSize={Math.round(iconSize * 0.4) + "px"} />
               </div>
               <div style={{ fontSize: "22px", fontWeight: 700, color: "#1f2937", marginBottom: "8px" }}>{welcome}</div>
+              {displayMsg && <div style={{ fontSize: "14px", color: "#6b7280", marginBottom: "8px" }}>{displayMsg}</div>}
               {suggestions.length > 0 && (
                 <div style={{ display: "flex", flexWrap: "wrap", gap: "8px", justifyContent: "center", marginTop: "16px", maxWidth: "500px" }}>
                   {suggestions.map((s, i) => (

@@ -1792,7 +1792,6 @@ function AppearancePanel({ bot, onSave, saving }: { bot: AiBot; onSave: (u: Part
   const [showWelcomePopup, setShowWelcomePopup] = useState(bot.showWelcomePopup ?? true);
   const [suggestions, setSuggestions] = useState<string[]>(bot.suggestions || []);
   const [suggestionsEnabled, setSuggestionsEnabled] = useState(true);
-  const [suggestionInput, setSuggestionInput] = useState("");
   const [removeSuggestionsAfterFirst, setRemoveSuggestionsAfterFirst] = useState(bot.removeSuggestionsAfterFirst ?? false);
   const [placeholder, setPlaceholder] = useState(bot.placeholder || "Ask me anything...");
   const [placeholderEnabled, setPlaceholderEnabled] = useState(true);
@@ -1839,12 +1838,6 @@ function AppearancePanel({ bot, onSave, saving }: { bot: AiBot; onSave: (u: Part
     setAvatarPreview(bot.botAvatarUrl || "");
     setAvatarFile(null);
   }, [bot.id]);
-
-  function addSuggestion() {
-    if (!suggestionInput.trim()) return;
-    setSuggestions(prev => [...prev, suggestionInput.trim()]);
-    setSuggestionInput("");
-  }
 
   function handleAvatarChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -1929,14 +1922,6 @@ function AppearancePanel({ bot, onSave, saving }: { bot: AiBot; onSave: (u: Part
           {welcomeEnabled && <input value={welcomeMessage} onChange={e => setWelcomeMessage(e.target.value)} style={{ ...inputStyle, marginTop: "10px" }} placeholder="Hi, How can I help you today?" />}
         </div>
 
-        {/* Welcome Message Popup */}
-        <div style={{ background: "#fff", padding: "18px 20px" }}>
-          <div style={rowStyle}>
-            <div><div style={sectionLabel}>Welcome Message Popup</div><div style={sectionSub}>Show introductory message above chat launch circle</div></div>
-            <Toggle value={showWelcomePopup} onChange={setShowWelcomePopup} />
-          </div>
-        </div>
-
         {/* Suggestions */}
         <div style={{ background: "#fff", padding: "18px 20px" }}>
           <div style={rowStyle}>
@@ -1945,21 +1930,14 @@ function AppearancePanel({ bot, onSave, saving }: { bot: AiBot; onSave: (u: Part
           </div>
           {suggestionsEnabled && (
             <>
-              <div style={{ display: "flex", gap: "8px", marginTop: "10px" }}>
-                <input value={suggestionInput} onChange={e => setSuggestionInput(e.target.value)} onKeyDown={e => e.key === "Enter" && addSuggestion()} placeholder="Enter suggestion..." style={{ ...inputStyle, marginBottom: 0, flex: 1 }} />
-                <button onClick={addSuggestion} style={btnSecondary}>Add</button>
-              </div>
-              {suggestions.length > 0 && (
-                <div style={{ display: "flex", flexWrap: "wrap", gap: "8px", marginTop: "10px" }}>
-                  {suggestions.map((s, i) => (
-                    <span key={i} style={{ display: "flex", alignItems: "center", gap: "6px", padding: "4px 10px", background: "#f3f4f6", borderRadius: "20px", fontSize: "13px" }}>
-                      {s}
-                      <button onClick={() => setSuggestions(p => p.filter((_, idx) => idx !== i))} style={{ background: "none", border: "none", cursor: "pointer", color: "#ef4444", fontSize: "14px", padding: 0, lineHeight: 1 }}>×</button>
-                    </span>
-                  ))}
-                </div>
-              )}
-              <label style={{ display: "flex", alignItems: "center", gap: "8px", marginTop: "12px", cursor: "pointer", fontSize: "13px", color: "#374151" }}>
+              <textarea
+                value={suggestions.join("\n")}
+                onChange={e => setSuggestions(e.target.value.split("\n"))}
+                placeholder={"Tesla Cost?\nHow much is an ID3?"}
+                rows={4}
+                style={{ ...inputStyle, marginTop: "10px", resize: "vertical", fontFamily: "inherit" }}
+              />
+              <label style={{ display: "flex", alignItems: "center", gap: "8px", marginTop: "10px", cursor: "pointer", fontSize: "13px", color: "#374151", background: "#fffbeb", padding: "10px 12px", borderRadius: "8px" }}>
                 <input type="checkbox" checked={removeSuggestionsAfterFirst} onChange={e => setRemoveSuggestionsAfterFirst(e.target.checked)} style={{ accentColor: "#3b82f6" }} />
                 Remove Suggestion List after first User message is sent
               </label>

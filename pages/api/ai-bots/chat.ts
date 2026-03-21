@@ -57,12 +57,32 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const data = await response.json();
     const reply = data.choices[0].message.content;
 
-    // Auto-generate title from first user message
+    // Auto-generate title from conversation using OpenAI
     let title = "New Chat";
     const firstUserMsg = messages.find((m: any) => m.role === "user");
     if (firstUserMsg) {
-      title = firstUserMsg.content.substring(0, 60).trim();
-      if (firstUserMsg.content.length > 60) title += "...";
+      try {
+        const titleRes = await fetch("https://api.openai.com/v1/chat/completions", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${process.env.OPENAI_API_KEY}` },
+          body: JSON.stringify({
+            model: "gpt-4o-mini",
+            messages: [
+              { role: "system", content: "Generate a short 3-6 word title for this conversation. Return only the title, no quotes, no punctuation at end." },
+              { role: "user", content: firstUserMsg.content.substring(0, 200) }
+            ],
+            max_tokens: 20,
+            temperature: 0.5
+          })
+        });
+        if (titleRes.ok) {
+          const titleData = await titleRes.json();
+          title = titleData.choices[0].message.content.trim() || title;
+        }
+      } catch {
+        title = firstUserMsg.content.substring(0, 60).trim();
+        if (firstUserMsg.content.length > 60) title += "...";
+      }
     }
 
     // Save chat to DB
