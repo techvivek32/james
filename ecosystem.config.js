@@ -16,6 +16,8 @@ module.exports = {
       error_file: '/var/www/millerstorm/logs/err.log',
       out_file: '/var/www/millerstorm/logs/out.log',
       log_file: '/var/www/millerstorm/logs/combined.log',
+      merge_logs: true,
+      log_type: 'json',
       time: true
     }
   ]
