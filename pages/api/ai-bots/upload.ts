@@ -7,6 +7,12 @@ import { AiBotModel } from "../../../src/lib/models/AiBot";
 
 export const config = { api: { bodyParser: false } };
 
+// Ensure upload directory exists
+const UPLOAD_DIR = path.join(process.cwd(), "public", "uploads", "bots");
+if (!fs.existsSync(UPLOAD_DIR)) {
+  fs.mkdirSync(UPLOAD_DIR, { recursive: true });
+}
+
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== "POST") {
     res.setHeader("Allow", "POST");
@@ -15,14 +21,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   await connectMongo();
 
-  const form = formidable({ maxFileSize: 70 * 1024 * 1024 });
-  
+  const form = formidable({ maxFileSize: 70 * 1024 * 1024, uploadDir: UPLOAD_DIR, keepExtensions: true });
+
   form.parse(req, async (err, fields, files) => {
     if (err) return res.status(500).json({ error: "Upload failed" });
 
     const botId = Array.isArray(fields.botId) ? fields.botId[0] : fields.botId;
     const file = Array.isArray(files.file) ? files.file[0] : files.file;
-    
+
     if (!botId || !file) return res.status(400).json({ error: "Missing botId or file" });
 
     try {
@@ -30,12 +36,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       const bot = await AiBotModel.findOne({ id: botId });
       if (!bot) return res.status(404).json({ error: "Bot not found" });
 
+      // Build a publicly accessible URL from the saved file path
+      const savedFilename = path.basename(file.filepath);
+      const publicUrl = `/uploads/bots/${savedFilename}`;
+
       const newLink = {
         id: `file-${Date.now()}`,
-        url: file.originalFilename || "uploaded-file",
+        url: publicUrl,
         type: getFileType(file.originalFilename || ""),
         status: "trained",
-        chars: content.length
+        chars: content.length,
+        originalName: file.originalFilename || "uploaded-file"
       };
 
       bot.trainingLinks = bot.trainingLinks || [];

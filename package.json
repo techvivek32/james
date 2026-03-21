@@ -8,6 +8,7 @@
     "start": "next start -p 6789"
   },
   "dependencies": {
+    "@distube/ytdl-core": "^4.16.12",
     "@types/topojson-client": "^3.1.5",
     "@vimeo/player": "^2.30.3",
     "bcryptjs": "^3.0.3",

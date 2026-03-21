@@ -10,6 +10,7 @@ type TrainingLink = {
   type: string;
   status: string;
   chars: number;
+  originalName?: string;
 };
 
 type QAItem = {
@@ -1259,8 +1260,8 @@ function LinksPanel({ bot, onSave, saving }: { bot: AiBot; onSave: (u: Partial<A
           {/* Rows */}
           {links.map((link, idx) => {
             const isUrl = link.url.startsWith("http");
-            const ext   = link.url.split(".").pop()?.toLowerCase() || "";
-            const name  = isUrl ? link.url : decodeURIComponent(link.url.split("/").pop() || link.url);
+            const ext   = (link.originalName || link.url).split(".").pop()?.toLowerCase() || "";
+            const name  = isUrl ? link.url : (link.originalName || decodeURIComponent(link.url.split("/").pop() || link.url));
             const statusDot: Record<string, string> = { trained: "#10b981", pending: "#f59e0b", failed: "#ef4444", "no-space": "#6b7280" };
             const statusLabel: Record<string, string> = { trained: "Done", pending: "Pending", failed: "Failed", "no-space": "No Space" };
 
@@ -1290,7 +1291,7 @@ function LinksPanel({ bot, onSave, saving }: { bot: AiBot; onSave: (u: Partial<A
                       {name}
                     </a>
                   ) : (
-                    <a href={link.url} download={name}
+                    <a href={link.url} download={link.originalName || name}
                       style={{ fontSize: "13px", color: "#374151", textDecoration: "none", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", display: "flex", alignItems: "center", gap: "6px" }}>
                       <span>{ext === "pdf" ? "📄" : ext === "docx" || ext === "doc" ? "📝" : ext === "xlsx" || ext === "csv" ? "📊" : "📎"}</span>
                       <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{name}</span>
