@@ -61,7 +61,7 @@ type AiBot = {
   teamMembers: string[];
 };
 
-type BotView = "overview" | "chat-history" | "links" | "text" | "qa" | "tune" | "test" | "appearance" | "deploy" | "settings";
+type BotView = "overview" | "chat-history" | "live-chat" | "links" | "text" | "qa" | "tune" | "test" | "appearance" | "deploy" | "settings";
 
 export function AiBotBuilder() {
   const router = useRouter();
@@ -282,6 +282,7 @@ function BotDetailView({ bot, activeView, setActiveView, onSave, saving, onBack,
     { id: "links",         label: "Links / Docs",  icon: "🔗", section: "TRAINING DATA" },
     { id: "text",          label: "Text",          icon: "📝" },
     { id: "qa",            label: "Q&A",           icon: "❓" },
+    { id: "live-chat",     label: "Live Chat",     icon: "🟢" },
     { id: "tune",          label: "Tune AI",       icon: "⚙️", section: "BEHAVIOUR" },
     { id: "test",          label: "Test Your Bot", icon: "🧪" },
     { id: "appearance",    label: "Appearance",    icon: "🎨", section: "DEPLOYMENT" },
@@ -384,6 +385,7 @@ function BotDetailView({ bot, activeView, setActiveView, onSave, saving, onBack,
         <div style={{ flex: 1 }}>
           {activeView === "overview"     && <OverviewPanel bot={bot} />}
           {activeView === "chat-history" && <ChatHistoryPanel bot={bot} />}
+          {activeView === "live-chat"    && <LiveChatPanel bot={bot} />}
           {activeView === "links"        && <LinksPanel bot={bot} onSave={onSave} saving={saving} />}
           {activeView === "text"         && <TextPanel bot={bot} onSave={onSave} saving={saving} />}
           {activeView === "qa"           && <QAPanel bot={bot} onSave={onSave} saving={saving} />}
@@ -508,6 +510,210 @@ function OverviewPanel({ bot }: { bot: AiBot }) {
 
       {/* World map card */}
       <WorldMapCard />
+    </div>
+  );
+}
+
+// ─── Live Chat Panel ──────────────────────────────────────────────────────────
+
+function LiveChatPanel({ bot }: { bot: AiBot }) {
+  const [chatSessions, setChatSessions] = useState<any[]>([]);
+  const [currentChatId, setCurrentChatId] = useState(() => `admin-live-${bot.id}-${Date.now()}`);
+  const [messages, setMessages] = useState<{ role: "user"|"assistant"; content: string; timestamp: string }[]>([]);
+  const [input, setInput] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [suggestionsDismissed, setSuggestionsDismissed] = useState(false);
+  const bottomRef = useRef<HTMLDivElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  const theme      = (bot as any).colorTheme || "#3b82f6";
+  const botTitle   = (bot as any).botTitle || bot.name;
+  const avatarUrl  = (bot as any).botAvatarUrl || "";
+  const welcome    = (bot as any).welcomeMessage || "Hi, How can I help you today?";
+  const ph         = (bot as any).placeholder || "Ask me anything...";
+  const suggestions = (!suggestionsDismissed && messages.length === 0) ? ((bot as any).suggestions || []) : [];
+  const sidebarBg  = `color-mix(in srgb, ${theme} 55%, #000 45%)`;
+  const sidebarDark = `color-mix(in srgb, ${theme} 40%, #000 60%)`;
+  const isNewChat  = messages.length === 0;
+
+  useEffect(() => { loadSessions(); }, [bot.id]);
+  useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages]);
+
+  async function loadSessions() {
+    const res = await fetch(`/api/ai-bots/admin-chats?botId=${bot.id}`);
+    if (res.ok) setChatSessions(await res.json());
+  }
+
+  function newChatId() { return `admin-live-${bot.id}-${Date.now()}`; }
+
+  function startNewChat() {
+    setMessages([]); setInput(""); setSuggestionsDismissed(false);
+    setCurrentChatId(newChatId());
+  }
+
+  function loadSession(session: any) {
+    setMessages(session.messages || []);
+    setCurrentChatId(session.chatId);
+    setSuggestionsDismissed(true);
+    setSidebarCollapsed(true);
+  }
+
+  async function deleteSession(chatId: string, e: React.MouseEvent) {
+    e.stopPropagation();
+    await fetch("/api/ai-bots/chats", { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ chatId }) });
+    setChatSessions(prev => prev.filter(s => s.chatId !== chatId));
+    if (currentChatId === chatId) startNewChat();
+  }
+
+  async function send(prefill?: string) {
+    const text = prefill ?? input.trim();
+    if (!text || loading) return;
+    const userMsg = { role: "user" as const, content: text, timestamp: new Date().toISOString() };
+    const newMessages = [...messages, userMsg];
+    setMessages(newMessages); setInput("");
+    if ((bot as any).removeSuggestionsAfterFirst) setSuggestionsDismissed(true);
+    if (textareaRef.current) textareaRef.current.style.height = "52px";
+    setLoading(true);
+    try {
+      const res = await fetch("/api/ai-bots/chat", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ botId: bot.id, messages: newMessages, chatId: currentChatId, userId: "admin", userName: "Admin", userEmail: "", userRole: "admin" })
+      });
+      const data = await res.json();
+      setMessages(prev => [...prev, { role: "assistant", content: data.message || "Error", timestamp: new Date().toISOString() }]);
+      loadSessions();
+    } catch {
+      setMessages(prev => [...prev, { role: "assistant", content: "Failed to get response.", timestamp: new Date().toISOString() }]);
+    } finally { setLoading(false); }
+  }
+
+  function handleKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
+    if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); }
+  }
+
+  function autoResize(e: React.ChangeEvent<HTMLTextAreaElement>) {
+    setInput(e.target.value);
+    const el = e.target; el.style.height = "52px";
+    el.style.height = Math.min(el.scrollHeight, 200) + "px";
+  }
+
+  function AvatarImg({ size, fontSize }: { size: number; fontSize: string }) {
+    return (
+      <div style={{ width: size, height: size, borderRadius: "50%", background: theme, display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden", flexShrink: 0 }}>
+        {avatarUrl ? <img src={avatarUrl} alt="bot" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : <span style={{ fontSize, color: "#fff" }}>🤖</span>}
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ padding: "32px", height: "100%", display: "flex", flexDirection: "column" }} className="bot-panel-padding">
+      <div style={{ marginBottom: "20px" }}>
+        <h2 style={{ fontSize: "20px", fontWeight: 700, marginBottom: "4px" }}>Live Chat</h2>
+        <p style={{ color: "#6b7280", fontSize: "14px", margin: 0 }}>Chat with the bot — conversations are saved to Chat History</p>
+      </div>
+
+      <div style={{ flex: 1, display: "flex", background: "#fff", borderRadius: "12px", border: "1px solid #e5e7eb", overflow: "hidden", minHeight: "500px" }}>
+
+        {/* Sidebar */}
+        <div className={`lchat-sidebar${sidebarCollapsed ? " lchat-sidebar-hidden" : ""}`}
+          style={{ width: "240px", minWidth: "240px", background: sidebarBg, display: "flex", flexDirection: "column", overflow: "hidden", transition: "width 0.2s, min-width 0.2s", flexShrink: 0 }}>
+          <div style={{ padding: "14px", borderBottom: "1px solid rgba(255,255,255,0.1)" }}>
+            <button onClick={startNewChat} style={{ width: "100%", padding: "9px 12px", background: "rgba(255,255,255,0.1)", color: "#fff", border: "1px solid rgba(255,255,255,0.2)", borderRadius: "8px", fontSize: "13px", fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", gap: "8px" }}>
+              <span>✏️</span> New Chat
+            </button>
+          </div>
+          <div style={{ flex: 1, overflowY: "auto", padding: "8px" }}>
+            {chatSessions.length === 0
+              ? <div style={{ padding: "20px 12px", color: "rgba(255,255,255,0.4)", fontSize: "12px", textAlign: "center" }}>No chats yet</div>
+              : chatSessions.filter(s => s.userId === "admin").map(session => (
+                <div key={session.chatId} onClick={() => loadSession(session)}
+                  style={{ padding: "10px 12px", borderRadius: "8px", cursor: "pointer", marginBottom: "2px", background: currentChatId === session.chatId ? "rgba(255,255,255,0.2)" : "transparent", display: "flex", alignItems: "center", justifyContent: "space-between", gap: "8px" }}>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: "13px", color: "#fff", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>💬 {session.title}</div>
+                    <div style={{ fontSize: "11px", color: "rgba(255,255,255,0.4)", marginTop: "2px" }}>{new Date(session.updatedAt).toLocaleDateString()}</div>
+                  </div>
+                  <button onClick={e => deleteSession(session.chatId, e)} style={{ background: "none", border: "none", color: "rgba(255,255,255,0.3)", cursor: "pointer", fontSize: "14px", padding: "2px 4px", flexShrink: 0 }}>🗑</button>
+                </div>
+              ))
+            }
+          </div>
+          <div style={{ padding: "12px 14px", borderTop: "1px solid rgba(255,255,255,0.1)", display: "flex", alignItems: "center", gap: "8px" }}>
+            <AvatarImg size={26} fontSize="12px" />
+            <div style={{ fontSize: "12px", color: "rgba(255,255,255,0.6)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{botTitle}</div>
+          </div>
+        </div>
+
+        {/* Main chat */}
+        <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
+          {/* Header */}
+          <div style={{ padding: "0 20px", background: theme, display: "flex", alignItems: "center", gap: "12px", flexShrink: 0, minHeight: "54px" }}>
+            <button onClick={() => setSidebarCollapsed(p => !p)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: "18px", color: "rgba(255,255,255,0.8)", padding: "4px" }}>☰</button>
+            <AvatarImg size={32} fontSize="15px" />
+            <div style={{ fontWeight: 700, fontSize: "15px", color: "#fff", flex: 1 }}>{botTitle}</div>
+            <span style={{ fontSize: "12px", color: "rgba(255,255,255,0.7)", background: "rgba(255,255,255,0.15)", padding: "3px 10px", borderRadius: "12px" }}>Admin</span>
+          </div>
+
+          {/* Messages */}
+          <div style={{ flex: 1, overflowY: "auto", padding: "24px 0" }}>
+            {isNewChat ? (
+              <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", height: "100%", textAlign: "center", padding: "40px" }}>
+                <div style={{ marginBottom: "16px" }}><AvatarImg size={64} fontSize="28px" /></div>
+                <div style={{ fontSize: "20px", fontWeight: 700, color: "#1f2937", marginBottom: "8px" }}>{welcome}</div>
+                {suggestions.length > 0 && (
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: "8px", justifyContent: "center", marginTop: "16px", maxWidth: "500px" }}>
+                    {suggestions.map((s: string, i: number) => (
+                      <button key={i} onClick={() => send(s)} style={{ padding: "8px 16px", border: `1.5px solid ${theme}`, borderRadius: "20px", fontSize: "13px", color: theme, background: "#fff", cursor: "pointer", fontWeight: 500 }}>{s}</button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div style={{ maxWidth: "760px", margin: "0 auto", padding: "0 24px", display: "flex", flexDirection: "column", gap: "24px" }}>
+                {messages.map((m, i) => (
+                  <div key={i} style={{ display: "flex", gap: "14px", alignItems: "flex-start", flexDirection: m.role === "user" ? "row-reverse" : "row" }}>
+                    <div style={{ width: 36, height: 36, borderRadius: "50%", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: "16px", background: m.role === "user" ? "#1f2937" : theme, color: "#fff", overflow: "hidden" }}>
+                      {m.role === "user" ? "👤" : (avatarUrl ? <img src={avatarUrl} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : "🤖")}
+                    </div>
+                    <div style={{ flex: 1, maxWidth: "85%" }}>
+                      <div style={{ padding: "12px 16px", borderRadius: m.role === "user" ? "18px 18px 4px 18px" : "18px 18px 18px 4px", background: m.role === "user" ? "#1f2937" : "#f9fafb", color: m.role === "user" ? "#fff" : "#1f2937", fontSize: "15px", lineHeight: "1.6", border: m.role === "assistant" ? "1px solid #e5e7eb" : "none", whiteSpace: "pre-wrap" }}>
+                        {m.content}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+                {loading && (
+                  <div style={{ display: "flex", gap: "14px", alignItems: "flex-start" }}>
+                    <div style={{ width: 36, height: 36, borderRadius: "50%", background: theme, display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden" }}>
+                      {avatarUrl ? <img src={avatarUrl} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : <span style={{ color: "#fff" }}>🤖</span>}
+                    </div>
+                    <div style={{ padding: "12px 16px", borderRadius: "18px 18px 18px 4px", background: "#f9fafb", border: "1px solid #e5e7eb" }}>
+                      <div style={{ display: "flex", gap: "4px", alignItems: "center" }}>
+                        {[0,1,2].map(i => <div key={i} style={{ width: 8, height: 8, borderRadius: "50%", background: "#9ca3af", animation: `lchat-bounce 1.2s ${i*0.2}s infinite` }} />)}
+                      </div>
+                    </div>
+                  </div>
+                )}
+                <div ref={bottomRef} />
+              </div>
+            )}
+          </div>
+
+          {/* Input */}
+          <div style={{ padding: "16px 24px", borderTop: "1px solid #f3f4f6", flexShrink: 0 }}>
+            <div style={{ maxWidth: "760px", margin: "0 auto" }}>
+              <div style={{ display: "flex", alignItems: "flex-end", gap: "10px", background: "#f9fafb", borderRadius: "14px", border: "1px solid #e5e7eb", padding: "8px 12px" }}>
+                <textarea ref={textareaRef} value={input} onChange={autoResize} onKeyDown={handleKeyDown} placeholder={ph} rows={1}
+                  style={{ flex: 1, border: "none", outline: "none", background: "transparent", fontSize: "14px", resize: "none", lineHeight: "1.6", fontFamily: "inherit", height: "52px", maxHeight: "200px", overflowY: "auto", padding: "8px 0", color: "#1f2937" }} />
+                <button onClick={() => send()} disabled={loading || !input.trim()}
+                  style={{ width: 34, height: 34, borderRadius: "50%", border: "none", cursor: loading || !input.trim() ? "not-allowed" : "pointer", background: loading || !input.trim() ? "#e5e7eb" : theme, color: loading || !input.trim() ? "#9ca3af" : "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "16px", flexShrink: 0 }}>↑</button>
+              </div>
+              <div style={{ textAlign: "center", fontSize: "11px", color: "#d1d5db", marginTop: "8px" }}>Enter to send · Shift+Enter for new line</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <style>{`@keyframes lchat-bounce { 0%,60%,100%{transform:translateY(0)} 30%{transform:translateY(-6px)} } @media(max-width:768px){.lchat-sidebar{position:absolute!important;top:0;bottom:0;left:0;z-index:50;}.lchat-sidebar-hidden{width:0!important;min-width:0!important;overflow:hidden!important;}} @media(min-width:769px){.lchat-sidebar-hidden{width:0!important;min-width:0!important;overflow:hidden!important;}}`}</style>
     </div>
   );
 }
