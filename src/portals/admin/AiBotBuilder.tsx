@@ -1202,8 +1202,15 @@ function TestPanel({ bot }: { bot: AiBot }) {
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
+  const color = (bot as any).colorTheme || "#3b82f6";
 
   useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages]);
+
+  // Show welcome message on load
+  useEffect(() => {
+    const welcome = (bot as any).welcomeMessage || "Hi, How can I help you today?";
+    setMessages([{ role: "assistant", content: welcome }]);
+  }, [bot.id]);
 
   async function send() {
     if (!input.trim() || loading) return;
@@ -1227,47 +1234,74 @@ function TestPanel({ bot }: { bot: AiBot }) {
     }
   }
 
+  const avatar = (bot as any).botAvatarUrl
+    ? <img src={(bot as any).botAvatarUrl} alt="avatar" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+    : <span style={{ fontSize: "16px" }}>🤖</span>;
+
   return (
     <div style={{ padding: "32px", height: "100%", display: "flex", flexDirection: "column" }} className="bot-panel-padding">
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "24px" }}>
         <div>
           <h2 style={{ fontSize: "20px", fontWeight: 700, marginBottom: "4px" }}>Test Your Bot</h2>
-          <p style={{ color: "#6b7280", fontSize: "14px", margin: 0 }}>Chat with your bot to test how it responds</p>
+          <p style={{ color: "#6b7280", fontSize: "14px", margin: 0 }}>Here you can use your chatbot and compare AI models to see which gives you the best responses.</p>
         </div>
-        <button onClick={() => setMessages([])} style={btnSecondary}>Clear Chat</button>
+        <button onClick={() => setMessages([{ role: "assistant", content: (bot as any).welcomeMessage || "Hi, How can I help you today?" }])} style={btnSecondary}>Clear all chats</button>
       </div>
-      <div style={{ flex: 1, background: "#fff", borderRadius: "12px", border: "1px solid #e5e7eb", display: "flex", flexDirection: "column", overflow: "hidden", minHeight: "400px" }}>
-        <div style={{ flex: 1, overflowY: "auto", padding: "20px", display: "flex", flexDirection: "column", gap: "12px" }}>
-          {messages.length === 0 && (
-            <div style={{ textAlign: "center", color: "#9ca3af", padding: "40px 20px" }}>
-              <div style={{ fontSize: "40px", marginBottom: "12px" }}>🤖</div>
-              <div style={{ fontSize: "14px" }}>Start chatting to test your bot</div>
+
+      {/* Chat window styled like the screenshot */}
+      <div style={{ flex: 1, display: "flex", justifyContent: "center", alignItems: "flex-start" }}>
+        <div style={{ width: "100%", maxWidth: "520px", borderRadius: "16px", overflow: "hidden", boxShadow: "0 4px 24px rgba(0,0,0,0.10)", border: "1px solid #e5e7eb", background: "#fff", display: "flex", flexDirection: "column", height: "calc(100vh - 220px)", minHeight: "600px" }}>
+          {/* Header */}
+          <div style={{ background: color, padding: "12px 16px", display: "flex", alignItems: "center", gap: "10px" }}>
+            <div style={{ width: 32, height: 32, borderRadius: "50%", background: "rgba(255,255,255,0.25)", display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden", flexShrink: 0 }}>
+              {avatar}
             </div>
-          )}
-          {messages.map((m, i) => (
-            <div key={i} style={{ display: "flex", justifyContent: m.role === "user" ? "flex-end" : "flex-start" }}>
-              <div style={{
-                maxWidth: "70%", padding: "10px 14px", borderRadius: "16px", fontSize: "14px", lineHeight: "1.5",
-                background: m.role === "user" ? "#1f2937" : "#f3f4f6",
-                color: m.role === "user" ? "#fff" : "#1f2937"
-              }}>{m.content}</div>
-            </div>
-          ))}
-          {loading && (
-            <div style={{ display: "flex", justifyContent: "flex-start" }}>
-              <div style={{ padding: "10px 14px", borderRadius: "16px", background: "#f3f4f6", color: "#6b7280", fontSize: "14px" }}>Thinking...</div>
-            </div>
-          )}
-          <div ref={bottomRef} />
-        </div>
-        <div style={{ padding: "16px", borderTop: "1px solid #e5e7eb", display: "flex", gap: "8px" }}>
-          <input
-            value={input} onChange={e => setInput(e.target.value)}
-            onKeyDown={e => e.key === "Enter" && !e.shiftKey && send()}
-            placeholder="Type a message to test your bot..."
-            style={{ ...inputStyle, flex: 1, marginBottom: 0 }}
-          />
-          <button onClick={send} disabled={loading || !input.trim()} style={{ ...btnPrimary, opacity: loading || !input.trim() ? 0.5 : 1 }}>Send</button>
+            <span style={{ color: "#fff", fontWeight: 600, fontSize: "15px", flex: 1 }}>{(bot as any).botTitle || bot.name}</span>
+          </div>
+
+          {/* Messages */}
+          <div style={{ flex: 1, overflowY: "auto", padding: "20px", display: "flex", flexDirection: "column", gap: "12px", background: "#f8fafc" }}>
+            {messages.map((m, i) => (
+              <div key={i} style={{ display: "flex", justifyContent: m.role === "user" ? "flex-end" : "flex-start", alignItems: "flex-end", gap: "8px" }}>
+                {m.role === "assistant" && (
+                  <div style={{ width: 28, height: 28, borderRadius: "50%", background: color, display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden", flexShrink: 0 }}>
+                    {avatar}
+                  </div>
+                )}
+                <div style={{
+                  maxWidth: "72%", padding: "10px 14px", borderRadius: m.role === "user" ? "16px 16px 4px 16px" : "16px 16px 16px 4px",
+                  fontSize: "16px", lineHeight: "1.6",
+                  background: m.role === "user" ? color : "#fff",
+                  color: m.role === "user" ? "#fff" : "#1f2937",
+                  boxShadow: "0 1px 4px rgba(0,0,0,0.07)"
+                }}>{m.content}</div>
+              </div>
+            ))}
+            {loading && (
+              <div style={{ display: "flex", justifyContent: "flex-start", alignItems: "flex-end", gap: "8px" }}>
+                <div style={{ width: 28, height: 28, borderRadius: "50%", background: color, display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden", flexShrink: 0 }}>{avatar}</div>
+                <div style={{ padding: "10px 14px", borderRadius: "16px 16px 16px 4px", background: "#fff", color: "#6b7280", fontSize: "16px", boxShadow: "0 1px 4px rgba(0,0,0,0.07)" }}>Thinking...</div>
+              </div>
+            )}
+            <div ref={bottomRef} />
+          </div>
+
+          {/* Input */}
+          <div style={{ padding: "12px 16px", borderTop: "1px solid #e5e7eb", display: "flex", gap: "8px", background: "#fff" }}>
+            <input
+              value={input} onChange={e => setInput(e.target.value)}
+              onKeyDown={e => e.key === "Enter" && !e.shiftKey && send()}
+              placeholder={(bot as any).placeholder || "Ask me anything..."}
+              style={{ ...inputStyle, flex: 1, marginBottom: 0, borderRadius: "20px", padding: "10px 16px" }}
+            />
+            <button
+              onClick={send}
+              disabled={loading || !input.trim()}
+              style={{ width: 40, height: 40, borderRadius: "50%", background: color, border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", opacity: loading || !input.trim() ? 0.5 : 1, flexShrink: 0 }}
+            >
+              <span style={{ color: "#fff", fontSize: "16px" }}>➤</span>
+            </button>
+          </div>
         </div>
       </div>
     </div>
