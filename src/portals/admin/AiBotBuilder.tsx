@@ -537,8 +537,8 @@ function LiveChatPanel({ bot }: { bot: AiBot }) {
   const welcome    = (bot as any).welcomeMessage || "Hi, How can I help you today?";
   const ph         = (bot as any).placeholder || "Ask me anything...";
   const suggestions = (!suggestionsDismissed && messages.length === 0) ? ((bot as any).suggestions || []) : [];
-  const sidebarBg  = `color-mix(in srgb, ${theme} 55%, #000 45%)`;
-  const sidebarDark = `color-mix(in srgb, ${theme} 40%, #000 60%)`;
+  const sidebarBg  = "#ffffff";
+  const sidebarDark = "#f3f4f6";
   const isNewChat  = messages.length === 0;
 
   useEffect(() => { loadSessions(); }, [bot.id]);
@@ -629,30 +629,30 @@ function LiveChatPanel({ bot }: { bot: AiBot }) {
 
         {/* Sidebar */}
         <div className={`lchat-sidebar${sidebarCollapsed ? " lchat-sidebar-hidden" : ""}`}
-          style={{ width: "240px", minWidth: "240px", background: sidebarBg, display: "flex", flexDirection: "column", overflow: "hidden", transition: "width 0.2s, min-width 0.2s", flexShrink: 0 }}>
-          <div style={{ padding: "14px", borderBottom: "1px solid rgba(255,255,255,0.1)" }}>
-            <button onClick={startNewChat} style={{ width: "100%", padding: "9px 12px", background: "rgba(255,255,255,0.1)", color: "#fff", border: "1px solid rgba(255,255,255,0.2)", borderRadius: "8px", fontSize: "13px", fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", gap: "8px" }}>
+          style={{ width: "240px", minWidth: "240px", background: "#fff", borderRight: "1px solid #e5e7eb", display: "flex", flexDirection: "column", overflow: "hidden", transition: "width 0.2s, min-width 0.2s", flexShrink: 0 }}>
+          <div style={{ padding: "14px", borderBottom: "1px solid #e5e7eb" }}>
+            <button onClick={startNewChat} style={{ width: "100%", padding: "9px 12px", background: "#f3f4f6", color: "#1f2937", border: "1px solid #e5e7eb", borderRadius: "8px", fontSize: "13px", fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", gap: "8px" }}>
               <span>✏️</span> New Chat
             </button>
           </div>
           <div style={{ flex: 1, overflowY: "auto", padding: "8px" }}>
             {chatSessions.length === 0
-              ? <div style={{ padding: "20px 12px", color: "rgba(255,255,255,0.4)", fontSize: "12px", textAlign: "center" }}>No chats yet</div>
+              ? <div style={{ padding: "20px 12px", color: "#9ca3af", fontSize: "12px", textAlign: "center" }}>No chats yet</div>
               : chatSessions.filter(s => s.userId === "admin").map(session => (
                 <div key={session.chatId} onClick={() => loadSession(session)}
-                  style={{ padding: "10px 12px", borderRadius: "8px", cursor: "pointer", marginBottom: "2px", background: currentChatId === session.chatId ? "rgba(255,255,255,0.2)" : "transparent", display: "flex", alignItems: "center", justifyContent: "space-between", gap: "8px" }}>
+                  style={{ padding: "10px 12px", borderRadius: "8px", cursor: "pointer", marginBottom: "2px", background: currentChatId === session.chatId ? "#f3f4f6" : "transparent", display: "flex", alignItems: "center", justifyContent: "space-between", gap: "8px" }}>
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: "13px", color: "#fff", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>💬 {session.title}</div>
-                    <div style={{ fontSize: "11px", color: "rgba(255,255,255,0.4)", marginTop: "2px" }}>{new Date(session.updatedAt).toLocaleDateString()}</div>
+                    <div style={{ fontSize: "13px", color: "#1f2937", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>💬 {session.title}</div>
+                    <div style={{ fontSize: "11px", color: "#9ca3af", marginTop: "2px" }}>{new Date(session.updatedAt).toLocaleDateString()}</div>
                   </div>
-                  <button onClick={e => deleteSession(session.chatId, e)} style={{ background: "none", border: "none", color: "rgba(255,255,255,0.3)", cursor: "pointer", fontSize: "14px", padding: "2px 4px", flexShrink: 0 }}>🗑</button>
+                  <button onClick={e => deleteSession(session.chatId, e)} style={{ background: "none", border: "none", color: "#ef4444", cursor: "pointer", fontSize: "14px", padding: "2px 4px", flexShrink: 0 }}>🗑</button>
                 </div>
               ))
             }
           </div>
-          <div style={{ padding: "12px 14px", borderTop: "1px solid rgba(255,255,255,0.1)", display: "flex", alignItems: "center", gap: "8px" }}>
+          <div style={{ padding: "12px 14px", borderTop: "1px solid #e5e7eb", display: "flex", alignItems: "center", gap: "8px" }}>
             <AvatarImg size={26} fontSize="12px" />
-            <div style={{ fontSize: "12px", color: "rgba(255,255,255,0.6)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{botTitle}</div>
+            <div style={{ fontSize: "12px", color: "#6b7280", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{botTitle}</div>
           </div>
         </div>
 
@@ -738,11 +738,11 @@ function LiveChatPanel({ bot }: { bot: AiBot }) {
                 </div>
               )}
               <input ref={fileRef} type="file" accept="image/*,.pdf,.docx,.doc,.txt,.csv,.xlsx" style={{ display: "none" }} onChange={handleFile} />
-              <div style={{ display: "flex", alignItems: "flex-end", gap: "10px", background: "#f9fafb", borderRadius: "14px", border: "1px solid #e5e7eb", padding: "8px 12px" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "10px", background: "#f9fafb", borderRadius: "14px", border: "1px solid #e5e7eb", padding: "8px 12px" }}>
                 <button onClick={() => fileRef.current?.click()} title="Attach file"
                   style={{ width: 32, height: 32, borderRadius: "50%", border: "none", background: "#e5e7eb", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "20px", fontWeight: 300, flexShrink: 0, lineHeight: 1 }}>+</button>
                 <textarea ref={textareaRef} value={input} onChange={autoResize} onKeyDown={handleKeyDown} placeholder={ph} rows={1}
-                  style={{ flex: 1, border: "none", outline: "none", background: "transparent", fontSize: "14px", resize: "none", lineHeight: "1.6", fontFamily: "inherit", height: "52px", maxHeight: "200px", overflowY: "auto", padding: "8px 0", color: "#1f2937" }} />
+                  style={{ flex: 1, border: "none", outline: "none", background: "transparent", fontSize: "14px", resize: "none", lineHeight: "1.6", fontFamily: "inherit", height: "36px", maxHeight: "200px", overflowY: "auto", padding: "0", color: "#1f2937", alignSelf: "center" }} />
                 <button onClick={() => send()} disabled={loading || (!input.trim() && attachments.length === 0)}
                   style={{ width: 34, height: 34, borderRadius: "50%", border: "none", cursor: loading || (!input.trim() && attachments.length === 0) ? "not-allowed" : "pointer", background: loading || (!input.trim() && attachments.length === 0) ? "#e5e7eb" : theme, color: loading || (!input.trim() && attachments.length === 0) ? "#9ca3af" : "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "16px", flexShrink: 0 }}>↑</button>
               </div>
@@ -1245,19 +1245,77 @@ function LinksPanel({ bot, onSave, saving }: { bot: AiBot; onSave: (u: Partial<A
           <div style={{ fontSize: "14px" }}>No links found. Add a URL above to start training.</div>
         </div>
       ) : (
-        <div style={card}>
-          {links.map(link => (
-            <div key={link.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 0", borderBottom: "1px solid #f3f4f6" }}>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontSize: "13px", fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{link.url}</div>
-                <div style={{ fontSize: "11px", color: "#6b7280", marginTop: "2px" }}>{link.type} · {link.chars} chars</div>
+        <div style={{ background: "#fff", borderRadius: "10px", border: "1px solid #e5e7eb", overflow: "hidden" }}>
+          {/* Table header */}
+          <div style={{ display: "grid", gridTemplateColumns: "36px 120px 1fr 140px 100px 80px", alignItems: "center", padding: "10px 16px", background: "#f8fafc", borderBottom: "1px solid #e5e7eb" }}>
+            <div />
+            <div style={{ fontSize: "11px", fontWeight: 700, color: "#9ca3af", letterSpacing: "0.08em", textTransform: "uppercase" }}>Status</div>
+            <div style={{ fontSize: "11px", fontWeight: 700, color: "#9ca3af", letterSpacing: "0.08em", textTransform: "uppercase" }}>Link / File</div>
+            <div style={{ fontSize: "11px", fontWeight: 700, color: "#9ca3af", letterSpacing: "0.08em", textTransform: "uppercase" }}>Character Count</div>
+            <div style={{ fontSize: "11px", fontWeight: 700, color: "#9ca3af", letterSpacing: "0.08em", textTransform: "uppercase" }}>Type</div>
+            <div />
+          </div>
+
+          {/* Rows */}
+          {links.map((link, idx) => {
+            const isUrl = link.url.startsWith("http");
+            const ext   = link.url.split(".").pop()?.toLowerCase() || "";
+            const name  = isUrl ? link.url : decodeURIComponent(link.url.split("/").pop() || link.url);
+            const statusDot: Record<string, string> = { trained: "#10b981", pending: "#f59e0b", failed: "#ef4444", "no-space": "#6b7280" };
+            const statusLabel: Record<string, string> = { trained: "Done", pending: "Pending", failed: "Failed", "no-space": "No Space" };
+
+            return (
+              <div key={link.id} style={{ display: "grid", gridTemplateColumns: "36px 120px 1fr 140px 100px 80px", alignItems: "center", padding: "12px 16px", borderBottom: idx < links.length - 1 ? "1px solid #f3f4f6" : "none", background: "#fff" }}
+                onMouseEnter={e => (e.currentTarget.style.background = "#f8fafc")}
+                onMouseLeave={e => (e.currentTarget.style.background = "#fff")}>
+
+                {/* Checkbox */}
+                <input type="checkbox" style={{ cursor: "pointer" }} />
+
+                {/* Status */}
+                <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                  <span style={{ width: 18, height: 18, borderRadius: "50%", border: `2px solid ${statusDot[link.status] || "#9ca3af"}`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                    {link.status === "trained" && <span style={{ width: 8, height: 8, borderRadius: "50%", background: "#10b981", display: "block" }} />}
+                  </span>
+                  <span style={{ fontSize: "13px", fontWeight: 600, color: statusDot[link.status] || "#6b7280" }}>{statusLabel[link.status] || link.status}</span>
+                </div>
+
+                {/* Link / File */}
+                <div style={{ minWidth: 0, paddingRight: "16px" }}>
+                  {isUrl ? (
+                    <a href={link.url} target="_blank" rel="noopener noreferrer"
+                      style={{ fontSize: "13px", color: "#2563eb", textDecoration: "none", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", display: "block" }}
+                      onMouseEnter={e => (e.currentTarget.style.textDecoration = "underline")}
+                      onMouseLeave={e => (e.currentTarget.style.textDecoration = "none")}>
+                      {name}
+                    </a>
+                  ) : (
+                    <a href={link.url} download={name}
+                      style={{ fontSize: "13px", color: "#374151", textDecoration: "none", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", display: "flex", alignItems: "center", gap: "6px" }}>
+                      <span>{ext === "pdf" ? "📄" : ext === "docx" || ext === "doc" ? "📝" : ext === "xlsx" || ext === "csv" ? "📊" : "📎"}</span>
+                      <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{name}</span>
+                    </a>
+                  )}
+                </div>
+
+                {/* Char count */}
+                <div style={{ fontSize: "13px", color: "#374151" }}>{(link.chars || 0).toLocaleString()}</div>
+
+                {/* Type */}
+                <div style={{ fontSize: "12px", color: "#6b7280", textTransform: "capitalize" }}>{link.type}</div>
+
+                {/* Delete */}
+                <div style={{ display: "flex", justifyContent: "flex-end" }}>
+                  <button onClick={() => removeLink(link.id)}
+                    style={{ width: 28, height: 28, borderRadius: "6px", background: "none", border: "1px solid #e5e7eb", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", color: "#9ca3af", fontSize: "14px" }}
+                    onMouseEnter={e => { e.currentTarget.style.background = "#fff5f5"; e.currentTarget.style.color = "#ef4444"; e.currentTarget.style.borderColor = "#fecaca"; }}
+                    onMouseLeave={e => { e.currentTarget.style.background = "none"; e.currentTarget.style.color = "#9ca3af"; e.currentTarget.style.borderColor = "#e5e7eb"; }}>
+                    🗑
+                  </button>
+                </div>
               </div>
-              <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-                <span style={{ fontSize: "11px", fontWeight: 600, color: statusColor[link.status] || "#6b7280", textTransform: "capitalize" }}>● {link.status}</span>
-                <button onClick={() => removeLink(link.id)} style={{ background: "none", border: "none", cursor: "pointer", color: "#ef4444", fontSize: "14px" }}>🗑</button>
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>
