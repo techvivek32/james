@@ -1,7 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import { connectMongo } from "../../../src/lib/mongodb";
 import { AiBotModel } from "../../../src/lib/models/AiBot";
-import { fetchYouTubeTranscriptWithPuppeteer, fetchYouTubeTranscriptFallback } from "../../../src/lib/youtubeTranscriptPuppeteer";
+import { fetchYouTubeTranscriptText } from "../../../src/lib/youtubeTranscriptPuppeteer";
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   console.log("=== CRAWL API CALLED ===");
@@ -178,52 +178,12 @@ async function fetchYouTubeTranscript(url: string): Promise<string> {
   }
 
   console.log(`Video ID extracted: ${videoId}`);
-  console.log(`Attempting to fetch transcript using Puppeteer...`);
+  console.log(`Fetching transcript using Puppeteer with stealth...`);
 
-  try {
-    // Try Puppeteer method first (clicks transcript button)
-    const segments = await fetchYouTubeTranscriptWithPuppeteer(url);
-    
-    // Combine segments into text
-    const text = segments
-      .map(seg => seg.text)
-      .join(" ")
-      .replace(/\s+/g, " ")
-      .trim();
-
-    if (text.length === 0) {
-      throw new Error("Transcript is empty");
-    }
-
-    console.log(`Successfully extracted transcript, length: ${text.length} characters`);
-    return `YouTube Video Transcript (${url}):\n\n${text}`;
-  } catch (error: any) {
-    console.error("Puppeteer method failed:", error.message);
-    console.log("Trying fallback method...");
-    
-    try {
-      // Fallback: Extract from page source
-      const segments = await fetchYouTubeTranscriptFallback(url);
-      
-      const text = segments
-        .map(seg => seg.text)
-        .join(" ")
-        .replace(/\s+/g, " ")
-        .trim();
-
-      if (text.length === 0) {
-        throw new Error("Transcript is empty");
-      }
-
-      console.log(`Fallback successful, length: ${text.length} characters`);
-      return `YouTube Video Transcript (${url}):\n\n${text}`;
-    } catch (fallbackError: any) {
-      console.error("Fallback method also failed:", fallbackError.message);
-      throw new Error(
-        "Could not fetch transcript. Please ensure the video has captions enabled or copy the transcript manually from YouTube."
-      );
-    }
-  }
+  const text = await fetchYouTubeTranscriptText(url);
+  
+  console.log(`Successfully extracted transcript, length: ${text.length} characters`);
+  return `YouTube Video Transcript (${url}):\n\n${text}`;
 }
 
 function extractYouTubeId(url: string): string | null {

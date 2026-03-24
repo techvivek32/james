@@ -1,11 +1,16 @@
 import puppeteer, { Browser, Page } from 'puppeteer';
+import StealthPlugin from 'puppeteer-extra-plugin-stealth';
+import { addExtra } from 'puppeteer-extra';
+
+// Add stealth plugin to puppeteer
+const puppeteerExtra = addExtra(puppeteer);
+puppeteerExtra.use(StealthPlugin());
 
 let browserInstance: Browser | null = null;
 
 interface TranscriptSegment {
   text: string;
   start: string;
-  duration: string;
 }
 
 /**
@@ -16,8 +21,8 @@ async function getBrowser(): Promise<Browser> {
     return browserInstance;
   }
 
-  console.log('Launching new Puppeteer browser...');
-  browserInstance = await puppeteer.launch({
+  console.log('Launching Puppeteer browser with stealth...');
+  browserInstance = await puppeteerExtra.launch({
     headless: true,
     args: [
       '--no-sandbox',
@@ -28,11 +33,11 @@ async function getBrowser(): Promise<Browser> {
       '--no-zygote',
       '--disable-gpu',
       '--disable-blink-features=AutomationControlled',
+      '--disable-features=IsolateOrigins,site-per-process',
     ],
     executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || undefined,
   });
 
-  // Handle browser disconnect
   browserInstance.on('disconnected', () => {
     console.log('Browser disconnected');
     browserInstance = null;
@@ -42,7 +47,7 @@ async function getBrowser(): Promise<Browser> {
 }
 
 /**
- * Close the browser instance (call this on server shutdown)
+ * Close the browser instance (call on server shutdown)
  */
 export async function closeBrowser(): Promise<void> {
   if (browserInstance) {
@@ -53,24 +58,30 @@ export async function closeBrowser(): Promise<void> {
 }
 
 /**
- * Fetch YouTube transcript using Puppeteer
+ * Fetch YouTube transcript using Puppeteer with stealth
  */
 export async function fetchYouTubeTranscriptWithPuppeteer(
   videoUrl: string
 ): Promise<TranscriptSegment[]> {
-  console.log(`Fetching transcript for: ${videoUrl}`);
+  console.log(`[Puppeteer] Fetching transcript for: ${videoUrl}`);
   
   const browser = await getBrowser();
   const page = await browser.newPage();
 
   try {
-    // Set realistic user agent to avoid bot detection
+    // Set realistic viewport
+    await page.setViewport({ width: 1920, height: 1080 });
+
+    // Set real user agent (latest Chrome)
     await page.setUserAgent(
-      'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+      'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36'
     );
 
-    // Set viewport
-    await page.setViewport({ width: 1920, height: 1080 });
+    // Set additional headers
+    await page.setExtraHTTPHeaders({
+      'Accept-Language': 'en-US,en;q=0.9',
+      'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+    });
 
     // Block unnecessary resources for faster loading
     await page.setRequestInterception(true);
@@ -84,50 +95,63 @@ export async function fetchYouTubeTranscriptWithPuppeteer(
     });
 
     // Navigate to YouTube video
-    console.log('Navigating to YouTube video...');
+    console.log('[Puppeteer] Navigating to YouTube...');
     await page.goto(videoUrl, {
-      waitUntil: 'networkidle2',
+      waitUntil: 'domcontentloaded',
       timeout: 30000,
     });
 
-    // Wait for video player to load
-    await page.waitForSelector('ytd-watch-flexy', { timeout: 10000 });
+    // Wait for video player
+    await page.waitForSelector('ytd-watch-flexy', { timeout: 15000 });
+    console.log('[Puppeteer] Video page loaded');
 
-    // Reject cookie consent if it appears
+    // Handle cookie consent if it appears
     try {
-      const rejectButton = await page.$('button[aria-label*="Reject"]');
-      if (rejectButton) {
-        await rejectButton.click();
+      const consentButton = await page.$('button[aria-label*="Accept"], button[aria-label*="Reject"]');
+      if (consentButton) {
+        await consentButton.click();
         await new Promise(resolve => setTimeout(resolve, 500));
+        console.log('[Puppeteer] Handled cookie consent');
       }
     } catch (e) {
-      console.log('No cookie consent dialog found');
+      // No consent dialog, continue
     }
 
-    // Click the "More actions" button (three dots menu)
-    console.log('Opening transcript menu...');
-    await page.waitForSelector('#primary-button button[aria-label*="More actions"]', {
-      timeout: 10000,
-    });
-    await page.click('#primary-button button[aria-label*="More actions"]');
+    // Wait a bit for page to stabilize
     await new Promise(resolve => setTimeout(resolve, 1000));
 
-    // Click "Show transcript" option
-    const transcriptButton = await page.evaluateHandle(() => {
-      const items = Array.from(
-        document.querySelectorAll('ytd-menu-service-item-renderer')
+    // Click "More actions" button (three dots)
+    console.log('[Puppeteer] Opening more actions menu...');
+    const moreActionsSelector = 'button[aria-label*="More actions"], button[aria-label*="More"], ytd-menu-renderer button';
+    
+    await page.waitForSelector(moreActionsSelector, { timeout: 10000 });
+    await page.click(moreActionsSelector);
+    await new Promise(resolve => setTimeout(resolve, 1500));
+
+    // Find and click "Show transcript" button
+    console.log('[Puppeteer] Looking for transcript button...');
+    const transcriptClicked = await page.evaluate(() => {
+      const menuItems = Array.from(
+        document.querySelectorAll('ytd-menu-service-item-renderer, tp-yt-paper-item')
       );
-      return items.find((item) =>
-        item.textContent?.toLowerCase().includes('transcript')
-      );
+      
+      const transcriptItem = menuItems.find((item) => {
+        const text = item.textContent?.toLowerCase() || '';
+        return text.includes('transcript') || text.includes('show transcript');
+      });
+
+      if (transcriptItem) {
+        (transcriptItem as HTMLElement).click();
+        return true;
+      }
+      return false;
     });
 
-    if (!transcriptButton) {
+    if (!transcriptClicked) {
       throw new Error('Transcript button not found. Video may not have captions.');
     }
 
-    await (transcriptButton as any).click();
-    console.log('Clicked transcript button');
+    console.log('[Puppeteer] Clicked transcript button');
     await new Promise(resolve => setTimeout(resolve, 2000));
 
     // Wait for transcript panel to load
@@ -135,7 +159,7 @@ export async function fetchYouTubeTranscriptWithPuppeteer(
       timeout: 10000,
     });
 
-    console.log('Extracting transcript segments...');
+    console.log('[Puppeteer] Extracting transcript segments...');
 
     // Extract transcript data
     const transcript = await page.evaluate(() => {
@@ -166,12 +190,11 @@ export async function fetchYouTubeTranscriptWithPuppeteer(
         return {
           text,
           start: startSeconds.toString(),
-          duration: '0', // YouTube doesn't provide duration per segment
         };
       });
     });
 
-    console.log(`Successfully extracted ${transcript.length} transcript segments`);
+    console.log(`[Puppeteer] Successfully extracted ${transcript.length} segments`);
 
     if (transcript.length === 0) {
       throw new Error('No transcript segments found');
@@ -179,88 +202,34 @@ export async function fetchYouTubeTranscriptWithPuppeteer(
 
     return transcript;
   } catch (error: any) {
-    console.error('Error fetching transcript:', error.message);
+    console.error('[Puppeteer] Error:', error.message);
     throw new Error(`Failed to fetch transcript: ${error.message}`);
   } finally {
-    // Always close the page
     await page.close();
   }
 }
 
 /**
- * Fallback: Try to extract transcript from page source (auto-generated captions)
+ * Convert transcript segments to plain text
  */
-export async function fetchYouTubeTranscriptFallback(
-  videoUrl: string
-): Promise<TranscriptSegment[]> {
-  console.log('Using fallback method to fetch transcript...');
+export function transcriptToText(segments: TranscriptSegment[]): string {
+  return segments
+    .map(seg => seg.text)
+    .join(' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+/**
+ * Main function to fetch and return transcript as text
+ */
+export async function fetchYouTubeTranscriptText(videoUrl: string): Promise<string> {
+  const segments = await fetchYouTubeTranscriptWithPuppeteer(videoUrl);
+  const text = transcriptToText(segments);
   
-  const browser = await getBrowser();
-  const page = await browser.newPage();
-
-  try {
-    await page.setUserAgent(
-      'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
-    );
-
-    await page.goto(videoUrl, { waitUntil: 'networkidle2', timeout: 30000 });
-
-    // Extract video ID from URL
-    const videoId = videoUrl.match(/[?&]v=([^&]+)/)?.[1];
-    if (!videoId) throw new Error('Invalid YouTube URL');
-
-    // Get page HTML and extract ytInitialPlayerResponse
-    const html = await page.content();
-    const playerMatch = html.match(
-      /ytInitialPlayerResponse\s*=\s*(\{.+?\});/s
-    );
-
-    if (!playerMatch) {
-      throw new Error('Could not extract player data');
-    }
-
-    const playerResponse = JSON.parse(playerMatch[1]);
-    const tracks =
-      playerResponse?.captions?.playerCaptionsTracklistRenderer?.captionTracks;
-
-    if (!tracks || tracks.length === 0) {
-      throw new Error('No captions available for this video');
-    }
-
-    // Get English track or first available
-    const track = tracks.find((t: any) => t.languageCode === 'en') || tracks[0];
-    const captionUrl = track.baseUrl
-      .replace(/&amp;/g, '&')
-      .replace(/&lt;/g, '<')
-      .replace(/&gt;/g, '>')
-      .replace(/&quot;/g, '"')
-      .replace(/&#39;/g, "'");
-
-    console.log('Fetching caption data from:', captionUrl);
-
-    // Fetch caption XML
-    const captionPage = await page.goto(captionUrl, { timeout: 10000 });
-    const xml = await captionPage!.text();
-
-    // Parse XML
-    const segments = [...xml.matchAll(/<text[^>]*start="([^"]*)"[^>]*dur="([^"]*)"[^>]*>([^<]*)<\/text>/g)];
-
-    const transcript = segments.map((match) => ({
-      text: match[3]
-        .replace(/&amp;/g, '&')
-        .replace(/&#39;/g, "'")
-        .replace(/&quot;/g, '"')
-        .trim(),
-      start: match[1],
-      duration: match[2],
-    }));
-
-    console.log(`Fallback extracted ${transcript.length} segments`);
-    return transcript;
-  } catch (error: any) {
-    console.error('Fallback method failed:', error.message);
-    throw error;
-  } finally {
-    await page.close();
+  if (text.length === 0) {
+    throw new Error('Transcript is empty');
   }
+  
+  return text;
 }
