@@ -118,41 +118,105 @@ export async function fetchYouTubeTranscriptWithPuppeteer(
     }
 
     // Wait a bit for page to stabilize
-    await new Promise(resolve => setTimeout(resolve, 1000));
+    await new Promise(resolve => setTimeout(resolve, 1500));
 
-    // Click "More actions" button (three dots)
+    // Click "More actions" button (three dots) - try multiple selectors
     console.log('[Puppeteer] Opening more actions menu...');
-    const moreActionsSelector = 'button[aria-label*="More actions"], button[aria-label*="More"], ytd-menu-renderer button';
     
-    await page.waitForSelector(moreActionsSelector, { timeout: 10000 });
-    await page.click(moreActionsSelector);
+    const moreActionsClicked = await page.evaluate(() => {
+      // Try multiple possible selectors for the more actions button
+      const selectors = [
+        'button[aria-label*="More actions"]',
+        'button[aria-label*="More"]',
+        'ytd-menu-renderer button',
+        '#button-shape > button',
+        'yt-button-shape button',
+      ];
+
+      for (const selector of selectors) {
+        const button = document.querySelector(selector);
+        if (button && button instanceof HTMLElement) {
+          button.click();
+          return true;
+        }
+      }
+
+      // Fallback: find by icon or text
+      const buttons = Array.from(document.querySelectorAll('button'));
+      const moreButton = buttons.find(btn => {
+        const ariaLabel = btn.getAttribute('aria-label')?.toLowerCase() || '';
+        return ariaLabel.includes('more') || ariaLabel.includes('actions');
+      });
+
+      if (moreButton) {
+        (moreButton as HTMLElement).click();
+        return true;
+      }
+
+      return false;
+    });
+
+    if (!moreActionsClicked) {
+      throw new Error('Could not find or click More actions button');
+    }
+
+    console.log('[Puppeteer] Clicked more actions button');
     await new Promise(resolve => setTimeout(resolve, 1500));
 
     // Find and click "Show transcript" button
     console.log('[Puppeteer] Looking for transcript button...');
     const transcriptClicked = await page.evaluate(() => {
+      // Wait a bit for menu to render
       const menuItems = Array.from(
-        document.querySelectorAll('ytd-menu-service-item-renderer, tp-yt-paper-item')
+        document.querySelectorAll(
+          'ytd-menu-service-item-renderer, ' +
+          'tp-yt-paper-item, ' +
+          'ytd-menu-navigation-item-renderer, ' +
+          '[role="menuitem"], ' +
+          'yt-formatted-string'
+        )
       );
+      
+      console.log(`Found ${menuItems.length} menu items`);
       
       const transcriptItem = menuItems.find((item) => {
         const text = item.textContent?.toLowerCase() || '';
-        return text.includes('transcript') || text.includes('show transcript');
+        const hasTranscript = text.includes('transcript') || 
+                             text.includes('show transcript') ||
+                             text.includes('open transcript');
+        
+        if (hasTranscript) {
+          console.log('Found transcript item:', text.substring(0, 50));
+        }
+        
+        return hasTranscript;
       });
 
       if (transcriptItem) {
-        (transcriptItem as HTMLElement).click();
+        // Try to click the item or its parent
+        const clickable = transcriptItem.closest('ytd-menu-service-item-renderer') || 
+                         transcriptItem.closest('tp-yt-paper-item') ||
+                         transcriptItem.closest('[role="menuitem"]') ||
+                         transcriptItem;
+        
+        (clickable as HTMLElement).click();
+        console.log('Clicked transcript button');
         return true;
       }
+      
+      console.log('No transcript item found in menu');
       return false;
     });
 
     if (!transcriptClicked) {
+      // Take a screenshot for debugging
+      await page.screenshot({ path: 'youtube-debug.png' });
+      console.log('[Puppeteer] Screenshot saved to youtube-debug.png');
       throw new Error('Transcript button not found. Video may not have captions.');
     }
 
     console.log('[Puppeteer] Clicked transcript button');
-    await new Promise(resolve => setTimeout(resolve, 2000));
+    await new Promise(resolve => setTimeout(resolve, 2500));
 
     // Wait for transcript panel to load
     await page.waitForSelector('ytd-transcript-segment-renderer', {
