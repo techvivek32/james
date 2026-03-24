@@ -98,7 +98,7 @@ export async function fetchYouTubeTranscriptWithPuppeteer(
       const rejectButton = await page.$('button[aria-label*="Reject"]');
       if (rejectButton) {
         await rejectButton.click();
-        await page.waitForTimeout(500);
+        await new Promise(resolve => setTimeout(resolve, 500));
       }
     } catch (e) {
       console.log('No cookie consent dialog found');
@@ -110,7 +110,7 @@ export async function fetchYouTubeTranscriptWithPuppeteer(
       timeout: 10000,
     });
     await page.click('#primary-button button[aria-label*="More actions"]');
-    await page.waitForTimeout(1000);
+    await new Promise(resolve => setTimeout(resolve, 1000));
 
     // Click "Show transcript" option
     const transcriptButton = await page.evaluateHandle(() => {
@@ -128,7 +128,7 @@ export async function fetchYouTubeTranscriptWithPuppeteer(
 
     await (transcriptButton as any).click();
     console.log('Clicked transcript button');
-    await page.waitForTimeout(2000);
+    await new Promise(resolve => setTimeout(resolve, 2000));
 
     // Wait for transcript panel to load
     await page.waitForSelector('ytd-transcript-segment-renderer', {
