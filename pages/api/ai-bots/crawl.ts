@@ -152,7 +152,7 @@ async function fetchYouTubeTranscript(url: string): Promise<string> {
 
   try {
     // Use youtube-transcript library
-    const { YoutubeTranscript } = require('youtube-transcript');
+    const YoutubeTranscript = require('youtube-transcript').YoutubeTranscript;
     const transcript = await YoutubeTranscript.fetchTranscript(videoId);
     
     if (!transcript || transcript.length === 0) {
