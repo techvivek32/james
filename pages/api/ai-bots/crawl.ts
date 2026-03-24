@@ -179,9 +179,67 @@ async function fetchYouTubeTranscript(url: string): Promise<string> {
   console.log(`Video ID extracted: ${videoId}`);
   console.log(`Attempting to fetch transcript for video ID: ${videoId}`);
 
-  // Use fallback method (web scraping) as primary since youtube-transcript is broken
-  console.log("Using web scraping method...");
-  return await fetchYouTubeTranscriptFallback(videoId, url);
+  try {
+    console.log("Trying youtube-transcript library...");
+    // Use youtube-transcript library - try different import methods
+    let YoutubeTranscript;
+    try {
+      const ytModule = require('youtube-transcript');
+      console.log("Module keys:", Object.keys(ytModule));
+      
+      // Try different ways to access the class
+      YoutubeTranscript = ytModule.YoutubeTranscript || ytModule.default?.YoutubeTranscript || ytModule;
+      
+      if (!YoutubeTranscript || !YoutubeTranscript.fetchTranscript) {
+        throw new Error("Could not find YoutubeTranscript.fetchTranscript method");
+      }
+      
+      console.log("youtube-transcript module loaded successfully");
+    } catch (importError: any) {
+      console.error("Failed to import youtube-transcript:", importError.message);
+      throw importError;
+    }
+    
+    const transcript = await YoutubeTranscript.fetchTranscript(videoId);
+    console.log(`Transcript fetched! Segments count: ${transcript ? transcript.length : 0}`);
+    
+    if (!transcript || transcript.length === 0) {
+      console.error("No transcript data returned from library");
+      throw new Error("No transcript data returned");
+    }
+
+    console.log(`Successfully fetched ${transcript.length} transcript segments`);
+    
+    // Combine all transcript segments into text
+    const text = transcript
+      .map((item: any) => item.text)
+      .join(" ")
+      .replace(/\s+/g, " ")
+      .trim();
+
+    if (text.length === 0) {
+      console.error("Transcript text is empty after processing");
+      throw new Error("Transcript is empty");
+    }
+
+    console.log(`Final transcript length: ${text.length} characters`);
+    return `YouTube Video Transcript (${url}):\n\n${text}`;
+  } catch (error: any) {
+    console.error("youtube-transcript library failed:");
+    console.error("Error name:", error.name);
+    console.error("Error message:", error.message);
+    console.error("Error stack:", error.stack);
+    
+    // Check if it's a "no transcript" error from the library
+    if (error.message && (error.message.includes('Could not find captions') || error.message.includes('Transcript is disabled'))) {
+      console.log("Video has no captions available, trying fallback method...");
+      return await fetchYouTubeTranscriptFallback(videoId, url);
+    }
+    
+    // For other errors, try fallback
+    console.log("Attempting fallback method due to error...");
+    return await fetchYouTubeTranscriptFallback(videoId, url);
+  }
 }
 
 async function fetchYouTubeTranscriptFallback(videoId: string, url: string): Promise<string> {
