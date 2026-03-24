@@ -215,8 +215,14 @@ async function fetchYouTubeTranscript(url: string): Promise<string> {
     console.error("Error message:", error.message);
     console.error("Error stack:", error.stack);
     
-    // Fallback to manual scraping method
-    console.log("Attempting fallback method...");
+    // Check if it's a "no transcript" error from the library
+    if (error.message && (error.message.includes('Could not find captions') || error.message.includes('Transcript is disabled'))) {
+      console.log("Video has no captions available, trying fallback method...");
+      return await fetchYouTubeTranscriptFallback(videoId, url);
+    }
+    
+    // For other errors, try fallback
+    console.log("Attempting fallback method due to error...");
     return await fetchYouTubeTranscriptFallback(videoId, url);
   }
 }
