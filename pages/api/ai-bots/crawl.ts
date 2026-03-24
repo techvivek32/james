@@ -143,103 +143,190 @@ async function fetchExcelContent(url: string): Promise<string> {
 
 async function fetchYouTubeTranscript(url: string): Promise<string> {
   const videoId = extractYouTubeId(url);
-  if (!videoId) throw new Error("Invalid YouTube URL");
-
-  const apiKey = process.env.YOUTUBE_API_KEY;
-  if (!apiKey) throw new Error("YOUTUBE_API_KEY not configured in environment");
-
-  // Step 1: Get caption tracks list via YouTube Data API v3
-  const captionsListRes = await fetch(
-    `https://www.googleapis.com/youtube/v3/captions?part=snippet&videoId=${videoId}&key=${apiKey}`
-  );
-  if (!captionsListRes.ok) {
-    const err = await captionsListRes.json();
-    throw new Error(`YouTube API error: ${err?.error?.message || captionsListRes.statusText}`);
+  if (!videoId) {
+    console.error("Failed to extract video ID from URL:", url);
+    throw new Error(`Invalid YouTube URL: ${url}`);
   }
 
-  const captionsData = await captionsListRes.json();
-  const items = captionsData.items || [];
-  if (items.length === 0) throw new Error("No captions available for this video.");
+  console.log(`Fetching transcript for video ID: ${videoId}`);
 
-  // Prefer English, fallback to first available
-  const track = items.find((t: any) => t.snippet?.language === "en") ||
-                items.find((t: any) => t.snippet?.language?.startsWith("en")) ||
-                items[0];
+  try {
+    // Use youtube-transcript library
+    const { YoutubeTranscript } = require('youtube-transcript');
+    const transcript = await YoutubeTranscript.fetchTranscript(videoId);
+    
+    if (!transcript || transcript.length === 0) {
+      throw new Error("No transcript data returned");
+    }
 
-  const lang = track.snippet?.language || "en";
+    console.log(`Successfully fetched ${transcript.length} transcript segments`);
+    
+    // Combine all transcript segments into text
+    const text = transcript
+      .map((item: any) => item.text)
+      .join(" ")
+      .replace(/\s+/g, " ")
+      .trim();
 
-  // Step 2: Fetch transcript via timedtext API (no OAuth needed)
-  const timedTextUrl = `https://www.youtube.com/api/timedtext?v=${videoId}&lang=${lang}&fmt=json3&xorb=2&xobt=3&xovt=3`;
-  const ttRes = await fetch(timedTextUrl, {
+    if (text.length === 0) {
+      throw new Error("Transcript is empty");
+    }
+
+    console.log(`Transcript length: ${text.length} characters`);
+    return `YouTube Video Transcript (${url}):\n\n${text}`;
+  } catch (error: any) {
+    console.error("youtube-transcript library failed:", error.message);
+    
+    // Fallback to manual scraping method
+    console.log("Trying fallback method...");
+    return await fetchYouTubeTranscriptFallback(videoId, url);
+  }
+}
+
+async function fetchYouTubeTranscriptFallback(videoId: string, url: string): Promise<string> {
+  console.log(`Using fallback method for video ID: ${videoId}`);
+
+  // Fetch YouTube page HTML to extract caption tracks
+  const pageRes = await fetch(`https://www.youtube.com/watch?v=${videoId}`, {
     headers: {
       "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120.0.0.0 Safari/537.36",
-      "Accept-Language": "en-US,en;q=0.9",
-      "Referer": `https://www.youtube.com/watch?v=${videoId}`
+      "Accept-Language": "en-US,en;q=0.9"
     }
   });
 
-  if (ttRes.ok) {
-    const contentType = ttRes.headers.get("content-type") || "";
-    if (contentType.includes("json") || contentType.includes("text")) {
-      const raw = await ttRes.text();
-      if (raw && raw.trim().startsWith("{")) {
-        const json = JSON.parse(raw);
-        const events = json?.events || [];
-        const text = events
-          .filter((e: any) => e.segs)
-          .flatMap((e: any) => e.segs.map((s: any) => s.utf8 || ""))
-          .filter((s: string) => s.trim() && s.trim() !== "\n")
-          .join(" ")
-          .replace(/\s+/g, " ")
-          .trim();
+  if (!pageRes.ok) {
+    console.error(`Failed to fetch YouTube page: ${pageRes.status} ${pageRes.statusText}`);
+    throw new Error(`Failed to fetch YouTube page: ${pageRes.statusText}`);
+  }
 
-        if (text.length > 0) {
+  const html = await pageRes.text();
+  console.log(`Fetched YouTube page, HTML length: ${html.length}`);
+  
+  const playerMatch = html.match(/ytInitialPlayerResponse\s*=\s*(\{.+?\});\s*(?:var|const|let|window)/s);
+  
+  if (!playerMatch) {
+    console.error("Could not find ytInitialPlayerResponse in page HTML");
+    throw new Error("Could not extract player data from YouTube page. Please copy the transcript manually from YouTube and paste it in the Text section.");
+  }
+
+  console.log("Found ytInitialPlayerResponse");
+  const playerResponse = JSON.parse(playerMatch[1]);
+  const tracks = playerResponse?.captions?.playerCaptionsTracklistRenderer?.captionTracks;
+
+  if (!tracks || tracks.length === 0) {
+    console.error("No caption tracks found in player response");
+    throw new Error("No captions available for this video. Please enable captions on YouTube or copy the transcript manually.");
+  }
+
+  console.log(`Found ${tracks.length} caption tracks`);
+  return await downloadTranscript(videoId, tracks, url);
+}
+
+async function downloadTranscript(videoId: string, tracks: any[], url: string): Promise<string> {
+  // Prefer English, fallback to first available
+  const track = tracks.find((t: any) => t.languageCode === "en") || tracks[0];
+  const lang = track.languageCode || "en";
+  console.log(`Using caption track: ${lang}`);
+  console.log(`Track baseUrl:`, track.baseUrl);
+
+  // Use the baseUrl provided by YouTube (it includes authentication tokens)
+  if (track.baseUrl) {
+    // Decode HTML entities in the URL
+    const decodedUrl = track.baseUrl
+      .replace(/&amp;/g, "&")
+      .replace(/&lt;/g, "<")
+      .replace(/&gt;/g, ">")
+      .replace(/&quot;/g, '"')
+      .replace(/&#39;/g, "'");
+    
+    console.log(`Decoded URL: ${decodedUrl}`);
+    console.log(`Fetching transcript from track baseUrl`);
+    
+    const transcriptRes = await fetch(decodedUrl, {
+      headers: {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120.0.0.0 Safari/537.36",
+        "Referer": `https://www.youtube.com/watch?v=${videoId}`,
+        "Accept-Language": "en-US,en;q=0.9"
+      }
+    });
+
+    console.log(`Transcript response status: ${transcriptRes.status}`);
+
+    if (transcriptRes.ok) {
+      const raw = await transcriptRes.text();
+      console.log(`Transcript response length: ${raw.length}, starts with: ${raw.substring(0, 100)}`);
+      
+      // Try JSON3 format first
+      if (raw && raw.trim().startsWith("{")) {
+        try {
+          const json = JSON.parse(raw);
+          const events = json?.events || [];
+          console.log(`Parsed JSON, found ${events.length} events`);
+          
+          const text = events
+            .filter((e: any) => e.segs)
+            .flatMap((e: any) => e.segs.map((s: any) => s.utf8 || ""))
+            .filter((s: string) => s.trim() && s.trim() !== "\n")
+            .join(" ")
+            .replace(/\s+/g, " ")
+            .trim();
+
+          if (text.length > 0) {
+            console.log(`Successfully extracted transcript, length: ${text.length}`);
+            const langNote = lang !== "en" ? ` [Language: ${lang}]` : "";
+            return `YouTube Video Transcript${langNote} (${url}):\n\n${text}`;
+          }
+        } catch (e) {
+          console.error("Failed to parse JSON format:", e);
+        }
+      }
+      
+      // Try XML format
+      if (raw && raw.includes("<text")) {
+        console.log("Trying XML format");
+        const segments = [...raw.matchAll(/<text[^>]*>([\s\S]*?)<\/text>/g)]
+          .map(m => m[1]
+            .replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">")
+            .replace(/&#39;/g, "'").replace(/&quot;/g, '"')
+            .replace(/<[^>]+>/g, "").trim())
+          .filter(Boolean);
+
+        if (segments.length > 0) {
+          console.log(`Successfully extracted ${segments.length} XML segments`);
           const langNote = lang !== "en" ? ` [Language: ${lang}]` : "";
-          return `YouTube Video Transcript${langNote} (${url}):\n\n${text}`;
+          return `YouTube Video Transcript${langNote} (${url}):\n\n${segments.join(" ")}`;
         }
       }
     }
   }
 
-  // Step 3: Fallback — try XML format
-  const xmlUrl = `https://www.youtube.com/api/timedtext?v=${videoId}&lang=${lang}`;
-  const xmlRes = await fetch(xmlUrl, {
-    headers: {
-      "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120.0.0.0 Safari/537.36",
-      "Referer": `https://www.youtube.com/watch?v=${videoId}`
-    }
-  });
-
-  if (xmlRes.ok) {
-    const xml = await xmlRes.text();
-    if (xml && xml.includes("<text")) {
-      const segments = [...xml.matchAll(/<text[^>]*>([\s\S]*?)<\/text>/g)]
-        .map(m => m[1]
-          .replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">")
-          .replace(/&#39;/g, "'").replace(/&quot;/g, '"')
-          .replace(/<[^>]+>/g, "").trim())
-        .filter(Boolean);
-
-      if (segments.length > 0) {
-        const langNote = lang !== "en" ? ` [Language: ${lang}]` : "";
-        return `YouTube Video Transcript${langNote} (${url}):\n\n${segments.join(" ")}`;
-      }
-    }
-  }
-
-  throw new Error("Could not fetch transcript. YouTube is blocking server-side access. Please copy the transcript manually from YouTube and paste it in the Text section.");
+  console.error("All transcript fetching methods failed");
+  throw new Error("Could not fetch transcript. Please copy the transcript manually from YouTube and paste it in the Text section.");
 }
 
 function extractYouTubeId(url: string): string | null {
+  if (!url || typeof url !== 'string') return null;
+  
+  // Clean the URL
+  url = url.trim();
+  
   const patterns = [
-    /(?:youtube\.com\/watch\?v=|youtu\.be\/)([^&\n?#]+)/,
-    /youtube\.com\/embed\/([^&\n?#]+)/
+    /(?:youtube\.com\/watch\?v=)([a-zA-Z0-9_-]{11})/,
+    /(?:youtu\.be\/)([a-zA-Z0-9_-]{11})/,
+    /(?:youtube\.com\/embed\/)([a-zA-Z0-9_-]{11})/,
+    /(?:youtube\.com\/v\/)([a-zA-Z0-9_-]{11})/,
+    /(?:youtube\.com\/shorts\/)([a-zA-Z0-9_-]{11})/,
+    /^([a-zA-Z0-9_-]{11})$/  // Just the video ID
   ];
 
   for (const pattern of patterns) {
     const match = url.match(pattern);
-    if (match) return match[1];
+    if (match && match[1]) {
+      console.log(`Extracted video ID: ${match[1]} from URL: ${url}`);
+      return match[1];
+    }
   }
 
+  console.error(`No video ID found in URL: ${url}`);
   return null;
 }
