@@ -181,9 +181,24 @@ async function fetchYouTubeTranscript(url: string): Promise<string> {
 
   try {
     console.log("Trying youtube-transcript library...");
-    // Use youtube-transcript library
-    const YoutubeTranscript = require('youtube-transcript').YoutubeTranscript;
-    console.log("youtube-transcript module loaded successfully");
+    // Use youtube-transcript library - try different import methods
+    let YoutubeTranscript;
+    try {
+      const ytModule = require('youtube-transcript');
+      console.log("Module keys:", Object.keys(ytModule));
+      
+      // Try different ways to access the class
+      YoutubeTranscript = ytModule.YoutubeTranscript || ytModule.default?.YoutubeTranscript || ytModule;
+      
+      if (!YoutubeTranscript || !YoutubeTranscript.fetchTranscript) {
+        throw new Error("Could not find YoutubeTranscript.fetchTranscript method");
+      }
+      
+      console.log("youtube-transcript module loaded successfully");
+    } catch (importError: any) {
+      console.error("Failed to import youtube-transcript:", importError.message);
+      throw importError;
+    }
     
     const transcript = await YoutubeTranscript.fetchTranscript(videoId);
     console.log(`Transcript fetched! Segments count: ${transcript ? transcript.length : 0}`);
