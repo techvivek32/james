@@ -1,6 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import { connectMongo } from "../../../src/lib/mongodb";
 import { AiBotModel } from "../../../src/lib/models/AiBot";
+import { fetchYouTubeTranscriptWithPuppeteer, fetchYouTubeTranscriptFallback } from "../../../src/lib/youtubeTranscriptPuppeteer";
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   console.log("=== CRAWL API CALLED ===");
@@ -177,190 +178,52 @@ async function fetchYouTubeTranscript(url: string): Promise<string> {
   }
 
   console.log(`Video ID extracted: ${videoId}`);
-  console.log(`Attempting to fetch transcript for video ID: ${videoId}`);
+  console.log(`Attempting to fetch transcript using Puppeteer...`);
 
   try {
-    console.log("Trying youtube-transcript library...");
-    // Use youtube-transcript library - try different import methods
-    let YoutubeTranscript;
-    try {
-      const ytModule = require('youtube-transcript');
-      console.log("Module keys:", Object.keys(ytModule));
-      
-      // Try different ways to access the class
-      YoutubeTranscript = ytModule.YoutubeTranscript || ytModule.default?.YoutubeTranscript || ytModule;
-      
-      if (!YoutubeTranscript || !YoutubeTranscript.fetchTranscript) {
-        throw new Error("Could not find YoutubeTranscript.fetchTranscript method");
-      }
-      
-      console.log("youtube-transcript module loaded successfully");
-    } catch (importError: any) {
-      console.error("Failed to import youtube-transcript:", importError.message);
-      throw importError;
-    }
+    // Try Puppeteer method first (clicks transcript button)
+    const segments = await fetchYouTubeTranscriptWithPuppeteer(url);
     
-    const transcript = await YoutubeTranscript.fetchTranscript(videoId);
-    console.log(`Transcript fetched! Segments count: ${transcript ? transcript.length : 0}`);
-    
-    if (!transcript || transcript.length === 0) {
-      console.error("No transcript data returned from library");
-      throw new Error("No transcript data returned");
-    }
-
-    console.log(`Successfully fetched ${transcript.length} transcript segments`);
-    
-    // Combine all transcript segments into text
-    const text = transcript
-      .map((item: any) => item.text)
+    // Combine segments into text
+    const text = segments
+      .map(seg => seg.text)
       .join(" ")
       .replace(/\s+/g, " ")
       .trim();
 
     if (text.length === 0) {
-      console.error("Transcript text is empty after processing");
       throw new Error("Transcript is empty");
     }
 
-    console.log(`Final transcript length: ${text.length} characters`);
+    console.log(`Successfully extracted transcript, length: ${text.length} characters`);
     return `YouTube Video Transcript (${url}):\n\n${text}`;
   } catch (error: any) {
-    console.error("youtube-transcript library failed:");
-    console.error("Error name:", error.name);
-    console.error("Error message:", error.message);
-    console.error("Error stack:", error.stack);
+    console.error("Puppeteer method failed:", error.message);
+    console.log("Trying fallback method...");
     
-    // Check if it's a "no transcript" error from the library
-    if (error.message && (error.message.includes('Could not find captions') || error.message.includes('Transcript is disabled'))) {
-      console.log("Video has no captions available, trying fallback method...");
-      return await fetchYouTubeTranscriptFallback(videoId, url);
-    }
-    
-    // For other errors, try fallback
-    console.log("Attempting fallback method due to error...");
-    return await fetchYouTubeTranscriptFallback(videoId, url);
-  }
-}
-
-async function fetchYouTubeTranscriptFallback(videoId: string, url: string): Promise<string> {
-  console.log(`Using fallback method for video ID: ${videoId}`);
-
-  // Fetch YouTube page HTML to extract caption tracks
-  const pageRes = await fetch(`https://www.youtube.com/watch?v=${videoId}`, {
-    headers: {
-      "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120.0.0.0 Safari/537.36",
-      "Accept-Language": "en-US,en;q=0.9"
-    }
-  });
-
-  if (!pageRes.ok) {
-    console.error(`Failed to fetch YouTube page: ${pageRes.status} ${pageRes.statusText}`);
-    throw new Error(`Failed to fetch YouTube page: ${pageRes.statusText}`);
-  }
-
-  const html = await pageRes.text();
-  console.log(`Fetched YouTube page, HTML length: ${html.length}`);
-  
-  const playerMatch = html.match(/ytInitialPlayerResponse\s*=\s*(\{.+?\});\s*(?:var|const|let|window)/s);
-  
-  if (!playerMatch) {
-    console.error("Could not find ytInitialPlayerResponse in page HTML");
-    throw new Error("Could not extract player data from YouTube page. Please copy the transcript manually from YouTube and paste it in the Text section.");
-  }
-
-  console.log("Found ytInitialPlayerResponse");
-  const playerResponse = JSON.parse(playerMatch[1]);
-  const tracks = playerResponse?.captions?.playerCaptionsTracklistRenderer?.captionTracks;
-
-  if (!tracks || tracks.length === 0) {
-    console.error("No caption tracks found in player response");
-    throw new Error("No captions available for this video. Please enable captions on YouTube or copy the transcript manually.");
-  }
-
-  console.log(`Found ${tracks.length} caption tracks`);
-  return await downloadTranscript(videoId, tracks, url);
-}
-
-async function downloadTranscript(videoId: string, tracks: any[], url: string): Promise<string> {
-  // Prefer English, fallback to first available
-  const track = tracks.find((t: any) => t.languageCode === "en") || tracks[0];
-  const lang = track.languageCode || "en";
-  console.log(`Using caption track: ${lang}`);
-  console.log(`Track baseUrl:`, track.baseUrl);
-
-  // Use the baseUrl provided by YouTube (it includes authentication tokens)
-  if (track.baseUrl) {
-    // Decode HTML entities in the URL
-    const decodedUrl = track.baseUrl
-      .replace(/&amp;/g, "&")
-      .replace(/&lt;/g, "<")
-      .replace(/&gt;/g, ">")
-      .replace(/&quot;/g, '"')
-      .replace(/&#39;/g, "'");
-    
-    console.log(`Decoded URL: ${decodedUrl}`);
-    console.log(`Fetching transcript from track baseUrl`);
-    
-    const transcriptRes = await fetch(decodedUrl, {
-      headers: {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120.0.0.0 Safari/537.36",
-        "Referer": `https://www.youtube.com/watch?v=${videoId}`,
-        "Accept-Language": "en-US,en;q=0.9"
-      }
-    });
-
-    console.log(`Transcript response status: ${transcriptRes.status}`);
-
-    if (transcriptRes.ok) {
-      const raw = await transcriptRes.text();
-      console.log(`Transcript response length: ${raw.length}, starts with: ${raw.substring(0, 100)}`);
+    try {
+      // Fallback: Extract from page source
+      const segments = await fetchYouTubeTranscriptFallback(url);
       
-      // Try JSON3 format first
-      if (raw && raw.trim().startsWith("{")) {
-        try {
-          const json = JSON.parse(raw);
-          const events = json?.events || [];
-          console.log(`Parsed JSON, found ${events.length} events`);
-          
-          const text = events
-            .filter((e: any) => e.segs)
-            .flatMap((e: any) => e.segs.map((s: any) => s.utf8 || ""))
-            .filter((s: string) => s.trim() && s.trim() !== "\n")
-            .join(" ")
-            .replace(/\s+/g, " ")
-            .trim();
+      const text = segments
+        .map(seg => seg.text)
+        .join(" ")
+        .replace(/\s+/g, " ")
+        .trim();
 
-          if (text.length > 0) {
-            console.log(`Successfully extracted transcript, length: ${text.length}`);
-            const langNote = lang !== "en" ? ` [Language: ${lang}]` : "";
-            return `YouTube Video Transcript${langNote} (${url}):\n\n${text}`;
-          }
-        } catch (e) {
-          console.error("Failed to parse JSON format:", e);
-        }
+      if (text.length === 0) {
+        throw new Error("Transcript is empty");
       }
-      
-      // Try XML format
-      if (raw && raw.includes("<text")) {
-        console.log("Trying XML format");
-        const segments = [...raw.matchAll(/<text[^>]*>([\s\S]*?)<\/text>/g)]
-          .map(m => m[1]
-            .replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">")
-            .replace(/&#39;/g, "'").replace(/&quot;/g, '"')
-            .replace(/<[^>]+>/g, "").trim())
-          .filter(Boolean);
 
-        if (segments.length > 0) {
-          console.log(`Successfully extracted ${segments.length} XML segments`);
-          const langNote = lang !== "en" ? ` [Language: ${lang}]` : "";
-          return `YouTube Video Transcript${langNote} (${url}):\n\n${segments.join(" ")}`;
-        }
-      }
+      console.log(`Fallback successful, length: ${text.length} characters`);
+      return `YouTube Video Transcript (${url}):\n\n${text}`;
+    } catch (fallbackError: any) {
+      console.error("Fallback method also failed:", fallbackError.message);
+      throw new Error(
+        "Could not fetch transcript. Please ensure the video has captions enabled or copy the transcript manually from YouTube."
+      );
     }
   }
-
-  console.error("All transcript fetching methods failed");
-  throw new Error("Could not fetch transcript. Please copy the transcript manually from YouTube and paste it in the Text section.");
 }
 
 function extractYouTubeId(url: string): string | null {
