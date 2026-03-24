@@ -3,6 +3,10 @@ import { connectMongo } from "../../../src/lib/mongodb";
 import { AiBotModel } from "../../../src/lib/models/AiBot";
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+  console.log("=== CRAWL API CALLED ===");
+  console.log("Method:", req.method);
+  console.log("Body:", JSON.stringify(req.body));
+  
   if (req.method !== "POST") {
     res.setHeader("Allow", "POST");
     return res.status(405).end();
@@ -10,26 +14,43 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   await connectMongo();
   const { botId, url, type } = req.body;
+  console.log(`Processing: botId=${botId}, url=${url}, type=${type}`);
 
-  if (!botId || !url) return res.status(400).json({ error: "Missing botId or url" });
+  if (!botId || !url) {
+    console.error("Missing required fields");
+    return res.status(400).json({ error: "Missing botId or url" });
+  }
 
   const bot = await AiBotModel.findOne({ id: botId });
-  if (!bot) return res.status(404).json({ error: "Bot not found" });
+  if (!bot) {
+    console.error("Bot not found:", botId);
+    return res.status(404).json({ error: "Bot not found" });
+  }
+  console.log("Bot found:", bot.name);
 
   try {
     let content = "";
+    console.log(`Starting content fetch for type: ${type}`);
 
     if (type === "youtube") {
+      console.log("Calling fetchYouTubeTranscript...");
       content = await fetchYouTubeTranscript(url);
+      console.log(`YouTube transcript fetched, length: ${content.length}`);
     } else if (type === "pdf") {
+      console.log("Calling fetchPdfContent...");
       content = await fetchPdfContent(url);
     } else if (type === "word-doc") {
+      console.log("Calling fetchWordContent...");
       content = await fetchWordContent(url);
     } else if (type === "excel-csv") {
+      console.log("Calling fetchExcelContent...");
       content = await fetchExcelContent(url);
     } else {
+      console.log("Calling fetchWebContent...");
       content = await fetchWebContent(url, type === "full-website");
     }
+
+    console.log(`Content fetched successfully, length: ${content.length}`);
 
     const newLink = {
       id: `link-${Date.now()}`,
@@ -42,11 +63,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     bot.trainingLinks = bot.trainingLinks || [];
     bot.trainingLinks.push(newLink);
     bot.trainingText = (bot.trainingText || "") + `\n\n[Source: ${url}]\n${content}`;
+    
+    console.log("Saving bot with new training data...");
     await bot.save();
+    console.log("Bot saved successfully");
 
     return res.status(200).json({ link: newLink, extractedChars: content.length });
   } catch (error: any) {
-    console.error("Crawl error:", error);
+    console.error("=== CRAWL ERROR ===");
+    console.error("Error message:", error.message);
+    console.error("Error stack:", error.stack);
 
     const failedLink = {
       id: `link-${Date.now()}`,
@@ -142,20 +168,28 @@ async function fetchExcelContent(url: string): Promise<string> {
 }
 
 async function fetchYouTubeTranscript(url: string): Promise<string> {
+  console.log(">>> fetchYouTubeTranscript called with URL:", url);
+  
   const videoId = extractYouTubeId(url);
   if (!videoId) {
     console.error("Failed to extract video ID from URL:", url);
     throw new Error(`Invalid YouTube URL: ${url}`);
   }
 
-  console.log(`Fetching transcript for video ID: ${videoId}`);
+  console.log(`Video ID extracted: ${videoId}`);
+  console.log(`Attempting to fetch transcript for video ID: ${videoId}`);
 
   try {
+    console.log("Trying youtube-transcript library...");
     // Use youtube-transcript library
     const YoutubeTranscript = require('youtube-transcript').YoutubeTranscript;
+    console.log("youtube-transcript module loaded successfully");
+    
     const transcript = await YoutubeTranscript.fetchTranscript(videoId);
+    console.log(`Transcript fetched! Segments count: ${transcript ? transcript.length : 0}`);
     
     if (!transcript || transcript.length === 0) {
+      console.error("No transcript data returned from library");
       throw new Error("No transcript data returned");
     }
 
@@ -169,16 +203,20 @@ async function fetchYouTubeTranscript(url: string): Promise<string> {
       .trim();
 
     if (text.length === 0) {
+      console.error("Transcript text is empty after processing");
       throw new Error("Transcript is empty");
     }
 
-    console.log(`Transcript length: ${text.length} characters`);
+    console.log(`Final transcript length: ${text.length} characters`);
     return `YouTube Video Transcript (${url}):\n\n${text}`;
   } catch (error: any) {
-    console.error("youtube-transcript library failed:", error.message);
+    console.error("youtube-transcript library failed:");
+    console.error("Error name:", error.name);
+    console.error("Error message:", error.message);
+    console.error("Error stack:", error.stack);
     
     // Fallback to manual scraping method
-    console.log("Trying fallback method...");
+    console.log("Attempting fallback method...");
     return await fetchYouTubeTranscriptFallback(videoId, url);
   }
 }

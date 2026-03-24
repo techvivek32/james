@@ -1103,6 +1103,11 @@ function LinksPanel({ bot, onSave, saving }: { bot: AiBot; onSave: (u: Partial<A
   async function addLink() {
     if (!url.trim() || crawling) return;
     const trimmedUrl = url.trim();
+    console.log("=== FRONTEND: Starting crawl ===");
+    console.log("URL:", trimmedUrl);
+    console.log("Type:", urlType);
+    console.log("Bot ID:", bot.id);
+    
     setUrl("");
     setCrawling(true);
 
@@ -1112,18 +1117,32 @@ function LinksPanel({ bot, onSave, saving }: { bot: AiBot; onSave: (u: Partial<A
     setLinks(prev => [...prev, pendingLink]);
 
     try {
+      console.log("Sending request to /api/ai-bots/crawl...");
       const res = await fetch("/api/ai-bots/crawl", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ botId: bot.id, url: trimmedUrl, type: urlType })
       });
+      console.log("Response status:", res.status);
+      
       const data = await res.json();
+      console.log("Response data:", data);
+      
       // Replace pending with real result
       setLinks(prev => prev.map(l => l.id === tempId ? data.link : l));
-    } catch {
+      
+      if (data.error) {
+        console.error("Crawl returned error:", data.error);
+      } else {
+        console.log("Crawl successful! Extracted chars:", data.extractedChars);
+      }
+    } catch (error) {
+      console.error("=== FRONTEND: Crawl failed ===");
+      console.error("Error:", error);
       setLinks(prev => prev.map(l => l.id === tempId ? { ...l, status: "failed" } : l));
     } finally {
       setCrawling(false);
+      console.log("=== FRONTEND: Crawl complete ===");
     }
   }
 
