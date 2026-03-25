@@ -746,7 +746,7 @@ export function CourseManagement(props: CourseEditorProps) {
     const newPage: CoursePage = {
       id: `page-${Date.now()}`,
       title: isQuiz ? "New quiz" : "New Lesson",
-      status: "draft",
+      status: "published",
       body: "",
       folderId,
       videoUrl: "",
