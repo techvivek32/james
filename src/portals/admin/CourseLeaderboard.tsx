@@ -245,7 +245,7 @@ export function CourseLeaderboard() {
       {/* Leaderboard card */}
       <div style={{
         background: "#fff", border: "1px solid #e5e7eb",
-        borderRadius: 12, overflow: "hidden",
+        borderRadius: 12,
         boxShadow: "0 1px 4px rgba(0,0,0,0.05)",
         position: "relative",
       }}>
