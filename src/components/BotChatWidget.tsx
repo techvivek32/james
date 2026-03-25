@@ -20,6 +20,10 @@ type AiBot = {
   immediatelyOpenChat: boolean;
   displayMessage: string;
   displayMessageEnabled: boolean;
+  privacyPolicyEnabled: boolean;
+  privacyActionText: string;
+  privacyLinkText: string;
+  privacyLink: string;
 };
 type Attachment = { name: string; url: string; type: string };
 type Message = { role: "user" | "assistant"; content: string; attachments?: Attachment[]; timestamp?: string };
@@ -381,7 +385,12 @@ export function BotChatWidget({ role }: { role: string }) {
               <button onClick={() => send()} disabled={loading || (!input.trim() && attachments.length === 0)}
                 style={{ width: 34, height: 34, borderRadius: "50%", border: "none", cursor: loading || (!input.trim() && attachments.length === 0) ? "not-allowed" : "pointer", background: loading || (!input.trim() && attachments.length === 0) ? "#e5e7eb" : theme, color: loading || (!input.trim() && attachments.length === 0) ? "#9ca3af" : "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "16px", flexShrink: 0, transition: "background 0.15s" }}>↑</button>
             </div>
-            <div style={{ textAlign: "center", fontSize: "11px", color: "#d1d5db", marginTop: "8px" }}>Enter to send · Shift+Enter for new line</div>
+            <div style={{ textAlign: "center", fontSize: "11px", color: "#d1d5db", marginTop: "8px" }}>
+              <span>Powered by <strong style={{ color: "#9ca3af" }}>MillerStorm</strong></span>
+              {selectedBot?.privacyPolicyEnabled && selectedBot?.privacyLink && (
+                <span> | {selectedBot.privacyActionText || "Read our"} <a href={selectedBot.privacyLink} target="_blank" rel="noopener noreferrer" style={{ color: "#6b7280", textDecoration: "underline" }}>{selectedBot.privacyLinkText || "Privacy Policy"}</a></span>
+              )}
+            </div>
           </div>
         </div>
       </div>
