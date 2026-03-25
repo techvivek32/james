@@ -436,9 +436,9 @@ export function CourseLeaderboard() {
               transition: "all 0.2s",
             }}
             onMouseEnter={e => {
-              e.currentTarget.style.color = "#fff";
-              e.currentTarget.style.background = "#2563eb";
-              e.currentTarget.style.borderColor = "#2563eb";
+              e.currentTarget.style.color = "#9ca3af";
+              e.currentTarget.style.background = "transparent";
+              e.currentTarget.style.borderColor = "#d1d5db";
             }}
             onMouseLeave={e => {
               e.currentTarget.style.color = "#9ca3af";
