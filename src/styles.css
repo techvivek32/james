@@ -483,6 +483,15 @@ body {
 
 .panel-left {
   width: 280px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.panel-left .panel-body {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
 }
 
 .panel-right {
