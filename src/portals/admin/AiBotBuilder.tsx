@@ -498,12 +498,6 @@ function OverviewPanel({ bot }: { bot: AiBot }) {
       corner: "💬",
     },
     {
-      icon: "👥",
-      label: "Leads",
-      values: [{ num: 0, sub: "Generated" }],
-      corner: "⚙️",
-    },
-    {
       icon: "📝",
       label: "Training",
       values: [{ num: `${totalChars.toLocaleString()} / 1M`, sub: "Characters used" }],
@@ -515,8 +509,8 @@ function OverviewPanel({ bot }: { bot: AiBot }) {
     <div style={{ padding: "32px" }} className="bot-panel-padding">
       <h2 style={{ fontSize: "22px", fontWeight: 700, marginBottom: "24px", color: "#1f2937" }}>Overview</h2>
 
-      {/* 2×2 stat grid */}
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px", marginBottom: "20px" }}>
+      {/* 3 stat cards in one row */}
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "16px", marginBottom: "20px" }}>
         {statCards.map((card, ci) => (
           <div key={ci} style={{ background: "#fff", borderRadius: "14px", padding: "22px 24px", border: "1px solid #e5e7eb", position: "relative", minHeight: "120px" }}>
             {/* corner icon */}
@@ -1053,21 +1047,22 @@ function ChatHistoryPanel({ bot }: { bot: AiBot }) {
     );
   }
 
+  const thStyle: React.CSSProperties = { padding: "10px 14px", textAlign: "left", fontSize: "11px", fontWeight: 700, color: "#9ca3af", letterSpacing: "0.07em", textTransform: "uppercase", borderBottom: "1px solid #e5e7eb", whiteSpace: "nowrap" };
+  const tdStyle: React.CSSProperties = { padding: "12px 14px", fontSize: "13px", color: "#374151", borderBottom: "1px solid #f3f4f6", verticalAlign: "middle" };
+
   return (
     <div style={{ padding: "32px" }} className="bot-panel-padding">
       <h2 style={{ fontSize: "20px", fontWeight: 700, marginBottom: "8px" }}>Chat History</h2>
       <p style={{ color: "#6b7280", fontSize: "14px", marginBottom: "24px" }}>All conversations with this bot</p>
 
+      {/* Filters */}
       <div style={{ display: "flex", gap: "12px", marginBottom: "20px", flexWrap: "wrap", alignItems: "center" }}>
         <input
           value={search} onChange={e => setSearch(e.target.value)}
-          placeholder="Search..."
-          style={{ width: "320px", padding: "9px 12px", border: "1px solid #e5e7eb", borderRadius: "8px", fontSize: "13px", outline: "none" }}
+          placeholder="Search by user, email or title..."
+          style={{ width: "280px", padding: "9px 12px", border: "1px solid #e5e7eb", borderRadius: "8px", fontSize: "13px", outline: "none" }}
         />
-        <DateRangePicker
-          from={dateFrom} to={dateTo}
-          onChange={(f, t) => { setDateFrom(f); setDateTo(t); }}
-        />
+        <DateRangePicker from={dateFrom} to={dateTo} onChange={(f, t) => { setDateFrom(f); setDateTo(t); }} />
         {(dateFrom || dateTo) && (
           <button onClick={() => { setDateFrom(null); setDateTo(null); }}
             style={{ padding: "9px 14px", border: "1px solid #e5e7eb", borderRadius: "8px", background: "#fff", cursor: "pointer", fontSize: "13px", color: "#6b7280" }}>
@@ -1075,12 +1070,14 @@ function ChatHistoryPanel({ bot }: { bot: AiBot }) {
           </button>
         )}
         <select value={roleFilter} onChange={e => setRoleFilter(e.target.value)}
-          style={{ padding: "10px 14px", border: "1px solid #e5e7eb", borderRadius: "8px", fontSize: "14px", background: "#fff", cursor: "pointer" }}>
+          style={{ padding: "9px 14px", border: "1px solid #e5e7eb", borderRadius: "8px", fontSize: "13px", background: "#fff", cursor: "pointer" }}>
           <option value="all">All Roles</option>
+          <option value="admin">Admin</option>
           <option value="manager">Manager</option>
           <option value="sales">Sales</option>
           <option value="marketing">Marketing</option>
         </select>
+        <span style={{ fontSize: "13px", color: "#6b7280", marginLeft: "auto" }}>{filtered.length} total items</span>
       </div>
 
       {loading ? (
@@ -1092,26 +1089,68 @@ function ChatHistoryPanel({ bot }: { bot: AiBot }) {
           <div style={{ fontSize: "14px", marginTop: "8px" }}>Chats will appear here once users start talking to this bot</div>
         </div>
       ) : (
-        <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
-          {filtered.map(chat => (
-            <div key={chat.chatId} onClick={() => setSelectedChat(chat)} style={{
-              background: "#fff", borderRadius: "10px", padding: "16px 20px", border: "1px solid #e5e7eb",
-              cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center"
-            }}>
-              <div>
-                <div style={{ fontWeight: 600, fontSize: "14px", marginBottom: "4px" }}>{chat.title}</div>
-                <div style={{ fontSize: "12px", color: "#6b7280", display: "flex", gap: "12px" }}>
-                  <span>👤 {chat.userName}</span>
-                  <span>✉️ {chat.userEmail}</span>
-                  <span style={{ textTransform: "capitalize", background: "#f3f4f6", padding: "1px 8px", borderRadius: "10px" }}>{chat.userRole}</span>
-                </div>
-              </div>
-              <div style={{ fontSize: "12px", color: "#9ca3af", textAlign: "right" }}>
-                <div>{chat.messages?.length || 0} messages</div>
-                <div>{new Date(chat.updatedAt).toLocaleDateString()}</div>
-              </div>
-            </div>
-          ))}
+        <div style={{ background: "#fff", borderRadius: "12px", border: "1px solid #e5e7eb", overflow: "hidden" }}>
+          <div style={{ overflowX: "auto" }}>
+            <table style={{ width: "100%", borderCollapse: "collapse" }}>
+              <thead style={{ background: "#f8fafc" }}>
+                <tr>
+                  <th style={{ ...thStyle, width: 36 }}><input type="checkbox" /></th>
+                  <th style={thStyle}>Started</th>
+                  <th style={thStyle}>Last Message</th>
+                  <th style={thStyle}>User</th>
+                  <th style={thStyle}>Role</th>
+                  <th style={thStyle}>Language</th>
+                  <th style={thStyle}>Model</th>
+                  <th style={thStyle}>Messages</th>
+                  <th style={thStyle}>Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filtered.map((chat, idx) => {
+                  const lastMsg = chat.messages?.[chat.messages.length - 1];
+                  const lastContent = lastMsg?.content?.substring(0, 40) + (lastMsg?.content?.length > 40 ? "..." : "") || "-";
+                  const roleColor: Record<string, string> = { admin: "#f3f4f6", manager: "#ede9fe", sales: "#dbeafe", marketing: "#dcfce7" };
+                  const roleText: Record<string, string> = { admin: "#374151", manager: "#6d28d9", sales: "#1d4ed8", marketing: "#15803d" };
+                  return (
+                    <tr key={chat.chatId} style={{ background: idx % 2 === 0 ? "#fff" : "#fafafa" }}
+                      onMouseEnter={e => (e.currentTarget.style.background = "#f0f9ff")}
+                      onMouseLeave={e => (e.currentTarget.style.background = idx % 2 === 0 ? "#fff" : "#fafafa")}>
+                      <td style={tdStyle}><input type="checkbox" /></td>
+                      <td style={tdStyle}>
+                        <div style={{ fontSize: "13px" }}>{new Date(chat.updatedAt).toLocaleDateString("en-US", { month: "short", day: "numeric" })}</div>
+                        <div style={{ fontSize: "11px", color: "#9ca3af" }}>{new Date(chat.updatedAt).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })}</div>
+                      </td>
+                      <td style={{ ...tdStyle, maxWidth: "220px" }}>
+                        <div style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", color: "#374151" }}>{lastContent}</div>
+                      </td>
+                      <td style={tdStyle}>
+                        <div style={{ fontWeight: 600, fontSize: "13px" }}>{chat.userName || "-"}</div>
+                        <div style={{ fontSize: "11px", color: "#9ca3af" }}>{chat.userEmail || ""}</div>
+                      </td>
+                      <td style={tdStyle}>
+                        <span style={{ padding: "2px 10px", borderRadius: "20px", fontSize: "11px", fontWeight: 600, background: roleColor[chat.userRole] || "#f3f4f6", color: roleText[chat.userRole] || "#374151", textTransform: "capitalize" }}>
+                          {chat.userRole || "-"}
+                        </span>
+                      </td>
+                      <td style={tdStyle}><span style={{ fontSize: "12px", color: "#6b7280" }}>English</span></td>
+                      <td style={tdStyle}>
+                        <span style={{ display: "flex", alignItems: "center", gap: "5px", fontSize: "12px", fontWeight: 600, color: "#374151" }}>
+                          🤖 {bot.model || "gpt-4o-mini"}
+                        </span>
+                      </td>
+                      <td style={tdStyle}>{chat.messages?.length || 0}</td>
+                      <td style={tdStyle}>
+                        <button onClick={() => setSelectedChat(chat)}
+                          style={{ padding: "5px 12px", borderRadius: "6px", border: "1px solid #e5e7eb", background: "#fff", cursor: "pointer", fontSize: "12px", color: "#374151", fontWeight: 500 }}>
+                          View
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
     </div>
@@ -1471,8 +1510,6 @@ function QAPanel({ bot, onSave, saving }: { bot: AiBot; onSave: (u: Partial<AiBo
 
 const DEFAULT_PROMPTS: Record<string, string> = {
   "General Customer Service": `Chatbot Role and Function\n\nYou are a customer service chatbot for [Company Name]. Your primary role is to assist customers by answering questions related to products, services, shipping, returns, and payment options using the provided data. When asked about product details, shipping times, or return policies, respond based on the available information. If the necessary details are not covered in the provided data, respond with:\n\n"Apologies, I do not have that information. Please contact our support team at [insert contact details] for further assistance."\n\nGuidelines and Restrictions\n\nData Reliance: Only use the provided data to answer questions. Do not explicitly mention users that you are relying on this data.\nStay Focused: If users try to divert the conversation to unrelated topics, politely redirect them to queries relevant to customer service and sales.`,
-  "Sales Assistant": `You are a sales assistant. Your role is to help prospects understand our products and services, answer questions, and guide them toward making a purchase decision. Be helpful, professional, and persuasive without being pushy.`,
-  "Marketing Assistant": `You are a marketing assistant. Help with campaign ideas, copywriting, content strategy, and brand messaging. Be creative, data-driven, and aligned with our brand voice.`,
 };
 
 function TunePanel({ bot, onSave, saving }: { bot: AiBot; onSave: (u: Partial<AiBot>) => void; saving: boolean }) {
