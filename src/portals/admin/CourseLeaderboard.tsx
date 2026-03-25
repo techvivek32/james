@@ -429,8 +429,8 @@ export function CourseLeaderboard() {
             onClick={openOverride}
             style={{
               padding: "6px 14px", borderRadius: 6,
-              border: "1px solid #111827", boxShadow: "none",
-              background: "transparent", color: "#111827",
+              border: "1px solid #d1d5db", boxShadow: "none",
+              background: "transparent", color: "#9ca3af",
               cursor: "pointer", fontSize: 12, fontWeight: 600,
               userSelect: "none", outline: "none",
               transition: "all 0.2s",
@@ -441,9 +441,9 @@ export function CourseLeaderboard() {
               e.currentTarget.style.borderColor = "#2563eb";
             }}
             onMouseLeave={e => {
-              e.currentTarget.style.color = "#111827";
+              e.currentTarget.style.color = "#9ca3af";
               e.currentTarget.style.background = "transparent";
-              e.currentTarget.style.borderColor = "#111827";
+              e.currentTarget.style.borderColor = "#d1d5db";
             }}
           >
             ⚙ Override
