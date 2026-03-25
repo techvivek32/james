@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/router";
 import dynamic from "next/dynamic";
+import { useAuth } from "../../contexts/AuthContext";
 
 const WorldMap = dynamic(() => import("../../components/WorldMap"), { ssr: false, loading: () => <div style={{ width: "100%", height: "100%", background: "#f3f4f6", borderRadius: "8px", display: "flex", alignItems: "center", justifyContent: "center", color: "#9ca3af", fontSize: "13px" }}>Loading map...</div> });
 
@@ -60,12 +61,21 @@ type AiBot = {
   allowedDomains: string;
   passwordProtection: boolean;
   teamMembers: string[];
+  teamMemberAccess: Record<string, string[]>;
 };
 
 type BotView = "overview" | "chat-history" | "live-chat" | "links" | "text" | "qa" | "tune" | "test" | "appearance" | "deploy" | "settings";
 
 export function AiBotBuilder() {
   const router = useRouter();
+  const { user } = useAuth();
+  const isAdmin = user?.role === "admin";
+
+  // Base path depends on user role
+  const basePath = user?.role === "manager" ? "/manager/ai-bot-builder"
+    : user?.role === "sales" ? "/sales/ai-bot-builder"
+    : user?.role === "marketing" ? "/marketing/ai-bot-builder"
+    : "/admin/ai-bots";
   const [bots, setBots] = useState<AiBot[]>([]);
   const [selectedBot, setSelectedBot] = useState<AiBot | null>(null);
   const [activeView, setActiveView] = useState<BotView>("links");
@@ -90,7 +100,7 @@ export function AiBotBuilder() {
         setActiveView((view as BotView) || "links");
       } else {
         // Bot not found — clear URL and stay on list
-        router.replace("/admin/ai-bots", undefined, { shallow: true });
+        router.replace(basePath, undefined, { shallow: true });
       }
     }
   }, [botsLoaded]);
@@ -98,8 +108,10 @@ export function AiBotBuilder() {
   async function loadBots() {
     const res = await fetch("/api/ai-bots");
     if (res.ok) {
-      const data = await res.json();
-      setBots(data);
+      const data: AiBot[] = await res.json();
+      // Non-admin: only show bots where user is explicitly a team member
+      const filtered = isAdmin ? data : data.filter(b => b.teamMembers?.includes(user?.id || ""));
+      setBots(filtered);
       setBotsLoaded(true);
     }
   }
@@ -107,19 +119,19 @@ export function AiBotBuilder() {
   function selectBot(bot: AiBot, view: BotView = "links") {
     setSelectedBot(bot);
     setActiveView(view);
-    router.push(`/admin/ai-bots?bot=${bot.id}&view=${view}`, undefined, { shallow: true });
+    router.push(`${basePath}?bot=${bot.id}&view=${view}`, undefined, { shallow: true });
   }
 
   function changeView(view: BotView) {
     setActiveView(view);
     if (selectedBot) {
-      router.push(`/admin/ai-bots?bot=${selectedBot.id}&view=${view}`, undefined, { shallow: true });
+      router.push(`${basePath}?bot=${selectedBot.id}&view=${view}`, undefined, { shallow: true });
     }
   }
 
   function goBack() {
     setSelectedBot(null);
-    router.push("/admin/ai-bots", undefined, { shallow: true });
+    router.push(basePath, undefined, { shallow: true });
   }
 
   async function createBot() {
@@ -165,6 +177,11 @@ export function AiBotBuilder() {
   }
 
   if (selectedBot) {
+    // Determine allowed modules for this user — non-admin gets only what admin assigned
+    const allowedModules: string[] = isAdmin
+      ? ["overview", "chat-history", "live-chat", "links", "text", "qa", "tune", "test", "appearance", "deploy", "settings"]
+      : (selectedBot.teamMemberAccess?.[user?.id || ""] || []);
+
     return (
       <BotDetailView
         bot={selectedBot}
@@ -173,6 +190,8 @@ export function AiBotBuilder() {
         onSave={saveBot}
         saving={saving}
         onBack={goBack}
+        isAdmin={isAdmin}
+        allowedModules={allowedModules}
         onDeleteBot={(botId) => {
           setBots(prev => prev.filter(b => b.id !== botId));
           goBack();
@@ -188,17 +207,28 @@ export function AiBotBuilder() {
           <h2 style={{ fontSize: "22px", fontWeight: 700, margin: 0 }}>My Bots</h2>
           <p style={{ color: "#6b7280", margin: "4px 0 0", fontSize: "14px" }}>Build and manage your AI chatbots</p>
         </div>
-        <button onClick={() => setShowCreateModal(true)} style={btnPrimary}>
-          + Create New Bot
-        </button>
+        {isAdmin && (
+          <button onClick={() => setShowCreateModal(true)} style={btnPrimary}>
+            + Create New Bot
+          </button>
+        )}
       </div>
 
       {bots.length === 0 ? (
         <div style={{ textAlign: "center", padding: "80px 20px", color: "#9ca3af" }}>
           <div style={{ fontSize: "56px", marginBottom: "16px" }}>🤖</div>
-          <div style={{ fontSize: "18px", fontWeight: 600, color: "#374151", marginBottom: "8px" }}>No bots yet</div>
-          <div style={{ fontSize: "14px", marginBottom: "24px" }}>Create your first AI bot to get started</div>
-          <button onClick={() => setShowCreateModal(true)} style={btnPrimary}>Create New Bot</button>
+          {isAdmin ? (
+            <>
+              <div style={{ fontSize: "18px", fontWeight: 600, color: "#374151", marginBottom: "8px" }}>No bots yet</div>
+              <div style={{ fontSize: "14px", marginBottom: "24px" }}>Create your first AI bot to get started</div>
+              <button onClick={() => setShowCreateModal(true)} style={btnPrimary}>Create New Bot</button>
+            </>
+          ) : (
+            <>
+              <div style={{ fontSize: "18px", fontWeight: 600, color: "#374151", marginBottom: "8px" }}>No bots assigned</div>
+              <div style={{ fontSize: "14px" }}>Ask your admin to assign you to a bot</div>
+            </>
+          )}
         </div>
       ) : (
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: "16px" }}>
@@ -220,7 +250,7 @@ export function AiBotBuilder() {
                 </div>
                 <button
                   onClick={e => { e.stopPropagation(); deleteBot(bot.id); }}
-                  style={{ background: "none", border: "none", cursor: "pointer", color: "#ef4444", fontSize: "16px", padding: "4px" }}
+                  style={{ background: "none", border: "none", cursor: "pointer", color: "#ef4444", fontSize: "16px", padding: "4px", display: isAdmin ? "block" : "none" }}
                 >
                   🗑
                 </button>
@@ -266,7 +296,7 @@ export function AiBotBuilder() {
 
 // ─── Bot Detail View ────────────────────────────────────────────────────────
 
-function BotDetailView({ bot, activeView, setActiveView, onSave, saving, onBack, onDeleteBot }: {
+function BotDetailView({ bot, activeView, setActiveView, onSave, saving, onBack, onDeleteBot, isAdmin, allowedModules }: {
   bot: AiBot;
   activeView: BotView;
   setActiveView: (v: BotView) => void;
@@ -274,6 +304,8 @@ function BotDetailView({ bot, activeView, setActiveView, onSave, saving, onBack,
   saving: boolean;
   onBack: () => void;
   onDeleteBot: (botId: string) => void;
+  isAdmin: boolean;
+  allowedModules: string[];
 }) {
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
 
@@ -289,7 +321,7 @@ function BotDetailView({ bot, activeView, setActiveView, onSave, saving, onBack,
     { id: "appearance",    label: "Appearance",    icon: "🎨", section: "DEPLOYMENT" },
     { id: "deploy",        label: "Deploy",        icon: "🚀" },
     { id: "settings",      label: "Settings",      icon: "🔧", section: "ADVANCED" },
-  ];
+  ].filter(item => allowedModules.includes(item.id));
 
   const activeItem = navItems.find(n => n.id === activeView);
 
@@ -2234,12 +2266,28 @@ function SettingsPanel({ bot, onSave, saving, onDelete }: { bot: AiBot; onSave: 
   const [allowedDomains, setAllowedDomains] = useState(bot.allowedDomains || "");
   const [timezone, setTimezone] = useState(bot.timezone || "UTC+05:30 New Delhi, Mumbai, Chennai");
   const [passwordProtection, setPasswordProtection] = useState(bot.passwordProtection ?? false);
-  const [teamMemberEmail, setTeamMemberEmail] = useState("");
   const [teamMembers, setTeamMembers] = useState<string[]>(bot.teamMembers || []);
+  const [teamMemberAccess, setTeamMemberAccess] = useState<Record<string, string[]>>(bot.teamMemberAccess || {});
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [allUsers, setAllUsers] = useState<{ id: string; name: string; email: string; role: string }[]>([]);
+  const [userSearch, setUserSearch] = useState("");
+  const [showUserDropdown, setShowUserDropdown] = useState(false);
+  const [editingAccessFor, setEditingAccessFor] = useState<string | null>(null);
+  const [draftAccess, setDraftAccess] = useState<string[]>([]);
+  const dropdownRef = useRef<HTMLDivElement>(null);
 
-  // Re-sync when bot prop updates (e.g. after name save)
+  const ALL_MODULES = [
+    { id: "links",      label: "Links / Docs" },
+    { id: "text",       label: "Text" },
+    { id: "qa",         label: "Q&A" },
+    { id: "live-chat",  label: "Live Chat" },
+    { id: "tune",       label: "Tune AI" },
+    { id: "test",       label: "Test Your Bot" },
+    { id: "appearance", label: "Appearance" },
+    { id: "deploy",     label: "Deploy" },
+  ];
+
   const prevSIdRef = useRef<string>("");
   useEffect(() => {
     if (prevSIdRef.current === bot.id) return;
@@ -2252,21 +2300,49 @@ function SettingsPanel({ bot, onSave, saving, onDelete }: { bot: AiBot; onSave: 
     setTimezone(bot.timezone || "UTC+05:30 New Delhi, Mumbai, Chennai");
     setPasswordProtection(bot.passwordProtection ?? false);
     setTeamMembers(bot.teamMembers || []);
+    setTeamMemberAccess(bot.teamMemberAccess || {});
   }, [bot.id]);
 
-  function addTeamMember() {
-    const email = teamMemberEmail.trim();
-    if (!email || teamMembers.includes(email)) return;
-    const updated = [...teamMembers, email];
-    setTeamMembers(updated);
-    setTeamMemberEmail("");
-    onSave({ teamMembers: updated });
+  // Load users once
+  useEffect(() => {
+    fetch("/api/users").then(r => r.ok ? r.json() : []).then(data => {
+      setAllUsers(data.filter((u: any) => u.role !== "admin"));
+    });
+  }, []);
+
+  // Close dropdown on outside click
+  useEffect(() => {
+    function handleClick(e: MouseEvent) {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node))
+        setShowUserDropdown(false);
+    }
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, []);
+
+  const filteredUsers = allUsers.filter(u =>
+    !teamMembers.includes(u.id) &&
+    (u.name?.toLowerCase().includes(userSearch.toLowerCase()) ||
+     u.email?.toLowerCase().includes(userSearch.toLowerCase()))
+  );
+
+  function addTeamMember(user: { id: string; name: string; email: string; role: string }) {
+    const updatedMembers = [...teamMembers, user.id];
+    const updatedAccess = { ...teamMemberAccess, [user.id]: ALL_MODULES.map(m => m.id) };
+    setTeamMembers(updatedMembers);
+    setTeamMemberAccess(updatedAccess);
+    setUserSearch("");
+    setShowUserDropdown(false);
+    onSave({ teamMembers: updatedMembers, teamMemberAccess: updatedAccess });
   }
 
-  function removeTeamMember(email: string) {
-    const updated = teamMembers.filter(e => e !== email);
-    setTeamMembers(updated);
-    onSave({ teamMembers: updated });
+  function removeTeamMember(userId: string) {
+    const updatedMembers = teamMembers.filter(id => id !== userId);
+    const updatedAccess = { ...teamMemberAccess };
+    delete updatedAccess[userId];
+    setTeamMembers(updatedMembers);
+    setTeamMemberAccess(updatedAccess);
+    onSave({ teamMembers: updatedMembers, teamMemberAccess: updatedAccess });
   }
 
   async function handleDelete() {
@@ -2383,30 +2459,131 @@ function SettingsPanel({ bot, onSave, saving, onDelete }: { bot: AiBot; onSave: 
           <span style={{ fontSize: "18px" }}>👥</span>
           <div style={{ fontWeight: 700, fontSize: "15px" }}>Team Members</div>
         </div>
-        <p style={{ fontSize: "13px", color: "#6b7280", marginBottom: "16px" }}>Add team members to help manage this chatbot. Enter their email below and click the plus icon.</p>
-        <div style={{ display: "flex", gap: "8px", marginBottom: "16px" }}>
+        <p style={{ fontSize: "13px", color: "#6b7280", marginBottom: "16px" }}>Add users to manage this bot. Control which modules each member can access.</p>
+
+        {/* User search dropdown */}
+        <div style={{ position: "relative", marginBottom: "16px" }} ref={dropdownRef}>
           <input
-            value={teamMemberEmail}
-            onChange={e => setTeamMemberEmail(e.target.value)}
-            onKeyDown={e => e.key === "Enter" && addTeamMember()}
-            placeholder="Enter email to add a team member"
-            style={{ ...inputStyle, marginBottom: 0, flex: 1 }}
+            value={userSearch}
+            onChange={e => { setUserSearch(e.target.value); setShowUserDropdown(true); }}
+            onFocus={() => setShowUserDropdown(true)}
+            placeholder="Search users by name or email..."
+            style={{ ...inputStyle, marginBottom: 0 }}
           />
-          <button onClick={addTeamMember} style={{ ...btnPrimary, padding: "10px 16px", background: "#3b82f6" }}>+</button>
+          {showUserDropdown && filteredUsers.length > 0 && (
+            <div style={{ position: "absolute", top: "calc(100% + 4px)", left: 0, right: 0, background: "#fff", border: "1px solid #e5e7eb", borderRadius: "8px", boxShadow: "0 4px 16px rgba(0,0,0,0.1)", zIndex: 100, maxHeight: "220px", overflowY: "auto" }}>
+              {filteredUsers.map(u => (
+                <div key={u.id} onClick={() => addTeamMember(u)}
+                  style={{ padding: "10px 14px", cursor: "pointer", display: "flex", alignItems: "center", gap: "10px", borderBottom: "1px solid #f3f4f6" }}
+                  onMouseEnter={e => (e.currentTarget.style.background = "#f9fafb")}
+                  onMouseLeave={e => (e.currentTarget.style.background = "#fff")}>
+                  <div style={{ width: 32, height: 32, borderRadius: "50%", background: u.role === "manager" ? "#ede9fe" : "#dbeafe", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "13px", fontWeight: 700, color: u.role === "manager" ? "#6d28d9" : "#1d4ed8", flexShrink: 0 }}>
+                    {(u.name || u.email || "?")[0].toUpperCase()}
+                  </div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: "13px", fontWeight: 600, color: "#111827" }}>{u.name || u.email}</div>
+                    <div style={{ fontSize: "11px", color: "#6b7280" }}>{u.email} · <span style={{ textTransform: "capitalize" }}>{u.role}</span></div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
+
         {teamMembers.length === 0 ? (
           <div style={{ textAlign: "center", padding: "32px 20px", color: "#9ca3af", background: "#f9fafb", borderRadius: "8px" }}>
-            <div style={{ fontSize: "14px", fontWeight: 500, color: "#374151", marginBottom: "4px" }}>No team members are available</div>
-            <div style={{ fontSize: "12px" }}>Once you add team members to your bot, they will appear here</div>
+            <div style={{ fontSize: "14px", fontWeight: 500, color: "#374151", marginBottom: "4px" }}>No team members added yet</div>
+            <div style={{ fontSize: "12px" }}>Search and add users above</div>
           </div>
         ) : (
-          <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-            {teamMembers.map(email => (
-              <div key={email} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 14px", background: "#f9fafb", borderRadius: "8px", border: "1px solid #e5e7eb" }}>
-                <span style={{ fontSize: "13px" }}>✉️ {email}</span>
-                <button onClick={() => removeTeamMember(email)} style={{ background: "none", border: "none", cursor: "pointer", color: "#ef4444", fontSize: "14px" }}>🗑</button>
-              </div>
-            ))}
+          <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+            {teamMembers.map(userId => {
+              const user = allUsers.find(u => u.id === userId);
+              const access = teamMemberAccess[userId] || [];
+              const displayName = user ? (user.name || user.email) : userId;
+              const displayEmail = user?.email || "";
+              const role = user?.role || "";
+              const isEditing = editingAccessFor === userId;
+
+              return (
+                <div key={userId} style={{ background: "#f9fafb", borderRadius: "10px", border: `1px solid ${isEditing ? "#3b82f6" : "#e5e7eb"}`, overflow: "hidden", transition: "border-color 0.2s" }}>
+                  {/* Member header */}
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px 16px", borderBottom: "1px solid #e5e7eb", background: "#fff" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                      <div style={{ width: 32, height: 32, borderRadius: "50%", background: role === "manager" ? "#ede9fe" : "#dbeafe", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "13px", fontWeight: 700, color: role === "manager" ? "#6d28d9" : "#1d4ed8", flexShrink: 0 }}>
+                        {(displayName)[0]?.toUpperCase() || "?"}
+                      </div>
+                      <div>
+                        <div style={{ fontSize: "13px", fontWeight: 600, color: "#111827" }}>{displayName}</div>
+                        <div style={{ fontSize: "11px", color: "#6b7280" }}>{displayEmail} · <span style={{ textTransform: "capitalize" }}>{role}</span></div>
+                      </div>
+                    </div>
+                    <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                      {!isEditing && (
+                        <button
+                          onClick={() => { setEditingAccessFor(userId); setDraftAccess([...access]); }}
+                          style={{ padding: "5px 12px", borderRadius: "6px", border: "1px solid #d1d5db", background: "#fff", color: "#374151", fontSize: "12px", fontWeight: 600, cursor: "pointer" }}>
+                          ✏️ Edit
+                        </button>
+                      )}
+                      <button onClick={() => removeTeamMember(userId)} style={{ background: "none", border: "none", cursor: "pointer", color: "#ef4444", fontSize: "14px" }}>🗑</button>
+                    </div>
+                  </div>
+
+                  {/* Module access */}
+                  <div style={{ padding: "12px 16px" }}>
+                    <div style={{ fontSize: "12px", fontWeight: 600, color: "#6b7280", marginBottom: "10px", textTransform: "uppercase", letterSpacing: "0.05em" }}>Module Access</div>
+
+                    {isEditing ? (
+                      <>
+                        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(140px, 1fr))", gap: "8px", marginBottom: "14px" }}>
+                          {ALL_MODULES.map(mod => (
+                            <label key={mod.id} style={{ display: "flex", alignItems: "center", gap: "8px", cursor: "pointer", fontSize: "13px", color: "#374151" }}>
+                              <input
+                                type="checkbox"
+                                checked={draftAccess.includes(mod.id)}
+                                onChange={() => setDraftAccess(prev => prev.includes(mod.id) ? prev.filter(m => m !== mod.id) : [...prev, mod.id])}
+                                style={{ accentColor: "#3b82f6", width: 14, height: 14 }}
+                              />
+                              {mod.label}
+                            </label>
+                          ))}
+                        </div>
+                        <div style={{ display: "flex", gap: "8px" }}>
+                          <button
+                            onClick={() => {
+                              const updatedAccess = { ...teamMemberAccess, [userId]: draftAccess };
+                              setTeamMemberAccess(updatedAccess);
+                              onSave({ teamMemberAccess: updatedAccess });
+                              setEditingAccessFor(null);
+                            }}
+                            style={{ padding: "7px 16px", borderRadius: "6px", border: "none", background: "#3b82f6", color: "#fff", fontSize: "13px", fontWeight: 600, cursor: "pointer" }}>
+                            Save
+                          </button>
+                          <button
+                            onClick={() => setEditingAccessFor(null)}
+                            style={{ padding: "7px 16px", borderRadius: "6px", border: "1px solid #d1d5db", background: "#fff", color: "#374151", fontSize: "13px", fontWeight: 600, cursor: "pointer" }}>
+                            Cancel
+                          </button>
+                        </div>
+                      </>
+                    ) : (
+                      <div style={{ display: "flex", flexWrap: "wrap", gap: "6px" }}>
+                        {access.length === 0
+                          ? <span style={{ fontSize: "12px", color: "#9ca3af" }}>No modules assigned</span>
+                          : access.map(modId => {
+                              const mod = ALL_MODULES.find(m => m.id === modId);
+                              return mod ? (
+                                <span key={modId} style={{ padding: "3px 10px", background: "#dbeafe", color: "#1d4ed8", borderRadius: "20px", fontSize: "12px", fontWeight: 500 }}>{mod.label}</span>
+                              ) : null;
+                            })
+                        }
+                      </div>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
           </div>
         )}
       </div>

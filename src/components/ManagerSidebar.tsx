@@ -1,7 +1,9 @@
 import { useRouter } from "next/router";
 import { Sidebar } from "./Sidebar";
+import { useAuth } from "../contexts/AuthContext";
+import { useEffect, useState } from "react";
 
-const sidebarItems = [
+const baseItems = [
   { id: "dashboard", label: "Team Dashboard" },
   { id: "plans", label: "Team Business Planners" },
   { id: "onlineTraining", label: "Training Center" },
@@ -9,11 +11,6 @@ const sidebarItems = [
   { id: "apps-tools", label: "Apps & Tools" },
   { id: "my-profile", label: "My Profile" },
   { id: "task-manager", label: "Task Manager (coming soon)" },
-  // Hidden modules - don't delete
-  // { id: "training", label: "Training Progress" },
-  // { id: "team", label: "My Team" },
-  // { id: "taskTracker", label: "Task Tracker" },
-  // { id: "web-templates", label: "Web Page Approvals" },
 ];
 
 type ManagerSidebarProps = {
@@ -24,6 +21,20 @@ type ManagerSidebarProps = {
 
 export function ManagerSidebar({ activeId, isCollapsed, onToggleCollapse }: ManagerSidebarProps) {
   const router = useRouter();
+  const { user } = useAuth();
+  const [hasBotAccess, setHasBotAccess] = useState(false);
+
+  useEffect(() => {
+    if (!user?.id) return;
+    fetch("/api/ai-bots").then(r => r.ok ? r.json() : []).then((bots: any[]) => {
+      const hasAccess = bots.some((b: any) => b.teamMembers?.includes(user.id));
+      setHasBotAccess(hasAccess);
+    });
+  }, [user?.id]);
+
+  const sidebarItems = hasBotAccess
+    ? [...baseItems, { id: "ai-bot-builder", label: "Master AI Bot Builder" }]
+    : baseItems;
 
   function handleNavigation(id: string) {
     router.push(`/manager/${id}`);

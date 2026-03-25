@@ -56,6 +56,7 @@ const aiBotSchema = new Schema({
   allowedDomains: { type: String, default: "" },
   passwordProtection: { type: Boolean, default: false },
   teamMembers: [{ type: String }],
+  teamMemberAccess: { type: Schema.Types.Mixed, default: {} },
   // Stats
   totalChats: { type: Number, default: 0 },
   totalMessages: { type: Number, default: 0 },

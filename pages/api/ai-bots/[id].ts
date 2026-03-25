@@ -13,15 +13,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   if (req.method === "PATCH") {
-    // Strip any attempt to overwrite _id or id
     const { _id, id: _id2, ...safeUpdates } = req.body;
-    const bot = await AiBotModel.findOneAndUpdate(
-      { id },
-      { $set: safeUpdates },
-      { new: true, lean: true }
-    );
-    if (!bot) return res.status(404).json({ error: "Not found" });
-    return res.status(200).json(normalizeBot(bot));
+    // For Mixed type fields like teamMemberAccess, use findOne + save to ensure markModified works
+    const botDoc = await AiBotModel.findOne({ id });
+    if (!botDoc) return res.status(404).json({ error: "Not found" });
+    Object.assign(botDoc, safeUpdates);
+    if (safeUpdates.teamMemberAccess !== undefined) {
+      botDoc.markModified("teamMemberAccess");
+    }
+    await botDoc.save();
+    const saved = botDoc.toObject();
+    return res.status(200).json(normalizeBot(saved));
   }
 
   if (req.method === "DELETE") {
@@ -61,6 +63,7 @@ function normalizeBot(doc: any) {
     isPublic: rest.isPublic ?? false,
     assignedRoles: rest.assignedRoles ?? [],
     teamMembers: rest.teamMembers ?? [],
+    teamMemberAccess: rest.teamMemberAccess ?? {},
     trainingLinks: rest.trainingLinks ?? [],
     qaItems: rest.qaItems ?? [],
   };
