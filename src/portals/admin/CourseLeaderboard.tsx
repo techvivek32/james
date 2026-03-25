@@ -266,32 +266,7 @@ export function CourseLeaderboard() {
           {/* Header right side buttons */}
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
 
-          {/* Override button */}
-          <button
-            onClick={openOverride}
-            title="Progress Override"
-            style={{
-              display: "flex", alignItems: "center", gap: 6,
-              padding: "8px 16px", borderRadius: 8,
-              border: "1px solid #6d28d9",
-              background: "linear-gradient(135deg, #7c3aed, #4f46e5)",
-              cursor: "pointer", fontSize: 13, color: "#fff",
-              fontWeight: 600,
-              boxShadow: "0 2px 8px rgba(124,58,237,0.35)",
-              transition: "box-shadow 0.2s, transform 0.15s",
-            }}
-            onMouseEnter={e => {
-              e.currentTarget.style.boxShadow = "0 4px 16px rgba(124,58,237,0.55)";
-              e.currentTarget.style.transform = "translateY(-1px)";
-            }}
-            onMouseLeave={e => {
-              e.currentTarget.style.boxShadow = "0 2px 8px rgba(124,58,237,0.35)";
-              e.currentTarget.style.transform = "translateY(0)";
-            }}
-          >
-            ⚙ Override
-          </button>
-
+          {/* Override button — invisible, bottom-right of leaderboard, hover to reveal */}
           {/* Course filter button + picker */}
           <div style={{ position: "relative" }} ref={pickerRef}>
             <button
@@ -447,6 +422,33 @@ export function CourseLeaderboard() {
             </table>
           </div>
         )}
+
+        {/* Override button — black border + text normally, blue on hover */}
+        <div style={{ display: "flex", justifyContent: "flex-end", padding: "12px 24px 16px 24px" }}>
+          <button
+            onClick={openOverride}
+            style={{
+              padding: "6px 14px", borderRadius: 6,
+              border: "1px solid #111827", boxShadow: "none",
+              background: "transparent", color: "#111827",
+              cursor: "pointer", fontSize: 12, fontWeight: 600,
+              userSelect: "none", outline: "none",
+              transition: "all 0.2s",
+            }}
+            onMouseEnter={e => {
+              e.currentTarget.style.color = "#fff";
+              e.currentTarget.style.background = "#2563eb";
+              e.currentTarget.style.borderColor = "#2563eb";
+            }}
+            onMouseLeave={e => {
+              e.currentTarget.style.color = "#111827";
+              e.currentTarget.style.background = "transparent";
+              e.currentTarget.style.borderColor = "#111827";
+            }}
+          >
+            ⚙ Override
+          </button>
+        </div>
 
       </div>
 
