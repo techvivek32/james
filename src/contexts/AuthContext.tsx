@@ -60,7 +60,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     localStorage.setItem("user", JSON.stringify(user));
 
     if (user.role === "admin") {
-      router.push("/admin/dashboard");
+      router.push("/admin/social-media-metrics");
     } else if (user.role === "manager") {
       router.push("/manager/dashboard");
     } else if (user.role === "sales") {
