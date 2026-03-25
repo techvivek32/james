@@ -12,7 +12,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   const events = await IntegrationEventModel.find(
     {},
-    "externalEventId source eventType repName revenue eventDate status failureReason createdAt"
+    "externalEventId source eventType repName repExternalId revenue eventDate status failureReason location companyName createdAt"
   )
     .sort({ createdAt: -1 })
     .limit(100)
