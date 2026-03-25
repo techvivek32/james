@@ -24,6 +24,7 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
   const [activePageId, setActivePageId] = useState<string | null>(null);
   const [collapsedFolders, setCollapsedFolders] = useState<Set<string>>(new Set());
   const [courseViewInitialized, setCourseViewInitialized] = useState<string | null>(null);
+  const [showAIChat, setShowAIChat] = useState(false);
   const [selectedAnswers, setSelectedAnswers] = useState<Record<string, number>>({});
   const [completedPages, setCompletedPages] = useState<Set<string>>(new Set());
   const [quizSubmitted, setQuizSubmitted] = useState(false);
@@ -1351,6 +1352,45 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
             )}
           </div>
         </div>
+
+        {/* AI Chat toggle button */}
+        <button
+          onClick={() => setShowAIChat(p => !p)}
+          style={{
+            position: "fixed", bottom: "24px", right: "24px", zIndex: 500,
+            width: 52, height: 52, borderRadius: "50%", border: "none",
+            background: "#1f2937", color: "#fff", fontSize: "22px",
+            cursor: "pointer", boxShadow: "0 4px 16px rgba(0,0,0,0.25)",
+            display: "flex", alignItems: "center", justifyContent: "center",
+          }}
+          title={showAIChat ? "Hide AI Chat" : "Show AI Chat"}
+        >
+          {showAIChat ? "✕" : "🤖"}
+        </button>
+
+        {/* AI Chat right panel */}
+        {showAIChat && activePage && (
+          <div style={{
+            position: "fixed", top: 64, right: 0, bottom: 0, width: "360px", zIndex: 400,
+            background: "#fff", borderLeft: "1px solid #e5e7eb",
+            boxShadow: "-4px 0 20px rgba(0,0,0,0.1)", display: "flex", flexDirection: "column",
+            overflow: "hidden"
+          }}>
+            <div style={{ padding: "12px 16px", borderBottom: "1px solid #e5e7eb", display: "flex", justifyContent: "space-between", alignItems: "center", background: "#f8fafc" }}>
+              <div style={{ fontWeight: 600, fontSize: "14px" }}>🤖 Course AI Assistant</div>
+              <button onClick={() => setShowAIChat(false)} style={{ background: "none", border: "none", cursor: "pointer", color: "#6b7280", fontSize: "18px" }}>✕</button>
+            </div>
+            <div style={{ flex: 1, overflow: "hidden" }}>
+              <LessonAIChat
+                lessonTitle={activePage.title}
+                lessonContent={activePage.body}
+                videoUrl={activePage.videoUrl}
+                courseTitle={selectedCourse?.title}
+                allPages={pages}
+              />
+            </div>
+          </div>
+        )}
       </>
     );
   }
