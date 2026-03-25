@@ -1,5 +1,5 @@
 import type { NextPage } from "next";
-import { useEffect, useState, useRef, useCallback } from "react";
+import { useEffect, useState, useRef } from "react";
 import { AdminPageWrapper } from "../../src/portals/admin/AdminPageWrapper";
 import { CourseManagement } from "../../src/portals/admin/CourseManagement";
 import { Course } from "../../src/types";
@@ -9,22 +9,19 @@ const CourseManagementPage: NextPage = () => {
   const [isLoading, setIsLoading] = useState(true);
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const latestCoursesRef = useRef<Course[]>([]);
+  const prevCountRef = useRef<number>(0);
 
   useEffect(() => {
     let mounted = true;
-    
     async function loadData() {
       try {
         const res = await fetch(`/api/courses?t=${Date.now()}`);
         if (res.ok && mounted) {
           const data = await res.json();
-          // Sort courses by order field
-          const sortedData = data.sort((a: Course, b: Course) => {
-            const orderA = a.order ?? 999999;
-            const orderB = b.order ?? 999999;
-            return orderA - orderB;
-          });
+          const sortedData = data.sort((a: Course, b: Course) => (a.order ?? 999999) - (b.order ?? 999999));
           setCourses(sortedData);
+          latestCoursesRef.current = sortedData;
+          prevCountRef.current = sortedData.length;
         }
       } catch (error) {
         console.error("Failed to load courses:", error);
@@ -33,67 +30,64 @@ const CourseManagementPage: NextPage = () => {
       }
     }
     loadData();
-    
-    return () => {
-      mounted = false;
-    };
+    return () => { mounted = false; };
   }, []);
 
+  function cleanCourses(toSave: Course[]) {
+    return toSave.map(course => {
+      const { _id, __v, createdAt, updatedAt, ...cleanCourse } = course as any;
+      const cleanedPages = Array.isArray(cleanCourse.pages) ? cleanCourse.pages.map((page: any) => ({
+        id: page.id, title: page.title, status: page.status,
+        body: page.body || "", folderId: page.folderId,
+        videoUrl: page.videoUrl || "", transcript: page.transcript || "",
+        pinnedCommunityPostUrl: page.pinnedCommunityPostUrl || "",
+        resourceLinks: Array.isArray(page.resourceLinks) ? page.resourceLinks : [],
+        fileUrls: Array.isArray(page.fileUrls) ? page.fileUrls : [],
+        isQuiz: Boolean(page.isQuiz),
+        quizQuestions: Array.isArray(page.quizQuestions) ? page.quizQuestions.map((q: any) => ({
+          id: q.id, prompt: q.prompt,
+          options: Array.isArray(q.options) ? q.options : [],
+          correctIndex: q.correctIndex
+        })) : []
+      })) : [];
+      return {
+        ...cleanCourse, pages: cleanedPages,
+        folders: Array.isArray(cleanCourse.folders) ? cleanCourse.folders : [],
+        links: Array.isArray(cleanCourse.links) ? cleanCourse.links : [],
+        quizQuestions: Array.isArray(cleanCourse.quizQuestions) ? cleanCourse.quizQuestions : [],
+        lessonNames: Array.isArray(cleanCourse.lessonNames) ? cleanCourse.lessonNames : [],
+        assetFiles: Array.isArray(cleanCourse.assetFiles) ? cleanCourse.assetFiles : [],
+        marketingDocs: Array.isArray(cleanCourse.marketingDocs) ? cleanCourse.marketingDocs : []
+      };
+    });
+  }
+
+  async function doSave(toSave: Course[]) {
+    try {
+      const res = await fetch("/api/courses/bulk", {
+        method: "PUT", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(cleanCourses(toSave))
+      });
+      if (!res.ok) console.error("Failed to save courses:", await res.text());
+    } catch (err) { console.error("Failed to save courses:", err); }
+  }
+
   async function handleCoursesChange(next: Course[]) {
+    const isDelete = next.length < prevCountRef.current;
+    prevCountRef.current = next.length;
     setCourses(next);
     latestCoursesRef.current = next;
 
-    // Debounce — wait 800ms after last change before saving
+    // Delete: save immediately, cancel any pending debounce
+    if (isDelete) {
+      if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+      await doSave(next);
+      return;
+    }
+
+    // Other changes: debounce 800ms
     if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
-    saveTimerRef.current = setTimeout(async () => {
-      const toSave = latestCoursesRef.current;
-      
-      // Clean and normalize the data
-      const cleanedCourses = toSave.map(course => {
-        const { _id, __v, createdAt, updatedAt, ...cleanCourse } = course as any;
-        const cleanedPages = Array.isArray(cleanCourse.pages) ? cleanCourse.pages.map((page: any) => ({
-          id: page.id,
-          title: page.title,
-          status: page.status,
-          body: page.body || "",
-          folderId: page.folderId,
-          videoUrl: page.videoUrl || "",
-          transcript: page.transcript || "",
-          pinnedCommunityPostUrl: page.pinnedCommunityPostUrl || "",
-          resourceLinks: Array.isArray(page.resourceLinks) ? page.resourceLinks : [],
-          fileUrls: Array.isArray(page.fileUrls) ? page.fileUrls : [],
-          isQuiz: Boolean(page.isQuiz),
-          quizQuestions: Array.isArray(page.quizQuestions) ? page.quizQuestions.map((q: any) => ({
-            id: q.id,
-            prompt: q.prompt,
-            options: Array.isArray(q.options) ? q.options : [],
-            correctIndex: q.correctIndex
-          })) : []
-        })) : [];
-
-        return {
-          ...cleanCourse,
-          pages: cleanedPages,
-          folders: Array.isArray(cleanCourse.folders) ? cleanCourse.folders : [],
-          links: Array.isArray(cleanCourse.links) ? cleanCourse.links : [],
-          quizQuestions: Array.isArray(cleanCourse.quizQuestions) ? cleanCourse.quizQuestions : [],
-          lessonNames: Array.isArray(cleanCourse.lessonNames) ? cleanCourse.lessonNames : [],
-          assetFiles: Array.isArray(cleanCourse.assetFiles) ? cleanCourse.assetFiles : [],
-          marketingDocs: Array.isArray(cleanCourse.marketingDocs) ? cleanCourse.marketingDocs : []
-        };
-      });
-
-      try {
-        const res = await fetch("/api/courses/bulk", {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(cleanedCourses)
-        });
-        if (!res.ok) console.error("Failed to save courses:", await res.text());
-      } catch (err) {
-        console.error("Failed to save courses:", err);
-      }
-    }, 800);
+    saveTimerRef.current = setTimeout(() => doSave(latestCoursesRef.current), 800);
   }
 
   if (isLoading) {
