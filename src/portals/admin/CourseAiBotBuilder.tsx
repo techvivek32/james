@@ -28,7 +28,7 @@ export function CourseAiBotBuilder() {
   const [showCreate, setShowCreate] = useState(false);
   const [newName, setNewName] = useState("");
   const [saving, setSaving] = useState(false);
-  const [activeTab, setActiveTab] = useState<"courses" | "tune" | "appearance">("courses");
+  const [activeTab, setActiveTab] = useState<"courses" | "tune">("courses");
 
   useEffect(() => { loadBots(); }, []);
 
@@ -102,7 +102,6 @@ export function CourseAiBotBuilder() {
         <div style={{ flex: 1, overflowY: "auto", background: "#f9fafb" }}>
           {activeTab === "courses" && <AddCoursesPanel bot={selected} onSave={saveBot} saving={saving} />}
           {activeTab === "tune" && <TunePanel bot={selected} onSave={saveBot} saving={saving} />}
-          {activeTab === "appearance" && <AppearancePanel bot={selected} onSave={saveBot} saving={saving} />}
         </div>
       </div>
     );
