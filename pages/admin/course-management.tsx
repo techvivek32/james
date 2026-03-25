@@ -13,7 +13,7 @@ const CourseManagementPage: NextPage = () => {
     
     async function loadData() {
       try {
-        const res = await fetch("/api/courses");
+        const res = await fetch(`/api/courses?t=${Date.now()}`);
         if (res.ok && mounted) {
           const data = await res.json();
           // Sort courses by order field

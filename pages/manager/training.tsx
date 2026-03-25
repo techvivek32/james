@@ -14,7 +14,7 @@ const TrainingPage: NextPage = () => {
       try {
         const [usersRes, coursesRes] = await Promise.all([
           fetch("/api/users"),
-          fetch(`/api/courses?userId=${currentUser.id}&userRole=${currentUser.role}`)
+          fetch(`/api/courses?userId=${currentUser.id}&userRole=${currentUser.role}&t=${Date.now()}`)
         ]);
         if (usersRes.ok) {
           const users = await usersRes.json();
