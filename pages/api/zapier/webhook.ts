@@ -34,8 +34,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   console.log("Extracted location:", location);
 
   try {
-    // Dedupe check
-    const existing = await IntegrationEventModel.findOne({ externalEventId: job_id });
+    // Dedupe check — same job_id + event_type combination
+    const existing = await IntegrationEventModel.findOne({ 
+      externalEventId: job_id,
+      eventType: event_type,
+      status: "processed"
+    });
     if (existing) {
       await IntegrationEventModel.create({
         externalEventId: `${job_id}-dup-${Date.now()}`,

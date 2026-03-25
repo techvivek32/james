@@ -22,8 +22,8 @@ const LeaderboardPage: NextPage = () => {
 
   useEffect(() => { load(); }, [load]);
 
-  const inspections = events.filter(e => e.eventType?.toLowerCase().includes("inspection") && e.status !== "duplicate");
-  const claims = events.filter(e => e.eventType?.toLowerCase().includes("claim") && e.status !== "duplicate");
+  const inspections = events.filter(e => e.eventType?.toLowerCase().includes("inspection") && e.status !== "failed");
+  const claims = events.filter(e => e.eventType?.toLowerCase().includes("claim") && e.status !== "failed");
 
   const cols = ["#", "Rep Name", "Rep ID", "Job ID", "Amount", "Date", "Location", "Company", "Status"];
 
