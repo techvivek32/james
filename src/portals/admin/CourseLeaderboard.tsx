@@ -501,24 +501,54 @@ export function CourseLeaderboard() {
                     <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "#374151", marginBottom: 6 }}>
                       Select User
                     </label>
-                    <select
-                      value={overrideSelectedUser?.id || ""}
-                      onChange={(e) => {
-                        const u = overrideUsers.find((x) => x.id === e.target.value);
-                        if (u) selectOverrideUser(u);
+                    <input
+                      type="text"
+                      placeholder="Search users..."
+                      onChange={e => {
+                        const val = e.target.value.toLowerCase();
+                        const list = document.getElementById("override-user-list");
+                        if (list) {
+                          Array.from(list.children).forEach((child: any) => {
+                            const text = child.getAttribute("data-search") || "";
+                            child.style.display = text.includes(val) ? "flex" : "none";
+                          });
+                        }
                       }}
-                      style={{
-                        width: "100%", padding: "9px 12px",
-                        border: "1px solid #d1d5db", borderRadius: 8,
-                        fontSize: 13, color: "#111827", background: "#fff",
-                        outline: "none", cursor: "pointer",
-                      }}
+                      style={{ width: "100%", padding: "9px 12px", border: "1px solid #d1d5db", borderRadius: "8px 8px 0 0", fontSize: 13, outline: "none", boxSizing: "border-box", borderBottom: "none" }}
+                    />
+                    <div
+                      id="override-user-list"
+                      style={{ border: "1px solid #d1d5db", borderRadius: "0 0 8px 8px", maxHeight: 200, overflowY: "auto", background: "#fff" }}
                     >
-                      <option value="">— Choose a user —</option>
-                      {overrideUsers.map((u) => (
-                        <option key={u.id} value={u.id}>{u.name} ({u.email})</option>
-                      ))}
-                    </select>
+                      {overrideUsers.map((u, idx) => {
+                        const isSelected = overrideSelectedUser?.id === u.id;
+                        return (
+                          <div
+                            key={u.id}
+                            data-search={`${u.name} ${u.email}`.toLowerCase()}
+                            onClick={() => selectOverrideUser(u)}
+                            style={{
+                              display: "flex", alignItems: "center", gap: 10,
+                              padding: "9px 12px", cursor: "pointer",
+                              background: isSelected ? "#eff6ff" : idx % 2 === 0 ? "#fff" : "#fafafa",
+                              borderBottom: idx < overrideUsers.length - 1 ? "1px solid #f3f4f6" : "none",
+                              borderLeft: isSelected ? "3px solid #3b82f6" : "3px solid transparent",
+                            }}
+                            onMouseEnter={e => { if (!isSelected) e.currentTarget.style.background = "#f9fafb"; }}
+                            onMouseLeave={e => { if (!isSelected) e.currentTarget.style.background = idx % 2 === 0 ? "#fff" : "#fafafa"; }}
+                          >
+                            <div style={{ width: 30, height: 30, borderRadius: "50%", background: "#e0e7ff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, fontWeight: 700, color: "#4f46e5", flexShrink: 0 }}>
+                              {(u.name || u.email || "?")[0].toUpperCase()}
+                            </div>
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                              <div style={{ fontSize: 13, fontWeight: 600, color: "#111827", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{u.name}</div>
+                              <div style={{ fontSize: 11, color: "#6b7280", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{u.email}</div>
+                            </div>
+                            {isSelected && <span style={{ fontSize: 12, color: "#3b82f6", fontWeight: 700, flexShrink: 0 }}>✓</span>}
+                          </div>
+                        );
+                      })}
+                    </div>
                   </div>
 
                   {/* Lesson checklist */}
