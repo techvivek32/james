@@ -1,5 +1,5 @@
 import type { NextPage } from "next";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import { AdminPageWrapper } from "../../src/portals/admin/AdminPageWrapper";
 import { CourseManagement } from "../../src/portals/admin/CourseManagement";
 import { Course } from "../../src/types";
@@ -7,6 +7,8 @@ import { Course } from "../../src/types";
 const CourseManagementPage: NextPage = () => {
   const [courses, setCourses] = useState<Course[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const latestCoursesRef = useRef<Course[]>([]);
 
   useEffect(() => {
     let mounted = true;
@@ -38,15 +40,18 @@ const CourseManagementPage: NextPage = () => {
   }, []);
 
   async function handleCoursesChange(next: Course[]) {
-    console.log("handleCoursesChange called with:", next.map(c => ({ id: c.id, pagesCount: c.pages?.length || 0 })));
     setCourses(next);
-    
-    // Clean and normalize the data
-    const cleanedCourses = next.map(course => {
-      const { _id, __v, createdAt, updatedAt, ...cleanCourse } = course as any;
-      // Clean pages to preserve quiz data
-      const cleanedPages = Array.isArray(cleanCourse.pages) ? cleanCourse.pages.map((page: any) => {
-        const cleanedPage = {
+    latestCoursesRef.current = next;
+
+    // Debounce — wait 800ms after last change before saving
+    if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+    saveTimerRef.current = setTimeout(async () => {
+      const toSave = latestCoursesRef.current;
+      
+      // Clean and normalize the data
+      const cleanedCourses = toSave.map(course => {
+        const { _id, __v, createdAt, updatedAt, ...cleanCourse } = course as any;
+        const cleanedPages = Array.isArray(cleanCourse.pages) ? cleanCourse.pages.map((page: any) => ({
           id: page.id,
           title: page.title,
           status: page.status,
@@ -64,48 +69,31 @@ const CourseManagementPage: NextPage = () => {
             options: Array.isArray(q.options) ? q.options : [],
             correctIndex: q.correctIndex
           })) : []
+        })) : [];
+
+        return {
+          ...cleanCourse,
+          pages: cleanedPages,
+          folders: Array.isArray(cleanCourse.folders) ? cleanCourse.folders : [],
+          links: Array.isArray(cleanCourse.links) ? cleanCourse.links : [],
+          quizQuestions: Array.isArray(cleanCourse.quizQuestions) ? cleanCourse.quizQuestions : [],
+          lessonNames: Array.isArray(cleanCourse.lessonNames) ? cleanCourse.lessonNames : [],
+          assetFiles: Array.isArray(cleanCourse.assetFiles) ? cleanCourse.assetFiles : [],
+          marketingDocs: Array.isArray(cleanCourse.marketingDocs) ? cleanCourse.marketingDocs : []
         };
-        return cleanedPage;
-      }) : [];
-      
-      const cleaned = {
-        ...cleanCourse,
-        pages: cleanedPages,
-        folders: Array.isArray(cleanCourse.folders) ? cleanCourse.folders : [],
-        links: Array.isArray(cleanCourse.links) ? cleanCourse.links : [],
-        quizQuestions: Array.isArray(cleanCourse.quizQuestions) ? cleanCourse.quizQuestions : [],
-        lessonNames: Array.isArray(cleanCourse.lessonNames) ? cleanCourse.lessonNames : [],
-        assetFiles: Array.isArray(cleanCourse.assetFiles) ? cleanCourse.assetFiles : [],
-        marketingDocs: Array.isArray(cleanCourse.marketingDocs) ? cleanCourse.marketingDocs : []
-      };
-      console.log(`Course ${course.id}: pages=${cleanCourse.pages?.length}, cleaned pages=${cleaned.pages.length}`);
-      return cleaned;
-    });
-    
-    console.log("Saving courses to API:");
-    cleanedCourses.forEach(c => {
-      console.log(`Course ${c.id}: ${c.pages?.length || 0} pages, order: ${c.order}`);
-      c.pages?.forEach((p: any) => {
-        if (p.isQuiz) {
-          console.log(`  - Quiz: ${p.title}, questions: ${p.quizQuestions?.length || 0}`);
-        }
       });
-    });
-    try {
-      const res = await fetch("/api/courses/bulk", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(cleanedCourses)
-      });
-      if (!res.ok) {
-        console.error("Failed to save courses:", await res.text());
-      } else {
-        const saved = await res.json();
-        console.log("Courses saved successfully:", saved);
+
+      try {
+        const res = await fetch("/api/courses/bulk", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(cleanedCourses)
+        });
+        if (!res.ok) console.error("Failed to save courses:", await res.text());
+      } catch (err) {
+        console.error("Failed to save courses:", err);
       }
-    } catch (err) {
-      console.error("Failed to save courses:", err);
-    }
+    }, 800);
   }
 
   if (isLoading) {
