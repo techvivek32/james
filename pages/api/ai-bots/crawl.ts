@@ -1,7 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import { connectMongo } from "../../../src/lib/mongodb";
 import { AiBotModel } from "../../../src/lib/models/AiBot";
-import { fetchYouTubeTranscriptText } from "../../../src/lib/youtubeTranscriptPuppeteer";
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   console.log("=== CRAWL API CALLED ===");
@@ -169,21 +168,53 @@ async function fetchExcelContent(url: string): Promise<string> {
 }
 
 async function fetchYouTubeTranscript(url: string): Promise<string> {
-  console.log(">>> fetchYouTubeTranscript called with URL:", url);
-  
   const videoId = extractYouTubeId(url);
-  if (!videoId) {
-    console.error("Failed to extract video ID from URL:", url);
-    throw new Error(`Invalid YouTube URL: ${url}`);
+  if (!videoId) throw new Error(`Invalid YouTube URL: ${url}`);
+
+  const apiKey = process.env.YOUTUBE_API_KEY;
+  if (!apiKey) throw new Error("YOUTUBE_API_KEY not configured in environment");
+
+  // Get caption tracks list via YouTube Data API v3
+  const captionsListRes = await fetch(
+    `https://www.googleapis.com/youtube/v3/captions?part=snippet&videoId=${videoId}&key=${apiKey}`
+  );
+  if (!captionsListRes.ok) {
+    const err = await captionsListRes.json();
+    throw new Error(`YouTube API error: ${err?.error?.message || captionsListRes.statusText}`);
   }
 
-  console.log(`Video ID extracted: ${videoId}`);
-  console.log(`Fetching transcript using Puppeteer with stealth...`);
+  const captionsData = await captionsListRes.json();
+  const items = captionsData.items || [];
+  if (items.length === 0) throw new Error("No captions available for this video.");
 
-  const text = await fetchYouTubeTranscriptText(url);
-  
-  console.log(`Successfully extracted transcript, length: ${text.length} characters`);
-  return `YouTube Video Transcript (${url}):\n\n${text}`;
+  const track = items.find((t: any) => t.snippet?.language === "en") ||
+                items.find((t: any) => t.snippet?.language?.startsWith("en")) ||
+                items[0];
+  const lang = track.snippet?.language || "en";
+
+  // Try timedtext API
+  const timedTextUrl = `https://www.youtube.com/api/timedtext?v=${videoId}&lang=${lang}&fmt=json3`;
+  const ttRes = await fetch(timedTextUrl, {
+    headers: { "User-Agent": "Mozilla/5.0", "Referer": `https://www.youtube.com/watch?v=${videoId}` }
+  });
+
+  if (ttRes.ok) {
+    const raw = await ttRes.text();
+    if (raw && raw.trim().startsWith("{")) {
+      const json = JSON.parse(raw);
+      const text = (json?.events || [])
+        .filter((e: any) => e.segs)
+        .flatMap((e: any) => e.segs.map((s: any) => s.utf8 || ""))
+        .filter((s: string) => s.trim() && s.trim() !== "\n")
+        .join(" ").replace(/\s+/g, " ").trim();
+      if (text.length > 0) {
+        const langNote = lang !== "en" ? ` [Language: ${lang}]` : "";
+        return `YouTube Video Transcript${langNote} (${url}):\n\n${text}`;
+      }
+    }
+  }
+
+  throw new Error("Could not fetch YouTube transcript. YouTube is blocking server-side access. Please copy the transcript manually from YouTube and paste it in the Text section.");
 }
 
 function extractYouTubeId(url: string): string | null {

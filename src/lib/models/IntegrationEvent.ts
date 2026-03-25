@@ -11,6 +11,8 @@ const integrationEventSchema = new Schema(
     eventDate: { type: Date },
     rawPayload: { type: Schema.Types.Mixed },
     status: { type: String, enum: ["processed", "duplicate", "failed"], default: "processed" },
+    location: { type: String, default: "Unknown" },
+    companyName: { type: String, default: "" },
     failureReason: { type: String },
   },
   { timestamps: true }

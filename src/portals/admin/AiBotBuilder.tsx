@@ -309,7 +309,7 @@ function BotDetailView({ bot, activeView, setActiveView, onSave, saving, onBack,
 }) {
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
 
-  const navItems: { id: BotView; label: string; icon: string; section?: string }[] = [
+  const navItems: { id: BotView; label: string; icon: string; section?: string }[] = ([
     { id: "overview",      label: "Overview",      icon: "📊", section: "ACTIVITY" },
     { id: "chat-history",  label: "Chat History",  icon: "💬" },
     { id: "links",         label: "Links / Docs",  icon: "🔗", section: "TRAINING DATA" },
@@ -321,7 +321,7 @@ function BotDetailView({ bot, activeView, setActiveView, onSave, saving, onBack,
     { id: "appearance",    label: "Appearance",    icon: "🎨", section: "DEPLOYMENT" },
     { id: "deploy",        label: "Deploy",        icon: "🚀" },
     { id: "settings",      label: "Settings",      icon: "🔧", section: "ADVANCED" },
-  ].filter(item => allowedModules.includes(item.id));
+  ] as { id: BotView; label: string; icon: string; section?: string }[]).filter(item => allowedModules.includes(item.id));
 
   const activeItem = navItems.find(n => n.id === activeView);
 

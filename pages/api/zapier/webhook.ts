@@ -4,6 +4,16 @@ import { IntegrationEventModel } from "../../../src/lib/models/IntegrationEvent"
 import { LeaderboardEntryModel } from "../../../src/lib/models/LeaderboardEntry";
 import { NotificationModel } from "../../../src/lib/models/Notification";
 
+function extractLocation(companyName: string): string {
+  if (!companyName) return "Unknown";
+  const name = companyName.toLowerCase();
+  if (name.includes("dfw")) return "DFW";
+  if (name.includes("lubbock")) return "Lubbock";
+  if (name.includes("round rock")) return "Round Rock";
+  if (name.includes("corpus christi")) return "Corpus Christi";
+  return "Other";
+}
+
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== "POST") {
     res.setHeader("Allow", "POST");
@@ -12,11 +22,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   await connectMongo();
 
-  const { rep_name, rep_id, event_type, job_id, amount, event_date } = req.body;
+  const { rep_name, rep_id, event_type, job_id, amount, event_date, company_name } = req.body;
+
+  console.log("Incoming Zapier payload:", req.body);
 
   if (!rep_name || !event_type || !job_id) {
     return res.status(400).json({ error: "Missing required fields: rep_name, event_type, job_id" });
   }
+
+  const location = extractLocation(company_name || "");
+  console.log("Extracted location:", location);
 
   try {
     // Dedupe check
@@ -32,6 +47,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         eventDate: event_date ? new Date(event_date) : new Date(),
         rawPayload: req.body,
         status: "duplicate",
+        location,
+        companyName: company_name || "",
       });
       return res.status(200).json({ ok: true, status: "duplicate" });
     }
@@ -68,6 +85,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       eventDate: event_date ? new Date(event_date) : new Date(),
       rawPayload: req.body,
       status: "processed",
+      location,
+      companyName: company_name || "",
     });
 
     // Internal notification (broadcast to admin users — userId "admin")
@@ -93,6 +112,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         rawPayload: req.body,
         status: "failed",
         failureReason: err.message,
+        location,
+        companyName: company_name || "",
       });
     } catch (_) {}
     return res.status(500).json({ error: "Internal server error" });
