@@ -695,6 +695,7 @@ body {
   display: flex;
   flex-direction: column;
   flex-shrink: 0;
+  overflow: hidden;
 }
 
 /* Mobile Navigation Toggle Button */
@@ -1151,7 +1152,9 @@ body {
   display: flex;
   flex-direction: column;
   gap: 8px;
-  overflow: visible;
+  overflow-y: auto;
+  overflow-x: hidden;
+  flex: 1;
 }
 
 .course-pages-item {
