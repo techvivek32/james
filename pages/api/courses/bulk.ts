@@ -72,9 +72,12 @@ export default async function handler(
   });
 
   const ids = migratedCourses.map((course) => course.id).filter(Boolean);
-  await CourseModel.deleteMany({
-    id: { $nin: ids.length ? ids : ["__none__"] }
-  });
+
+  // Only delete courses that are not in the new list AND were previously saved
+  // (avoid deleting everything if an empty/partial list is sent accidentally)
+  if (ids.length > 0) {
+    await CourseModel.deleteMany({ id: { $nin: ids } });
+  }
 
   console.log("About to save courses with order:");
   migratedCourses.forEach(c => {
