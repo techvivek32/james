@@ -22,8 +22,7 @@ const CourseManagementPage: NextPage = () => {
           const sortedData = data.sort((a: Course, b: Course) => (a.order ?? 999999) - (b.order ?? 999999));
           setCourses(sortedData);
           latestCoursesRef.current = sortedData;
-          prevCountRef.current = sortedData.length;
-        }
+          prevCountRef.current = sortedData.length;        }
       } catch (error) {
         console.error("Failed to load courses:", error);
       } finally {
@@ -88,9 +87,9 @@ const CourseManagementPage: NextPage = () => {
       return;
     }
 
-    // Other changes: debounce 800ms
+    // Other changes: save immediately
     if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
-    saveTimerRef.current = setTimeout(() => doSave(latestCoursesRef.current), 800);
+    saveTimerRef.current = setTimeout(() => doSave(latestCoursesRef.current), 300);
   }
 
   if (isLoading) {

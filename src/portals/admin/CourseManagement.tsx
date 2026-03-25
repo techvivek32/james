@@ -634,7 +634,9 @@ export function CourseManagement(props: CourseEditorProps) {
       setHasChanges(false);
       showToast('Course created successfully!', 'success');
     } else if (selectedCourse && hasChanges) {
-      // Save existing course changes
+      // Save existing course changes — explicitly trigger save
+      const next = props.courses.map((course) => course.id === selectedCourse.id ? selectedCourse : course);
+      props.onCoursesChange(next);
       setOriginalCourse(JSON.parse(JSON.stringify(selectedCourse)));
       setHasChanges(false);
       console.log('Course saved:', selectedCourse.title);
