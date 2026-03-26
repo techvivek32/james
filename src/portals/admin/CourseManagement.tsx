@@ -5,6 +5,8 @@ import { Toast } from "../../components/Toast";
 type CourseEditorProps = {
   courses: Course[];
   onCoursesChange: (courses: Course[]) => void;
+  onForceSave?: (courses: Course[]) => Promise<void>;
+  cleanCourses?: (courses: Course[]) => Course[];
 };
 
 export function CourseManagement(props: CourseEditorProps) {
@@ -624,7 +626,7 @@ export function CourseManagement(props: CourseEditorProps) {
     }
   }
 
-  // Function to save lesson/quiz changes immediately
+  // Function to save lesson/quiz changes immediately — calls API directly
   async function saveLessonOrQuiz(type: 'lesson' | 'quiz') {
     if (!selectedCourse) return;
     
@@ -632,14 +634,17 @@ export function CourseManagement(props: CourseEditorProps) {
     setSavingMessage(type === 'quiz' ? 'Saving Quiz...' : 'Saving Lesson...');
     
     try {
-      // Ensure the course data is updated in parent state
+      // Build the updated courses list
       const next = props.courses.map((course) => 
         course.id === selectedCourse.id ? selectedCourse : course
       );
+      // Update React state first
       props.onCoursesChange(next);
       
-      // Wait a bit to ensure state propagation
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      // Then directly call the API — don't rely on debounce
+      if (props.onForceSave) {
+        await props.onForceSave(next);
+      }
       
       showToast(type === 'quiz' ? 'Quiz saved successfully!' : 'Lesson saved successfully!', 'success');
     } catch (error) {

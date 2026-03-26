@@ -63,13 +63,11 @@ const CourseManagementPage: NextPage = () => {
   }
 
   async function doSave(toSave: Course[]) {
-    try {
-      const res = await fetch("/api/courses/bulk", {
-        method: "PUT", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(cleanCourses(toSave))
-      });
-      if (!res.ok) console.error("Failed to save courses:", await res.text());
-    } catch (err) { console.error("Failed to save courses:", err); }
+    const res = await fetch("/api/courses/bulk", {
+      method: "PUT", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(cleanCourses(toSave))
+    });
+    if (!res.ok) throw new Error(await res.text());
   }
 
   async function handleCoursesChange(next: Course[]) {
@@ -87,9 +85,9 @@ const CourseManagementPage: NextPage = () => {
       return;
     }
 
-    // Other changes: save immediately
+    // Other changes: debounce 300ms
     if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
-    saveTimerRef.current = setTimeout(() => doSave(latestCoursesRef.current), 300);
+    saveTimerRef.current = setTimeout(() => doSave(latestCoursesRef.current).catch(err => console.error("Auto-save failed:", err)), 300);
   }
 
   if (isLoading) {
@@ -120,7 +118,7 @@ const CourseManagementPage: NextPage = () => {
           <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
         </div>
       )}
-      <CourseManagement courses={courses} onCoursesChange={handleCoursesChange} />
+      <CourseManagement courses={courses} onCoursesChange={handleCoursesChange} onForceSave={doSave} cleanCourses={cleanCourses} />
     </AdminPageWrapper>
   );
 };
