@@ -176,8 +176,8 @@ export function CourseAiBotBuilder() {
     <div style={{ padding: "24px" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "24px" }}>
         <div>
-          <h2 style={{ fontSize: "22px", fontWeight: 700, margin: 0 }}>Course AI Bots</h2>
-          <p style={{ color: "#6b7280", margin: "4px 0 0", fontSize: "14px" }}>AI bots trained on your course content</p>
+          <h2 style={{ fontSize: "22px", fontWeight: 700, margin: 0 }}>Course Bots</h2>
+          <p style={{ color: "#6b7280", margin: "4px 0 0", fontSize: "14px" }}>Bots trained on your course content</p>
         </div>
         <button onClick={() => setShowCreate(true)} style={btnPrimary}>+ Create Bot</button>
       </div>
@@ -196,21 +196,7 @@ export function CourseAiBotBuilder() {
               style={{ background: "#fff", borderRadius: "12px", border: "1px solid #e5e7eb", padding: "20px", cursor: "pointer", position: "relative" }}
               onMouseEnter={e => (e.currentTarget.style.boxShadow = "0 4px 12px rgba(0,0,0,0.08)")}
               onMouseLeave={e => (e.currentTarget.style.boxShadow = "none")}>
-              {/* Status Badge */}
-              <div style={{
-                position: "absolute",
-                top: "12px",
-                right: "12px",
-                padding: "4px 10px",
-                borderRadius: "6px",
-                fontSize: "11px",
-                fontWeight: 600,
-                background: (bot.status || 'draft') === 'published' ? '#d1fae5' : '#fef3c7',
-                color: (bot.status || 'draft') === 'published' ? '#065f46' : '#92400e'
-              }}>
-                {(bot.status || 'draft') === 'published' ? 'Published' : 'Draft'}
-              </div>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "16px" }}>
                 <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
                   <div style={{ width: 40, height: 40, borderRadius: "50%", background: bot.colorTheme || "#3b82f6", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontSize: "18px" }}>🎓</div>
                   <div>
@@ -218,7 +204,20 @@ export function CourseAiBotBuilder() {
                     <div style={{ fontSize: "12px", color: "#6b7280", marginTop: "2px" }}>{bot.selectedPages?.length || 0} lessons · {bot.totalMessages || 0} messages</div>
                   </div>
                 </div>
-                <button onClick={e => { e.stopPropagation(); deleteBot(bot.id); }} style={{ background: "none", border: "none", cursor: "pointer", color: "#ef4444", fontSize: "16px", marginTop: "20px" }}>🗑</button>
+                <button onClick={e => { e.stopPropagation(); deleteBot(bot.id); }} style={{ background: "none", border: "none", cursor: "pointer", color: "#ef4444", fontSize: "16px" }}>🗑</button>
+              </div>
+              {/* Status Badge - Bottom Right */}
+              <div style={{ display: "flex", justifyContent: "flex-end" }}>
+                <div style={{
+                  padding: "4px 10px",
+                  borderRadius: "6px",
+                  fontSize: "11px",
+                  fontWeight: 600,
+                  background: (bot.status || 'draft') === 'published' ? '#d1fae5' : '#fef3c7',
+                  color: (bot.status || 'draft') === 'published' ? '#065f46' : '#92400e'
+                }}>
+                  {(bot.status || 'draft') === 'published' ? 'Published' : 'Draft'}
+                </div>
               </div>
             </div>
           ))}
@@ -229,7 +228,7 @@ export function CourseAiBotBuilder() {
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.4)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 }}>
           <div style={{ background: "#fff", borderRadius: "14px", padding: "28px", width: "400px", boxShadow: "0 20px 60px rgba(0,0,0,0.2)" }}>
             <h3 style={{ margin: "0 0 8px", fontSize: "18px", fontWeight: 700 }}>Create Course Bot</h3>
-            <p style={{ margin: "0 0 20px", color: "#6b7280", fontSize: "14px" }}>Give your course AI bot a name</p>
+            <p style={{ margin: "0 0 20px", color: "#6b7280", fontSize: "14px" }}>Give your course bot a name</p>
             <input autoFocus value={newName} onChange={e => setNewName(e.target.value)} onKeyDown={e => e.key === "Enter" && createBot()} placeholder="e.g. Sales Training Bot" style={inputStyle} />
             <div style={{ display: "flex", gap: "10px", justifyContent: "flex-end", marginTop: "8px" }}>
               <button onClick={() => { setShowCreate(false); setNewName(""); }} style={btnSecondary}>Cancel</button>

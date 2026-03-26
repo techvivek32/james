@@ -8,8 +8,8 @@ const sidebarItems = [
   { id: "userManagement", label: "User Management" },
   { id: "courseManagement", label: "Course Builder" },
   { id: "appsTools", label: "Apps & Tool Builder" },
-  { id: "courseAiBots", label: "Course AI Bots Builder" },
-  { id: "aiBots", label: "Master AI Bot Builder" },
+  { id: "courseAiBots", label: "Course Bots Builder" },
+  { id: "aiBots", label: "Master Bot Builder" },
   { id: "messaging", label: "SMS Configuration" },
   { id: "leaderboard", label: "Sales Leaderboard" },
   // Hidden modules - don't delete

@@ -1,6 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import { connectMongo } from "../../../src/lib/mongodb";
 import { AiBotModel } from "../../../src/lib/models/AiBot";
+import { CourseModel } from "../../../src/lib/models/Course";
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   await connectMongo();
@@ -14,6 +15,38 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   if (req.method === "PATCH") {
     const { _id, id: _id2, ...safeUpdates } = req.body;
+    
+    // If course selection changed, rebuild courseTrainingText
+    if (safeUpdates.selectedPages !== undefined || safeUpdates.selectedCourses !== undefined) {
+      console.log('[Master Bot API] Course selection changed, rebuilding training text');
+      const bot = await AiBotModel.findOne({ id }).lean() as any;
+      const selectedPages: string[] = safeUpdates.selectedPages ?? bot?.selectedPages ?? [];
+      console.log('[Master Bot API] Selected pages:', selectedPages);
+
+      if (selectedPages.length > 0) {
+        const courses = await CourseModel.find({}).lean() as any[];
+        console.log('[Master Bot API] Found courses:', courses.length);
+        let courseTrainingText = "";
+
+        for (const course of courses) {
+          const coursePages = (course.pages || []).filter((p: any) => selectedPages.includes(p.id));
+          if (coursePages.length === 0) continue;
+
+          courseTrainingText += `\n\n=== COURSE: ${course.title} ===\n`;
+          for (const page of coursePages) {
+            courseTrainingText += `\n--- Lesson: ${page.title} ---\n`;
+            if (page.body) courseTrainingText += page.body + "\n";
+            if (page.transcript) courseTrainingText += `\nTranscript:\n${page.transcript}\n`;
+          }
+        }
+        safeUpdates.courseTrainingText = courseTrainingText.trim();
+        console.log('[Master Bot API] Generated training text length:', courseTrainingText.length);
+      } else {
+        safeUpdates.courseTrainingText = "";
+        console.log('[Master Bot API] No pages selected, clearing training text');
+      }
+    }
+    
     // For Mixed type fields like teamMemberAccess, use findOne + save to ensure markModified works
     const botDoc = await AiBotModel.findOne({ id });
     if (!botDoc) return res.status(404).json({ error: "Not found" });
@@ -23,6 +56,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
     await botDoc.save();
     const saved = botDoc.toObject();
+    console.log('[Master Bot API] Bot saved successfully');
     return res.status(200).json(normalizeBot(saved));
   }
 
@@ -40,6 +74,7 @@ function normalizeBot(doc: any) {
   // Ensure all appearance/settings fields have defaults so they're never undefined
   return {
     ...rest,
+    status: rest.status ?? 'draft',
     botTitle: rest.botTitle ?? "",
     displayMessage: rest.displayMessage ?? "",
     displayMessageEnabled: rest.displayMessageEnabled ?? false,
@@ -66,5 +101,9 @@ function normalizeBot(doc: any) {
     teamMemberAccess: rest.teamMemberAccess ?? {},
     trainingLinks: rest.trainingLinks ?? [],
     qaItems: rest.qaItems ?? [],
+    selectedCourses: rest.selectedCourses ?? [],
+    selectedFolders: rest.selectedFolders ?? [],
+    selectedPages: rest.selectedPages ?? [],
+    courseTrainingText: rest.courseTrainingText ?? "",
   };
 }

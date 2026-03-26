@@ -18,11 +18,17 @@ const qaSchema = new Schema({
 const aiBotSchema = new Schema({
   id: { type: String, required: true, unique: true },
   name: { type: String, required: true },
+  status: { type: String, enum: ['published', 'draft'], default: 'draft' },
   assignedRoles: [{ type: String }],
   // Training data
   trainingLinks: [trainingLinkSchema],
   trainingText: { type: String, default: "" },
   qaItems: [qaSchema],
+  // Course training data
+  selectedCourses: [{ type: String }],
+  selectedFolders: [{ type: String }],
+  selectedPages: [{ type: String }],
+  courseTrainingText: { type: String, default: "" },
   // Behaviour / Tune AI
   model: { type: String, default: "gpt-4o-mini" },
   creativity: { type: Number, default: 0 },

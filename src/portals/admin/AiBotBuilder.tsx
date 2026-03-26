@@ -23,10 +23,16 @@ type QAItem = {
 type AiBot = {
   id: string;
   name: string;
+  status?: 'published' | 'draft';
   assignedRoles: string[];
   trainingLinks: TrainingLink[];
   trainingText: string;
   qaItems: QAItem[];
+  // Course training data (new)
+  selectedCourses?: string[];
+  selectedFolders?: string[];
+  selectedPages?: string[];
+  courseTrainingText?: string;
   model: string;
   creativity: number;
   systemPrompt: string;
@@ -64,7 +70,7 @@ type AiBot = {
   teamMemberAccess: Record<string, string[]>;
 };
 
-type BotView = "overview" | "chat-history" | "live-chat" | "links" | "text" | "qa" | "tune" | "test" | "appearance" | "deploy" | "settings";
+type BotView = "overview" | "chat-history" | "live-chat" | "links" | "text" | "qa" | "courses" | "tune" | "test" | "appearance" | "deploy" | "settings";
 
 export function AiBotBuilder() {
   const router = useRouter();
@@ -109,8 +115,14 @@ export function AiBotBuilder() {
     const res = await fetch("/api/ai-bots");
     if (res.ok) {
       const data: AiBot[] = await res.json();
-      // Non-admin: only show bots where user is explicitly a team member
-      const filtered = isAdmin ? data : data.filter(b => b.teamMembers?.includes(user?.id || ""));
+      // Admin: show all bots (published + draft)
+      // Non-admin: only show published bots where user is a team member
+      const filtered = isAdmin 
+        ? data 
+        : data.filter(b => 
+            (b.status === 'published' || !b.status) && // Show if published or status not set (backward compatibility)
+            b.teamMembers?.includes(user?.id || "")
+          );
       setBots(filtered);
       setBotsLoaded(true);
     }
@@ -152,6 +164,8 @@ export function AiBotBuilder() {
 
   async function saveBot(updates: Partial<AiBot>) {
     if (!selectedBot) return;
+    console.log('[Master Bot] Saving bot with updates:', updates);
+    console.log('[Master Bot] Current bot status:', selectedBot.status);
     setSaving(true);
     try {
       const res = await fetch(`/api/ai-bots/${selectedBot.id}`, {
@@ -161,9 +175,19 @@ export function AiBotBuilder() {
       });
       if (res.ok) {
         const updated = await res.json();
+        console.log('[Master Bot] Bot updated successfully:', updated);
+        console.log('[Master Bot] Status in response:', updated.status);
+        // If status is not in response, add it manually
+        if (updates.status && !updated.status) {
+          updated.status = updates.status;
+        }
         setSelectedBot(updated);
         setBots(prev => prev.map(b => b.id === updated.id ? updated : b));
+      } else {
+        console.error('[Master Bot] Failed to update bot:', await res.text());
       }
+    } catch (error) {
+      console.error('[Master Bot] Error saving bot:', error);
     } finally {
       setSaving(false);
     }
@@ -179,7 +203,7 @@ export function AiBotBuilder() {
   if (selectedBot) {
     // Determine allowed modules for this user — non-admin gets only what admin assigned
     const allowedModules: string[] = isAdmin
-      ? ["overview", "chat-history", "live-chat", "links", "text", "qa", "tune", "test", "appearance", "deploy", "settings"]
+      ? ["overview", "chat-history", "live-chat", "links", "text", "qa", "courses", "tune", "test", "appearance", "deploy", "settings"]
       : (selectedBot.teamMemberAccess?.[user?.id || ""] || []);
 
     return (
@@ -233,7 +257,7 @@ export function AiBotBuilder() {
       ) : (
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: "16px" }}>
           {bots.map(bot => (
-            <div key={bot.id} style={botCard} onClick={() => { selectBot(bot, "links"); }}>
+            <div key={bot.id} style={{...botCard, position: "relative"}} onClick={() => { selectBot(bot, "links"); }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
                 <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
                   <div style={{ width: 40, height: 40, borderRadius: "50%", background: "#1f2937", display: "flex", alignItems: "center", justifyContent: "center", color: "white", fontSize: "18px", overflow: "hidden", flexShrink: 0 }}>
@@ -255,10 +279,24 @@ export function AiBotBuilder() {
                   🗑
                 </button>
               </div>
-              <div style={{ marginTop: "16px", display: "flex", gap: "8px", flexWrap: "wrap" }}>
-                {(bot.assignedRoles || []).map(r => (
-                  <span key={r} style={{ fontSize: "11px", padding: "2px 8px", background: "#f3f4f6", borderRadius: "12px", color: "#374151", textTransform: "capitalize" }}>{r}</span>
-                ))}
+              <div style={{ marginTop: "16px", display: "flex", gap: "8px", flexWrap: "wrap", alignItems: "center", justifyContent: "space-between" }}>
+                <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
+                  {(bot.assignedRoles || []).map(r => (
+                    <span key={r} style={{ fontSize: "11px", padding: "2px 8px", background: "#f3f4f6", borderRadius: "12px", color: "#374151", textTransform: "capitalize" }}>{r}</span>
+                  ))}
+                </div>
+                {/* Status Badge */}
+                <div style={{
+                  padding: "4px 10px",
+                  borderRadius: "6px",
+                  fontSize: "11px",
+                  fontWeight: 600,
+                  background: (bot.status || 'draft') === 'published' ? '#d1fae5' : '#fef3c7',
+                  color: (bot.status || 'draft') === 'published' ? '#065f46' : '#92400e',
+                  flexShrink: 0
+                }}>
+                  {(bot.status || 'draft') === 'published' ? 'Published' : 'Draft'}
+                </div>
               </div>
             </div>
           ))}
@@ -315,6 +353,7 @@ function BotDetailView({ bot, activeView, setActiveView, onSave, saving, onBack,
     { id: "links",         label: "Links / Docs",  icon: "🔗", section: "TRAINING DATA" },
     { id: "text",          label: "Text",          icon: "📝" },
     { id: "qa",            label: "Q&A",           icon: "❓" },
+    { id: "courses",       label: "Courses",       icon: "📚" },
     { id: "live-chat",     label: "Live Chat",     icon: "🟢" },
     { id: "tune",          label: "Tune AI",       icon: "⚙️", section: "BEHAVIOUR" },
     { id: "test",          label: "Test Your Bot", icon: "🧪" },
@@ -336,13 +375,62 @@ function BotDetailView({ bot, activeView, setActiveView, onSave, saving, onBack,
         <button onClick={onBack} style={{ background: "none", border: "none", cursor: "pointer", color: "#6b7280", fontSize: "15px", padding: 0, display: "flex", alignItems: "center", gap: "6px", marginBottom: "16px", fontWeight: 500 }}>
           ← All Bots
         </button>
-        <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "12px" }}>
           <div style={{ width: 44, height: 44, borderRadius: "50%", background: "#1f2937", display: "flex", alignItems: "center", justifyContent: "center", color: "white", fontSize: "20px", flexShrink: 0, overflow: "hidden" }}>
             {bot.botAvatarUrl
               ? <img src={bot.botAvatarUrl} alt="avatar" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
               : "🤖"}
           </div>
           <div style={{ fontWeight: 700, fontSize: "16px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", color: "#1f2937" }}>{bot.botTitle || bot.name}</div>
+        </div>
+        {/* Published/Draft Toggle */}
+        <div style={{ display: "flex", alignItems: "center", gap: "12px", marginTop: "8px" }}>
+          <span style={{ fontSize: "13px", color: "#6b7280", fontWeight: 500 }}>Status:</span>
+          <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+            <span style={{ 
+              fontSize: "12px", 
+              fontWeight: 600,
+              color: (bot.status || 'draft') === 'draft' ? '#1f2937' : '#9ca3af'
+            }}>
+              Draft
+            </span>
+            <div
+              onClick={async () => {
+                const currentStatus = bot.status || 'draft';
+                const newStatus = currentStatus === 'published' ? 'draft' : 'published';
+                await onSave({ status: newStatus });
+              }}
+              style={{
+                width: "44px",
+                height: "24px",
+                borderRadius: "12px",
+                cursor: "pointer",
+                background: (bot.status || 'draft') === 'published' ? '#10b981' : '#d1d5db',
+                position: "relative",
+                transition: "all 0.3s ease",
+                padding: 0
+              }}
+            >
+              <div style={{
+                width: "20px",
+                height: "20px",
+                borderRadius: "50%",
+                background: "#fff",
+                position: "absolute",
+                top: "2px",
+                left: (bot.status || 'draft') === 'published' ? "22px" : "2px",
+                transition: "all 0.3s ease",
+                boxShadow: "0 2px 4px rgba(0,0,0,0.2)"
+              }} />
+            </div>
+            <span style={{ 
+              fontSize: "12px", 
+              fontWeight: 600,
+              color: (bot.status || 'draft') === 'published' ? '#10b981' : '#9ca3af'
+            }}>
+              Published
+            </span>
+          </div>
         </div>
       </div>
       <nav style={{ padding: "10px 0", flex: 1, overflowY: "auto" }}>
@@ -422,6 +510,7 @@ function BotDetailView({ bot, activeView, setActiveView, onSave, saving, onBack,
           {activeView === "links"        && <LinksPanel bot={bot} onSave={onSave} saving={saving} />}
           {activeView === "text"         && <TextPanel bot={bot} onSave={onSave} saving={saving} />}
           {activeView === "qa"           && <QAPanel bot={bot} onSave={onSave} saving={saving} />}
+          {activeView === "courses"      && <CoursesPanel bot={bot} onSave={onSave} saving={saving} />}
           {activeView === "tune"         && <TunePanel bot={bot} onSave={onSave} saving={saving} />}
           {activeView === "test"         && <TestPanel bot={bot} />}
           {activeView === "appearance"   && <AppearancePanel bot={bot} onSave={onSave} saving={saving} />}
@@ -1500,6 +1589,178 @@ function QAPanel({ bot, onSave, saving }: { bot: AiBot; onSave: (u: Partial<AiBo
               />
             </div>
           ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Courses Panel ────────────────────────────────────────────────────────────
+
+type Course = {
+  id: string;
+  title: string;
+  folders?: { id: string; title: string }[];
+  pages?: { id: string; title: string; folderId?: string; transcript?: string }[];
+};
+
+function CoursesPanel({ bot, onSave, saving }: { bot: AiBot; onSave: (u: Partial<AiBot>) => void; saving: boolean }) {
+  const [courses, setCourses] = useState<Course[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [expanded, setExpanded] = useState<Set<string>>(new Set());
+  const [selectedPages, setSelectedPages] = useState<Set<string>>(new Set(bot.selectedPages || []));
+  const [selectedFolders, setSelectedFolders] = useState<Set<string>>(new Set(bot.selectedFolders || []));
+  const [selectedCourses, setSelectedCourses] = useState<Set<string>>(new Set(bot.selectedCourses || []));
+
+  useEffect(() => {
+    fetch("/api/courses").then(r => r.ok ? r.json() : []).then(data => {
+      setCourses(data); setLoading(false);
+    });
+  }, []);
+
+  function toggleCourse(courseId: string, course: Course) {
+    const allPageIds = (course.pages || []).map((p: any) => p.id);
+    const allFolderIds = (course.folders || []).map((f: any) => f.id);
+    const newCourses = new Set(selectedCourses);
+    const newFolders = new Set(selectedFolders);
+    const newPages = new Set(selectedPages);
+
+    if (newCourses.has(courseId)) {
+      newCourses.delete(courseId);
+      allFolderIds.forEach(id => newFolders.delete(id));
+      allPageIds.forEach(id => newPages.delete(id));
+    } else {
+      newCourses.add(courseId);
+      allFolderIds.forEach(id => newFolders.add(id));
+      allPageIds.forEach(id => newPages.add(id));
+    }
+    setSelectedCourses(newCourses); setSelectedFolders(newFolders); setSelectedPages(newPages);
+  }
+
+  function toggleFolder(folderId: string, course: Course) {
+    const folderPages = (course.pages || []).filter((p: any) => p.folderId === folderId).map((p: any) => p.id);
+    const newFolders = new Set(selectedFolders);
+    const newPages = new Set(selectedPages);
+
+    if (newFolders.has(folderId)) {
+      newFolders.delete(folderId);
+      folderPages.forEach(id => newPages.delete(id));
+    } else {
+      newFolders.add(folderId);
+      folderPages.forEach(id => newPages.add(id));
+    }
+    setSelectedFolders(newFolders); setSelectedPages(newPages);
+  }
+
+  function togglePage(pageId: string) {
+    const newPages = new Set(selectedPages);
+    newPages.has(pageId) ? newPages.delete(pageId) : newPages.add(pageId);
+    setSelectedPages(newPages);
+  }
+
+  function save() {
+    console.log('[Master Bot Courses] Saving course selections:', {
+      selectedCourses: Array.from(selectedCourses),
+      selectedFolders: Array.from(selectedFolders),
+      selectedPages: Array.from(selectedPages),
+    });
+    onSave({
+      selectedCourses: Array.from(selectedCourses),
+      selectedFolders: Array.from(selectedFolders),
+      selectedPages: Array.from(selectedPages),
+    });
+  }
+
+  const totalSelected = selectedPages.size;
+
+  return (
+    <div style={{ padding: "32px" }} className="bot-panel-padding">
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "24px" }}>
+        <div>
+          <h2 style={{ fontSize: "20px", fontWeight: 700, marginBottom: "4px" }}>Courses</h2>
+          <p style={{ color: "#6b7280", fontSize: "14px", margin: 0 }}>Select courses, modules, and lessons to train this bot</p>
+        </div>
+        <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+          {totalSelected > 0 && <span style={{ fontSize: "13px", color: "#6b7280" }}>{totalSelected} lessons selected</span>}
+          <button onClick={save} disabled={saving} style={btnPrimary}>{saving ? "Saving..." : "Save & Train"}</button>
+        </div>
+      </div>
+
+      {loading ? (
+        <div style={{ textAlign: "center", padding: "60px", color: "#9ca3af" }}>Loading courses...</div>
+      ) : courses.length === 0 ? (
+        <div style={{ ...card, textAlign: "center", padding: "60px", color: "#9ca3af" }}>No courses found</div>
+      ) : (
+        <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+          {courses.map(course => {
+            const isExpanded = expanded.has(course.id);
+            const isCourseChecked = selectedCourses.has(course.id);
+            const coursePageCount = (course.pages || []).length;
+            const selectedInCourse = (course.pages || []).filter(p => selectedPages.has(p.id)).length;
+
+            return (
+              <div key={course.id} style={{ ...card, padding: 0, overflow: "hidden" }}>
+                {/* Course header */}
+                <div style={{ display: "flex", alignItems: "center", gap: "12px", padding: "14px 20px", background: "#f8fafc", borderBottom: isExpanded ? "1px solid #e5e7eb" : "none" }}>
+                  <input type="checkbox" checked={isCourseChecked} onChange={() => toggleCourse(course.id, course)}
+                    style={{ width: 16, height: 16, accentColor: "#3b82f6", cursor: "pointer", flexShrink: 0 }} />
+                  <button onClick={() => setExpanded(prev => { const n = new Set(prev); n.has(course.id) ? n.delete(course.id) : n.add(course.id); return n; })}
+                    style={{ background: "none", border: "none", cursor: "pointer", flex: 1, textAlign: "left", display: "flex", alignItems: "center", gap: "10px" }}>
+                    <span style={{ fontSize: "18px" }}>📚</span>
+                    <span style={{ fontWeight: 700, fontSize: "15px", color: "#1f2937" }}>{course.title}</span>
+                    <span style={{ fontSize: "12px", color: "#9ca3af", marginLeft: "auto" }}>{selectedInCourse}/{coursePageCount} lessons</span>
+                    <span style={{ color: "#9ca3af", fontSize: "12px" }}>{isExpanded ? "▲" : "▼"}</span>
+                  </button>
+                </div>
+
+                {/* Folders + Pages */}
+                {isExpanded && (
+                  <div style={{ padding: "8px 0" }}>
+                    {/* Pages without folder */}
+                    {(course.pages || []).filter(p => !p.folderId).map(page => (
+                      <label key={page.id} style={{ display: "flex", alignItems: "center", gap: "10px", padding: "8px 20px 8px 44px", cursor: "pointer" }}
+                        onMouseEnter={e => (e.currentTarget.style.background = "#f9fafb")}
+                        onMouseLeave={e => (e.currentTarget.style.background = "transparent")}>
+                        <input type="checkbox" checked={selectedPages.has(page.id)} onChange={() => togglePage(page.id)}
+                          style={{ width: 14, height: 14, accentColor: "#3b82f6", cursor: "pointer" }} />
+                        <span style={{ fontSize: "14px" }}>📄</span>
+                        <span style={{ fontSize: "13px", color: "#374151" }}>{page.title}</span>
+                        {page.transcript && <span style={{ fontSize: "11px", color: "#10b981", marginLeft: "auto" }}>✓ transcript</span>}
+                      </label>
+                    ))}
+
+                    {/* Folders */}
+                    {(course.folders || []).map(folder => {
+                      const folderPages = (course.pages || []).filter(p => p.folderId === folder.id);
+                      const isFolderChecked = selectedFolders.has(folder.id);
+                      return (
+                        <div key={folder.id}>
+                          <div style={{ display: "flex", alignItems: "center", gap: "10px", padding: "8px 20px 8px 28px" }}>
+                            <input type="checkbox" checked={isFolderChecked} onChange={() => toggleFolder(folder.id, course)}
+                              style={{ width: 15, height: 15, accentColor: "#3b82f6", cursor: "pointer" }} />
+                            <span style={{ fontSize: "15px" }}>📁</span>
+                            <span style={{ fontWeight: 600, fontSize: "13px", color: "#374151" }}>{folder.title}</span>
+                            <span style={{ fontSize: "11px", color: "#9ca3af" }}>({folderPages.filter(p => selectedPages.has(p.id)).length}/{folderPages.length})</span>
+                          </div>
+                          {folderPages.map(page => (
+                            <label key={page.id} style={{ display: "flex", alignItems: "center", gap: "10px", padding: "7px 20px 7px 60px", cursor: "pointer" }}
+                              onMouseEnter={e => (e.currentTarget.style.background = "#f9fafb")}
+                              onMouseLeave={e => (e.currentTarget.style.background = "transparent")}>
+                              <input type="checkbox" checked={selectedPages.has(page.id)} onChange={() => togglePage(page.id)}
+                                style={{ width: 14, height: 14, accentColor: "#3b82f6", cursor: "pointer" }} />
+                              <span style={{ fontSize: "13px" }}>📄</span>
+                              <span style={{ fontSize: "13px", color: "#374151" }}>{page.title}</span>
+                              {page.transcript && <span style={{ fontSize: "11px", color: "#10b981", marginLeft: "auto" }}>✓ transcript</span>}
+                            </label>
+                          ))}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            );
+          })}
         </div>
       )}
     </div>

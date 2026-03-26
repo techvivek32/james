@@ -33,7 +33,7 @@ export function ManagerSidebar({ activeId, isCollapsed, onToggleCollapse }: Mana
   }, [user?.id]);
 
   const sidebarItems = hasBotAccess
-    ? [...baseItems, { id: "ai-bot-builder", label: "Master AI Bot Builder" }]
+    ? [...baseItems, { id: "ai-bot-builder", label: "Master Bot Builder" }]
     : baseItems;
 
   function handleNavigation(id: string) {

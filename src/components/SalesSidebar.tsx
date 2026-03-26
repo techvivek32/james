@@ -32,7 +32,7 @@ export function SalesSidebar({ activeId, isCollapsed, onToggleCollapse }: SalesS
   }, [user?.id]);
 
   const sidebarItems = hasBotAccess
-    ? [...baseItems, { id: "ai-bot-builder", label: "Master AI Bot Builder" }]
+    ? [...baseItems, { id: "ai-bot-builder", label: "Master Bot Builder" }]
     : baseItems;
 
   function handleNavigation(id: string) {
