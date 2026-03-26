@@ -42,13 +42,24 @@ export function UserManagement(props: UserEditorProps) {
   const [showDeletedUsers, setShowDeletedUsers] = useState(true);
   const [sortBy, setSortBy] = useState<"nameAsc" | "nameDesc" | "newest" | "oldest" | "lastModified">("nameAsc");
   const [showSortDropdown, setShowSortDropdown] = useState(false);
+  const [roleFilter, setRoleFilter] = useState<"all" | "admin" | "manager" | "sales" | "marketing">("all");
+  const [showRoleDropdown, setShowRoleDropdown] = useState(false);
+  const [showDeveloperModal, setShowDeveloperModal] = useState(false);
+  const [developerModalTab, setDeveloperModalTab] = useState<"selection" | "selected">("selection");
+  const [developerUsers, setDeveloperUsers] = useState<Set<string>>(() => {
+    try {
+      const saved = localStorage.getItem("developerUsers");
+      return saved ? new Set(JSON.parse(saved)) : new Set();
+    } catch { return new Set(); }
+  });
+  const [showFeatureToggles, setShowFeatureToggles] = useState(false);
+  const [showTrainingProgress, setShowTrainingProgress] = useState(false);
+  const [showAssignedSales, setShowAssignedSales] = useState(false);
   const [assignedSalesUsers, setAssignedSalesUsers] = useState<any[]>([]);
-  const [showTrainingModal, setShowTrainingModal] = useState(false);
   const [trainingModalData, setTrainingModalData] = useState<{ course: any; completed: number; total: number; isCompleted: boolean }[]>([]);
   const [isLoadingTrainingModal, setIsLoadingTrainingModal] = useState(false);
 
   function openTrainingProgress(user: UserProfile) {
-    setShowTrainingModal(true);
     setTrainingModalData([]);
     setIsLoadingTrainingModal(true);
     fetch('/api/courses').then(r => r.json()).then(async (courses) => {
@@ -127,22 +138,49 @@ export function UserManagement(props: UserEditorProps) {
   };
 
   const sortUsers = (users: UserProfile[]) => {
-    const sorted = [...users];
+    let filtered = [...users];
+    
+    // Filter out developer accounts from sidebar
+    filtered = filtered.filter(u => !developerUsers.has(u.id));
+    
+    // Apply role filter
+    if (roleFilter !== "all") {
+      filtered = filtered.filter(u => 
+        u.role === roleFilter || (u.roles || []).includes(roleFilter)
+      );
+    }
+    
+    // Apply sorting
     switch (sortBy) {
       case "nameAsc":
-        return sorted.sort((a, b) => a.name.localeCompare(b.name));
+        return filtered.sort((a, b) => a.name.localeCompare(b.name));
       case "nameDesc":
-        return sorted.sort((a, b) => b.name.localeCompare(a.name));
+        return filtered.sort((a, b) => b.name.localeCompare(a.name));
       case "newest":
-        return sorted.sort((a, b) => b.id.localeCompare(a.id));
+        return filtered.sort((a, b) => b.id.localeCompare(a.id));
       case "oldest":
-        return sorted.sort((a, b) => a.id.localeCompare(b.id));
+        return filtered.sort((a, b) => a.id.localeCompare(b.id));
       case "lastModified":
-        return sorted;
+        return filtered;
       default:
-        return sorted;
+        return filtered;
     }
   };
+
+  function toggleDeveloperUser(userId: string) {
+    const newSet = new Set(developerUsers);
+    if (newSet.has(userId)) {
+      newSet.delete(userId);
+    } else {
+      newSet.add(userId);
+    }
+    setDeveloperUsers(newSet);
+    localStorage.setItem("developerUsers", JSON.stringify([...newSet]));
+  }
+
+  function saveDeveloperAccounts() {
+    setShowDeveloperModal(false);
+  }
 
   useEffect(() => {
     const current = draftUsers.find((u) => u.id === selectedUserId);
@@ -331,23 +369,19 @@ export function UserManagement(props: UserEditorProps) {
       const text = await file.text();
       const lines = text.split("\n").filter(line => line.trim());
       const headers = lines[0].split(",").map(h => h.trim());
-      const hasFeatureToggles = headers.some(h => h.startsWith("featureToggles."));
       
       const users = lines.slice(1).map(line => {
         const values = line.split(",").map(v => v.trim());
-        const user: any = { featureToggles: {} };
+        const user: any = {};
         headers.forEach((header, i) => {
-          if (header.startsWith("featureToggles.")) {
-            const key = header.replace("featureToggles.", "");
-            user.featureToggles[key] = values[i]?.toUpperCase() === "TRUE";
-          } else {
-            user[header] = values[i];
-          }
+          user[header] = values[i];
         });
         
-        if (!hasFeatureToggles && user.role) {
+        // Set default feature toggles based on role
+        if (user.role) {
           const roleToggles = featureToggleKeysByRole[user.role as UserRole];
           if (roleToggles) {
+            user.featureToggles = {};
             roleToggles.forEach(key => {
               user.featureToggles[key] = true;
             });
@@ -392,31 +426,57 @@ export function UserManagement(props: UserEditorProps) {
   }
 
   function handleExportCSV() {
-    const headers = ["id", "name", "email", "role", "phone", "territory", "strengths", "weaknesses"];
-    const toggleKeys = Object.keys(draftUsers[0]?.featureToggles || {});
-    const allHeaders = [...headers, ...toggleKeys.map(k => `featureToggles.${k}`)];
+    const headers = ["id", "name", "email", "role", "phone", "territory"];
     
-    const rows = draftUsers.map(user => {
-      const baseData = [
-        user.id,
-        user.name,
-        user.email,
-        user.role,
-        user.phone || "",
-        user.territory || "",
-        user.strengths || "",
-        user.weaknesses || ""
-      ];
-      const toggleData = toggleKeys.map(k => (user.featureToggles as any)[k] ? "TRUE" : "FALSE");
-      return [...baseData, ...toggleData];
-    });
+    const rows = draftUsers.map(user => [
+      user.id,
+      user.name,
+      user.email,
+      user.role,
+      user.phone || "",
+      user.territory || ""
+    ]);
     
-    const csv = [allHeaders.join(","), ...rows.map(r => r.join(","))].join("\n");
+    const csv = [headers.join(","), ...rows.map(r => r.join(","))].join("\n");
     const blob = new Blob([csv], { type: "text/csv" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
     a.download = `users-export-${Date.now()}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  function handleDownloadTemplate() {
+    // Simple template with only basic user fields
+    const headers = ["name", "email", "role", "phone", "territory", "password"];
+    
+    // Create example rows
+    const exampleRows = [
+      [
+        "John Doe",
+        "john.doe@company.com",
+        "sales",
+        "555-0100",
+        "North Territory",
+        "password123"
+      ],
+      [
+        "Jane Smith",
+        "jane.smith@company.com",
+        "manager",
+        "555-0101",
+        "South Territory",
+        "password456"
+      ]
+    ];
+    
+    const csv = [headers.join(","), ...exampleRows.map(r => r.join(","))].join("\n");
+    const blob = new Blob([csv], { type: "text/csv" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "user-import-template.csv";
     a.click();
     URL.revokeObjectURL(url);
   }
@@ -451,77 +511,29 @@ export function UserManagement(props: UserEditorProps) {
 
   return (
     <div className="admin-user-management">
-      {/* Training Progress Modal */}
-      {showTrainingModal && (
-        <div style={{
-          position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.5)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          zIndex: 9999, padding: 16
-        }}>
-          <div style={{
-            background: '#fff', borderRadius: 12, width: '100%', maxWidth: 560,
-            maxHeight: '85vh', display: 'flex', flexDirection: 'column',
-            boxShadow: '0 20px 40px rgba(0,0,0,0.15)'
-          }}>
-            {/* Modal Header */}
-            <div style={{ padding: '20px 24px', borderBottom: '1px solid #e5e7eb', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0 }}>
-              <div>
-                <div style={{ fontWeight: 700, fontSize: 18, color: '#111827' }}>Training Progress</div>
-                <div style={{ fontSize: 13, color: '#6b7280', marginTop: 2 }}>{draftUsers.find(u => u.id === selectedUserId)?.name}</div>
-              </div>
-              <button type="button" onClick={() => setShowTrainingModal(false)} style={{ background: 'none', border: 'none', fontSize: 22, cursor: 'pointer', color: '#6b7280', lineHeight: 1, padding: 4 }}>×</button>
-            </div>
-            {/* Modal Body */}
-            <div style={{ overflowY: 'auto', padding: '20px 24px', flex: 1 }}>
-              {isLoadingTrainingModal ? (
-                <div style={{ textAlign: 'center', padding: 40, color: '#6b7280' }}>Loading...</div>
-              ) : trainingModalData.length === 0 ? (
-                <div style={{ textAlign: 'center', padding: 40, color: '#9ca3af' }}>
-                  <div style={{ fontSize: 40, marginBottom: 12 }}>📚</div>
-                  No course progress found.
-                </div>
-              ) : (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-                  {trainingModalData.map(({ course, completed, total, isCompleted }) => {
-                    const pct = total > 0 ? Math.round((completed / total) * 100) : 0;
-                    return (
-                      <div key={course.id} style={{ border: '1px solid #e5e7eb', borderRadius: 10, padding: '16px 18px' }}>
-                        <div style={{ fontWeight: 600, fontSize: 15, color: '#111827', marginBottom: 10 }}>{course.title}</div>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, marginBottom: 8, flexWrap: 'wrap', gap: 4 }}>
-                          <span style={{ color: '#374151' }}>Lessons Completed: <strong>{completed} / {total}</strong></span>
-                          <span style={{
-                            padding: '2px 10px', borderRadius: 999, fontSize: 12, fontWeight: 600,
-                            background: isCompleted ? '#d1fae5' : pct === 0 ? '#fee2e2' : '#fef3c7',
-                            color: isCompleted ? '#065f46' : pct === 0 ? '#991b1b' : '#92400e'
-                          }}>
-                            {isCompleted ? '✓ Completed' : pct === 0 ? 'Not Started' : 'In Progress'}
-                          </span>
-                        </div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                          <div style={{ flex: 1, height: 8, borderRadius: 999, background: '#e5e7eb', overflow: 'hidden' }}>
-                            <div style={{ height: '100%', borderRadius: 999, background: isCompleted ? '#10b981' : '#22c55e', width: `${pct}%`, transition: 'width 0.3s' }} />
-                          </div>
-                          <span style={{ fontSize: 13, fontWeight: 700, color: isCompleted ? '#10b981' : '#374151', minWidth: 36 }}>
-                            Course Progress: {pct}%
-                          </span>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-            {/* Modal Footer */}
-            <div style={{ padding: '14px 24px', borderTop: '1px solid #e5e7eb', display: 'flex', justifyContent: 'flex-end', flexShrink: 0 }}>
-              <button type="button" className="btn-secondary btn-small" onClick={() => setShowTrainingModal(false)}>Close</button>
-            </div>
-          </div>
-        </div>
-      )}
       <div className="panel-header" style={{ marginBottom: 16 }}>
         <div className="panel-header-row">
           <span>User Management</span>
           <div style={{ display: "flex", gap: 8 }}>
+            <button 
+              type="button" 
+              onClick={() => setShowDeveloperModal(true)}
+              style={{
+                padding: "8px 16px",
+                borderRadius: 6,
+                border: "1px solid #8b5cf6",
+                background: "#f5f3ff",
+                color: "#7c3aed",
+                fontSize: 13,
+                fontWeight: 600,
+                cursor: "pointer",
+              }}
+            >
+              👨‍💻 Developer Accounts
+            </button>
+            <button type="button" className="btn-secondary btn-small" onClick={handleDownloadTemplate}>
+              📥 Download Template
+            </button>
             <button type="button" className="btn-secondary btn-small" onClick={handleExportCSV}>
               Export CSV
             </button>
@@ -579,20 +591,82 @@ export function UserManagement(props: UserEditorProps) {
         <div className="panel-header">
           <div className="panel-header-row">
             <span>Users</span>
-            <div style={{ position: "relative", display: "flex", alignItems: "center", gap: 8 }}>
-              <span style={{ fontSize: 14, color: "#6b7280" }}>Sort:</span>
-              <button
-                type="button"
-                className="btn-secondary btn-small"
-                onClick={() => setShowSortDropdown(!showSortDropdown)}
-                style={{ display: "flex", alignItems: "center", gap: 6 }}
-              >
-                {sortBy === "nameAsc" && "Name (A-Z)"}
-                {sortBy === "nameDesc" && "Name (Z-A)"}
-                {sortBy === "newest" && "Newest"}
-                {sortBy === "oldest" && "Oldest"}
-                {sortBy === "lastModified" && "Last Modified"}
-              </button>
+            <div style={{ position: "relative", display: "flex", alignItems: "center", gap: 12 }}>
+              {/* Role Filter */}
+              <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                <span style={{ fontSize: 14, color: "#6b7280" }}>Role:</span>
+                <div style={{ position: "relative" }}>
+                  <button
+                    type="button"
+                    className="btn-secondary btn-small"
+                    onClick={() => setShowRoleDropdown(!showRoleDropdown)}
+                    style={{ display: "flex", alignItems: "center", gap: 6 }}
+                  >
+                    {roleFilter === "all" ? "All" : roleFilter.charAt(0).toUpperCase() + roleFilter.slice(1)}
+                    <span style={{ fontSize: 12 }}>▼</span>
+                  </button>
+                  {showRoleDropdown && (
+                    <div style={{
+                      position: "absolute",
+                      top: "100%",
+                      right: 0,
+                      marginTop: 4,
+                      backgroundColor: "#ffffff",
+                      border: "1px solid #e5e7eb",
+                      borderRadius: 8,
+                      boxShadow: "0 4px 6px rgba(0,0,0,0.1)",
+                      zIndex: 1000,
+                      minWidth: 160
+                    }}>
+                      {[
+                        { value: "all", label: "All Roles" },
+                        { value: "admin", label: "Admin" },
+                        { value: "manager", label: "Manager" },
+                        { value: "sales", label: "Sales" },
+                        { value: "marketing", label: "Marketing" }
+                      ].map((option) => (
+                        <button
+                          key={option.value}
+                          type="button"
+                          onClick={() => {
+                            setRoleFilter(option.value as any);
+                            setShowRoleDropdown(false);
+                          }}
+                          style={{
+                            width: "100%",
+                            padding: "10px 16px",
+                            textAlign: "left",
+                            border: "none",
+                            background: roleFilter === option.value ? "#f3f4f6" : "transparent",
+                            cursor: "pointer",
+                            fontSize: 14,
+                            fontWeight: roleFilter === option.value ? 600 : 400
+                          }}
+                        >
+                          {roleFilter === option.value ? "✓ " : ""}{option.label}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Sort Dropdown */}
+              <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                <span style={{ fontSize: 14, color: "#6b7280" }}>Sort:</span>
+                <div style={{ position: "relative" }}>
+                  <button
+                    type="button"
+                    className="btn-secondary btn-small"
+                    onClick={() => setShowSortDropdown(!showSortDropdown)}
+                    style={{ display: "flex", alignItems: "center", gap: 6 }}
+                  >
+                    {sortBy === "nameAsc" && "A-Z"}
+                    {sortBy === "nameDesc" && "Z-A"}
+                    {sortBy === "newest" && "Newest"}
+                    {sortBy === "oldest" && "Oldest"}
+                    {sortBy === "lastModified" && "Last Modified"}
+                  </button>
               {showSortDropdown && (
                 <div style={{
                   position: "absolute",
@@ -607,8 +681,8 @@ export function UserManagement(props: UserEditorProps) {
                   minWidth: 180
                 }}>
                   {[
-                    { value: "nameAsc", label: "✓ Name (A-Z)" },
-                    { value: "nameDesc", label: "Name (Z-A)" },
+                    { value: "nameAsc", label: "✓ A-Z" },
+                    { value: "nameDesc", label: "Z-A" },
                     { value: "newest", label: "Newest" },
                     { value: "oldest", label: "Oldest" },
                     { value: "lastModified", label: "Last Modified" }
@@ -636,6 +710,8 @@ export function UserManagement(props: UserEditorProps) {
                   ))}
                 </div>
               )}
+            </div>
+              </div>
             </div>
           </div>
         </div>
@@ -789,16 +865,11 @@ export function UserManagement(props: UserEditorProps) {
       </div>
       <div className="panel panel-right">
         {selectedUser ? (
-          <div className="panel-scroll">
+          <div className="panel-scroll" style={{ overflowY: "auto", maxHeight: "calc(100vh - 100px)" }}>
             <div className="panel-header">
               <div className="panel-header-row">
                 <span>User Details{selectedUser.suspended && <span style={{ color: "#dc2626", marginLeft: 8 }}>• SUSPENDED</span>}</span>
                 <div className="panel-header-actions">
-                  {(selectedUser.roles || [selectedUser.role]).some(r => r === 'manager' || r === 'sales') && (
-                    <button type="button" className="btn-secondary btn-small" onClick={() => openTrainingProgress(selectedUser)}>
-                      📊 Training Progress
-                    </button>
-                  )}
                   <button type="button" className="btn-primary btn-small" disabled={!isDirty || !!emailError} onClick={() => {
                     if (emailError) {
                       emailInputRef.current?.focus();
@@ -941,9 +1012,18 @@ export function UserManagement(props: UserEditorProps) {
               </div>
             )}
             <div style={{ marginTop: 40 }}></div>
+            
+            {/* Feature Toggles - Collapsible */}
             <div className="panel-section">
-              <div className="panel-section-title">Feature Toggles</div>
-              {togglesByRole.map(({ role, keys }) => (
+              <div 
+                className="panel-section-title" 
+                style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer" }} 
+                onClick={() => setShowFeatureToggles(!showFeatureToggles)}
+              >
+                <span>{showFeatureToggles ? "▾" : "▸"}</span>
+                <span>Feature Toggles</span>
+              </div>
+              {showFeatureToggles && togglesByRole.map(({ role, keys }) => (
                 <div key={role} style={{ marginBottom: 24 }}>
                   <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 12, color: "#666" }}>
                     {roleLabels[role]}
@@ -964,11 +1044,99 @@ export function UserManagement(props: UserEditorProps) {
               ))}
             </div>
 
+            {/* Training Progress - Collapsible Inline */}
+            {(selectedUser.roles || [selectedUser.role]).some(r => r === 'manager' || r === 'sales') && (
+              <div className="panel-section" style={{ marginTop: 24 }}>
+                <div 
+                  className="panel-section-title" 
+                  style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer" }} 
+                  onClick={() => {
+                    setShowTrainingProgress(!showTrainingProgress);
+                    if (!showTrainingProgress && trainingModalData.length === 0) {
+                      openTrainingProgress(selectedUser);
+                    }
+                  }}
+                >
+                  <span>{showTrainingProgress ? "▾" : "▸"}</span>
+                  <span>📊 Training Progress</span>
+                </div>
+                {showTrainingProgress && (
+                  <div style={{ marginTop: 16 }}>
+                    {isLoadingTrainingModal ? (
+                      <div style={{ textAlign: 'center', padding: 40, color: '#6b7280' }}>Loading...</div>
+                    ) : trainingModalData.length === 0 ? (
+                      <div style={{ textAlign: 'center', padding: 40, color: '#9ca3af' }}>
+                        <div style={{ fontSize: 40, marginBottom: 12 }}>📚</div>
+                        <div>No published courses available</div>
+                      </div>
+                    ) : (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                        {trainingModalData.map(({ course, completed, total, isCompleted }) => {
+                          const pct = total > 0 ? Math.round((completed / total) * 100) : 0;
+                          return (
+                            <div key={course.id} style={{ 
+                              padding: 16, 
+                              border: '1px solid #e5e7eb', 
+                              borderRadius: 8,
+                              background: isCompleted ? '#f0fdf4' : '#fff'
+                            }}>
+                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 10 }}>
+                                <div style={{ flex: 1 }}>
+                                  <div style={{ fontWeight: 600, fontSize: 15, color: '#111827', marginBottom: 4 }}>
+                                    {course.title}
+                                  </div>
+                                  <div style={{ fontSize: 13, color: '#6b7280' }}>
+                                    {completed} of {total} lessons completed
+                                  </div>
+                                </div>
+                                {isCompleted && (
+                                  <span style={{ 
+                                    padding: '4px 10px', 
+                                    borderRadius: 6, 
+                                    background: '#10b981', 
+                                    color: '#fff', 
+                                    fontSize: 12, 
+                                    fontWeight: 600 
+                                  }}>
+                                    ✓ Completed
+                                  </span>
+                                )}
+                              </div>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                                <div style={{ flex: 1, height: 10, borderRadius: 999, background: '#e5e7eb', overflow: 'hidden' }}>
+                                  <div style={{
+                                    width: `${pct}%`,
+                                    height: '100%',
+                                    background: pct === 100 ? '#10b981' : pct > 0 ? '#f59e0b' : '#e5e7eb',
+                                    transition: 'width 0.3s'
+                                  }} />
+                                </div>
+                                <span style={{ fontSize: 14, fontWeight: 700, color: '#374151', minWidth: 45 }}>{pct}%</span>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Assigned Sales Users - Collapsible */}
             {selectedUser.role === "manager" && assignedSalesUsers.length > 0 && (
               <div className="panel-section" style={{ marginTop: 24 }}>
-                <div className="panel-section-title">Assigned Sales Users</div>
-                <div style={{ overflowX: 'auto', border: '1px solid #e5e7eb', borderRadius: 8 }}>
-                  <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                <div 
+                  className="panel-section-title" 
+                  style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer" }} 
+                  onClick={() => setShowAssignedSales(!showAssignedSales)}
+                >
+                  <span>{showAssignedSales ? "▾" : "▸"}</span>
+                  <span>Assigned Sales Users</span>
+                </div>
+                {showAssignedSales && (
+                  <div style={{ overflowX: 'auto', border: '1px solid #e5e7eb', borderRadius: 8, marginTop: 16 }}>
+                    <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                     <thead>
                       <tr style={{ backgroundColor: '#f9fafb', borderBottom: '2px solid #e5e7eb' }}>
                         <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 600, fontSize: 14, color: '#374151' }}>Name</th>
@@ -1005,7 +1173,8 @@ export function UserManagement(props: UserEditorProps) {
                       ))}
                     </tbody>
                   </table>
-                </div>
+                  </div>
+                )}
               </div>
             )}
           </div>
@@ -1013,6 +1182,202 @@ export function UserManagement(props: UserEditorProps) {
           <div className="panel-empty">Select a user to manage details.</div>
         )}
       </div>
+
+      {/* Developer Accounts Modal */}
+      {showDeveloperModal && (
+        <div style={{
+          position: "fixed", inset: 0, zIndex: 1000,
+          background: "rgba(0,0,0,0.45)",
+          display: "flex", alignItems: "center", justifyContent: "center",
+          padding: 16,
+        }}>
+          <div style={{
+            background: "#fff", borderRadius: 14,
+            width: "100%", maxWidth: 600,
+            maxHeight: "90vh", display: "flex", flexDirection: "column",
+            boxShadow: "0 20px 60px rgba(0,0,0,0.25)",
+            overflow: "hidden",
+          }}>
+            {/* Modal header */}
+            <div style={{
+              padding: "18px 24px 0 24px",
+              display: "flex", justifyContent: "space-between", alignItems: "center",
+              background: "#f5f3ff",
+            }}>
+              <div style={{ fontWeight: 700, fontSize: 16, color: "#7c3aed", marginBottom: 12 }}>
+                👨‍💻 Developer Accounts
+              </div>
+              <button
+                onClick={() => {
+                  setShowDeveloperModal(false);
+                  setDeveloperModalTab("selection");
+                }}
+                style={{
+                  background: "none", border: "none", cursor: "pointer",
+                  fontSize: 20, color: "#9ca3af", lineHeight: 1, padding: 4,
+                }}
+              >×</button>
+            </div>
+
+            {/* Tabs */}
+            <div style={{ 
+              display: "flex", 
+              borderBottom: "1px solid #e5e7eb",
+              background: "#f5f3ff",
+              paddingLeft: 24,
+              paddingRight: 24,
+            }}>
+              <button
+                onClick={() => setDeveloperModalTab("selection")}
+                style={{
+                  flex: 1,
+                  padding: "12px 16px",
+                  border: "none",
+                  background: "none",
+                  cursor: "pointer",
+                  fontSize: 14,
+                  fontWeight: developerModalTab === "selection" ? 600 : 400,
+                  color: developerModalTab === "selection" ? "#7c3aed" : "#6b7280",
+                  borderBottom: developerModalTab === "selection" ? "2px solid #7c3aed" : "2px solid transparent",
+                }}
+              >
+                New Selection
+              </button>
+              <button
+                onClick={() => setDeveloperModalTab("selected")}
+                style={{
+                  flex: 1,
+                  padding: "12px 16px",
+                  border: "none",
+                  background: "none",
+                  cursor: "pointer",
+                  fontSize: 14,
+                  fontWeight: developerModalTab === "selected" ? 600 : 400,
+                  color: developerModalTab === "selected" ? "#7c3aed" : "#6b7280",
+                  borderBottom: developerModalTab === "selected" ? "2px solid #7c3aed" : "2px solid transparent",
+                }}
+              >
+                Selected Accounts ({developerUsers.size})
+              </button>
+            </div>
+
+            {/* Modal body */}
+            <div style={{ flex: 1, overflowY: "auto", padding: "20px 24px" }}>
+              {developerModalTab === "selection" ? (
+                <>
+                  <div style={{ marginBottom: 16, fontSize: 13, color: "#6b7280" }}>
+                    Select users to mark as developers
+                  </div>
+                  <div style={{ border: "1px solid #e5e7eb", borderRadius: 8, overflow: "hidden" }}>
+                    {draftUsers.map((user, idx) => {
+                      const isSelected = developerUsers.has(user.id);
+                      return (
+                        <label
+                          key={user.id}
+                          style={{
+                            display: "flex", alignItems: "center", gap: 12,
+                            padding: "12px 16px", cursor: "pointer",
+                            background: isSelected ? "#f5f3ff" : idx % 2 === 0 ? "#fff" : "#fafafa",
+                            borderBottom: idx < draftUsers.length - 1 ? "1px solid #f3f4f6" : "none",
+                            transition: "background 0.15s",
+                          }}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={isSelected}
+                            onChange={() => toggleDeveloperUser(user.id)}
+                            style={{ width: 16, height: 16, accentColor: "#7c3aed", cursor: "pointer" }}
+                          />
+                          <div style={{ flex: 1 }}>
+                            <div style={{ fontWeight: 600, color: "#111827", fontSize: 14 }}>{user.name}</div>
+                            <div style={{ fontSize: 12, color: "#6b7280", marginTop: 2 }}>
+                              {(user.roles || [user.role]).map(r => r.toUpperCase()).join(", ")} • {user.email}
+                            </div>
+                          </div>
+                          {isSelected && (
+                            <span style={{ fontSize: 11, color: "#7c3aed", fontWeight: 600 }}>✓ Developer</span>
+                          )}
+                        </label>
+                      );
+                    })}
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div style={{ marginBottom: 16, fontSize: 13, color: "#6b7280" }}>
+                    {developerUsers.size} developer account{developerUsers.size !== 1 ? "s" : ""} selected
+                  </div>
+                  {developerUsers.size === 0 ? (
+                    <div style={{ textAlign: "center", padding: 40, color: "#9ca3af", fontSize: 13 }}>
+                      No developer accounts selected
+                    </div>
+                  ) : (
+                    <div style={{ border: "1px solid #e5e7eb", borderRadius: 8, overflow: "hidden" }}>
+                      {draftUsers.filter(u => developerUsers.has(u.id)).map((user, idx) => (
+                        <div
+                          key={user.id}
+                          style={{
+                            display: "flex", alignItems: "center", gap: 12,
+                            padding: "12px 16px",
+                            background: idx % 2 === 0 ? "#fff" : "#fafafa",
+                            borderBottom: idx < draftUsers.filter(u => developerUsers.has(u.id)).length - 1 ? "1px solid #f3f4f6" : "none",
+                          }}
+                        >
+                          <div style={{ flex: 1 }}>
+                            <div style={{ fontWeight: 600, color: "#111827", fontSize: 14 }}>{user.name}</div>
+                            <div style={{ fontSize: 12, color: "#6b7280", marginTop: 2 }}>
+                              {(user.roles || [user.role]).map(r => r.toUpperCase()).join(", ")} • {user.email}
+                            </div>
+                          </div>
+                          <span style={{ 
+                            padding: "4px 10px", 
+                            borderRadius: 6,
+                            background: "#f5f3ff",
+                            color: "#7c3aed",
+                            fontSize: 11, 
+                            fontWeight: 600 
+                          }}>
+                            ✓ Developer
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+
+            {/* Modal footer */}
+            <div style={{
+              padding: "14px 24px", borderTop: "1px solid #e5e7eb",
+              display: "flex", justifyContent: "flex-end", gap: 10,
+              background: "#f8fafc",
+            }}>
+              <button
+                onClick={() => setShowDeveloperModal(false)}
+                style={{
+                  padding: "8px 18px", borderRadius: 8,
+                  border: "1px solid #d1d5db", background: "#fff",
+                  fontSize: 13, fontWeight: 600, color: "#374151",
+                  cursor: "pointer",
+                }}
+              >Cancel</button>
+              <button
+                onClick={saveDeveloperAccounts}
+                style={{
+                  padding: "8px 20px", borderRadius: 8,
+                  border: "none",
+                  background: "#7c3aed",
+                  fontSize: 13, fontWeight: 600, color: "#fff",
+                  cursor: "pointer",
+                }}
+              >
+                Save Changes
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Assigned Sales Users Modal - REMOVED */}
       </div>
