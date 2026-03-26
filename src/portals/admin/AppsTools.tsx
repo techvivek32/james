@@ -4,6 +4,8 @@ type AppToolItem = {
   _id: string;
   title: string;
   imageUrl: string;
+  imageWidth?: number;
+  imageHeight?: number;
   description: string;
   link: string;
   webLink?: string;
@@ -30,10 +32,48 @@ export function AppsToolManagement() {
   const [uploading, setUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const editFileInputRef = useRef<HTMLInputElement | null>(null);
+  const [previewWidth, setPreviewWidth] = useState(400);
+  const [previewHeight, setPreviewHeight] = useState(300);
+  const [isResizing, setIsResizing] = useState(false);
+  const [resizeStart, setResizeStart] = useState({ x: 0, y: 0, width: 0, height: 0 });
 
   useEffect(() => {
     fetchAppTools();
   }, []);
+
+  // Handle resize mouse events
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!isResizing) return;
+      
+      const deltaX = e.clientX - resizeStart.x;
+      const deltaY = e.clientY - resizeStart.y;
+      
+      const newWidth = Math.max(200, Math.min(800, resizeStart.width + deltaX));
+      const newHeight = Math.max(150, Math.min(600, resizeStart.height + deltaY));
+      
+      setPreviewWidth(newWidth);
+      setPreviewHeight(newHeight);
+    };
+
+    const handleMouseUp = () => {
+      setIsResizing(false);
+    };
+
+    if (isResizing) {
+      document.addEventListener('mousemove', handleMouseMove);
+      document.addEventListener('mouseup', handleMouseUp);
+      document.body.style.cursor = 'nwse-resize';
+      document.body.style.userSelect = 'none';
+    }
+
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
+    };
+  }, [isResizing, resizeStart]);
 
   async function fetchAppTools() {
     try {
@@ -90,6 +130,8 @@ export function AppsToolManagement() {
         body: JSON.stringify({
           title: newTitle,
           imageUrl: newImageUrl,
+          imageWidth: previewWidth,
+          imageHeight: previewHeight,
           description: newDescription,
           link: newLink,
           webLink: newWebLink,
@@ -112,6 +154,8 @@ export function AppsToolManagement() {
         setNewWebLink("");
         setNewAppStoreLink("");
         setNewPlayStoreLink("");
+        setPreviewWidth(400);
+        setPreviewHeight(300);
       }
     } catch (error) {
       console.error('Error creating app/tool:', error);
@@ -129,6 +173,8 @@ export function AppsToolManagement() {
         body: JSON.stringify({
           title: editingItem.title,
           imageUrl: editingItem.imageUrl,
+          imageWidth: previewWidth,
+          imageHeight: previewHeight,
           description: editingItem.description,
           link: editingItem.link,
           webLink: editingItem.webLink,
@@ -145,6 +191,8 @@ export function AppsToolManagement() {
         if (type === "other") setOther(other.map(item => item._id === id ? updatedItem : item));
         setIsEditing(null);
         setEditingItem(null);
+        setPreviewWidth(400);
+        setPreviewHeight(300);
       }
     } catch (error) {
       console.error('Error updating app/tool:', error);
@@ -155,6 +203,8 @@ export function AppsToolManagement() {
   function startEdit(item: AppToolItem) {
     setIsEditing(item._id);
     setEditingItem({ ...item });
+    setPreviewWidth(item.imageWidth || 400);
+    setPreviewHeight(item.imageHeight || 300);
   }
 
   function cancelEdit() {
@@ -201,7 +251,7 @@ export function AppsToolManagement() {
                   <input className="field-input" value={newTitle} onChange={(e) => setNewTitle(e.target.value)} placeholder="Enter title" />
                 </label>
                 <label className="field">
-                  <span className="field-label">Image (400 x 300 px recommended)</span>
+                  <span className="field-label">Image</span>
                   <div style={{ display: "flex", gap: 8 }}>
                     <input className="field-input" value={newImageUrl} onChange={(e) => setNewImageUrl(e.target.value)} placeholder="Image" style={{ flex: 1 }} />
                     <button type="button" className="btn-secondary" disabled={uploading} onClick={() => fileInputRef.current?.click()}>
@@ -212,6 +262,53 @@ export function AppsToolManagement() {
                       if (file) handleFileUpload(file);
                     }} />
                   </div>
+                  {newImageUrl && (
+                    <div style={{ marginTop: 12, position: 'relative', display: 'inline-block' }}>
+                      <div style={{ 
+                        width: previewWidth, 
+                        height: previewHeight,
+                        border: '2px solid #e5e7eb',
+                        borderRadius: 8,
+                        overflow: 'hidden',
+                        position: 'relative',
+                        backgroundImage: `url(${newImageUrl})`,
+                        backgroundSize: 'cover',
+                        backgroundPosition: 'center'
+                      }}>
+                        <div style={{
+                          position: 'absolute',
+                          bottom: 0,
+                          right: 0,
+                          width: 20,
+                          height: 20,
+                          background: '#3b82f6',
+                          cursor: 'nwse-resize',
+                          borderTopLeftRadius: 4,
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          color: 'white',
+                          fontSize: 12,
+                          fontWeight: 'bold'
+                        }}
+                        onMouseDown={(e) => {
+                          setIsResizing(true);
+                          setResizeStart({
+                            x: e.clientX,
+                            y: e.clientY,
+                            width: previewWidth,
+                            height: previewHeight
+                          });
+                        }}
+                        >
+                          ⇲
+                        </div>
+                      </div>
+                      <div style={{ marginTop: 4, fontSize: 12, color: '#6b7280' }}>
+                        {previewWidth} × {previewHeight} px (drag corner to resize)
+                      </div>
+                    </div>
+                  )}
                 </label>
               </div>
               <label className="field" style={{ marginTop: 16 }}>
@@ -264,7 +361,7 @@ export function AppsToolManagement() {
                   <input className="field-input" value={editingItem?.title || ''} onChange={(e) => setEditingItem(prev => prev ? {...prev, title: e.target.value} : null)} placeholder="Enter title" />
                 </label>
                 <label className="field">
-                  <span className="field-label">Image (400 x 300 px recommended)</span>
+                  <span className="field-label">Image</span>
                   <div style={{ display: "flex", gap: 8 }}>
                     <input className="field-input" value={editingItem?.imageUrl || ''} onChange={(e) => setEditingItem(prev => prev ? {...prev, imageUrl: e.target.value} : null)} placeholder="Image" style={{ flex: 1 }} />
                     <button type="button" className="btn-secondary" disabled={uploading} onClick={() => editFileInputRef.current?.click()}>
@@ -275,6 +372,53 @@ export function AppsToolManagement() {
                       if (file) handleFileUpload(file, true);
                     }} />
                   </div>
+                  {editingItem?.imageUrl && (
+                    <div style={{ marginTop: 12, position: 'relative', display: 'inline-block' }}>
+                      <div style={{ 
+                        width: previewWidth, 
+                        height: previewHeight,
+                        border: '2px solid #e5e7eb',
+                        borderRadius: 8,
+                        overflow: 'hidden',
+                        position: 'relative',
+                        backgroundImage: `url(${editingItem.imageUrl})`,
+                        backgroundSize: 'cover',
+                        backgroundPosition: 'center'
+                      }}>
+                        <div style={{
+                          position: 'absolute',
+                          bottom: 0,
+                          right: 0,
+                          width: 20,
+                          height: 20,
+                          background: '#3b82f6',
+                          cursor: 'nwse-resize',
+                          borderTopLeftRadius: 4,
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          color: 'white',
+                          fontSize: 12,
+                          fontWeight: 'bold'
+                        }}
+                        onMouseDown={(e) => {
+                          setIsResizing(true);
+                          setResizeStart({
+                            x: e.clientX,
+                            y: e.clientY,
+                            width: previewWidth,
+                            height: previewHeight
+                          });
+                        }}
+                        >
+                          ⇲
+                        </div>
+                      </div>
+                      <div style={{ marginTop: 4, fontSize: 12, color: '#6b7280' }}>
+                        {previewWidth} × {previewHeight} px (drag corner to resize)
+                      </div>
+                    </div>
+                  )}
                 </label>
               </div>
               <label className="field" style={{ marginTop: 16 }}>
@@ -320,7 +464,7 @@ export function AppsToolManagement() {
                 <div key={item._id} className="card" style={{ padding: 0, overflow: "hidden", height: "100%" }}>
                   <div style={{ 
                     width: "100%", 
-                    height: 280, 
+                    height: item.imageHeight || 280, 
                     backgroundImage: item.imageUrl && !item.imageUrl.startsWith('blob:') ? `url(${item.imageUrl})` : 'none',
                     backgroundColor: '#f3f4f6',
                     backgroundSize: "cover", 

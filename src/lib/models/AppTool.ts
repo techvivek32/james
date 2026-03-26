@@ -4,6 +4,8 @@ export interface IAppTool {
   _id?: string;
   title: string;
   imageUrl: string;
+  imageWidth?: number;
+  imageHeight?: number;
   description: string;
   link: string;
   webLink?: string;
@@ -18,6 +20,8 @@ const AppToolSchema = new mongoose.Schema<IAppTool>(
   {
     title: { type: String, required: true },
     imageUrl: { type: String, default: '' },
+    imageWidth: { type: Number, default: 400 },
+    imageHeight: { type: Number, default: 300 },
     description: { type: String, default: '' },
     link: { type: String, default: '' },
     webLink: { type: String, default: '' },

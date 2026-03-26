@@ -5,6 +5,8 @@ type AppToolItem = {
   _id: string;
   title: string;
   imageUrl: string;
+  imageWidth?: number;
+  imageHeight?: number;
   description: string;
   link: string;
   webLink?: string;
@@ -54,7 +56,7 @@ export function AppsToolsViewer({ portal = 'sales' }: { portal?: 'sales' | 'mana
                 <div className="card" style={{ padding: 0, overflow: "hidden", cursor: "pointer", transition: "transform 0.2s", height: "100%" }}>
                   <div style={{ 
                     width: "100%", 
-                    height: 280, 
+                    height: item.imageHeight || 280, 
                     backgroundImage: item.imageUrl && !item.imageUrl.startsWith('blob:') ? `url(${item.imageUrl})` : 'none',
                     backgroundColor: '#f3f4f6',
                     backgroundSize: "cover", 

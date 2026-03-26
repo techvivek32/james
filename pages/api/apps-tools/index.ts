@@ -17,7 +17,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   if (req.method === 'POST') {
     try {
-      const { title, imageUrl, description, link, webLink, appStoreLink, playStoreLink, category } = req.body;
+      const { title, imageUrl, imageWidth, imageHeight, description, link, webLink, appStoreLink, playStoreLink, category } = req.body;
 
       if (!title || !category) {
         return res.status(400).json({ error: 'Title and category are required' });
@@ -26,6 +26,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       const appTool = await AppTool.create({
         title,
         imageUrl: imageUrl || '',
+        imageWidth: imageWidth || 400,
+        imageHeight: imageHeight || 300,
         description: description || '',
         link: link || '',
         webLink: webLink || '',
