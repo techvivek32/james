@@ -30,6 +30,7 @@ export function BusinessUnitsManager(props: { users: UserProfile[] }) {
     incomeGoal: number;
     dealAve: number;
     workingDaysPerWeek: number;
+    committed: boolean;
   } | null>(null);
   const managers = props.users.filter((u) => u.role === "manager" || (u.roles || []).includes("manager"));
   const salesReps = props.users.filter((u) => u.role === "sales" || (u.roles || []).includes("sales"));
@@ -123,7 +124,7 @@ export function BusinessUnitsManager(props: { users: UserProfile[] }) {
       inspectionsNeeded: Math.round(metrics.inspectionsPerMonth),
       doorsPerYear: 0,
       doorsPerDay: 0,
-      committed: member.businessPlan?.committed || false
+      committed: editForm.committed
     };
 
     try {
@@ -419,7 +420,8 @@ export function BusinessUnitsManager(props: { users: UserProfile[] }) {
                                   setEditForm({
                                     incomeGoal: bp?.revenueGoal || 0,
                                     dealAve: bp?.averageDealSize || 0,
-                                    workingDaysPerWeek: bp?.daysPerWeek || 5
+                                    workingDaysPerWeek: bp?.daysPerWeek || 5,
+                                    committed: bp?.committed || false
                                   });
                                 }}
                                 style={{
@@ -538,7 +540,7 @@ export function BusinessUnitsManager(props: { users: UserProfile[] }) {
                                   </span>
                                 </td>
                                 <td style={{ padding: 12, textAlign: "center" }}>
-                                  <button onClick={() => { setEditingUserId(member.id); setEditForm({ incomeGoal: bp?.revenueGoal || 0, dealAve: bp?.averageDealSize || 0, workingDaysPerWeek: bp?.daysPerWeek || 5 }); }} style={{ padding: "6px 12px", backgroundColor: "#3b82f6", color: "#fff", border: "none", borderRadius: 4, fontSize: 12, fontWeight: 600, cursor: "pointer" }}>Edit</button>
+                                  <button onClick={() => { setEditingUserId(member.id); setEditForm({ incomeGoal: bp?.revenueGoal || 0, dealAve: bp?.averageDealSize || 0, workingDaysPerWeek: bp?.daysPerWeek || 5, committed: bp?.committed || false }); }} style={{ padding: "6px 12px", backgroundColor: "#3b82f6", color: "#fff", border: "none", borderRadius: 4, fontSize: 12, fontWeight: 600, cursor: "pointer" }}>Edit</button>
                                 </td>
                               </tr>
                             );
@@ -632,6 +634,18 @@ export function BusinessUnitsManager(props: { users: UserProfile[] }) {
                   }}
                   style={{ width: "100%", padding: "10px 12px", fontSize: 13, border: "1px solid #d1d5db", borderRadius: 6 }}
                 />
+              </label>
+
+              <label className="field">
+                <span className="field-label">Status</span>
+                <select
+                  value={editForm.committed ? "committed" : "draft"}
+                  onChange={e => setEditForm({ ...editForm, committed: e.target.value === "committed" })}
+                  style={{ width: "100%", padding: "10px 12px", fontSize: 13, border: "1px solid #d1d5db", borderRadius: 6, background: "#fff" }}
+                >
+                  <option value="draft">Draft</option>
+                  <option value="committed">Committed</option>
+                </select>
               </label>
             </div>
 
