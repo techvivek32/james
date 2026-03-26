@@ -310,7 +310,7 @@ export function BusinessUnitsManager(props: { users: UserProfile[] }) {
                 <span>{manager.name} - Manager</span>
                 <button
                   onClick={() => hideManager(manager.id)}
-                  style={{ padding: "4px 12px", borderRadius: 6, border: "1px solid #e5e7eb", background: "#fff", color: "#6b7280", fontSize: 12, fontWeight: 600, cursor: "pointer" }}
+                  style={{ padding: "4px 12px", borderRadius: 6, border: "1px solid #fff", background: "#fff", color: "#fff", fontSize: 12, fontWeight: 600, cursor: "pointer" }}
                 >
                   Hide
                 </button>
@@ -472,7 +472,7 @@ export function BusinessUnitsManager(props: { users: UserProfile[] }) {
           <div style={{ marginTop: 32 }}>
             <button
               onClick={() => setShowHiddenSection(p => !p)}
-              style={{ padding: "8px 18px", borderRadius: 8, border: "1px solid #e5e7eb", background: "#f9fafb", color: "#374151", fontSize: 13, fontWeight: 600, cursor: "pointer", marginBottom: 16 }}
+              style={{ padding: "8px 18px", borderRadius: 8, border: "1px solid #f3f4f6", background: "#f3f4f6", color: "#f3f4f6", fontSize: 13, fontWeight: 600, cursor: "pointer", marginBottom: 16 }}
             >
               {showHiddenSection ? "▲" : "▼"} Hidden Managers ({hiddenManagers.size})
             </button>

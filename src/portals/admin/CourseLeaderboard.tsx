@@ -26,6 +26,20 @@ export function CourseLeaderboard() {
   const [search, setSearch] = useState("");
   const pickerRef = useRef<HTMLDivElement>(null);
 
+  // Hidden users state
+  const [hiddenUsers, setHiddenUsers] = useState<Set<string>>(() => {
+    try {
+      const saved = localStorage.getItem("hiddenLeaderboardUsers");
+      return saved ? new Set(JSON.parse(saved)) : new Set();
+    } catch { return new Set(); }
+  });
+  const [showHiddenList, setShowHiddenList] = useState(false);
+
+  // Swipe tracking
+  const [swipeStart, setSwipeStart] = useState<{ x: number; userId: string } | null>(null);
+  const [swipeOffset, setSwipeOffset] = useState<{ userId: string; offset: number } | null>(null);
+  const [showHiddenSection, setShowHiddenSection] = useState(false);
+
   // Override modal state
   const [showOverride, setShowOverride] = useState(false);
   const [overrideUsers, setOverrideUsers] = useState<UserOption[]>([]);
@@ -35,6 +49,64 @@ export function CourseLeaderboard() {
   const [overrideLoading, setOverrideLoading] = useState(false);
   const [overrideSaving, setOverrideSaving] = useState(false);
   const [allCoursesRaw, setAllCoursesRaw] = useState<any[]>([]);
+
+  function hideUser(userId: string) {
+    const newHidden = new Set(hiddenUsers);
+    newHidden.add(userId);
+    setHiddenUsers(newHidden);
+    localStorage.setItem("hiddenLeaderboardUsers", JSON.stringify([...newHidden]));
+  }
+
+  function unhideUser(userId: string) {
+    const newHidden = new Set(hiddenUsers);
+    newHidden.delete(userId);
+    setHiddenUsers(newHidden);
+    localStorage.setItem("hiddenLeaderboardUsers", JSON.stringify([...newHidden]));
+  }
+
+  function handleTouchStart(e: React.TouchEvent, userId: string) {
+    setSwipeStart({ x: e.touches[0].clientX, userId });
+  }
+
+  function handleTouchMove(e: React.TouchEvent, userId: string) {
+    if (!swipeStart || swipeStart.userId !== userId) return;
+    const deltaX = e.touches[0].clientX - swipeStart.x;
+    if (deltaX > 0) {
+      setSwipeOffset({ userId, offset: deltaX });
+    }
+  }
+
+  function handleTouchEnd(e: React.TouchEvent, userId: string) {
+    if (!swipeStart || swipeStart.userId !== userId) return;
+    const deltaX = e.changedTouches[0].clientX - swipeStart.x;
+    if (deltaX > 100) {
+      hideUser(userId);
+    }
+    setSwipeStart(null);
+    setSwipeOffset(null);
+  }
+
+  function handleMouseDown(e: React.MouseEvent, userId: string) {
+    setSwipeStart({ x: e.clientX, userId });
+  }
+
+  function handleMouseMove(e: React.MouseEvent, userId: string) {
+    if (!swipeStart || swipeStart.userId !== userId) return;
+    const deltaX = e.clientX - swipeStart.x;
+    if (deltaX > 0) {
+      setSwipeOffset({ userId, offset: deltaX });
+    }
+  }
+
+  function handleMouseUp(e: React.MouseEvent, userId: string) {
+    if (!swipeStart || swipeStart.userId !== userId) return;
+    const deltaX = e.clientX - swipeStart.x;
+    if (deltaX > 100) {
+      hideUser(userId);
+    }
+    setSwipeStart(null);
+    setSwipeOffset(null);
+  }
 
   // Load courses on mount
   useEffect(() => {
@@ -220,28 +292,6 @@ export function CourseLeaderboard() {
 
   return (
     <div>
-      {/* Mini dashboard */}
-      <div style={{
-        display: "grid",
-        gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))",
-        gap: 1, background: "#e5e7eb",
-        border: "1px solid #e5e7eb", borderRadius: 12, overflow: "hidden",
-        boxShadow: "0 1px 4px rgba(0,0,0,0.05)", marginBottom: 24,
-      }}>
-        {[
-          { label: "Total Courses", value: courses.length, color: "#7c3aed", icon: "📚" },
-          { label: "Total Users Enrolled", value: enrolled, color: "#2563eb", icon: "👥" },
-        ].map((s) => (
-          <div key={s.label} style={{ background: "#fff", padding: "20px 24px", display: "flex", alignItems: "center", gap: 14 }}>
-            <div style={{ fontSize: 28 }}>{s.icon}</div>
-            <div>
-              <div style={{ fontSize: 26, fontWeight: 800, color: s.color }}>{s.value}</div>
-              <div style={{ fontSize: 12, color: "#6b7280", marginTop: 2 }}>{s.label}</div>
-            </div>
-          </div>
-        ))}
-      </div>
-
       {/* Leaderboard card */}
       <div style={{
         background: "#fff", border: "1px solid #e5e7eb",
@@ -365,13 +415,34 @@ export function CourseLeaderboard() {
                 </tr>
               </thead>
               <tbody>
-                {rows.map((row, idx) => {
+                {rows.filter(row => !hiddenUsers.has(row.id)).map((row, idx) => {
                   const rank = idx + 1;
                   const isTop3 = rank <= 3;
+                  const offset = swipeOffset?.userId === row.id ? swipeOffset.offset : 0;
+                  
                   return (
-                    <tr key={row.id} style={{
-                      background: isTop3 ? (rank === 1 ? "#fffbeb" : rank === 2 ? "#f9fafb" : "#fafafa") : idx % 2 === 0 ? "#fff" : "#fafafa",
-                    }}>
+                    <tr 
+                      key={row.id} 
+                      style={{
+                        background: isTop3 ? (rank === 1 ? "#fffbeb" : rank === 2 ? "#f9fafb" : "#fafafa") : idx % 2 === 0 ? "#fff" : "#fafafa",
+                        cursor: "grab",
+                        userSelect: "none",
+                        transform: `translateX(${offset}px)`,
+                        opacity: offset > 50 ? 1 - (offset - 50) / 100 : 1,
+                        transition: swipeStart?.userId === row.id ? "none" : "transform 0.3s, opacity 0.3s",
+                      }}
+                      onMouseDown={(e) => handleMouseDown(e, row.id)}
+                      onMouseMove={(e) => handleMouseMove(e, row.id)}
+                      onMouseUp={(e) => handleMouseUp(e, row.id)}
+                      onMouseLeave={(e) => {
+                        if (swipeStart?.userId === row.id) {
+                          handleMouseUp(e, row.id);
+                        }
+                      }}
+                      onTouchStart={(e) => handleTouchStart(e, row.id)}
+                      onTouchMove={(e) => handleTouchMove(e, row.id)}
+                      onTouchEnd={(e) => handleTouchEnd(e, row.id)}
+                    >
                       <td style={{ padding: "11px 16px", borderBottom: "1px solid #f3f4f6", width: 60 }}>
                         <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
                           {MEDAL[rank] ? (
@@ -423,27 +494,35 @@ export function CourseLeaderboard() {
           </div>
         )}
 
-        {/* Override button — black border + text normally, blue on hover */}
-        <div style={{ display: "flex", justifyContent: "flex-end", padding: "12px 24px 16px 24px" }}>
+        {/* Bottom buttons row */}
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px 24px 16px 24px" }}>
+          {/* Hidden Users toggle button - Left side (invisible) */}
+          {hiddenUsers.size > 0 ? (
+            <button
+              onClick={() => setShowHiddenSection(p => !p)}
+              style={{
+                padding: "6px 14px", borderRadius: 6,
+                border: "1px solid #fff", background: "#fff",
+                color: "#fff", fontSize: 12, fontWeight: 600,
+                cursor: "pointer",
+                display: "flex", alignItems: "center", gap: 6,
+              }}
+            >
+              {showHiddenSection ? "▼" : "▶"} Hidden Users ({hiddenUsers.size})
+            </button>
+          ) : (
+            <div></div>
+          )}
+
+          {/* Override button - Right side (invisible) */}
           <button
             onClick={openOverride}
             style={{
               padding: "6px 14px", borderRadius: 6,
-              border: "1px solid #d1d5db", boxShadow: "none",
-              background: "transparent", color: "#9ca3af",
+              border: "1px solid #fff", boxShadow: "none",
+              background: "#fff", color: "#fff",
               cursor: "pointer", fontSize: 12, fontWeight: 600,
               userSelect: "none", outline: "none",
-              transition: "all 0.2s",
-            }}
-            onMouseEnter={e => {
-              e.currentTarget.style.color = "#9ca3af";
-              e.currentTarget.style.background = "transparent";
-              e.currentTarget.style.borderColor = "#d1d5db";
-            }}
-            onMouseLeave={e => {
-              e.currentTarget.style.color = "#9ca3af";
-              e.currentTarget.style.background = "transparent";
-              e.currentTarget.style.borderColor = "#d1d5db";
             }}
           >
             ⚙ Override
@@ -451,6 +530,119 @@ export function CourseLeaderboard() {
         </div>
 
       </div>
+
+      {/* Hidden Users Section */}
+      {hiddenUsers.size > 0 && showHiddenSection && (
+        <div style={{ marginTop: 24 }}>
+          <div style={{
+              background: "#fff", border: "1px solid #e5e7eb",
+              borderRadius: 12,
+              boxShadow: "0 1px 4px rgba(0,0,0,0.05)",
+            }}>
+              {/* Header */}
+              <div style={{
+                padding: "16px 24px", background: "#fef3c7",
+                borderBottom: "1px solid #e5e7eb",
+                display: "flex", justifyContent: "space-between",
+                alignItems: "center",
+              }}>
+                <div>
+                  <div style={{ fontWeight: 700, fontSize: 16, color: "#92400e" }}>👁️ Hidden Users</div>
+                  <div style={{ fontSize: 13, color: "#78350f", marginTop: 2 }}>
+                    These users are hidden from the main leaderboard
+                  </div>
+                </div>
+              </div>
+
+              {/* Table */}
+              <div style={{ overflowX: "auto" }}>
+                <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+                  <thead>
+                    <tr style={{ background: "#f9fafb" }}>
+                      {["Rank", "User", "Role", "Lessons Completed", "Progress", "Actions"].map((h) => (
+                        <th key={h} style={{
+                          padding: "11px 16px", textAlign: "left",
+                          fontWeight: 600, color: "#374151",
+                          borderBottom: "1px solid #e5e7eb",
+                          whiteSpace: "nowrap",
+                        }}>
+                          {h}
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {rows.filter(row => hiddenUsers.has(row.id)).map((row, idx) => {
+                      const originalRank = rows.findIndex(r => r.id === row.id) + 1;
+                      return (
+                        <tr key={row.id} style={{
+                          background: idx % 2 === 0 ? "#fff" : "#fafafa",
+                        }}>
+                          <td style={{ padding: "11px 16px", borderBottom: "1px solid #f3f4f6", width: 60 }}>
+                            <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                              {MEDAL[originalRank] ? (
+                                <span style={{ fontSize: 18 }}>{MEDAL[originalRank]}</span>
+                              ) : (
+                                <span style={{
+                                  display: "inline-flex", alignItems: "center", justifyContent: "center",
+                                  width: 24, height: 24, borderRadius: "50%",
+                                  background: "#f3f4f6", color: "#6b7280",
+                                  fontSize: 12, fontWeight: 700,
+                                }}>{originalRank}</span>
+                              )}
+                            </div>
+                          </td>
+                          <td style={{ padding: "11px 16px", borderBottom: "1px solid #f3f4f6" }}>
+                            <div style={{ fontWeight: 600, color: "#111827" }}>{row.name}</div>
+                            <div style={{ fontSize: 11, color: "#9ca3af" }}>{row.email}</div>
+                          </td>
+                          <td style={{ padding: "11px 16px", borderBottom: "1px solid #f3f4f6" }}>
+                            <span style={{
+                              padding: "2px 9px", borderRadius: 999, fontSize: 11, fontWeight: 600,
+                              background: row.role === "manager" ? "#ede9fe" : "#dbeafe",
+                              color: row.role === "manager" ? "#6d28d9" : "#1d4ed8",
+                              textTransform: "capitalize",
+                            }}>
+                              {row.role}
+                            </span>
+                          </td>
+                          <td style={{ padding: "11px 16px", borderBottom: "1px solid #f3f4f6", whiteSpace: "nowrap", color: "#374151" }}>
+                            {row.done} / {row.total}
+                          </td>
+                          <td style={{ padding: "11px 16px", borderBottom: "1px solid #f3f4f6", minWidth: 160 }}>
+                            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                              <div style={{ flex: 1, height: 8, borderRadius: 999, background: "#e5e7eb", overflow: "hidden" }}>
+                                <div style={{
+                                  width: `${row.pct}%`, height: "100%",
+                                  background: row.pct === 100 ? "#10b981" : row.pct > 0 ? "#f59e0b" : "#e5e7eb",
+                                  transition: "width 0.3s",
+                                }} />
+                              </div>
+                              <span style={{ fontSize: 12, fontWeight: 700, color: "#374151", minWidth: 36 }}>{row.pct}%</span>
+                            </div>
+                          </td>
+                          <td style={{ padding: "11px 16px", borderBottom: "1px solid #f3f4f6" }}>
+                            <button
+                              onClick={() => unhideUser(row.id)}
+                              style={{
+                                padding: "6px 14px", borderRadius: 6,
+                                border: "1px solid #3b82f6",
+                                background: "#eff6ff", color: "#2563eb",
+                                cursor: "pointer", fontSize: 12, fontWeight: 600,
+                              }}
+                            >
+                              Unhide
+                            </button>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+        </div>
+      )}
 
       {/* Override Modal */}
       {showOverride && (

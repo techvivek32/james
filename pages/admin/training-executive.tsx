@@ -16,7 +16,7 @@ const TAB_STYLE = (active: boolean): React.CSSProperties => ({
 });
 
 const TrainingExecutivePage: NextPage = () => {
-  const [tab, setTab] = useState<"overview" | "leaderboard">("overview");
+  const [tab, setTab] = useState<"overview" | "leaderboard">("leaderboard");
 
   return (
     <AdminPageWrapper currentView="trainingExecutive">
@@ -26,9 +26,10 @@ const TrainingExecutivePage: NextPage = () => {
         marginBottom: 24, background: "#fff",
         borderRadius: "8px 8px 0 0", overflow: "hidden",
       }}>
-        <button style={TAB_STYLE(tab === "overview")} onClick={() => setTab("overview")}>
+        {/* Hidden tab - keeping code but not displaying */}
+        {/* <button style={TAB_STYLE(tab === "overview")} onClick={() => setTab("overview")}>
           Training Center Executive View
-        </button>
+        </button> */}
         <button style={TAB_STYLE(tab === "leaderboard")} onClick={() => setTab("leaderboard")}>
           🏆 Course Leaderboard
         </button>
