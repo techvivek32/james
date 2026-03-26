@@ -113,6 +113,7 @@ export function CourseManagement(props: CourseEditorProps) {
   const [selectedModuleId, setSelectedModuleId] = useState<string | undefined>(undefined);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [toastType, setToastType] = useState<'success' | 'error' | 'info'>('success');
+  const [isSavingLesson, setIsSavingLesson] = useState(false);
 
   // Add drag and drop styles
   const dragStyles = `
@@ -2192,7 +2193,7 @@ export function CourseManagement(props: CourseEditorProps) {
                         setActivePageId(selectedCourse.pages[0].id);
                       }
                     }}>
-                      Add
+                      Go to Modules
                     </button>
                   </div>
                 </>
@@ -3022,12 +3023,21 @@ export function CourseManagement(props: CourseEditorProps) {
                                           <button type="button" className="course-page-footer-button course-page-footer-cancel" onClick={() => setDetailSection("overview")}>
                                             CANCEL
                                           </button>
-                                          <button type="button" className="course-page-footer-button course-page-footer-save" onClick={() => {
-                                            // Just save, don't redirect - stay on quiz page
-                                            console.log('Quiz saved:', activePage.title);
-                                            showToast('Quiz saved successfully!', 'success');
-                                          }}>
-                                            SAVE
+                                          <button 
+                                            type="button" 
+                                            className="course-page-footer-button course-page-footer-save" 
+                                            onClick={async () => {
+                                              setIsSavingLesson(true);
+                                              // Simulate save delay
+                                              await new Promise(resolve => setTimeout(resolve, 800));
+                                              console.log('Quiz saved:', activePage.title);
+                                              showToast('Quiz saved successfully!', 'success');
+                                              setIsSavingLesson(false);
+                                            }}
+                                            disabled={isSavingLesson}
+                                            style={isSavingLesson ? { opacity: 0.7, cursor: 'not-allowed' } : {}}
+                                          >
+                                            {isSavingLesson ? 'SAVING...' : 'SAVE'}
                                           </button>
                                         </div>
                                       </>
@@ -3395,11 +3405,21 @@ export function CourseManagement(props: CourseEditorProps) {
                                           <button type="button" className="course-page-footer-button course-page-footer-cancel" onClick={() => setEditingLessonId(null)}>
                                             CANCEL
                                           </button>
-                                          <button type="button" className="course-page-footer-button course-page-footer-save" onClick={() => {
-                                            setEditingLessonId(null);
-                                            showToast('Lesson saved successfully!', 'success');
-                                          }}>
-                                            SAVE
+                                          <button 
+                                            type="button" 
+                                            className="course-page-footer-button course-page-footer-save" 
+                                            onClick={async () => {
+                                              setIsSavingLesson(true);
+                                              // Simulate save delay
+                                              await new Promise(resolve => setTimeout(resolve, 800));
+                                              setEditingLessonId(null);
+                                              showToast('Lesson saved successfully!', 'success');
+                                              setIsSavingLesson(false);
+                                            }}
+                                            disabled={isSavingLesson}
+                                            style={isSavingLesson ? { opacity: 0.7, cursor: 'not-allowed' } : {}}
+                                          >
+                                            {isSavingLesson ? 'SAVING...' : 'SAVE'}
                                           </button>
                                         </>
                                       )}
