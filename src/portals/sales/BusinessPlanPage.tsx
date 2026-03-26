@@ -7,19 +7,19 @@ const calculateMetrics = (incomeGoal: number, dealAve: number, workingDaysPerWee
   // Deals Per Year = Income Goal / Deal Ave
   const dealsPerYear = dealAve > 0 ? Math.round(incomeGoal / dealAve) : 0;
   
-  // Deals Per Month = Deals Per Year / 12 (no rounding for monthly)
+  // Deals Per Month = Deals Per Year / 12
   const dealsPerMonth = dealsPerYear / 12;
   
-  // Claims Per Year = Deals Per Year - (Deals Per Year × 25%) (Claims Ratio - hardcoded)
-  const claimsPerYear = Math.round(dealsPerYear - (dealsPerYear * 0.25));
+  // Claims Per Year = Deals Per Year * 3
+  const claimsPerYear = Math.round(dealsPerYear * 3);
   
-  // Claims Per Month = Claims Per Year / 12 (no rounding for monthly)
+  // Claims Per Month = Claims Per Year / 12
   const claimsPerMonth = claimsPerYear / 12;
   
-  // Inspections Per Year = Claims Per Year - (Claims Per Year × 30%) (Inspection Ratio - hardcoded)
-  const inspectionsPerYear = Math.round(claimsPerYear - (claimsPerYear * 0.30));
+  // Inspections Per Year = Claims Per Year * 3
+  const inspectionsPerYear = Math.round(claimsPerYear * 3);
   
-  // Inspections Per Month = Inspections Per Year / 12 (no rounding for monthly)
+  // Inspections Per Month = Inspections Per Year / 12
   const inspectionsPerMonth = inspectionsPerYear / 12;
 
   return {
@@ -208,7 +208,7 @@ export function BusinessPlanPage(props: {
             Plan Inputs
           </h3>
           
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 16 }}>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
             {/* Income Goal */}
             <label className="field">
               <span className="field-label">Income Goal</span>
@@ -249,30 +249,12 @@ export function BusinessPlanPage(props: {
               </div>
             </label>
 
-            {/* Working Days Per Week */}
-            <label className="field">
-              <span className="field-label">Working Days Per Week</span>
-              <input
-                className="field-input"
-                type="number"
-                min={1}
-                max={7}
-                step={0.5}
-                value={workingDaysPerWeek}
-                onChange={(e: ChangeEvent<HTMLInputElement>) => {
-                  const value = Number(e.target.value);
-                  if (value >= 1 && value <= 7) {
-                    setWorkingDaysPerWeek(value);
-                  }
-                }}
-                style={{ width: "100%", padding: "10px 12px", fontSize: 13, border: "1px solid #d1d5db", borderRadius: 6 }}
-              />
-            </label>
+
           </div>
         </div>
 
         {/* Hardcoded Ratios Display */}
-        <div style={{ marginBottom: 32, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+        <div style={{ display: "none", marginBottom: 32, gridTemplateColumns: "1fr 1fr", gap: 12 }}>
           <div style={{ padding: 12, backgroundColor: "#fce7f3", borderRadius: 8, border: "1px solid #ec4899" }}>
             <div style={{ fontSize: 11, color: "#831843", fontWeight: 600, marginBottom: 4 }}>Claims Ratio</div>
             <div style={{ fontSize: 16, fontWeight: 700, color: "#831843" }}>25%</div>
@@ -299,12 +281,12 @@ export function BusinessPlanPage(props: {
             <DashboardCard
               title="Claims Per Year"
               value={metrics.claimsPerYear.toLocaleString()}
-              description="Deals Per Year - (Deals Per Year × 25%)"
+              description="Deals Per Year × 3"
             />
             <DashboardCard
               title="Inspections Per Year"
               value={metrics.inspectionsPerYear.toLocaleString()}
-              description="Claims Per Year - (Claims Per Year × 30%)"
+              description="Claims Per Year × 3"
             />
           </div>
         </div>
@@ -318,17 +300,17 @@ export function BusinessPlanPage(props: {
           <div className="grid grid-4" style={{ marginBottom: 24 }}>
             <DashboardCard
               title="Deals Per Month"
-              value={metrics.dealsPerMonth % 1 !== 0 ? metrics.dealsPerMonth.toFixed(2) : metrics.dealsPerMonth.toLocaleString()}
+              value={Math.ceil(metrics.dealsPerMonth).toLocaleString()}
               description="Deals Per Year / 12"
             />
             <DashboardCard
               title="Claims Per Month"
-              value={metrics.claimsPerMonth % 1 !== 0 ? metrics.claimsPerMonth.toFixed(2) : metrics.claimsPerMonth.toLocaleString()}
+              value={Math.ceil(metrics.claimsPerMonth).toLocaleString()}
               description="Claims Per Year / 12"
             />
             <DashboardCard
               title="Inspections Per Month"
-              value={metrics.inspectionsPerMonth % 1 !== 0 ? metrics.inspectionsPerMonth.toFixed(2) : metrics.inspectionsPerMonth.toLocaleString()}
+              value={Math.ceil(metrics.inspectionsPerMonth).toLocaleString()}
               description="Inspections Per Year / 12"
             />
           </div>
