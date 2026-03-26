@@ -14,6 +14,7 @@ type CourseBot = {
   botTitle: string; welcomeMessage: string; placeholder: string;
   colorTheme: string; botAvatarUrl: string;
   totalMessages: number;
+  status?: 'published' | 'draft';
 };
 
 const card: React.CSSProperties = { background: "#fff", borderRadius: "12px", border: "1px solid #e5e7eb", padding: "20px 24px" };
@@ -52,6 +53,8 @@ export function CourseAiBotBuilder() {
 
   async function saveBot(updates: Partial<CourseBot>) {
     if (!selected) return;
+    console.log('Saving bot with updates:', updates);
+    console.log('Current bot status:', selected.status);
     setSaving(true);
     try {
       const res = await fetch(`/api/course-ai-bots/${selected.id}`, {
@@ -60,10 +63,22 @@ export function CourseAiBotBuilder() {
       });
       if (res.ok) {
         const updated = await res.json();
+        console.log('Bot updated successfully:', updated);
+        console.log('Status in response:', updated.status);
+        // If status is not in response, add it manually
+        if (updates.status && !updated.status) {
+          updated.status = updates.status;
+        }
         setSelected(updated);
         setBots(prev => prev.map(b => b.id === updated.id ? updated : b));
+      } else {
+        console.error('Failed to update bot:', await res.text());
       }
-    } finally { setSaving(false); }
+    } catch (error) {
+      console.error('Error saving bot:', error);
+    } finally { 
+      setSaving(false); 
+    }
   }
 
   async function deleteBot(id: string) {
@@ -80,7 +95,57 @@ export function CourseAiBotBuilder() {
         <div style={{ width: 240, background: "#fff", borderRight: "1px solid #e5e7eb", display: "flex", flexDirection: "column", flexShrink: 0 }}>
           <div style={{ padding: "16px 20px", borderBottom: "1px solid #e5e7eb" }}>
             <button onClick={() => setSelected(null)} style={{ background: "none", border: "none", cursor: "pointer", color: "#6b7280", fontSize: "14px", display: "flex", alignItems: "center", gap: "6px", marginBottom: "12px" }}>← All Bots</button>
-            <div style={{ fontWeight: 700, fontSize: "15px", color: "#1f2937" }}>{selected.botTitle || selected.name}</div>
+            <div style={{ fontWeight: 700, fontSize: "15px", color: "#1f2937", marginBottom: "12px" }}>{selected.botTitle || selected.name}</div>
+            {/* Published/Draft Toggle */}
+            <div style={{ display: "flex", alignItems: "center", gap: "12px", marginTop: "4px" }}>
+              <span style={{ fontSize: "13px", color: "#6b7280", fontWeight: 500 }}>Status:</span>
+              <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                <span style={{ 
+                  fontSize: "12px", 
+                  fontWeight: 600,
+                  color: (selected.status || 'draft') === 'draft' ? '#1f2937' : '#9ca3af'
+                }}>
+                  Draft
+                </span>
+                <div
+                  onClick={async () => {
+                    const currentStatus = selected.status || 'draft';
+                    const newStatus = currentStatus === 'published' ? 'draft' : 'published';
+                    console.log('Toggle clicked! Current:', currentStatus, 'New:', newStatus);
+                    await saveBot({ status: newStatus });
+                  }}
+                  style={{
+                    width: "44px",
+                    height: "24px",
+                    borderRadius: "12px",
+                    cursor: "pointer",
+                    background: (selected.status || 'draft') === 'published' ? '#10b981' : '#d1d5db',
+                    position: "relative",
+                    transition: "all 0.3s ease",
+                    padding: 0
+                  }}
+                >
+                  <div style={{
+                    width: "20px",
+                    height: "20px",
+                    borderRadius: "50%",
+                    background: "#fff",
+                    position: "absolute",
+                    top: "2px",
+                    left: (selected.status || 'draft') === 'published' ? "22px" : "2px",
+                    transition: "all 0.3s ease",
+                    boxShadow: "0 2px 4px rgba(0,0,0,0.2)"
+                  }} />
+                </div>
+                <span style={{ 
+                  fontSize: "12px", 
+                  fontWeight: 600,
+                  color: (selected.status || 'draft') === 'published' ? '#10b981' : '#9ca3af'
+                }}>
+                  Published
+                </span>
+              </div>
+            </div>
           </div>
           <nav style={{ padding: "8px 0" }}>
             {([
@@ -128,9 +193,23 @@ export function CourseAiBotBuilder() {
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: "16px" }}>
           {bots.map(bot => (
             <div key={bot.id} onClick={() => { setSelected(bot); setActiveTab("courses"); }}
-              style={{ background: "#fff", borderRadius: "12px", border: "1px solid #e5e7eb", padding: "20px", cursor: "pointer" }}
+              style={{ background: "#fff", borderRadius: "12px", border: "1px solid #e5e7eb", padding: "20px", cursor: "pointer", position: "relative" }}
               onMouseEnter={e => (e.currentTarget.style.boxShadow = "0 4px 12px rgba(0,0,0,0.08)")}
               onMouseLeave={e => (e.currentTarget.style.boxShadow = "none")}>
+              {/* Status Badge */}
+              <div style={{
+                position: "absolute",
+                top: "12px",
+                right: "12px",
+                padding: "4px 10px",
+                borderRadius: "6px",
+                fontSize: "11px",
+                fontWeight: 600,
+                background: (bot.status || 'draft') === 'published' ? '#d1fae5' : '#fef3c7',
+                color: (bot.status || 'draft') === 'published' ? '#065f46' : '#92400e'
+              }}>
+                {(bot.status || 'draft') === 'published' ? 'Published' : 'Draft'}
+              </div>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
                 <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
                   <div style={{ width: 40, height: 40, borderRadius: "50%", background: bot.colorTheme || "#3b82f6", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontSize: "18px" }}>🎓</div>
@@ -139,7 +218,7 @@ export function CourseAiBotBuilder() {
                     <div style={{ fontSize: "12px", color: "#6b7280", marginTop: "2px" }}>{bot.selectedPages?.length || 0} lessons · {bot.totalMessages || 0} messages</div>
                   </div>
                 </div>
-                <button onClick={e => { e.stopPropagation(); deleteBot(bot.id); }} style={{ background: "none", border: "none", cursor: "pointer", color: "#ef4444", fontSize: "16px" }}>🗑</button>
+                <button onClick={e => { e.stopPropagation(); deleteBot(bot.id); }} style={{ background: "none", border: "none", cursor: "pointer", color: "#ef4444", fontSize: "16px", marginTop: "20px" }}>🗑</button>
               </div>
             </div>
           ))}

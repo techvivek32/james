@@ -15,6 +15,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   if (req.method === "PATCH") {
     const updates = req.body;
+    console.log('PATCH request - updates:', updates);
 
     // If course selection changed, rebuild trainingText
     if (updates.selectedPages !== undefined || updates.selectedCourses !== undefined) {
@@ -43,8 +44,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const updated = await CourseAiBotModel.findOneAndUpdate(
       { id },
       { $set: updates },
-      { returnDocument: "after" }
+      { new: true, returnDocument: "after" }
     ).lean();
+    
+    console.log('Updated bot from DB:', updated);
+    console.log('Status field in updated bot:', updated?.status);
+    
     if (!updated) return res.status(404).json({ error: "Not found" });
     return res.status(200).json(updated);
   }

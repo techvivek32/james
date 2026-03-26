@@ -18,6 +18,8 @@ const courseAiBotSchema = new Schema({
   placeholder: { type: String, default: "Ask about the course..." },
   colorTheme: { type: String, default: "#3b82f6" },
   botAvatarUrl: { type: String, default: "" },
+  // Status
+  status: { type: String, enum: ['published', 'draft'], default: 'draft' },
   // Stats
   totalMessages: { type: Number, default: 0 },
   isActive: { type: Boolean, default: true },
