@@ -4,6 +4,27 @@ import { UserProfile, BusinessPlan } from "../../types";
 
 export function BusinessUnitsManager(props: { users: UserProfile[] }) {
   const [expandedManagers, setExpandedManagers] = useState<Set<string>>(new Set());
+  const [hiddenManagers, setHiddenManagers] = useState<Set<string>>(() => {
+    try {
+      const saved = localStorage.getItem("hiddenManagers");
+      return saved ? new Set(JSON.parse(saved)) : new Set();
+    } catch { return new Set(); }
+  });
+  const [showHiddenSection, setShowHiddenSection] = useState(false);
+
+  function hideManager(id: string) {
+    const n = new Set(hiddenManagers);
+    n.add(id);
+    setHiddenManagers(n);
+    localStorage.setItem("hiddenManagers", JSON.stringify([...n]));
+  }
+
+  function unhideManager(id: string) {
+    const n = new Set(hiddenManagers);
+    n.delete(id);
+    setHiddenManagers(n);
+    localStorage.setItem("hiddenManagers", JSON.stringify([...n]));
+  }
   const [editingUserId, setEditingUserId] = useState<string | null>(null);
   const [editForm, setEditForm] = useState<{
     incomeGoal: number;
@@ -232,7 +253,8 @@ export function BusinessUnitsManager(props: { users: UserProfile[] }) {
           </div>
         </div>
       ) : (
-        managers.map((manager) => {
+        <>
+        {managers.filter(m => !hiddenManagers.has(m.id)).map((manager) => {
           const teamMembers = getTeamMembers(manager.id);
           const teamCommittedPlans = teamMembers.filter(m => m.businessPlan?.committed);
           
@@ -265,8 +287,14 @@ export function BusinessUnitsManager(props: { users: UserProfile[] }) {
 
           return (
             <div key={manager.id} className="panel" style={{ marginBottom: 16 }}>
-              <div className="panel-header">
+              <div className="panel-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                 <span>{manager.name} - Manager</span>
+                <button
+                  onClick={() => hideManager(manager.id)}
+                  style={{ padding: "4px 12px", borderRadius: 6, border: "1px solid #e5e7eb", background: "#fff", color: "#6b7280", fontSize: 12, fontWeight: 600, cursor: "pointer" }}
+                >
+                  Hide
+                </button>
               </div>
               <div className="panel-body">
                 <div style={{ overflowX: "auto" }}>
@@ -417,7 +445,114 @@ export function BusinessUnitsManager(props: { users: UserProfile[] }) {
               </div>
             </div>
           );
-        })
+        })}
+
+        {/* Hidden Managers Section */}
+        {hiddenManagers.size > 0 && (
+          <div style={{ marginTop: 32 }}>
+            <button
+              onClick={() => setShowHiddenSection(p => !p)}
+              style={{ padding: "8px 18px", borderRadius: 8, border: "1px solid #e5e7eb", background: "#f9fafb", color: "#374151", fontSize: 13, fontWeight: 600, cursor: "pointer", marginBottom: 16 }}
+            >
+              {showHiddenSection ? "▲" : "▼"} Hidden Managers ({hiddenManagers.size})
+            </button>
+            {showHiddenSection && managers.filter(m => hiddenManagers.has(m.id)).map(manager => {
+              const teamMembers = getTeamMembers(manager.id);
+              const teamCommittedPlans = teamMembers.filter(m => m.businessPlan?.committed);
+              const teamTotals = teamCommittedPlans.reduce((acc, member) => {
+                const bp = member.businessPlan;
+                if (!bp) return acc;
+                const metrics = calculateMetrics(bp.revenueGoal || 0, bp.averageDealSize || 0);
+                acc.incomeGoal += bp.revenueGoal || 0;
+                acc.dealsPerYear += metrics.dealsPerYear;
+                acc.dealsPerMonth += metrics.dealsPerMonth;
+                acc.claimsPerYear += metrics.claimsPerYear;
+                acc.claimsPerMonth += metrics.claimsPerMonth;
+                acc.inspectionsPerYear += metrics.inspectionsPerYear;
+                acc.inspectionsPerMonth += metrics.inspectionsPerMonth;
+                return acc;
+              }, { incomeGoal: 0, dealsPerYear: 0, dealsPerMonth: 0, claimsPerYear: 0, claimsPerMonth: 0, inspectionsPerYear: 0, inspectionsPerMonth: 0 });
+
+              return (
+                <div key={manager.id} className="panel" style={{ marginBottom: 16 }}>
+                  <div className="panel-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                    <span style={{ color: "#6b7280" }}>{manager.name} - Manager</span>
+                    <button
+                      onClick={() => unhideManager(manager.id)}
+                      style={{ padding: "4px 12px", borderRadius: 6, border: "1px solid #3b82f6", background: "#eff6ff", color: "#2563eb", fontSize: 12, fontWeight: 600, cursor: "pointer" }}
+                    >
+                      Unhide
+                    </button>
+                  </div>
+                  <div className="panel-body">
+                    <div style={{ overflowX: "auto" }}>
+                      <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+                        <thead>
+                          <tr style={{ backgroundColor: "#f3f4f6", borderBottom: "2px solid #e5e7eb" }}>
+                            <th style={{ padding: 12, textAlign: "left", fontWeight: 600, color: "#111827" }}>Name</th>
+                            <th style={{ padding: 12, textAlign: "right", fontWeight: 600, color: "#111827" }}>Income Goal</th>
+                            <th style={{ padding: 12, textAlign: "right", fontWeight: 600, color: "#111827" }}>Deal Ave</th>
+                            <th style={{ padding: 12, textAlign: "right", fontWeight: 600, color: "#111827" }}>Deals/Year</th>
+                            <th style={{ padding: 12, textAlign: "right", fontWeight: 600, color: "#111827" }}>Deals/Month</th>
+                            <th style={{ padding: 12, textAlign: "right", fontWeight: 600, color: "#111827" }}>Claims/Year</th>
+                            <th style={{ padding: 12, textAlign: "right", fontWeight: 600, color: "#111827" }}>Claims/Month</th>
+                            <th style={{ padding: 12, textAlign: "right", fontWeight: 600, color: "#111827" }}>Inspections/Year</th>
+                            <th style={{ padding: 12, textAlign: "right", fontWeight: 600, color: "#111827" }}>Inspections/Month</th>
+                            <th style={{ padding: 12, textAlign: "center", fontWeight: 600, color: "#111827" }}>Status</th>
+                            <th style={{ padding: 12, textAlign: "center", fontWeight: 600, color: "#111827" }}>Actions</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          <tr style={{ borderBottom: "1px solid #e5e7eb", backgroundColor: "#f8fafc" }}>
+                            <td style={{ padding: 12, color: "#111827", fontWeight: 600 }}>{manager.name} (Manager)</td>
+                            <td style={{ padding: 12, textAlign: "right" }}>${teamTotals.incomeGoal.toLocaleString()}</td>
+                            <td style={{ padding: 12, textAlign: "right" }}>-</td>
+                            <td style={{ padding: 12, textAlign: "right" }}>{teamTotals.dealsPerYear.toLocaleString()}</td>
+                            <td style={{ padding: 12, textAlign: "right" }}>{teamTotals.dealsPerMonth % 1 !== 0 ? teamTotals.dealsPerMonth.toFixed(2) : teamTotals.dealsPerMonth.toLocaleString()}</td>
+                            <td style={{ padding: 12, textAlign: "right" }}>{teamTotals.claimsPerYear.toLocaleString()}</td>
+                            <td style={{ padding: 12, textAlign: "right" }}>{teamTotals.claimsPerMonth % 1 !== 0 ? teamTotals.claimsPerMonth.toFixed(2) : teamTotals.claimsPerMonth.toLocaleString()}</td>
+                            <td style={{ padding: 12, textAlign: "right" }}>{teamTotals.inspectionsPerYear.toLocaleString()}</td>
+                            <td style={{ padding: 12, textAlign: "right" }}>{teamTotals.inspectionsPerMonth % 1 !== 0 ? teamTotals.inspectionsPerMonth.toFixed(2) : teamTotals.inspectionsPerMonth.toLocaleString()}</td>
+                            <td style={{ padding: 12, textAlign: "center" }}><span style={{ padding: "4px 8px", backgroundColor: "#e5e7eb", color: "#374151", borderRadius: 4, fontSize: 11, fontWeight: 600 }}>Team ({teamMembers.length})</span></td>
+                            <td style={{ padding: 12, textAlign: "center" }}>
+                              <button onClick={() => toggleManager(manager.id)} style={{ padding: "6px 12px", backgroundColor: "#10b981", color: "#fff", border: "none", borderRadius: 4, fontSize: 12, fontWeight: 600, cursor: "pointer" }}>See Team</button>
+                            </td>
+                          </tr>
+                          {expandedManagers.has(manager.id) && teamMembers.map((member) => {
+                            const bp = member.businessPlan;
+                            const metrics = calculateMetrics(bp?.revenueGoal || 0, bp?.averageDealSize || 0);
+                            return (
+                              <tr key={member.id} style={{ borderBottom: "1px solid #e5e7eb" }}>
+                                <td style={{ padding: 12, paddingLeft: 32 }}>└ {member.name}</td>
+                                <td style={{ padding: 12, textAlign: "right" }}>${(bp?.revenueGoal || 0).toLocaleString()}</td>
+                                <td style={{ padding: 12, textAlign: "right" }}>${(bp?.averageDealSize || 0).toLocaleString()}</td>
+                                <td style={{ padding: 12, textAlign: "right" }}>{metrics.dealsPerYear.toLocaleString()}</td>
+                                <td style={{ padding: 12, textAlign: "right" }}>{metrics.dealsPerMonth.toFixed(2)}</td>
+                                <td style={{ padding: 12, textAlign: "right" }}>{metrics.claimsPerYear.toLocaleString()}</td>
+                                <td style={{ padding: 12, textAlign: "right" }}>{metrics.claimsPerMonth.toFixed(2)}</td>
+                                <td style={{ padding: 12, textAlign: "right" }}>{metrics.inspectionsPerYear.toLocaleString()}</td>
+                                <td style={{ padding: 12, textAlign: "right" }}>{metrics.inspectionsPerMonth.toFixed(2)}</td>
+                                <td style={{ padding: 12, textAlign: "center" }}>
+                                  <span style={{ padding: "4px 8px", backgroundColor: bp?.committed ? "#d1fae5" : "#fef3c7", color: bp?.committed ? "#065f46" : "#78350f", borderRadius: 4, fontSize: 11, fontWeight: 600 }}>
+                                    {bp?.committed ? "Committed" : "Draft"}
+                                  </span>
+                                </td>
+                                <td style={{ padding: 12, textAlign: "center" }}>
+                                  <button onClick={() => { setEditingUserId(member.id); setEditForm({ incomeGoal: bp?.revenueGoal || 0, dealAve: bp?.averageDealSize || 0, workingDaysPerWeek: bp?.daysPerWeek || 5 }); }} style={{ padding: "6px 12px", backgroundColor: "#3b82f6", color: "#fff", border: "none", borderRadius: 4, fontSize: 12, fontWeight: 600, cursor: "pointer" }}>Edit</button>
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+        </>
       )}
 
       {/* Edit Modal */}
