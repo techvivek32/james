@@ -166,79 +166,97 @@ export function BusinessUnitsManager(props: { users: UserProfile[] }) {
           <span>All Committed Sales Plans - Global Dashboard</span>
         </div>
         <div className="panel-body">
-          {/* First Row - Totals */}
-          <div style={{ marginBottom: 32 }}>
-            <h3 style={{ fontSize: 14, fontWeight: 600, color: "#111827", margin: 0, marginBottom: 16 }}>
-              Global Totals
-            </h3>
-            
-            <div className="grid grid-4" style={{ marginBottom: 24 }}>
-              <DashboardCard
-                title="Total Income Goal"
-                value={`${globalTotals.incomeGoal.toLocaleString()}`}
-                description="Sum of all committed reps"
-              />
-              <DashboardCard
-                title="Claims Ratio"
-                value="25%"
-                description="Hardcoded"
-              />
-              <DashboardCard
-                title="Inspection Ratio"
-                value="30%"
-                description="Hardcoded"
-              />
-            </div>
-          </div>
+          <div style={{ overflowX: "auto" }}>
+            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13, border: "1px solid #e5e7eb" }}>
+              <thead>
+                <tr style={{ backgroundColor: "#f3f4f6", borderBottom: "2px solid #e5e7eb" }}>
+                  <th style={{ padding: 12, textAlign: "left", fontWeight: 600, color: "#111827", border: "1px solid #e5e7eb" }}>Metric</th>
+                  <th style={{ padding: 12, textAlign: "right", fontWeight: 600, color: "#111827", border: "1px solid #e5e7eb" }}>Value</th>
+                  <th style={{ padding: 12, textAlign: "left", fontWeight: 600, color: "#111827", border: "1px solid #e5e7eb" }}>Description</th>
+                </tr>
+              </thead>
+              <tbody>
+                {/* Global Totals Section */}
+                <tr style={{ backgroundColor: "#f8fafc" }}>
+                  <td colSpan={3} style={{ padding: 12, fontWeight: 600, color: "#111827", fontSize: 14, border: "1px solid #e5e7eb" }}>
+                    Global Totals
+                  </td>
+                </tr>
+                <tr>
+                  <td style={{ padding: 12, color: "#374151", paddingLeft: 24, border: "1px solid #e5e7eb" }}>Total Income Goal</td>
+                  <td style={{ padding: 12, textAlign: "right", color: "#111827", fontWeight: 600, border: "1px solid #e5e7eb" }}>
+                    ${globalTotals.incomeGoal.toLocaleString()}
+                  </td>
+                  <td style={{ padding: 12, color: "#6b7280", fontSize: 12, border: "1px solid #e5e7eb" }}>Sum of all committed reps</td>
+                </tr>
+                <tr>
+                  <td style={{ padding: 12, color: "#374151", paddingLeft: 24, border: "1px solid #e5e7eb" }}>Claims Ratio</td>
+                  <td style={{ padding: 12, textAlign: "right", color: "#111827", fontWeight: 600, border: "1px solid #e5e7eb" }}>25%</td>
+                  <td style={{ padding: 12, color: "#6b7280", fontSize: 12, border: "1px solid #e5e7eb" }}>Hardcoded</td>
+                </tr>
+                <tr>
+                  <td style={{ padding: 12, color: "#374151", paddingLeft: 24, border: "1px solid #e5e7eb" }}>Inspection Ratio</td>
+                  <td style={{ padding: 12, textAlign: "right", color: "#111827", fontWeight: 600, border: "1px solid #e5e7eb" }}>30%</td>
+                  <td style={{ padding: 12, color: "#6b7280", fontSize: 12, border: "1px solid #e5e7eb" }}>Hardcoded</td>
+                </tr>
 
-          {/* Yearly Targets */}
-          <div style={{ borderTop: "2px solid #e5e7eb", paddingTop: 24, marginBottom: 24 }}>
-            <h3 style={{ fontSize: 16, fontWeight: 600, color: "#111827", marginBottom: 16 }}>
-              Yearly Targets
-            </h3>
+                {/* Yearly Targets Section */}
+                <tr style={{ backgroundColor: "#f8fafc" }}>
+                  <td colSpan={3} style={{ padding: 12, fontWeight: 600, color: "#111827", fontSize: 14, paddingTop: 24, border: "1px solid #e5e7eb" }}>
+                    Yearly Targets
+                  </td>
+                </tr>
+                <tr>
+                  <td style={{ padding: 12, color: "#374151", paddingLeft: 24, border: "1px solid #e5e7eb" }}>Deals Per Year</td>
+                  <td style={{ padding: 12, textAlign: "right", color: "#111827", fontWeight: 600, border: "1px solid #e5e7eb" }}>
+                    {globalTotals.dealsPerYear.toLocaleString()}
+                  </td>
+                  <td style={{ padding: 12, color: "#6b7280", fontSize: 12, border: "1px solid #e5e7eb" }}>Total from all reps</td>
+                </tr>
+                <tr>
+                  <td style={{ padding: 12, color: "#374151", paddingLeft: 24, border: "1px solid #e5e7eb" }}>Claims Per Year</td>
+                  <td style={{ padding: 12, textAlign: "right", color: "#111827", fontWeight: 600, border: "1px solid #e5e7eb" }}>
+                    {globalTotals.claimsPerYear.toLocaleString()}
+                  </td>
+                  <td style={{ padding: 12, color: "#6b7280", fontSize: 12, border: "1px solid #e5e7eb" }}>Total from all reps</td>
+                </tr>
+                <tr>
+                  <td style={{ padding: 12, color: "#374151", paddingLeft: 24, border: "1px solid #e5e7eb" }}>Inspections Per Year</td>
+                  <td style={{ padding: 12, textAlign: "right", color: "#111827", fontWeight: 600, border: "1px solid #e5e7eb" }}>
+                    {globalTotals.inspectionsPerYear.toLocaleString()}
+                  </td>
+                  <td style={{ padding: 12, color: "#6b7280", fontSize: 12, border: "1px solid #e5e7eb" }}>Total from all reps</td>
+                </tr>
 
-            <div className="grid grid-4" style={{ marginBottom: 24 }}>
-              <DashboardCard
-                title="Deals Per Year"
-                value={globalTotals.dealsPerYear.toLocaleString()}
-                description="Total from all reps"
-              />
-              <DashboardCard
-                title="Claims Per Year"
-                value={globalTotals.claimsPerYear.toLocaleString()}
-                description="Total from all reps"
-              />
-              <DashboardCard
-                title="Inspections Per Year"
-                value={globalTotals.inspectionsPerYear.toLocaleString()}
-                description="Total from all reps"
-              />
-            </div>
-          </div>
-
-          {/* Monthly Targets */}
-          <div style={{ borderTop: "2px solid #e5e7eb", paddingTop: 24 }}>
-            <h3 style={{ fontSize: 16, fontWeight: 600, color: "#111827", marginBottom: 16 }}>
-              Monthly Targets
-            </h3>
-
-            <div className="grid grid-4">
-              <DashboardCard
-                title="Deals Per Month"
-                value={globalTotals.dealsPerMonth % 1 !== 0 ? globalTotals.dealsPerMonth.toFixed(2) : globalTotals.dealsPerMonth.toLocaleString()}
-                description="Total from all reps"
-              />
-              <DashboardCard
-                title="Claims Per Month"
-                value={globalTotals.claimsPerMonth % 1 !== 0 ? globalTotals.claimsPerMonth.toFixed(2) : globalTotals.claimsPerMonth.toLocaleString()}
-                description="Total from all reps"
-              />
-              <DashboardCard
-                title="Inspections Per Month"
-                value={globalTotals.inspectionsPerMonth % 1 !== 0 ? globalTotals.inspectionsPerMonth.toFixed(2) : globalTotals.inspectionsPerMonth.toLocaleString()}
-                description="Total from all reps"
-              />
-            </div>
+                {/* Monthly Targets Section */}
+                <tr style={{ backgroundColor: "#f8fafc" }}>
+                  <td colSpan={3} style={{ padding: 12, fontWeight: 600, color: "#111827", fontSize: 14, paddingTop: 24, border: "1px solid #e5e7eb" }}>
+                    Monthly Targets
+                  </td>
+                </tr>
+                <tr>
+                  <td style={{ padding: 12, color: "#374151", paddingLeft: 24, border: "1px solid #e5e7eb" }}>Deals Per Month</td>
+                  <td style={{ padding: 12, textAlign: "right", color: "#111827", fontWeight: 600, border: "1px solid #e5e7eb" }}>
+                    {globalTotals.dealsPerMonth % 1 !== 0 ? globalTotals.dealsPerMonth.toFixed(2) : globalTotals.dealsPerMonth.toLocaleString()}
+                  </td>
+                  <td style={{ padding: 12, color: "#6b7280", fontSize: 12, border: "1px solid #e5e7eb" }}>Total from all reps</td>
+                </tr>
+                <tr>
+                  <td style={{ padding: 12, color: "#374151", paddingLeft: 24, border: "1px solid #e5e7eb" }}>Claims Per Month</td>
+                  <td style={{ padding: 12, textAlign: "right", color: "#111827", fontWeight: 600, border: "1px solid #e5e7eb" }}>
+                    {globalTotals.claimsPerMonth % 1 !== 0 ? globalTotals.claimsPerMonth.toFixed(2) : globalTotals.claimsPerMonth.toLocaleString()}
+                  </td>
+                  <td style={{ padding: 12, color: "#6b7280", fontSize: 12, border: "1px solid #e5e7eb" }}>Total from all reps</td>
+                </tr>
+                <tr>
+                  <td style={{ padding: 12, color: "#374151", paddingLeft: 24, border: "1px solid #e5e7eb" }}>Inspections Per Month</td>
+                  <td style={{ padding: 12, textAlign: "right", color: "#111827", fontWeight: 600, border: "1px solid #e5e7eb" }}>
+                    {globalTotals.inspectionsPerMonth % 1 !== 0 ? globalTotals.inspectionsPerMonth.toFixed(2) : globalTotals.inspectionsPerMonth.toLocaleString()}
+                  </td>
+                  <td style={{ padding: 12, color: "#6b7280", fontSize: 12, border: "1px solid #e5e7eb" }}>Total from all reps</td>
+                </tr>
+              </tbody>
+            </table>
           </div>
         </div>
       </div>
