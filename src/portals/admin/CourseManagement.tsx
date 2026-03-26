@@ -114,6 +114,7 @@ export function CourseManagement(props: CourseEditorProps) {
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [toastType, setToastType] = useState<'success' | 'error' | 'info'>('success');
   const [isSavingLesson, setIsSavingLesson] = useState(false);
+  const [savingMessage, setSavingMessage] = useState<string>("");
 
   // Add drag and drop styles
   const dragStyles = `
@@ -620,6 +621,33 @@ export function CourseManagement(props: CourseEditorProps) {
     } else {
       const next = props.courses.map((course) => (course.id === updated.id ? updated : course));
       props.onCoursesChange(next);
+    }
+  }
+
+  // Function to save lesson/quiz changes immediately
+  async function saveLessonOrQuiz(type: 'lesson' | 'quiz') {
+    if (!selectedCourse) return;
+    
+    setIsSavingLesson(true);
+    setSavingMessage(type === 'quiz' ? 'Saving Quiz...' : 'Saving Lesson...');
+    
+    try {
+      // Ensure the course data is updated in parent state
+      const next = props.courses.map((course) => 
+        course.id === selectedCourse.id ? selectedCourse : course
+      );
+      props.onCoursesChange(next);
+      
+      // Wait a bit to ensure state propagation
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      showToast(type === 'quiz' ? 'Quiz saved successfully!' : 'Lesson saved successfully!', 'success');
+    } catch (error) {
+      console.error('Save error:', error);
+      showToast('Failed to save. Please try again.', 'error');
+    } finally {
+      setIsSavingLesson(false);
+      setSavingMessage("");
     }
   }
 
@@ -3027,12 +3055,7 @@ export function CourseManagement(props: CourseEditorProps) {
                                             type="button" 
                                             className="course-page-footer-button course-page-footer-save" 
                                             onClick={async () => {
-                                              setIsSavingLesson(true);
-                                              // Simulate save delay
-                                              await new Promise(resolve => setTimeout(resolve, 800));
-                                              console.log('Quiz saved:', activePage.title);
-                                              showToast('Quiz saved successfully!', 'success');
-                                              setIsSavingLesson(false);
+                                              await saveLessonOrQuiz('quiz');
                                             }}
                                             disabled={isSavingLesson}
                                             style={isSavingLesson ? { opacity: 0.7, cursor: 'not-allowed' } : {}}
@@ -3409,12 +3432,8 @@ export function CourseManagement(props: CourseEditorProps) {
                                             type="button" 
                                             className="course-page-footer-button course-page-footer-save" 
                                             onClick={async () => {
-                                              setIsSavingLesson(true);
-                                              // Simulate save delay
-                                              await new Promise(resolve => setTimeout(resolve, 800));
+                                              await saveLessonOrQuiz('lesson');
                                               setEditingLessonId(null);
-                                              showToast('Lesson saved successfully!', 'success');
-                                              setIsSavingLesson(false);
                                             }}
                                             disabled={isSavingLesson}
                                             style={isSavingLesson ? { opacity: 0.7, cursor: 'not-allowed' } : {}}
@@ -3443,6 +3462,57 @@ export function CourseManagement(props: CourseEditorProps) {
           <div className="panel-empty">Select or create a course to edit details.</div>
         )}
       </div>
+
+      {/* Saving Modal with Spinner */}
+      {isSavingLesson && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(0, 0, 0, 0.5)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 9999
+        }}>
+          <div style={{
+            backgroundColor: 'white',
+            borderRadius: 12,
+            padding: '32px 48px',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            gap: 20,
+            boxShadow: '0 10px 40px rgba(0, 0, 0, 0.2)'
+          }}>
+            <div style={{
+              width: 48,
+              height: 48,
+              border: '4px solid #f3f4f6',
+              borderTop: '4px solid #3b82f6',
+              borderRadius: '50%',
+              animation: 'spin 1s linear infinite'
+            }} />
+            <div style={{
+              fontSize: 18,
+              fontWeight: 600,
+              color: '#111827'
+            }}>
+              {savingMessage}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Add spinner animation */}
+      <style jsx>{`
+        @keyframes spin {
+          0% { transform: rotate(0deg); }
+          100% { transform: rotate(360deg); }
+        }
+      `}</style>
     </div>
   );
 }
