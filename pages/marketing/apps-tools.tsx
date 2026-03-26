@@ -8,7 +8,7 @@ const MarketingAppsToolsPage: NextPage = () => {
       <div className="page-header">
         <h1 className="page-title">Apps & Tools</h1>
       </div>
-      <AppsToolsViewer />
+      <AppsToolsViewer portal="marketing" />
     </MarketingLayout>
   );
 };
