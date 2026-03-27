@@ -23,6 +23,43 @@ const btnPrimary: React.CSSProperties = { ...btn, background: "#1f2937", color: 
 const btnSecondary: React.CSSProperties = { ...btn, background: "#f3f4f6", color: "#374151", border: "1px solid #e5e7eb" };
 const inputStyle: React.CSSProperties = { width: "100%", padding: "9px 12px", border: "1px solid #e5e7eb", borderRadius: "8px", fontSize: "13px", outline: "none", boxSizing: "border-box", marginBottom: "12px" };
 
+function EditableBotName({ bot, onSave }: { bot: CourseBot; onSave: (u: Partial<CourseBot>) => void }) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(bot.botTitle || bot.name);
+
+  function handleSave() {
+    if (draft.trim()) {
+      onSave({ botTitle: draft.trim(), name: draft.trim() });
+    }
+    setEditing(false);
+  }
+
+  if (editing) {
+    return (
+      <div style={{ marginBottom: "12px" }}>
+        <input
+          autoFocus
+          value={draft}
+          onChange={e => setDraft(e.target.value)}
+          onKeyDown={e => { if (e.key === "Enter") handleSave(); if (e.key === "Escape") setEditing(false); }}
+          style={{ width: "100%", padding: "4px 8px", fontSize: "14px", fontWeight: 700, border: "1px solid #d1d5db", borderRadius: 6, outline: "none", boxSizing: "border-box", marginBottom: 6 }}
+        />
+        <div style={{ display: "flex", gap: 6 }}>
+          <button onClick={handleSave} style={{ ...btnPrimary, padding: "4px 10px", fontSize: 12, flex: 1 }}>Save</button>
+          <button onClick={() => setEditing(false)} style={{ ...btnSecondary, padding: "4px 10px", fontSize: 12, flex: 1 }}>Cancel</button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: "12px" }}>
+      <div style={{ fontWeight: 700, fontSize: "15px", color: "#1f2937", flex: 1 }}>{bot.botTitle || bot.name}</div>
+      <button onClick={() => { setDraft(bot.botTitle || bot.name); setEditing(true); }} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 14, color: "#6b7280" }} title="Edit name">✏️</button>
+    </div>
+  );
+}
+
 export function CourseAiBotBuilder() {
   const [bots, setBots] = useState<CourseBot[]>([]);
   const [selected, setSelected] = useState<CourseBot | null>(null);
@@ -95,7 +132,7 @@ export function CourseAiBotBuilder() {
         <div style={{ width: 240, background: "#fff", borderRight: "1px solid #e5e7eb", display: "flex", flexDirection: "column", flexShrink: 0 }}>
           <div style={{ padding: "16px 20px", borderBottom: "1px solid #e5e7eb" }}>
             <button onClick={() => setSelected(null)} style={{ background: "none", border: "none", cursor: "pointer", color: "#6b7280", fontSize: "14px", display: "flex", alignItems: "center", gap: "6px", marginBottom: "12px" }}>← All Bots</button>
-            <div style={{ fontWeight: 700, fontSize: "15px", color: "#1f2937", marginBottom: "12px" }}>{selected.botTitle || selected.name}</div>
+            <EditableBotName bot={selected} onSave={saveBot} />
             {/* Published/Draft Toggle */}
             <div style={{ display: "flex", alignItems: "center", gap: "12px", marginTop: "4px" }}>
               <span style={{ fontSize: "13px", color: "#6b7280", fontWeight: 500 }}>Status:</span>
