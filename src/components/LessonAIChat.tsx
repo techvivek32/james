@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useAuth } from "../contexts/AuthContext";
 
-export function LessonAIChat(props: { lessonTitle: string; lessonContent?: string; videoUrl?: string; courseTitle?: string; allPages?: any[] }) {
+export function LessonAIChat(props: { lessonTitle: string; lessonContent?: string; videoUrl?: string; courseTitle?: string; allPages?: any[]; trainingText?: string; hasTraining?: boolean }) {
   const { user } = useAuth();
   const [message, setMessage] = useState("");
   const [messages, setMessages] = useState<Array<{ role: "user" | "assistant"; content: string }>>([]);
@@ -136,7 +136,9 @@ export function LessonAIChat(props: { lessonTitle: string; lessonContent?: strin
           lessonContent: props.lessonContent,
           videoUrl: props.videoUrl,
           courseTitle: props.courseTitle,
-          allPages: props.allPages
+          allPages: props.allPages,
+          trainingText: props.trainingText,
+          hasTraining: props.hasTraining
         })
       });
 

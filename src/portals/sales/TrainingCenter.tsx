@@ -46,6 +46,7 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
   const [startWidth, setStartWidth] = useState(280);
   const [isFirstPageVisit, setIsFirstPageVisit] = useState(true);
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
+  const [courseBot, setCourseBot] = useState<{ trainingText?: string; selectedPages?: string[] } | null>(null);
 
   // Refs for video sequencing (must live at top level, not inside CourseView)
   const videoCleanupRef = useRef<(() => void) | undefined>(undefined);
@@ -103,8 +104,18 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
   }, [user?.id]);
 
   useEffect(() => {
-    if (selectedCourse && user) {
-      fetch(`/api/progress?userId=${user.id}&courseId=${selectedCourse.id}`)
+    if (selectedCourse) {
+      fetch('/api/course-ai-bots')
+        .then(r => r.json())
+        .then((bots: any[]) => {
+          const published = bots.find(b => b.status === 'published' && b.selectedCourses?.includes(selectedCourse.id));
+          setCourseBot(published || null);
+        })
+        .catch(() => setCourseBot(null));
+    } else {
+      setCourseBot(null);
+    }
+  }, [selectedCourse?.id]);
         .then(res => res.json())
         .then(data => {
           setCompletedPages(new Set(data.completedPages || []));
@@ -1387,6 +1398,8 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
                 videoUrl={activePage.videoUrl}
                 courseTitle={selectedCourse?.title}
                 allPages={pages}
+                trainingText={courseBot?.trainingText}
+                hasTraining={!!(courseBot?.trainingText && courseBot.trainingText.trim().length > 0)}
               />
             </div>
           </div>

@@ -7,14 +7,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return;
   }
 
-  const { messages, lessonTitle, lessonContent, videoUrl, courseTitle, allPages } = req.body;
+  const { messages, lessonTitle, lessonContent, videoUrl, courseTitle, allPages, trainingText, hasTraining } = req.body;
 
   try {
-    // Check if user message contains a video URL
     const userMessage = messages[messages.length - 1]?.content || "";
     const videoUrlPattern = /(https?:\/\/(?:www\.)?(youtube\.com|youtu\.be|vimeo\.com)\/[^\s]+)/gi;
     const foundVideoUrls = userMessage.match(videoUrlPattern);
-    
+
     let videoAnalysis = "";
     if (foundVideoUrls && foundVideoUrls.length > 0) {
       try {
@@ -25,33 +24,22 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         });
         if (videoResponse.ok) {
           const videoData = await videoResponse.json();
-          videoAnalysis = `
-
-VIDEO ANALYSIS:
-Title: ${videoData.title}
-Platform: ${videoData.platform}
-Duration: ${videoData.duration}
-Description: ${videoData.description}
-Detailed Analysis: ${videoData.analysis}`;
+          videoAnalysis = `\n\nVIDEO ANALYSIS:\nTitle: ${videoData.title}\nPlatform: ${videoData.platform}\nDuration: ${videoData.duration}\nDescription: ${videoData.description}\nDetailed Analysis: ${videoData.analysis}`;
         }
       } catch (error) {
         console.error("Video analysis failed:", error);
       }
     }
 
-    const videoInfo = videoUrl ? `
+    let systemPrompt = "";
 
-VIDEO CONTENT:
-This lesson includes a video: ${videoUrl}
-Users can ask questions about the video content, key points discussed, or request explanations of concepts covered in the video.` : '';
-    
-    const courseContext = allPages && allPages.length > 0 ? `
-
-FULL COURSE CONTEXT (${courseTitle || 'Course'}):
-${allPages.map((page: any, index: number) => `
-Lesson ${index + 1}: ${page.title}
-Content: ${page.body || 'No content'}
-${page.videoUrl ? `Video: ${page.videoUrl}` : ''}`).join('\n')}` : '';
+    if (hasTraining && trainingText && trainingText.trim().length > 0) {
+      // Bot has training — restrict to selected course content only
+      systemPrompt = `You are a helpful training coach assistant. Answer questions ONLY based on the following trained course content. If the user asks about anything not covered in this content, politely say you can only answer questions about the trained course material.\n\nTRAINED COURSE CONTENT:\n${trainingText}${videoAnalysis}`;
+    } else {
+      // No training selected — chat freely
+      systemPrompt = `You are a helpful AI assistant. Answer any questions the user has freely and helpfully.${videoAnalysis}`;
+    }
 
     const response = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
@@ -62,24 +50,7 @@ ${page.videoUrl ? `Video: ${page.videoUrl}` : ''}`).join('\n')}` : '';
       body: JSON.stringify({
         model: "gpt-3.5-turbo",
         messages: [
-          {
-            role: "system",
-            content: `You are a helpful training coach assistant for the course "${courseTitle || 'Training Course'}". The user is currently on lesson "${lessonTitle}". 
-
-CURRENT LESSON CONTENT:
-${lessonContent || 'No content provided'}${videoInfo}${courseContext}${videoAnalysis}
-
-IMPORTANT RULES:
-- You can answer questions about ANY lesson in this course, not just the current one
-- Use the full course context to provide comprehensive answers
-- If a user asks about "lesson 1" or "lesson 3" etc., refer to the course context above
-- When users share video links, provide comprehensive analysis including content, duration, key topics, and learning objectives
-- If the user asks about topics unrelated to this course, politely decline and redirect them back to the course topics
-- Keep your answers focused, clear, and educational
-- Reference specific lessons when helpful (e.g., "As covered in Lesson 2...")
-
-Your role is to help users understand the entire "${courseTitle || 'course'}" content and analyze any video content they share.`
-          },
+          { role: "system", content: systemPrompt },
           ...messages
         ],
         temperature: 0.7,
