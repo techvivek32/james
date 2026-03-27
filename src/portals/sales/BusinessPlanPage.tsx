@@ -202,56 +202,46 @@ export function BusinessPlanPage(props: {
       </div>
       
       <div className="panel-body">
-        {/* Input Section */}
-        <div style={{ marginBottom: 32, backgroundColor: "#f9fafb", padding: 16, borderRadius: 8, border: "1px solid #e5e7eb" }}>
-          <h3 style={{ fontSize: 14, fontWeight: 600, color: "#111827", margin: 0, marginBottom: 16 }}>
-            Plan Inputs
-          </h3>
-          
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
-            {/* Income Goal */}
-            <label className="field">
-              <span className="field-label">Income Goal</span>
-              <div style={{ position: "relative", display: "flex", alignItems: "center" }}>
-                <span style={{ position: "absolute", left: 12, fontSize: 13, color: "#6b7280", fontWeight: 600 }}>$</span>
-                <input
-                  className="field-input"
-                  type="number"
-                  min={0}
-                  step={1000}
-                  value={incomeGoal}
-                  onChange={(e: ChangeEvent<HTMLInputElement>) => {
-                    const value = Number(e.target.value);
-                    setIncomeGoal(value);
-                  }}
-                  style={{ width: "100%", padding: "10px 12px 10px 28px", fontSize: 13, border: "1px solid #d1d5db", borderRadius: 6 }}
-                />
-              </div>
-            </label>
-
-            {/* Deal Ave */}
-            <label className="field">
-              <span className="field-label">Deal Ave (Average Deal Size)</span>
-              <div style={{ position: "relative", display: "flex", alignItems: "center" }}>
-                <span style={{ position: "absolute", left: 12, fontSize: 13, color: "#6b7280", fontWeight: 600 }}>$</span>
-                <input
-                  className="field-input"
-                  type="number"
-                  min={0}
-                  step={100}
-                  value={dealAve}
-                  onChange={(e: ChangeEvent<HTMLInputElement>) => {
-                    const value = Number(e.target.value);
-                    setDealAve(value);
-                  }}
-                  style={{ width: "100%", padding: "10px 12px 10px 28px", fontSize: 13, border: "1px solid #d1d5db", borderRadius: 6 }}
-                />
-              </div>
-            </label>
-
-
-          </div>
-        </div>
+        {/* My Inputs Table */}
+        <div style={{ marginBottom: 8, fontSize: 13, color: "#6b7280" }}>My Inputs:</div>
+        <table style={{ width: "100%", borderCollapse: "collapse", marginBottom: 32 }}>
+          <thead>
+            <tr>
+              <th style={{ border: "1px solid #d1d5db", padding: "10px 16px", textAlign: "center", fontSize: 13, fontWeight: 700, backgroundColor: "#f9fafb" }}>Income Goal</th>
+              <th style={{ border: "1px solid #d1d5db", padding: "10px 16px", textAlign: "center", fontSize: 13, fontWeight: 700, backgroundColor: "#f9fafb" }}>Deal Average</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td style={{ border: "1px solid #d1d5db", padding: "10px 16px", textAlign: "center" }}>
+                <div style={{ position: "relative", display: "inline-flex", alignItems: "center" }}>
+                  <span style={{ position: "absolute", left: 8, fontSize: 13, color: "#6b7280", fontWeight: 600 }}>$</span>
+                  <input
+                    type="number"
+                    min={0}
+                    step={1000}
+                    value={incomeGoal}
+                    onChange={(e: ChangeEvent<HTMLInputElement>) => setIncomeGoal(Number(e.target.value))}
+                    style={{ padding: "6px 10px 6px 22px", fontSize: 13, border: "1px solid #d1d5db", borderRadius: 4, width: 150, textAlign: "center" }}
+                  />
+                </div>
+              </td>
+              <td style={{ border: "1px solid #d1d5db", padding: "10px 16px", textAlign: "center" }}>
+                <div style={{ position: "relative", display: "inline-flex", alignItems: "center" }}>
+                  <span style={{ position: "absolute", left: 8, fontSize: 13, color: "#6b7280", fontWeight: 600 }}>$</span>
+                  <input
+                    type="number"
+                    min={0}
+                    step={100}
+                    value={dealAve}
+                    onChange={(e: ChangeEvent<HTMLInputElement>) => setDealAve(Number(e.target.value))}
+                    style={{ padding: "6px 10px 6px 22px", fontSize: 13, border: "1px solid #d1d5db", borderRadius: 4, width: 150, textAlign: "center" }}
+                  />
+                </div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
 
         {/* Hardcoded Ratios Display */}
         <div style={{ display: "none", marginBottom: 32, gridTemplateColumns: "1fr 1fr", gap: 12 }}>
@@ -259,62 +249,49 @@ export function BusinessPlanPage(props: {
             <div style={{ fontSize: 11, color: "#831843", fontWeight: 600, marginBottom: 4 }}>Claims Ratio</div>
             <div style={{ fontSize: 16, fontWeight: 700, color: "#831843" }}>25%</div>
           </div>
-          
           <div style={{ padding: 12, backgroundColor: "#fef3c7", borderRadius: 8, border: "1px solid #f59e0b" }}>
             <div style={{ fontSize: 11, color: "#78350f", fontWeight: 600, marginBottom: 4 }}>Inspection Ratio</div>
             <div style={{ fontSize: 16, fontWeight: 700, color: "#78350f" }}>30%</div>
           </div>
         </div>
 
-        {/* Results Section - Yearly */}
-        <div style={{ borderTop: "2px solid #e5e7eb", paddingTop: 24, marginBottom: 24 }}>
-          <h3 style={{ fontSize: 16, fontWeight: 600, color: "#111827", marginBottom: 16 }}>
-            Yearly Targets
-          </h3>
+        {/* Yearly Goals Table */}
+        <div style={{ marginBottom: 8, fontSize: 13, fontWeight: 600, color: "#111827" }}>Yearly Goals</div>
+        <table style={{ width: "100%", borderCollapse: "collapse", marginBottom: 32 }}>
+          <thead>
+            <tr>
+              <th style={{ border: "1px solid #d1d5db", padding: "10px 16px", textAlign: "center", fontSize: 13, fontWeight: 700, backgroundColor: "#f9fafb" }}>Deals</th>
+              <th style={{ border: "1px solid #d1d5db", padding: "10px 16px", textAlign: "center", fontSize: 13, fontWeight: 700, backgroundColor: "#f9fafb" }}>Claims</th>
+              <th style={{ border: "1px solid #d1d5db", padding: "10px 16px", textAlign: "center", fontSize: 13, fontWeight: 700, backgroundColor: "#f9fafb" }}>Inspections</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td style={{ border: "1px solid #d1d5db", padding: "12px 16px", textAlign: "center", fontSize: 15, fontWeight: 600 }}>{metrics.dealsPerYear.toLocaleString()}</td>
+              <td style={{ border: "1px solid #d1d5db", padding: "12px 16px", textAlign: "center", fontSize: 15, fontWeight: 600 }}>{metrics.claimsPerYear.toLocaleString()}</td>
+              <td style={{ border: "1px solid #d1d5db", padding: "12px 16px", textAlign: "center", fontSize: 15, fontWeight: 600 }}>{metrics.inspectionsPerYear.toLocaleString()}</td>
+            </tr>
+          </tbody>
+        </table>
 
-          <div className="grid grid-4" style={{ marginBottom: 24 }}>
-            <DashboardCard
-              title="Deals Per Year"
-              value={metrics.dealsPerYear.toLocaleString()}
-              description="Income Goal / Deal Ave"
-            />
-            <DashboardCard
-              title="Claims Per Year"
-              value={metrics.claimsPerYear.toLocaleString()}
-              description="Deals Per Year × 3"
-            />
-            <DashboardCard
-              title="Inspections Per Year"
-              value={metrics.inspectionsPerYear.toLocaleString()}
-              description="Claims Per Year × 3"
-            />
-          </div>
-        </div>
-
-        {/* Results Section - Monthly */}
-        <div style={{ borderTop: "2px solid #e5e7eb", paddingTop: 24, marginBottom: 24 }}>
-          <h3 style={{ fontSize: 16, fontWeight: 600, color: "#111827", marginBottom: 16 }}>
-            Monthly Targets
-          </h3>
-
-          <div className="grid grid-4" style={{ marginBottom: 24 }}>
-            <DashboardCard
-              title="Deals Per Month"
-              value={Math.ceil(metrics.dealsPerMonth).toLocaleString()}
-              description="Deals Per Year / 12"
-            />
-            <DashboardCard
-              title="Claims Per Month"
-              value={Math.ceil(metrics.claimsPerMonth).toLocaleString()}
-              description="Claims Per Year / 12"
-            />
-            <DashboardCard
-              title="Inspections Per Month"
-              value={Math.ceil(metrics.inspectionsPerMonth).toLocaleString()}
-              description="Inspections Per Year / 12"
-            />
-          </div>
-        </div>
+        {/* Monthly Goals Table */}
+        <div style={{ marginBottom: 8, fontSize: 13, fontWeight: 600, color: "#111827" }}>Monthly Goals</div>
+        <table style={{ width: "100%", borderCollapse: "collapse", marginBottom: 32 }}>
+          <thead>
+            <tr>
+              <th style={{ border: "1px solid #d1d5db", padding: "10px 16px", textAlign: "center", fontSize: 13, fontWeight: 700, backgroundColor: "#f9fafb" }}>Deals</th>
+              <th style={{ border: "1px solid #d1d5db", padding: "10px 16px", textAlign: "center", fontSize: 13, fontWeight: 700, backgroundColor: "#f9fafb" }}>Claims</th>
+              <th style={{ border: "1px solid #d1d5db", padding: "10px 16px", textAlign: "center", fontSize: 13, fontWeight: 700, backgroundColor: "#f9fafb" }}>Inspections</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td style={{ border: "1px solid #d1d5db", padding: "12px 16px", textAlign: "center", fontSize: 15, fontWeight: 600 }}>{Math.ceil(metrics.dealsPerMonth).toLocaleString()}</td>
+              <td style={{ border: "1px solid #d1d5db", padding: "12px 16px", textAlign: "center", fontSize: 15, fontWeight: 600 }}>{Math.ceil(metrics.claimsPerMonth).toLocaleString()}</td>
+              <td style={{ border: "1px solid #d1d5db", padding: "12px 16px", textAlign: "center", fontSize: 15, fontWeight: 600 }}>{Math.ceil(metrics.inspectionsPerMonth).toLocaleString()}</td>
+            </tr>
+          </tbody>
+        </table>
 
         {/* Commitment Section */}
         <div style={{ borderTop: "2px solid #e5e7eb", paddingTop: 24, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
