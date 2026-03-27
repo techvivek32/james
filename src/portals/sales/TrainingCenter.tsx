@@ -116,6 +116,10 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
       setCourseBot(null);
     }
   }, [selectedCourse?.id]);
+
+  useEffect(() => {
+    if (selectedCourse && user) {
+      fetch(`/api/progress?userId=${user.id}&courseId=${selectedCourse.id}`)
         .then(res => res.json())
         .then(data => {
           setCompletedPages(new Set(data.completedPages || []));

@@ -1,9 +1,11 @@
 import type { NextPage } from "next";
-import { useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { SalesLayout } from "../../src/portals/sales/SalesLayout";
 import { TrainingCenter } from "../../src/portals/sales/TrainingCenter";
 import { useAuth } from "../../src/contexts/AuthContext";
 import { Course } from "../../src/types";
+
+const TrainingCenterComponent = TrainingCenter as React.ComponentType<{ courses: Course[]; isLoading?: boolean }>;
 
 const Training: NextPage = () => {
   const { user } = useAuth();
@@ -64,7 +66,7 @@ const Training: NextPage = () => {
 
   return (
     <SalesLayout currentView="training">
-      <TrainingCenter courses={courses} isLoading={isLoading} />
+      <TrainingCenterComponent courses={courses} isLoading={isLoading} />
     </SalesLayout>
   );
 };
