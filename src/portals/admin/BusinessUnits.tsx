@@ -1,4 +1,4 @@
-import { useState, useMemo, ChangeEvent } from "react";
+import { useState, useMemo, ChangeEvent, useEffect } from "react";
 import { DashboardCard } from "../../components/DashboardCard";
 import { UserProfile, BusinessPlan } from "../../types";
 

@@ -57,7 +57,7 @@ export function SocialMediaCharts({ platforms, customColumns = [] }: SocialMedia
       // No column selected: show all columns for selected platform
       slices = numericColumns.map((col, i) => ({
         id: col.id,
-        value: typeof selectedPlatform[col.name] === "number" ? selectedPlatform[col.name] : 0,
+        value: selectedPlatform && typeof selectedPlatform[col.name] === "number" ? selectedPlatform[col.name] : 0,
         color: getColumnColor(i),
         label: col.name
       }));
