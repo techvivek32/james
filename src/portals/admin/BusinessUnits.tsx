@@ -189,12 +189,12 @@ export function BusinessUnitsManager(props: { users: UserProfile[] }) {
                   </td>
                   <td style={{ padding: 12, color: "#6b7280", fontSize: 12, border: "1px solid #e5e7eb" }}>Sum of all committed reps</td>
                 </tr>
-                <tr>
+                <tr style={{ display: "none" }}>
                   <td style={{ padding: 12, color: "#374151", paddingLeft: 24, border: "1px solid #e5e7eb" }}>Claims Ratio</td>
                   <td style={{ padding: 12, textAlign: "right", color: "#111827", fontWeight: 600, border: "1px solid #e5e7eb" }}>25%</td>
                   <td style={{ padding: 12, color: "#6b7280", fontSize: 12, border: "1px solid #e5e7eb" }}>Hardcoded</td>
                 </tr>
-                <tr>
+                <tr style={{ display: "none" }}>
                   <td style={{ padding: 12, color: "#374151", paddingLeft: 24, border: "1px solid #e5e7eb" }}>Inspection Ratio</td>
                   <td style={{ padding: 12, textAlign: "right", color: "#111827", fontWeight: 600, border: "1px solid #e5e7eb" }}>30%</td>
                   <td style={{ padding: 12, color: "#6b7280", fontSize: 12, border: "1px solid #e5e7eb" }}>Hardcoded</td>
@@ -237,21 +237,21 @@ export function BusinessUnitsManager(props: { users: UserProfile[] }) {
                 <tr>
                   <td style={{ padding: 12, color: "#374151", paddingLeft: 24, border: "1px solid #e5e7eb" }}>Deals Per Month</td>
                   <td style={{ padding: 12, textAlign: "right", color: "#111827", fontWeight: 600, border: "1px solid #e5e7eb" }}>
-                    {globalTotals.dealsPerMonth % 1 !== 0 ? globalTotals.dealsPerMonth.toFixed(2) : globalTotals.dealsPerMonth.toLocaleString()}
+                    {Math.ceil(globalTotals.dealsPerMonth).toLocaleString()}
                   </td>
                   <td style={{ padding: 12, color: "#6b7280", fontSize: 12, border: "1px solid #e5e7eb" }}>Total from all reps</td>
                 </tr>
                 <tr>
                   <td style={{ padding: 12, color: "#374151", paddingLeft: 24, border: "1px solid #e5e7eb" }}>Claims Per Month</td>
                   <td style={{ padding: 12, textAlign: "right", color: "#111827", fontWeight: 600, border: "1px solid #e5e7eb" }}>
-                    {globalTotals.claimsPerMonth % 1 !== 0 ? globalTotals.claimsPerMonth.toFixed(2) : globalTotals.claimsPerMonth.toLocaleString()}
+                    {Math.ceil(globalTotals.claimsPerMonth).toLocaleString()}
                   </td>
                   <td style={{ padding: 12, color: "#6b7280", fontSize: 12, border: "1px solid #e5e7eb" }}>Total from all reps</td>
                 </tr>
                 <tr>
                   <td style={{ padding: 12, color: "#374151", paddingLeft: 24, border: "1px solid #e5e7eb" }}>Inspections Per Month</td>
                   <td style={{ padding: 12, textAlign: "right", color: "#111827", fontWeight: 600, border: "1px solid #e5e7eb" }}>
-                    {globalTotals.inspectionsPerMonth % 1 !== 0 ? globalTotals.inspectionsPerMonth.toFixed(2) : globalTotals.inspectionsPerMonth.toLocaleString()}
+                    {Math.ceil(globalTotals.inspectionsPerMonth).toLocaleString()}
                   </td>
                   <td style={{ padding: 12, color: "#6b7280", fontSize: 12, border: "1px solid #e5e7eb" }}>Total from all reps</td>
                 </tr>
@@ -347,19 +347,19 @@ export function BusinessUnitsManager(props: { users: UserProfile[] }) {
                           {teamTotals.dealsPerYear.toLocaleString()}
                         </td>
                         <td style={{ padding: 12, textAlign: "right", color: "#374151", fontWeight: 600 }}>
-                          {teamTotals.dealsPerMonth % 1 !== 0 ? teamTotals.dealsPerMonth.toFixed(2) : teamTotals.dealsPerMonth.toLocaleString()}
+                          {Math.ceil(teamTotals.dealsPerMonth).toLocaleString()}
                         </td>
                         <td style={{ padding: 12, textAlign: "right", color: "#374151", fontWeight: 600 }}>
                           {teamTotals.claimsPerYear.toLocaleString()}
                         </td>
                         <td style={{ padding: 12, textAlign: "right", color: "#374151", fontWeight: 600 }}>
-                          {teamTotals.claimsPerMonth % 1 !== 0 ? teamTotals.claimsPerMonth.toFixed(2) : teamTotals.claimsPerMonth.toLocaleString()}
+                          {Math.ceil(teamTotals.claimsPerMonth).toLocaleString()}
                         </td>
                         <td style={{ padding: 12, textAlign: "right", color: "#374151", fontWeight: 600 }}>
                           {teamTotals.inspectionsPerYear.toLocaleString()}
                         </td>
                         <td style={{ padding: 12, textAlign: "right", color: "#374151", fontWeight: 600 }}>
-                          {teamTotals.inspectionsPerMonth % 1 !== 0 ? teamTotals.inspectionsPerMonth.toFixed(2) : teamTotals.inspectionsPerMonth.toLocaleString()}
+                          {Math.ceil(teamTotals.inspectionsPerMonth).toLocaleString()}
                         </td>
                         <td style={{ padding: 12, textAlign: "center" }}>
                           <span style={{ padding: "4px 8px", backgroundColor: "#e5e7eb", color: "#374151", borderRadius: 4, fontSize: 11, fontWeight: 600 }}>
@@ -405,19 +405,19 @@ export function BusinessUnitsManager(props: { users: UserProfile[] }) {
                               {metrics.dealsPerYear.toLocaleString()}
                             </td>
                             <td style={{ padding: 12, textAlign: "right", color: "#374151" }}>
-                              {metrics.dealsPerMonth.toFixed(2)}
+                              {Math.ceil(metrics.dealsPerMonth).toLocaleString()}
                             </td>
                             <td style={{ padding: 12, textAlign: "right", color: "#374151" }}>
                               {metrics.claimsPerYear.toLocaleString()}
                             </td>
                             <td style={{ padding: 12, textAlign: "right", color: "#374151" }}>
-                              {metrics.claimsPerMonth.toFixed(2)}
+                              {Math.ceil(metrics.claimsPerMonth).toLocaleString()}
                             </td>
                             <td style={{ padding: 12, textAlign: "right", color: "#374151" }}>
                               {metrics.inspectionsPerYear.toLocaleString()}
                             </td>
                             <td style={{ padding: 12, textAlign: "right", color: "#374151" }}>
-                              {metrics.inspectionsPerMonth.toFixed(2)}
+                              {Math.ceil(metrics.inspectionsPerMonth).toLocaleString()}
                             </td>
                             <td style={{ padding: 12, textAlign: "center" }}>
                               <span style={{ 
@@ -528,11 +528,11 @@ export function BusinessUnitsManager(props: { users: UserProfile[] }) {
                             <td style={{ padding: 12, textAlign: "right" }}>${teamTotals.incomeGoal.toLocaleString()}</td>
                             <td style={{ padding: 12, textAlign: "right" }}>-</td>
                             <td style={{ padding: 12, textAlign: "right" }}>{teamTotals.dealsPerYear.toLocaleString()}</td>
-                            <td style={{ padding: 12, textAlign: "right" }}>{teamTotals.dealsPerMonth % 1 !== 0 ? teamTotals.dealsPerMonth.toFixed(2) : teamTotals.dealsPerMonth.toLocaleString()}</td>
+                            <td style={{ padding: 12, textAlign: "right" }}>{Math.ceil(teamTotals.dealsPerMonth).toLocaleString()}</td>
                             <td style={{ padding: 12, textAlign: "right" }}>{teamTotals.claimsPerYear.toLocaleString()}</td>
-                            <td style={{ padding: 12, textAlign: "right" }}>{teamTotals.claimsPerMonth % 1 !== 0 ? teamTotals.claimsPerMonth.toFixed(2) : teamTotals.claimsPerMonth.toLocaleString()}</td>
+                            <td style={{ padding: 12, textAlign: "right" }}>{Math.ceil(teamTotals.claimsPerMonth).toLocaleString()}</td>
                             <td style={{ padding: 12, textAlign: "right" }}>{teamTotals.inspectionsPerYear.toLocaleString()}</td>
-                            <td style={{ padding: 12, textAlign: "right" }}>{teamTotals.inspectionsPerMonth % 1 !== 0 ? teamTotals.inspectionsPerMonth.toFixed(2) : teamTotals.inspectionsPerMonth.toLocaleString()}</td>
+                            <td style={{ padding: 12, textAlign: "right" }}>{Math.ceil(teamTotals.inspectionsPerMonth).toLocaleString()}</td>
                             <td style={{ padding: 12, textAlign: "center" }}><span style={{ padding: "4px 8px", backgroundColor: "#e5e7eb", color: "#374151", borderRadius: 4, fontSize: 11, fontWeight: 600 }}>Team ({teamMembers.length})</span></td>
                             <td style={{ padding: 12, textAlign: "center" }}>
                               <button onClick={() => toggleManager(manager.id)} style={{ padding: "6px 12px", backgroundColor: "#10b981", color: "#fff", border: "none", borderRadius: 4, fontSize: 12, fontWeight: 600, cursor: "pointer" }}>See Team</button>
@@ -547,11 +547,11 @@ export function BusinessUnitsManager(props: { users: UserProfile[] }) {
                                 <td style={{ padding: 12, textAlign: "right" }}>${(bp?.revenueGoal || 0).toLocaleString()}</td>
                                 <td style={{ padding: 12, textAlign: "right" }}>${(bp?.averageDealSize || 0).toLocaleString()}</td>
                                 <td style={{ padding: 12, textAlign: "right" }}>{metrics.dealsPerYear.toLocaleString()}</td>
-                                <td style={{ padding: 12, textAlign: "right" }}>{metrics.dealsPerMonth.toFixed(2)}</td>
+                                <td style={{ padding: 12, textAlign: "right" }}>{Math.ceil(metrics.dealsPerMonth).toLocaleString()}</td>
                                 <td style={{ padding: 12, textAlign: "right" }}>{metrics.claimsPerYear.toLocaleString()}</td>
-                                <td style={{ padding: 12, textAlign: "right" }}>{metrics.claimsPerMonth.toFixed(2)}</td>
+                                <td style={{ padding: 12, textAlign: "right" }}>{Math.ceil(metrics.claimsPerMonth).toLocaleString()}</td>
                                 <td style={{ padding: 12, textAlign: "right" }}>{metrics.inspectionsPerYear.toLocaleString()}</td>
-                                <td style={{ padding: 12, textAlign: "right" }}>{metrics.inspectionsPerMonth.toFixed(2)}</td>
+                                <td style={{ padding: 12, textAlign: "right" }}>{Math.ceil(metrics.inspectionsPerMonth).toLocaleString()}</td>
                                 <td style={{ padding: 12, textAlign: "center" }}>
                                   <span style={{ padding: "4px 8px", backgroundColor: bp?.committed ? "#d1fae5" : "#fef3c7", color: bp?.committed ? "#065f46" : "#78350f", borderRadius: 4, fontSize: 11, fontWeight: 600 }}>
                                     {bp?.committed ? "Committed" : "Draft"}
