@@ -40,7 +40,7 @@ export function BusinessPlanPage(props: {
   const [existingPlan, setExistingPlan] = useState<BusinessPlan | null>(null);
   const [loading, setLoading] = useState(true);
   const [incomeGoal, setIncomeGoal] = useState(100000);
-  const [dealAve, setDealAve] = useState(12000);
+  const [dealAve, setDealAve] = useState(3800);
   const [workingDaysPerWeek, setWorkingDaysPerWeek] = useState(5);
   const [saved, setSaved] = useState(false);
   const [committed, setCommitted] = useState(false);
@@ -56,7 +56,7 @@ export function BusinessPlanPage(props: {
           if (userPlan?.businessPlan) {
             setExistingPlan(userPlan.businessPlan);
             setIncomeGoal(userPlan.businessPlan.revenueGoal || 100000);
-            setDealAve(userPlan.businessPlan.averageDealSize || 12000);
+            setDealAve(userPlan.businessPlan.averageDealSize || 3800);
             setWorkingDaysPerWeek(userPlan.businessPlan.daysPerWeek || 5);
             setCommitted(userPlan.businessPlan.committed || false);
             setSaved(true);

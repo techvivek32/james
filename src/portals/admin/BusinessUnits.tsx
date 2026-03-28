@@ -27,9 +27,8 @@ export function BusinessUnitsManager(props: { users: UserProfile[] }) {
   }
   const [editingUserId, setEditingUserId] = useState<string | null>(null);
   const [editForm, setEditForm] = useState<{
-    incomeGoal: number;
-    dealAve: number;
-    workingDaysPerWeek: number;
+    incomeGoal: string;
+    dealAve: string;
     committed: boolean;
   } | null>(null);
   const managers = props.users.filter((u) => u.role === "manager" || (u.roles || []).includes("manager"));
@@ -112,13 +111,13 @@ export function BusinessUnitsManager(props: { users: UserProfile[] }) {
     const member = salesReps.find(m => m.id === editingUserId);
     if (!member) return;
 
-    const metrics = calculateMetrics(editForm.incomeGoal, editForm.dealAve);
+    const metrics = calculateMetrics(Number(editForm.incomeGoal), Number(editForm.dealAve));
 
     const plan: BusinessPlan = {
-      revenueGoal: editForm.incomeGoal,
-      daysPerWeek: editForm.workingDaysPerWeek,
+      revenueGoal: Number(editForm.incomeGoal),
+      daysPerWeek: 5,
       territories: [member.territory || ""],
-      averageDealSize: editForm.dealAve,
+      averageDealSize: Number(editForm.dealAve),
       dealsPerYear: metrics.dealsPerYear,
       dealsPerMonth: Math.round(metrics.dealsPerMonth),
       inspectionsNeeded: Math.round(metrics.inspectionsPerMonth),
@@ -259,6 +258,33 @@ export function BusinessUnitsManager(props: { users: UserProfile[] }) {
             </table>
           </div>
         </div>
+      </div>
+
+      {/* Expand All / Collapse All Button */}
+      <div style={{ marginBottom: 16, display: "flex", justifyContent: "flex-end" }}>
+        <button
+          onClick={() => {
+            const visibleManagerIds = managers.filter(m => !hiddenManagers.has(m.id)).map(m => m.id);
+            const allExpanded = visibleManagerIds.every(id => expandedManagers.has(id));
+            if (allExpanded) {
+              setExpandedManagers(new Set());
+            } else {
+              setExpandedManagers(new Set(visibleManagerIds));
+            }
+          }}
+          style={{
+            padding: "8px 20px",
+            backgroundColor: "#3b82f6",
+            color: "#ffffff",
+            border: "none",
+            borderRadius: 6,
+            fontSize: 13,
+            fontWeight: 600,
+            cursor: "pointer"
+          }}
+        >
+          {managers.filter(m => !hiddenManagers.has(m.id)).every(m => expandedManagers.has(m.id)) ? "Collapse All" : "Expand All"}
+        </button>
       </div>
 
       {/* Per-Manager Tables */}
@@ -436,9 +462,8 @@ export function BusinessUnitsManager(props: { users: UserProfile[] }) {
                                 onClick={() => {
                                   setEditingUserId(member.id);
                                   setEditForm({
-                                    incomeGoal: bp?.revenueGoal || 0,
-                                    dealAve: bp?.averageDealSize || 0,
-                                    workingDaysPerWeek: bp?.daysPerWeek || 5,
+                                    incomeGoal: String(bp?.revenueGoal || 0),
+                                    dealAve: String(bp?.averageDealSize || 0),
                                     committed: bp?.committed || false
                                   });
                                 }}
@@ -558,7 +583,7 @@ export function BusinessUnitsManager(props: { users: UserProfile[] }) {
                                   </span>
                                 </td>
                                 <td style={{ padding: 12, textAlign: "center" }}>
-                                  <button onClick={() => { setEditingUserId(member.id); setEditForm({ incomeGoal: bp?.revenueGoal || 0, dealAve: bp?.averageDealSize || 0, workingDaysPerWeek: bp?.daysPerWeek || 5, committed: bp?.committed || false }); }} style={{ padding: "6px 12px", backgroundColor: "#3b82f6", color: "#fff", border: "none", borderRadius: 4, fontSize: 12, fontWeight: 600, cursor: "pointer" }}>Edit</button>
+                                  <button onClick={() => { setEditingUserId(member.id); setEditForm({ incomeGoal: String(bp?.revenueGoal || 0), dealAve: String(bp?.averageDealSize || 0), committed: bp?.committed || false }); }} style={{ padding: "6px 12px", backgroundColor: "#3b82f6", color: "#fff", border: "none", borderRadius: 4, fontSize: 12, fontWeight: 600, cursor: "pointer" }}>Edit</button>
                                 </td>
                               </tr>
                             );
@@ -607,13 +632,9 @@ export function BusinessUnitsManager(props: { users: UserProfile[] }) {
                 <div style={{ position: "relative", display: "flex", alignItems: "center" }}>
                   <span style={{ position: "absolute", left: 12, fontSize: 13, color: "#6b7280", fontWeight: 600 }}>$</span>
                   <input
-                    type="number"
-                    min={0}
-                    step={1000}
+                    type="text"
                     value={editForm.incomeGoal}
-                    onChange={(e: ChangeEvent<HTMLInputElement>) => {
-                      setEditForm({ ...editForm, incomeGoal: Number(e.target.value) });
-                    }}
+                    onChange={(e: ChangeEvent<HTMLInputElement>) => setEditForm({ ...editForm, incomeGoal: e.target.value })}
                     style={{ width: "100%", padding: "10px 12px 10px 28px", fontSize: 13, border: "1px solid #d1d5db", borderRadius: 6 }}
                   />
                 </div>
@@ -624,34 +645,12 @@ export function BusinessUnitsManager(props: { users: UserProfile[] }) {
                 <div style={{ position: "relative", display: "flex", alignItems: "center" }}>
                   <span style={{ position: "absolute", left: 12, fontSize: 13, color: "#6b7280", fontWeight: 600 }}>$</span>
                   <input
-                    type="number"
-                    min={0}
-                    step={100}
+                    type="text"
                     value={editForm.dealAve}
-                    onChange={(e: ChangeEvent<HTMLInputElement>) => {
-                      setEditForm({ ...editForm, dealAve: Number(e.target.value) });
-                    }}
+                    onChange={(e: ChangeEvent<HTMLInputElement>) => setEditForm({ ...editForm, dealAve: e.target.value })}
                     style={{ width: "100%", padding: "10px 12px 10px 28px", fontSize: 13, border: "1px solid #d1d5db", borderRadius: 6 }}
                   />
                 </div>
-              </label>
-
-              <label className="field">
-                <span className="field-label">Working Days Per Week</span>
-                <input
-                  type="number"
-                  min={1}
-                  max={7}
-                  step={0.5}
-                  value={editForm.workingDaysPerWeek}
-                  onChange={(e: ChangeEvent<HTMLInputElement>) => {
-                    const value = Number(e.target.value);
-                    if (value >= 1 && value <= 7) {
-                      setEditForm({ ...editForm, workingDaysPerWeek: value });
-                    }
-                  }}
-                  style={{ width: "100%", padding: "10px 12px", fontSize: 13, border: "1px solid #d1d5db", borderRadius: 6 }}
-                />
               </label>
 
               <label className="field">
