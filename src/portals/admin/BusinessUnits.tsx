@@ -4,26 +4,35 @@ import { UserProfile, BusinessPlan } from "../../types";
 
 export function BusinessUnitsManager(props: { users: UserProfile[] }) {
   const [expandedManagers, setExpandedManagers] = useState<Set<string>>(new Set());
-  const [hiddenManagers, setHiddenManagers] = useState<Set<string>>(() => {
-    try {
-      const saved = localStorage.getItem("hiddenManagers");
-      return saved ? new Set(JSON.parse(saved)) : new Set();
-    } catch { return new Set(); }
-  });
+  const [hiddenManagers, setHiddenManagers] = useState<Set<string>>(new Set());
   const [showHiddenSection, setShowHiddenSection] = useState(false);
+
+  useEffect(() => {
+    fetch("/api/admin/ui-prefs?key=hiddenManagers")
+      .then(r => r.ok ? r.json() : { hiddenIds: [] })
+      .then(data => setHiddenManagers(new Set(data.hiddenIds || [])))
+      .catch(() => {});
+  }, []);
+
+  async function saveHiddenManagers(newSet: Set<string>) {
+    setHiddenManagers(newSet);
+    await fetch("/api/admin/ui-prefs?key=hiddenManagers", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ hiddenIds: [...newSet] })
+    }).catch(() => {});
+  }
 
   function hideManager(id: string) {
     const n = new Set(hiddenManagers);
     n.add(id);
-    setHiddenManagers(n);
-    localStorage.setItem("hiddenManagers", JSON.stringify([...n]));
+    saveHiddenManagers(n);
   }
 
   function unhideManager(id: string) {
     const n = new Set(hiddenManagers);
     n.delete(id);
-    setHiddenManagers(n);
-    localStorage.setItem("hiddenManagers", JSON.stringify([...n]));
+    saveHiddenManagers(n);
   }
   const [editingUserId, setEditingUserId] = useState<string | null>(null);
   const [editForm, setEditForm] = useState<{

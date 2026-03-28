@@ -26,14 +26,24 @@ export function CourseLeaderboard() {
   const [search, setSearch] = useState("");
   const pickerRef = useRef<HTMLDivElement>(null);
 
-  // Hidden users state
-  const [hiddenUsers, setHiddenUsers] = useState<Set<string>>(() => {
-    try {
-      const saved = localStorage.getItem("hiddenLeaderboardUsers");
-      return saved ? new Set(JSON.parse(saved)) : new Set();
-    } catch { return new Set(); }
-  });
+  const [hiddenUsers, setHiddenUsers] = useState<Set<string>>(new Set());
   const [showHiddenList, setShowHiddenList] = useState(false);
+
+  useEffect(() => {
+    fetch("/api/admin/ui-prefs?key=hiddenLeaderboardUsers")
+      .then(r => r.ok ? r.json() : { hiddenIds: [] })
+      .then(data => setHiddenUsers(new Set(data.hiddenIds || [])))
+      .catch(() => {});
+  }, []);
+
+  async function saveHiddenUsers(newSet: Set<string>) {
+    setHiddenUsers(newSet);
+    await fetch("/api/admin/ui-prefs?key=hiddenLeaderboardUsers", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ hiddenIds: [...newSet] })
+    }).catch(() => {});
+  }
 
   // Swipe tracking
   const [swipeStart, setSwipeStart] = useState<{ x: number; userId: string } | null>(null);
@@ -53,15 +63,13 @@ export function CourseLeaderboard() {
   function hideUser(userId: string) {
     const newHidden = new Set(hiddenUsers);
     newHidden.add(userId);
-    setHiddenUsers(newHidden);
-    localStorage.setItem("hiddenLeaderboardUsers", JSON.stringify([...newHidden]));
+    saveHiddenUsers(newHidden);
   }
 
   function unhideUser(userId: string) {
     const newHidden = new Set(hiddenUsers);
     newHidden.delete(userId);
-    setHiddenUsers(newHidden);
-    localStorage.setItem("hiddenLeaderboardUsers", JSON.stringify([...newHidden]));
+    saveHiddenUsers(newHidden);
   }
 
   function handleTouchStart(e: React.TouchEvent, userId: string) {
