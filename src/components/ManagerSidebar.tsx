@@ -7,10 +7,10 @@ const baseItems = [
   { id: "dashboard", label: "Team Dashboard", toggleKey: "dashboard" },
   { id: "plans", label: "Team Business Planners", toggleKey: "plans" },
   { id: "onlineTraining", label: "Training Center", toggleKey: "onlineTraining" },
-  { id: "jays-ai-clone", label: "Jay's AI Clone (coming soon)", toggleKey: "aiChat" },
+  { id: "jays-ai-clone", label: "Jay's AI Clone", toggleKey: "aiChat" },
   { id: "apps-tools", label: "Apps & Tools", toggleKey: "appsTools" },
   { id: "my-profile", label: "My Profile", toggleKey: "profile" },
-  { id: "task-manager", label: "Task Manager (coming soon)", toggleKey: "taskTracker" },
+  { id: "task-manager", label: "Task Manager", toggleKey: "taskTracker" },
 ];
 
 type ManagerSidebarProps = {

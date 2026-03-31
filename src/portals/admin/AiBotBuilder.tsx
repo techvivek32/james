@@ -2550,22 +2550,7 @@ function DeployPanel({ bot, onSave, saving, onGoToSettings }: { bot: AiBot; onSa
 
 // ─── Settings Panel ───────────────────────────────────────────────────────────
 
-const TIMEZONES = [
-  "UTC", "UTC-05:00 Eastern Time", "UTC-06:00 Central Time", "UTC-07:00 Mountain Time",
-  "UTC-08:00 Pacific Time", "UTC+00:00 London", "UTC+01:00 Paris/Berlin",
-  "UTC+05:30 New Delhi, Mumbai, Chennai", "UTC+08:00 Beijing/Singapore", "UTC+09:00 Tokyo",
-];
-
 function SettingsPanel({ bot, onSave, saving, onDelete }: { bot: AiBot; onSave: (u: Partial<AiBot>) => void; saving: boolean; onDelete: () => void }) {
-  const [botName, setBotName] = useState(bot.name || "");
-  const [isPublic, setIsPublic] = useState(bot.isPublic ?? false);
-  const [rateLimit, setRateLimit] = useState(bot.rateLimit ?? false);
-  const [domainRestriction, setDomainRestriction] = useState(bot.domainRestriction ?? false);
-  const [allowedDomains, setAllowedDomains] = useState(bot.allowedDomains || "");
-  const [timezone, setTimezone] = useState(bot.timezone || "UTC+05:30 New Delhi, Mumbai, Chennai");
-  const [passwordProtection, setPasswordProtection] = useState(bot.passwordProtection ?? false);
-  const [teamMembers, setTeamMembers] = useState<string[]>(bot.teamMembers || []);
-  const [teamMemberAccess, setTeamMemberAccess] = useState<Record<string, string[]>>(bot.teamMemberAccess || {});
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [allUsers, setAllUsers] = useState<{ id: string; name: string; email: string; role: string }[]>([]);
@@ -2573,6 +2558,8 @@ function SettingsPanel({ bot, onSave, saving, onDelete }: { bot: AiBot; onSave: 
   const [showUserDropdown, setShowUserDropdown] = useState(false);
   const [editingAccessFor, setEditingAccessFor] = useState<string | null>(null);
   const [draftAccess, setDraftAccess] = useState<string[]>([]);
+  const [teamMembers, setTeamMembers] = useState<string[]>(bot.teamMembers || []);
+  const [teamMemberAccess, setTeamMemberAccess] = useState<Record<string, string[]>>(bot.teamMemberAccess || {});
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   const ALL_MODULES = [
@@ -2590,13 +2577,6 @@ function SettingsPanel({ bot, onSave, saving, onDelete }: { bot: AiBot; onSave: 
   useEffect(() => {
     if (prevSIdRef.current === bot.id) return;
     prevSIdRef.current = bot.id;
-    setBotName(bot.name || "");
-    setIsPublic(bot.isPublic ?? false);
-    setRateLimit(bot.rateLimit ?? false);
-    setDomainRestriction(bot.domainRestriction ?? false);
-    setAllowedDomains(bot.allowedDomains || "");
-    setTimezone(bot.timezone || "UTC+05:30 New Delhi, Mumbai, Chennai");
-    setPasswordProtection(bot.passwordProtection ?? false);
     setTeamMembers(bot.teamMembers || []);
     setTeamMemberAccess(bot.teamMemberAccess || {});
   }, [bot.id]);
@@ -2662,94 +2642,10 @@ function SettingsPanel({ bot, onSave, saving, onDelete }: { bot: AiBot; onSave: 
       <p style={{ color: "#6b7280", fontSize: "14px", marginBottom: "28px" }}>Use these settings to add security, team members, custom domains and to delete your chatbot.</p>
 
       {/* Top row: Basic + Security + Email Branding + Custom Domain */}
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "20px", marginBottom: "20px" }} className="bot-overview-grid">
-
-        {/* Basic */}
-        <div style={sCard}>
-          <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "16px" }}>
-            <span style={{ fontSize: "18px" }}>⚙️</span>
-            <div style={{ fontWeight: 700, fontSize: "15px" }}>Basic</div>
-          </div>
-          <div style={{ fontSize: "13px", color: "#6b7280", marginBottom: "8px" }}>Enter a name for your bot</div>
-          <input value={botName} onChange={e => setBotName(e.target.value)} style={inputStyle} placeholder="Bot name" />
-          <label style={{ display: "flex", alignItems: "center", gap: "10px", marginTop: "14px", cursor: "pointer" }}>
-            <Toggle value={isPublic} onChange={setIsPublic} />
-            <span style={{ fontSize: "14px" }}>Make it Public</span>
-          </label>
-          <button onClick={() => onSave({ name: botName, isPublic })} disabled={saving} style={{ ...btnPrimary, marginTop: "16px", width: "100%" }}>{saving ? "Saving..." : "Save"}</button>
-        </div>
-
-        {/* Security */}
-        <div style={sCard}>
-          <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "16px" }}>
-            <span style={{ fontSize: "18px" }}>🔒</span>
-            <div style={{ fontWeight: 700, fontSize: "15px" }}>Security</div>
-          </div>
-          <label style={{ display: "flex", alignItems: "flex-start", gap: "10px", marginBottom: "12px", cursor: "pointer" }}>
-            <Toggle value={domainRestriction} onChange={setDomainRestriction} />
-            <span style={{ fontSize: "13px", lineHeight: "1.4" }}>Allow these domains only to add the chatbot to their website.</span>
-          </label>
-          {domainRestriction && (
-            <textarea value={allowedDomains} onChange={e => setAllowedDomains(e.target.value)} placeholder="example.com&#10;another.com" style={{ ...inputStyle, minHeight: "60px", resize: "vertical", marginBottom: "10px" } as any} />
-          )}
-          <label style={{ display: "flex", alignItems: "center", gap: "10px", cursor: "pointer" }}>
-            <Toggle value={rateLimit} onChange={setRateLimit} />
-            <span style={{ fontSize: "13px" }}>Enable rate limiting</span>
-          </label>
-          <button onClick={() => onSave({ rateLimit, domainRestriction, allowedDomains })} disabled={saving} style={{ ...btnPrimary, marginTop: "16px", width: "100%" }}>{saving ? "Saving..." : "Save"}</button>
-        </div>
-
-        {/* Email Branding */}
-        <div style={sCard}>
-          <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "12px" }}>
-            <span style={{ fontSize: "18px" }}>✉️</span>
-            <div style={{ fontWeight: 700, fontSize: "15px" }}>Email Branding</div>
-          </div>
-          <p style={{ fontSize: "13px", color: "#6b7280", marginBottom: "16px" }}>Customize email notifications sent from your chatbot with your own branding.</p>
-          <div style={{ padding: "10px 14px", background: "#f9fafb", borderRadius: "8px", fontSize: "12px", color: "#6b7280", border: "1px solid #e5e7eb" }}>Not available on current plan</div>
-        </div>
-      </div>
+      {/* Removed all sections as requested */}
 
       {/* Second row: Password Protection + Timezone + Custom Domain + Delete */}
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "20px", marginBottom: "20px" }} className="bot-overview-grid">
-
-        {/* Password Protection */}
-        <div style={sCard}>
-          <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "16px" }}>
-            <span style={{ fontSize: "18px" }}>🔑</span>
-            <div style={{ fontWeight: 700, fontSize: "15px" }}>Password Protection</div>
-          </div>
-          <label style={{ display: "flex", alignItems: "center", gap: "10px", cursor: "pointer" }}>
-            <Toggle value={passwordProtection} onChange={setPasswordProtection} />
-            <span style={{ fontSize: "13px" }}>Enable Password Access</span>
-          </label>
-          <button onClick={() => onSave({ passwordProtection })} disabled={saving} style={{ ...btnPrimary, marginTop: "16px", width: "100%" }}>{saving ? "Saving..." : "Save"}</button>
-        </div>
-
-        {/* Timezone */}
-        <div style={sCard}>
-          <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "16px" }}>
-            <span style={{ fontSize: "18px" }}>🌐</span>
-            <div style={{ fontWeight: 700, fontSize: "15px" }}>Timezone</div>
-          </div>
-          <div style={{ fontSize: "13px", color: "#6b7280", marginBottom: "8px" }}>Select the timezone for your bot</div>
-          <select value={timezone} onChange={e => setTimezone(e.target.value)} style={inputStyle}>
-            {TIMEZONES.map(tz => <option key={tz} value={tz}>{tz}</option>)}
-          </select>
-          <div style={{ fontSize: "12px", color: "#3b82f6", marginTop: "6px" }}>Current selection: {timezone}</div>
-          <button onClick={() => onSave({ timezone })} disabled={saving} style={{ ...btnPrimary, marginTop: "16px", width: "100%" }}>{saving ? "Saving..." : "Save"}</button>
-        </div>
-
-        {/* Custom Domain */}
-        <div style={sCard}>
-          <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "12px" }}>
-            <span style={{ fontSize: "18px" }}>🌍</span>
-            <div style={{ fontWeight: 700, fontSize: "15px" }}>Custom Domain</div>
-          </div>
-          <p style={{ fontSize: "13px", color: "#6b7280", marginBottom: "16px" }}>Host your chatbot on your own custom domain.</p>
-          <div style={{ padding: "10px 14px", background: "#f9fafb", borderRadius: "8px", fontSize: "12px", color: "#6b7280", border: "1px solid #e5e7eb" }}>Not available on current plan</div>
-        </div>
-      </div>
+      {/* Removed all sections as requested */}
 
       {/* Team Members */}
       <div style={{ ...card, marginBottom: "20px" }}>
