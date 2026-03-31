@@ -408,7 +408,8 @@ export function SocialMediaMetrics() {
     const key = columnMap[columnName] || columnName;
     return metrics.reduce((sum, metric) => {
       const value = metric[key];
-      return sum + (typeof value === "number" ? value : 0);
+      const num = parseFloat(value);
+      return sum + (isNaN(num) ? 0 : num);
     }, 0);
   }
 
@@ -507,7 +508,8 @@ export function SocialMediaMetrics() {
                 if (col.datatype === "number") {
                   const total = metrics.reduce((sum, m) => {
                     const value = m[col.name];
-                    return sum + (typeof value === 'number' ? value : 0);
+                    const num = parseFloat(value);
+                    return sum + (isNaN(num) ? 0 : num);
                   }, 0);
                   return (
                     <div key={col.id} style={{ padding: 16, backgroundColor: "#f9fafb", borderRadius: 8, border: "1px solid #e5e7eb" }}>

@@ -73,6 +73,7 @@ export function SocialMediaCharts({ platforms, customColumns = [] }: SocialMedia
     let currentAngle = 0;
     return slices.map(slice => {
       const angle = (slice.value / total) * 360;
+      const pct = Math.round((slice.value / total) * 100);
       const radius = 120, cx = 150, cy = 150;
       const start = (currentAngle * Math.PI) / 180;
       const end = ((currentAngle + angle) * Math.PI) / 180;
@@ -82,18 +83,35 @@ export function SocialMediaCharts({ platforms, customColumns = [] }: SocialMedia
       const y2 = cy + radius * Math.sin(end);
       const largeArc = angle > 180 ? 1 : 0;
       const d = `M ${cx} ${cy} L ${x1} ${y1} A ${radius} ${radius} 0 ${largeArc} 1 ${x2} ${y2} Z`;
+      // midpoint angle for label
+      const midAngle = ((currentAngle + angle / 2) * Math.PI) / 180;
+      const labelR = radius * 0.65;
+      const lx = cx + labelR * Math.cos(midAngle);
+      const ly = cy + labelR * Math.sin(midAngle);
       currentAngle += angle;
       return (
-        <path
-          key={slice.id}
-          d={d}
-          fill={slice.color}
-          stroke="#ffffff"
-          strokeWidth="2"
-          style={{ cursor: "pointer", opacity: hoveredId === slice.id ? 0.75 : 1, transition: "opacity 0.2s" }}
-          onMouseEnter={() => setHoveredId(slice.id)}
-          onMouseLeave={() => setHoveredId(null)}
-        />
+        <g key={slice.id}>
+          <path
+            d={d}
+            fill={slice.color}
+            stroke="#ffffff"
+            strokeWidth="2"
+            style={{ cursor: "pointer", opacity: hoveredId === slice.id ? 0.75 : 1, transition: "opacity 0.2s" }}
+            onMouseEnter={() => setHoveredId(slice.id)}
+            onMouseLeave={() => setHoveredId(null)}
+          />
+          {pct >= 5 && (
+            <text
+              x={lx}
+              y={ly}
+              textAnchor="middle"
+              dominantBaseline="middle"
+              style={{ transform: "rotate(90deg)", transformOrigin: `${lx}px ${ly}px`, fontSize: 12, fontWeight: 700, fill: "#fff", pointerEvents: "none" }}
+            >
+              {pct}%
+            </text>
+          )}
+        </g>
       );
     });
   }
