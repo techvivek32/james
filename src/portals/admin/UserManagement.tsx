@@ -309,7 +309,10 @@ export function UserManagement(props: UserEditorProps) {
       marketingMaterials: true,
       repWebPage: true,
       assetLibrary: true,
-      contentApprovals: true
+      contentApprovals: true,
+      courseAiBots: true,
+      messaging: true,
+      leaderboard: true
     };
     const newUser: UserProfile = {
       id: `user-${Date.now()}`,

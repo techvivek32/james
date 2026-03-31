@@ -40,7 +40,10 @@ export type ModuleKey =
   | "marketingMaterials"
   | "repWebPage"
   | "assetLibrary"
-  | "contentApprovals";
+  | "contentApprovals"
+  | "courseAiBots"
+  | "messaging"
+  | "leaderboard";
 
 export type FeatureToggles = Record<ModuleKey, boolean>;
 
