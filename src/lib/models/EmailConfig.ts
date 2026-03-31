@@ -5,6 +5,7 @@ const emailConfigSchema = new Schema(
     key: { type: String, required: true, unique: true },
     subject: { type: String, required: true },
     body: { type: String, required: true },
+    status: { type: String, enum: ["draft", "published"], default: "published" },
   },
   { timestamps: true }
 );

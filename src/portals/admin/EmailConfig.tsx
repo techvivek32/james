@@ -14,7 +14,7 @@ const EMAIL_LABELS: Record<string, string> = {
   adminConfirmation: "Admin Confirmation",
 };
 
-type ConfigMap = Record<string, { subject: string; body: string }>;
+type ConfigMap = Record<string, { subject: string; body: string; status: string }>;
 
 export function EmailConfig() {
   const [configs, setConfigs] = useState<ConfigMap>({});
@@ -22,6 +22,7 @@ export function EmailConfig() {
   const [saving, setSaving] = useState(false);
   const [saveNotice, setSaveNotice] = useState("");
   const [loaded, setLoaded] = useState(false);
+  const [togglingStatus, setTogglingStatus] = useState(false);
 
   useEffect(() => {
     fetch("/api/admin/email-config")
@@ -32,6 +33,7 @@ export function EmailConfig() {
           merged[key] = {
             subject: saved[key]?.subject ?? EMAIL_DEFAULTS[key].subject,
             body: saved[key]?.body ?? EMAIL_DEFAULTS[key].body,
+            status: saved[key]?.status ?? "published",
           };
         });
         setConfigs(merged);
@@ -39,7 +41,7 @@ export function EmailConfig() {
       });
   }, []);
 
-  function updateField(key: string, field: "subject" | "body", value: string) {
+  function updateField(key: string, field: "subject" | "body" | "status", value: string) {
     setConfigs(prev => ({ ...prev, [key]: { ...prev[key], [field]: value } }));
   }
 
@@ -49,6 +51,7 @@ export function EmailConfig() {
       [key]: {
         subject: EMAIL_DEFAULTS[key].subject,
         body: EMAIL_DEFAULTS[key].body,
+        status: prev[key]?.status ?? "published",
       }
     }));
   }
@@ -61,12 +64,33 @@ export function EmailConfig() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(configs),
       });
-      setSaveNotice("Email templates saved successfully");
+      setSaveNotice("Saved!");
       setTimeout(() => setSaveNotice(""), 3000);
     } catch {
       setSaveNotice("Failed to save");
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function handleToggleStatus() {
+    const newStatus = active?.status === "published" ? "draft" : "published";
+    // Update local state
+    const updatedConfigs = { ...configs, [activeKey]: { ...configs[activeKey], status: newStatus } };
+    setConfigs(updatedConfigs);
+    // Save immediately to DB
+    setTogglingStatus(true);
+    try {
+      await fetch("/api/admin/email-config", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(updatedConfigs),
+      });
+    } catch {
+      // revert on failure
+      setConfigs(configs);
+    } finally {
+      setTogglingStatus(false);
     }
   }
 
@@ -113,6 +137,29 @@ export function EmailConfig() {
           </div>
           <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
             {saveNotice && <span style={{ fontSize: 12, color: "#16a34a", fontWeight: 500 }}>{saveNotice}</span>}
+            {/* Draft / Published toggle */}
+            <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+              <span style={{ fontSize: 12, fontWeight: 600, color: active?.status !== "published" ? "#1f2937" : "#9ca3af" }}>Draft</span>
+              <div
+                onClick={togglingStatus ? undefined : handleToggleStatus}
+                style={{
+                  width: 40, height: 22, borderRadius: 11,
+                  cursor: togglingStatus ? "wait" : "pointer",
+                  background: active?.status === "published" ? "#10b981" : "#d1d5db",
+                  position: "relative", transition: "background 0.2s", flexShrink: 0,
+                  opacity: togglingStatus ? 0.6 : 1,
+                }}
+              >
+                <span style={{
+                  position: "absolute", top: 2,
+                  left: active?.status === "published" ? 20 : 2,
+                  width: 18, height: 18, borderRadius: "50%",
+                  background: "#fff", transition: "left 0.2s",
+                  boxShadow: "0 1px 3px rgba(0,0,0,0.2)",
+                }} />
+              </div>
+              <span style={{ fontSize: 12, fontWeight: 600, color: active?.status === "published" ? "#10b981" : "#9ca3af" }}>Published</span>
+            </div>
             <button
               type="button"
               onClick={() => resetToDefault(activeKey)}

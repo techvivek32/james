@@ -712,8 +712,30 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
     // Mobile overview screen — shown before any lesson is selected
     const MobileOverview = () => (
       <div className="mobile-course-overview">
+        {/* Course title + ⋯ menu */}
+        <div style={{ padding: '16px 16px 0', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div style={{ fontSize: 18, fontWeight: 700, color: '#111827' }}>{selectedCourse.title}</div>
+          <div style={{ position: 'relative' }}>
+            <button type="button" onClick={() => setShowCourseMenu(p => !p)} style={{ background: 'none', border: 'none', padding: '2px 6px', fontSize: 22, cursor: 'pointer', color: '#374151', letterSpacing: 1 }}>⋯</button>
+            {showCourseMenu && (
+              <div style={{ position: 'absolute', top: '110%', right: 0, background: '#fff', border: '1px solid #e5e7eb', borderRadius: 10, boxShadow: '0 8px 24px rgba(0,0,0,0.12)', zIndex: 200, minWidth: 170, padding: 8, display: 'flex', flexDirection: 'column', gap: 4 }}>
+                {!viewingPlaylist && (
+                  <button type="button" className="btn-primary btn-small" style={{ width: '100%', textAlign: 'left' }} onClick={() => { setIsCreatePlaylistOpen(true); setShowCourseMenu(false); }}>Make Playlist</button>
+                )}
+                <button type="button" className="btn-secondary btn-small" style={{ width: '100%', textAlign: 'left' }} onClick={() => { setSelectedCourse(null); setActivePageId(null); setViewingPlaylist(null); setCourseViewInitialized(null); setActiveTab('myPlaylists'); setShowCourseMenu(false); }}>View Playlists</button>
+                <button type="button" className="btn-secondary btn-small" style={{ width: '100%', textAlign: 'left' }} onClick={() => { setSelectedCourse(null); setActivePageId(null); setViewingPlaylist(null); setCourseViewInitialized(null); setShowCourseMenu(false); }}>Back to Courses</button>
+                <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', padding: '4px 4px' }}>
+                  <div onClick={() => { const next = !autoPlay; setAutoPlay(next); localStorage.setItem('sales-autoplay', String(next)); }} style={{ width: 36, height: 20, borderRadius: 10, backgroundColor: autoPlay ? '#2563eb' : '#d1d5db', position: 'relative', transition: 'background 0.2s', cursor: 'pointer', flexShrink: 0 }}>
+                    <div style={{ position: 'absolute', top: 2, left: autoPlay ? 18 : 2, width: 16, height: 16, borderRadius: '50%', backgroundColor: '#fff', transition: 'left 0.2s', boxShadow: '0 1px 3px rgba(0,0,0,0.2)' }} />
+                  </div>
+                  <span style={{ fontSize: 13, color: '#374151' }}>Autoplay</span>
+                </label>
+              </div>
+            )}
+          </div>
+        </div>
         {/* Progress */}
-        <div style={{ padding: '20px 16px 0' }}>
+        <div style={{ padding: '12px 16px 0' }}>
           <div style={{ fontSize: 13, fontWeight: 600, color: '#374151', marginBottom: 8 }}>Course Progress</div>
           <div style={{ fontSize: 12, color: '#6b7280', marginBottom: 6 }}>Completed {progress.completed} of {progress.total} lessons</div>
           <div style={{ height: 8, borderRadius: 999, background: '#e5e7eb', overflow: 'hidden', marginBottom: 4 }}>
@@ -910,11 +932,16 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
             .mobile-course-overview { display: block; }
             .mobile-lesson-view { display: block; }
             .desktop-course-view { display: none !important; }
+            .course-header-desktop-actions { display: flex !important; flex-wrap: wrap; gap: 6px; }
+            .course-header-mobile-actions { display: none !important; }
+            .training-center-header { flex-direction: column !important; align-items: flex-start !important; gap: 10px !important; }
           }
           @media (min-width: 768px) {
             .mobile-course-overview { display: none !important; }
             .mobile-lesson-view { display: none !important; }
             .desktop-course-view { display: contents; }
+            .course-header-desktop-actions { display: flex !important; }
+            .course-header-mobile-actions { display: none !important; }
           }
         `}</style>
         {user && (
@@ -1018,7 +1045,7 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
         <div className="training-center-header">
           <div className="panel-header">{selectedCourse.title}</div>
           {/* Desktop: show all buttons inline */}
-          <div className="course-header-desktop-actions">
+          <div className="course-header-desktop-actions" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             {!viewingPlaylist && (
               <button type="button" className="btn-primary btn-small" onClick={() => setIsCreatePlaylistOpen(true)}>Make Playlist</button>
             )}
@@ -1032,7 +1059,7 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
             </label>
           </div>
           {/* Mobile/Tablet: ⋯ menu inline with title */}
-          <div className="course-header-mobile-actions" style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+          <div className="course-header-mobile-actions" style={{ position: 'relative', display: 'none', alignItems: 'center' }}>
             <button type="button" onClick={() => setShowCourseMenu(p => !p)} style={{ background: 'none', border: 'none', padding: '2px 6px', fontSize: 22, cursor: 'pointer', lineHeight: 1, color: '#374151', letterSpacing: 1 }}>⋯</button>
             {showCourseMenu && (
               <div style={{ position: 'absolute', top: '110%', right: 0, background: '#fff', border: '1px solid #e5e7eb', borderRadius: 10, boxShadow: '0 8px 24px rgba(0,0,0,0.12)', zIndex: 200, minWidth: 170, padding: 8, display: 'flex', flexDirection: 'column', gap: 4 }}>

@@ -39,6 +39,7 @@ export async function sendEmail(options: EmailOptions) {
 
 export async function sendPasswordResetEmail(name: string, resetLink: string, to: string) {
   const tmpl = await getEmailTemplate("passwordReset");
+  if (tmpl.status === "draft") { console.log("[Email] passwordReset is draft — skipping"); return; }
   const { html, text, subject } = renderTemplate(tmpl.body, tmpl.subject, {
     "{{name}}": name,
     "{{resetLink}}": resetLink,
@@ -48,6 +49,7 @@ export async function sendPasswordResetEmail(name: string, resetLink: string, to
 
 export async function sendRegistrationConfirmationEmail(name: string, email: string, role: string) {
   const tmpl = await getEmailTemplate("registrationConfirmation");
+  if (tmpl.status === "draft") { console.log("[Email] registrationConfirmation is draft — skipping"); return; }
   const { html, text, subject } = renderTemplate(tmpl.body, tmpl.subject, {
     "{{name}}": name,
     "{{email}}": email,
@@ -58,6 +60,7 @@ export async function sendRegistrationConfirmationEmail(name: string, email: str
 
 export async function sendAccountApprovedEmail(name: string, email: string, role: string, loginUrl: string) {
   const tmpl = await getEmailTemplate("accountApproved");
+  if (tmpl.status === "draft") { console.log("[Email] accountApproved is draft — skipping"); return; }
   const { html, text, subject } = renderTemplate(tmpl.body, tmpl.subject, {
     "{{name}}": name,
     "{{email}}": email,
@@ -69,6 +72,7 @@ export async function sendAccountApprovedEmail(name: string, email: string, role
 
 export async function sendAccountRejectedEmail(name: string, email: string, reason: string) {
   const tmpl = await getEmailTemplate("accountRejected");
+  if (tmpl.status === "draft") { console.log("[Email] accountRejected is draft — skipping"); return; }
   const { html, text, subject } = renderTemplate(tmpl.body, tmpl.subject, {
     "{{name}}": name,
     "{{reason}}": reason,
@@ -78,6 +82,7 @@ export async function sendAccountRejectedEmail(name: string, email: string, reas
 
 export async function sendQuickStartUserEmail(name: string, email: string) {
   const tmpl = await getEmailTemplate("quickStartUser");
+  if (tmpl.status === "draft") { console.log("[Email] quickStartUser is draft — skipping"); return; }
   const { html, text, subject } = renderTemplate(tmpl.body, tmpl.subject, {
     "{{name}}": name,
   });
@@ -86,6 +91,7 @@ export async function sendQuickStartUserEmail(name: string, email: string) {
 
 export async function sendQuickStartManagerEmail(hireName: string, managerName: string, managerEmail: string) {
   const tmpl = await getEmailTemplate("quickStartManager");
+  if (tmpl.status === "draft") { console.log("[Email] quickStartManager is draft — skipping"); return; }
   const { html, text, subject } = renderTemplate(tmpl.body, tmpl.subject, {
     "{{hireName}}": hireName,
     "{{managerName}}": managerName,
@@ -102,6 +108,7 @@ export async function sendUserAccountUpdatedEmail(params: {
   loginUrl: string;
 }) {
   const tmpl = await getEmailTemplate("userAccountUpdated");
+  if (tmpl.status === "draft") { console.log("[Email] userAccountUpdated is draft — skipping"); return; }
   const { html, text, subject } = renderTemplate(tmpl.body, tmpl.subject, {
     "{{name}}": params.name,
     "{{email}}": params.email,
@@ -124,6 +131,7 @@ export async function sendAdminConfirmationEmail(params: {
   updatedAt: string;
 }) {
   const tmpl = await getEmailTemplate("adminConfirmation");
+  if (tmpl.status === "draft") { console.log("[Email] adminConfirmation is draft — skipping"); return; }
   const { html, text, subject } = renderTemplate(tmpl.body, tmpl.subject, {
     "{{adminName}}": params.adminName,
     "{{userName}}": params.userName,

@@ -7,20 +7,20 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   if (req.method === "GET") {
     const configs = await EmailConfigModel.find({}).lean();
-    const map: Record<string, { subject: string; body: string }> = {};
-    configs.forEach((c: any) => { map[c.key] = { subject: c.subject, body: c.body }; });
+    const map: Record<string, { subject: string; body: string; status: string }> = {};
+    configs.forEach((c: any) => { map[c.key] = { subject: c.subject, body: c.body, status: c.status ?? "published" }; });
     res.status(200).json(map);
     return;
   }
 
   if (req.method === "PUT") {
-    const configs: Record<string, { subject: string; body: string }> = req.body;
+    const configs: Record<string, { subject: string; body: string; status?: string }> = req.body;
     await Promise.all(
       Object.entries(configs).map(([key, val]) =>
         EmailConfigModel.findOneAndUpdate(
           { key },
-          { key, subject: val.subject, body: val.body },
-          { upsert: true }
+          { key, subject: val.subject, body: val.body, status: val.status ?? "published" },
+          { upsert: true, new: true }
         )
       )
     );
