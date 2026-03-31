@@ -386,28 +386,13 @@ export function SocialMediaMetrics() {
 
   // Helper function to get column value from metric
   function getColumnValue(metric: SocialMetric, columnName: string): any {
-    // Map column names to metric properties
-    const columnMap: Record<string, keyof SocialMetric> = {
-      "Followers": "followers",
-      "Posts (30d)": "posts30d",
-      "Views (30d)": "views30d"
-    };
-
-    const key = columnMap[columnName] || columnName;
-    return metric[key] ?? "N/A";
+    return metric[columnName] ?? "N/A";
   }
 
   // Helper function to calculate column totals
   function getColumnTotal(columnName: string): number {
-    const columnMap: Record<string, keyof SocialMetric> = {
-      "Followers": "followers",
-      "Posts (30d)": "posts30d",
-      "Views (30d)": "views30d"
-    };
-
-    const key = columnMap[columnName] || columnName;
     return metrics.reduce((sum, metric) => {
-      const value = metric[key];
+      const value = metric[columnName];
       const num = parseFloat(value);
       return sum + (isNaN(num) ? 0 : num);
     }, 0);
