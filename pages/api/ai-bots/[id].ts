@@ -17,7 +17,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const { _id, id: _id2, ...safeUpdates } = req.body;
     
     // If course selection changed, rebuild courseTrainingText
-    if (safeUpdates.selectedPages !== undefined || safeUpdates.selectedCourses !== undefined) {
+    if (safeUpdates.selectedPages !== undefined || safeUpdates.selectedCourses !== undefined || safeUpdates.selectedFolders !== undefined) {
       console.log('[Master Bot API] Course selection changed, rebuilding training text');
       const bot = await AiBotModel.findOne({ id }).lean() as any;
       const selectedPages: string[] = safeUpdates.selectedPages ?? bot?.selectedPages ?? [];
@@ -33,14 +33,33 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           if (coursePages.length === 0) continue;
 
           courseTrainingText += `\n\n=== COURSE: ${course.title} ===\n`;
+          if (course.description) {
+            courseTrainingText += `Course Description: ${course.description}\n\n`;
+          }
+          
           for (const page of coursePages) {
-            courseTrainingText += `\n--- Lesson: ${page.title} ---\n`;
-            if (page.body) courseTrainingText += page.body + "\n";
-            if (page.transcript) courseTrainingText += `\nTranscript:\n${page.transcript}\n`;
+            courseTrainingText += `\n--- LESSON: ${page.title} ---\n`;
+            
+            // Add lesson content
+            if (page.body) {
+              courseTrainingText += `Lesson Content:\n${page.body}\n\n`;
+            }
+            
+            // Add transcript if available
+            if (page.transcript) {
+              courseTrainingText += `Lesson Transcript:\n${page.transcript}\n\n`;
+            }
+            
+            // Add any additional context
+            if (page.summary) {
+              courseTrainingText += `Lesson Summary:\n${page.summary}\n\n`;
+            }
           }
         }
+        
         safeUpdates.courseTrainingText = courseTrainingText.trim();
         console.log('[Master Bot API] Generated training text length:', courseTrainingText.length);
+        console.log('[Master Bot API] Training text preview:', courseTrainingText.substring(0, 500) + '...');
       } else {
         safeUpdates.courseTrainingText = "";
         console.log('[Master Bot API] No pages selected, clearing training text');
