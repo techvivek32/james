@@ -515,16 +515,23 @@ export function CourseLeaderboard() {
                 </tr>
               </thead>
               <tbody>
-                {rows.filter(row => !hiddenUsers.has(row.id)).map((row, idx) => {
-                  const rank = idx + 1;
-                  const isTop3 = rank <= 3;
+                {(() => {
+                  const visibleRows = rows.filter(row => !hiddenUsers.has(row.id));
+                  const hundredClub = visibleRows.filter(r => r.pct === 100);
+                  const belowHundred = visibleRows.filter(r => r.pct < 100);
+                  const allSorted = [...hundredClub, ...belowHundred];
+                  let belowRank = 0;
+                  return allSorted.map((row) => {
+                  const is100 = row.pct === 100;
+                  if (!is100) belowRank++;
+                  const rank = belowRank;
+                  const isTop3 = !is100 && rank <= 3;
                   const offset = swipeOffset?.userId === row.id ? swipeOffset.offset : 0;
-                  
                   return (
-                    <tr 
-                      key={row.id} 
+                    <tr
+                      key={row.id}
                       style={{
-                        background: isTop3 ? (rank === 1 ? "#fffbeb" : rank === 2 ? "#f9fafb" : "#fafafa") : idx % 2 === 0 ? "#fff" : "#fafafa",
+                        background: is100 ? "#f0fdf4" : isTop3 ? (rank === 1 ? "#fffbeb" : rank === 2 ? "#f9fafb" : "#fafafa") : "#fff",
                         cursor: "grab",
                         userSelect: "none",
                         transform: `translateX(${offset}px)`,
@@ -543,9 +550,40 @@ export function CourseLeaderboard() {
                       onTouchMove={(e) => handleTouchMove(e, row.id)}
                       onTouchEnd={(e) => handleTouchEnd(e, row.id)}
                     >
-                      <td style={{ padding: "11px 16px", borderBottom: "1px solid #f3f4f6", width: 60 }}>
+                      <td style={{ padding: "11px 16px", borderBottom: "1px solid #f3f4f6", width: 80 }}>
                         <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                          {MEDAL[rank] ? (
+                          {is100 ? (
+                            <div style={{
+                              display: "inline-flex", alignItems: "center", gap: 5,
+                              background: "linear-gradient(135deg, #059669, #10b981)",
+                              color: "#fff",
+                              borderRadius: "0 6px 6px 0",
+                              padding: "4px 10px 4px 8px",
+                              fontSize: 11, fontWeight: 700,
+                              letterSpacing: 0.5, whiteSpace: "nowrap",
+                              boxShadow: "0 2px 6px rgba(16,185,129,0.35)",
+                              position: "relative",
+                              marginLeft: 8,
+                            }}>
+                              {/* Tag notch on left */}
+                              <div style={{
+                                position: "absolute", left: -8, top: 0, bottom: 0,
+                                width: 0, height: 0,
+                                borderTop: "12px solid transparent",
+                                borderBottom: "12px solid transparent",
+                                borderRight: "8px solid #059669",
+                              }} />
+                              {/* Hole */}
+                              <div style={{
+                                position: "absolute", left: -2, top: "50%",
+                                transform: "translateY(-50%)",
+                                width: 4, height: 4, borderRadius: "50%",
+                                background: "#fff", opacity: 0.8,
+                              }} />
+                              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                              100 Club
+                            </div>
+                          ) : MEDAL[rank] ? (
                             <span style={{ fontSize: 18 }}>{MEDAL[rank]}</span>
                           ) : (
                             <span style={{
@@ -588,7 +626,7 @@ export function CourseLeaderboard() {
                       </td>
                     </tr>
                   );
-                })}
+                })})()}
               </tbody>
             </table>
           </div>
