@@ -1348,14 +1348,14 @@ function LinksPanel({ bot, onSave, saving }: { bot: AiBot; onSave: (u: Partial<A
           <div style={{ fontWeight: 600, fontSize: "16px", marginBottom: "4px" }}>Train from Link</div>
           <p style={{ color: "#6b7280", fontSize: "13px", marginBottom: "16px" }}>Enter a URL to train your bot from a website or document</p>
           <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", marginBottom: "12px" }}>
-            {["full-website", "webpage", "pdf", "word-doc", "excel-csv", "youtube"].map(t => (
+            {["full-website", "webpage", "pdf", "word-doc", "excel-csv", "youtube", "vimeo", "loom"].map(t => (
               <button key={t} onClick={() => setUrlType(t)} style={{
                 padding: "4px 12px", borderRadius: "20px", border: "1px solid", fontSize: "12px", cursor: "pointer", fontWeight: 500,
                 background: urlType === t ? "#1f2937" : "#fff",
                 color: urlType === t ? "#fff" : "#374151",
                 borderColor: urlType === t ? "#1f2937" : "#d1d5db"
               }}>
-                {t === "full-website" ? "Full Website" : t === "webpage" ? "Webpage" : t === "pdf" ? "PDF" : t === "word-doc" ? "Word Doc" : t === "excel-csv" ? "Excel/CSV" : "YouTube"}
+                {t === "full-website" ? "Full Website" : t === "webpage" ? "Webpage" : t === "pdf" ? "PDF" : t === "word-doc" ? "Word Doc" : t === "excel-csv" ? "Excel/CSV" : t === "youtube" ? "YouTube" : t === "vimeo" ? "Vimeo" : "Loom"}
               </button>
             ))}
           </div>
@@ -1364,7 +1364,7 @@ function LinksPanel({ bot, onSave, saving }: { bot: AiBot; onSave: (u: Partial<A
               value={url}
               onChange={e => setUrl(e.target.value)}
               onKeyDown={e => e.key === "Enter" && addLink()}
-              placeholder="Enter the target link"
+              placeholder={urlType === "youtube" ? "Enter YouTube URL" : urlType === "vimeo" ? "Enter Vimeo URL" : urlType === "loom" ? "Enter Loom URL" : "Enter the target link"}
               style={{ ...inputStyle, flex: 1, marginBottom: 0 }}
               disabled={crawling}
             />

@@ -36,6 +36,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       console.log("Calling fetchYouTubeTranscript...");
       content = await fetchYouTubeTranscript(url);
       console.log(`YouTube transcript fetched, length: ${content.length}`);
+    } else if (type === "vimeo") {
+      console.log("Calling fetchVimeoTranscript...");
+      content = await fetchVimeoTranscript(url);
+      console.log(`Vimeo transcript fetched, length: ${content.length}`);
+    } else if (type === "loom") {
+      console.log("Calling fetchLoomTranscript...");
+      content = await fetchLoomTranscript(url);
+      console.log(`Loom transcript fetched, length: ${content.length}`);
     } else if (type === "pdf") {
       console.log("Calling fetchPdfContent...");
       content = await fetchPdfContent(url);
@@ -82,11 +90,18 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       chars: 0
     };
 
-    bot.trainingLinks = bot.trainingLinks || [];
-    bot.trainingLinks.push(failedLink);
-    await bot.save();
+    try {
+      bot.trainingLinks = bot.trainingLinks || [];
+      bot.trainingLinks.push(failedLink);
+      await bot.save();
+    } catch (saveError) {
+      console.error("Error saving failed link:", saveError);
+    }
 
-    return res.status(200).json({ link: failedLink, error: error.message });
+    return res.status(200).json({ 
+      link: failedLink, 
+      error: error.message || "Failed to process content"
+    });
   }
 }
 
@@ -241,5 +256,166 @@ function extractYouTubeId(url: string): string | null {
   }
 
   console.error(`No video ID found in URL: ${url}`);
+  return null;
+}
+
+async function fetchVimeoTranscript(url: string): Promise<string> {
+  const videoId = extractVimeoId(url);
+  if (!videoId) throw new Error(`Invalid Vimeo URL: ${url}`);
+
+  try {
+    // Try to scrape the Vimeo page directly for title and description
+    const response = await fetch(url, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+      }
+    });
+    
+    if (!response.ok) {
+      throw new Error(`Could not access Vimeo video: ${response.statusText}`);
+    }
+
+    const html = await response.text();
+    const cheerio = require("cheerio");
+    const $ = cheerio.load(html);
+    
+    // Extract title and description from the page
+    const title = $('title').text().replace(' on Vimeo', '').trim() || 
+                  $('h1').first().text().trim() || 
+                  $('meta[property="og:title"]').attr('content') || '';
+    
+    const description = $('meta[name="description"]').attr('content') || 
+                       $('meta[property="og:description"]').attr('content') || 
+                       $('.description').text().trim() || '';
+    
+    let content = `Vimeo Video (${url}):\n\n`;
+    
+    if (title) {
+      content += `Title: ${title}\n\n`;
+    }
+    
+    if (description) {
+      content += `Description: ${description}\n\n`;
+    }
+    
+    // If we got some content, return it
+    if (title || description) {
+      return content;
+    }
+    
+    // If no content found, provide a helpful message
+    throw new Error("No title or description found for this Vimeo video. The video might be private or the page structure has changed. Please copy the video content manually and paste it in the Text section.");
+    
+  } catch (error: any) {
+    // Provide a more user-friendly error message
+    if (error.message.includes('fetch')) {
+      throw new Error("Could not access Vimeo video. The video might be private or restricted. Please copy the video transcript manually and paste it in the Text section.");
+    }
+    throw new Error(error.message || 'Could not fetch Vimeo video content');
+  }
+}
+
+async function fetchLoomTranscript(url: string): Promise<string> {
+  const videoId = extractLoomId(url);
+  if (!videoId) throw new Error(`Invalid Loom URL: ${url}`);
+
+  try {
+    // Try to scrape the Loom page for title and description
+    const response = await fetch(url, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8'
+      }
+    });
+    
+    if (!response.ok) {
+      throw new Error(`Could not access Loom video: ${response.statusText}`);
+    }
+    
+    const html = await response.text();
+    const cheerio = require("cheerio");
+    const $ = cheerio.load(html);
+    
+    // Try multiple selectors to extract title and description
+    const title = $('title').text().replace(' | Loom', '').trim() || 
+                  $('h1').first().text().trim() || 
+                  $('meta[property="og:title"]').attr('content') || 
+                  $('[data-testid="video-title"]').text().trim() || '';
+    
+    const description = $('meta[name="description"]').attr('content') || 
+                       $('meta[property="og:description"]').attr('content') || 
+                       $('[data-testid="video-description"]').text().trim() || 
+                       $('.description').text().trim() || '';
+    
+    let content = `Loom Video (${url}):\n\n`;
+    
+    if (title) {
+      content += `Title: ${title}\n\n`;
+    }
+    
+    if (description) {
+      content += `Description: ${description}\n\n`;
+    }
+    
+    // If we got some content, return it
+    if (title || description) {
+      return content;
+    }
+    
+    // If no content found, provide a helpful message
+    throw new Error("No title or description found for this Loom video. The video might be private or require login. Please copy the video transcript manually from Loom and paste it in the Text section.");
+    
+  } catch (error: any) {
+    // Provide a more user-friendly error message
+    if (error.message.includes('fetch') || error.message.includes('access')) {
+      throw new Error("Could not access Loom video. The video might be private or require authentication. Please copy the video transcript manually from Loom and paste it in the Text section.");
+    }
+    throw new Error(error.message || 'Could not fetch Loom video content');
+  }
+}
+
+function extractVimeoId(url: string): string | null {
+  if (!url || typeof url !== 'string') return null;
+  
+  url = url.trim();
+  
+  const patterns = [
+    /(?:vimeo\.com\/)([0-9]+)/,
+    /(?:player\.vimeo\.com\/video\/)([0-9]+)/,
+    /^([0-9]+)$/  // Just the video ID
+  ];
+
+  for (const pattern of patterns) {
+    const match = url.match(pattern);
+    if (match && match[1]) {
+      console.log(`Extracted Vimeo video ID: ${match[1]} from URL: ${url}`);
+      return match[1];
+    }
+  }
+
+  console.error(`No Vimeo video ID found in URL: ${url}`);
+  return null;
+}
+
+function extractLoomId(url: string): string | null {
+  if (!url || typeof url !== 'string') return null;
+  
+  url = url.trim();
+  
+  const patterns = [
+    /(?:loom\.com\/share\/)([a-zA-Z0-9]+)/,
+    /(?:loom\.com\/embed\/)([a-zA-Z0-9]+)/,
+    /^([a-zA-Z0-9]+)$/  // Just the video ID
+  ];
+
+  for (const pattern of patterns) {
+    const match = url.match(pattern);
+    if (match && match[1]) {
+      console.log(`Extracted Loom video ID: ${match[1]} from URL: ${url}`);
+      return match[1];
+    }
+  }
+
+  console.error(`No Loom video ID found in URL: ${url}`);
   return null;
 }

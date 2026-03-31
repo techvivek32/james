@@ -3,7 +3,7 @@ import { Schema, model, models } from "mongoose";
 const trainingLinkSchema = new Schema({
   id: String,
   url: String,
-  type: { type: String, enum: ["full-website", "webpage", "pdf", "word-doc", "excel-csv", "youtube"] },
+  type: { type: String, enum: ["full-website", "webpage", "pdf", "word-doc", "excel-csv", "youtube", "vimeo", "loom"], default: "webpage" },
   status: { type: String, enum: ["trained", "pending", "failed", "no-space"], default: "pending" },
   chars: { type: Number, default: 0 },
   addedAt: { type: Date, default: Date.now }
