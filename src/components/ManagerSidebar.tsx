@@ -4,13 +4,13 @@ import { useAuth } from "../contexts/AuthContext";
 import { useEffect, useState } from "react";
 
 const baseItems = [
-  { id: "dashboard", label: "Team Dashboard" },
-  { id: "plans", label: "Team Business Planners" },
-  { id: "onlineTraining", label: "Training Center" },
-  { id: "jays-ai-clone", label: "Jay's AI Clone (coming soon)" },
-  { id: "apps-tools", label: "Apps & Tools" },
-  { id: "my-profile", label: "My Profile" },
-  { id: "task-manager", label: "Task Manager (coming soon)" },
+  { id: "dashboard", label: "Team Dashboard", toggleKey: "dashboard" },
+  { id: "plans", label: "Team Business Planners", toggleKey: "plans" },
+  { id: "onlineTraining", label: "Training Center", toggleKey: "onlineTraining" },
+  { id: "jays-ai-clone", label: "Jay's AI Clone (coming soon)", toggleKey: "aiChat" },
+  { id: "apps-tools", label: "Apps & Tools", toggleKey: "appsTools" },
+  { id: "my-profile", label: "My Profile", toggleKey: "profile" },
+  { id: "task-manager", label: "Task Manager (coming soon)", toggleKey: "taskTracker" },
 ];
 
 type ManagerSidebarProps = {
@@ -19,22 +19,48 @@ type ManagerSidebarProps = {
   onToggleCollapse?: () => void;
 };
 
+function getCached(userId: string): Record<string, boolean> | null {
+  try {
+    const raw = sessionStorage.getItem(`ft_${userId}`);
+    return raw ? JSON.parse(raw) : null;
+  } catch { return null; }
+}
+
+function setCache(userId: string, toggles: Record<string, boolean>) {
+  try { sessionStorage.setItem(`ft_${userId}`, JSON.stringify(toggles)); } catch {}
+}
+
 export function ManagerSidebar({ activeId, isCollapsed, onToggleCollapse }: ManagerSidebarProps) {
   const router = useRouter();
   const { user } = useAuth();
   const [hasBotAccess, setHasBotAccess] = useState(false);
+  const [featureToggles, setFeatureToggles] = useState<Record<string, boolean> | null>(
+    user?.id ? getCached(user.id) : null
+  );
 
   useEffect(() => {
     if (!user?.id) return;
     fetch("/api/ai-bots").then(r => r.ok ? r.json() : []).then((bots: any[]) => {
-      const hasAccess = bots.some((b: any) => b.teamMembers?.includes(user.id));
-      setHasBotAccess(hasAccess);
+      setHasBotAccess(bots.some((b: any) => b.teamMembers?.includes(user.id)));
     });
+    fetch(`/api/users/${user.id}`)
+      .then(r => r.ok ? r.json() : null)
+      .then(data => {
+        if (data?.featureToggles) {
+          setCache(user.id, data.featureToggles);
+          setFeatureToggles(data.featureToggles);
+        }
+      })
+      .catch(() => {});
   }, [user?.id]);
 
-  const sidebarItems = hasBotAccess
-    ? [...baseItems, { id: "ai-bot-builder", label: "Master Bot Builder" }]
+  const allItems = hasBotAccess
+    ? [...baseItems, { id: "ai-bot-builder", label: "Master Bot Builder", toggleKey: "aiBots" }]
     : baseItems;
+
+  const sidebarItems = featureToggles
+    ? allItems.filter(item => featureToggles[item.toggleKey] !== false)
+    : allItems;
 
   function handleNavigation(id: string) {
     router.push(`/manager/${id}`);

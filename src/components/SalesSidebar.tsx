@@ -4,12 +4,12 @@ import { useAuth } from "../contexts/AuthContext";
 import { useEffect, useState } from "react";
 
 const baseItems = [
-  { id: "dashboard", label: "Dashboard" },
-  { id: "plan", label: "Business Planner" },
-  { id: "training", label: "Training Center" },
-  { id: "aiChat", label: "Jay's AI Clone (coming soon)" },
-  { id: "apps-tools", label: "Apps & Tools" },
-  { id: "profile", label: "My Profile" },
+  { id: "dashboard", label: "Dashboard", toggleKey: "dashboard" },
+  { id: "plan", label: "Business Planner", toggleKey: "plan" },
+  { id: "training", label: "Training Center", toggleKey: "training" },
+  { id: "aiChat", label: "Jay's AI Clone (coming soon)", toggleKey: "aiChat" },
+  { id: "apps-tools", label: "Apps & Tools", toggleKey: "appsTools" },
+  { id: "profile", label: "My Profile", toggleKey: "profile" },
 ];
 
 type SalesSidebarProps = {
@@ -18,22 +18,48 @@ type SalesSidebarProps = {
   onToggleCollapse?: () => void;
 };
 
+function getCached(userId: string): Record<string, boolean> | null {
+  try {
+    const raw = sessionStorage.getItem(`ft_${userId}`);
+    return raw ? JSON.parse(raw) : null;
+  } catch { return null; }
+}
+
+function setCache(userId: string, toggles: Record<string, boolean>) {
+  try { sessionStorage.setItem(`ft_${userId}`, JSON.stringify(toggles)); } catch {}
+}
+
 export function SalesSidebar({ activeId, isCollapsed, onToggleCollapse }: SalesSidebarProps) {
   const router = useRouter();
   const { user } = useAuth();
   const [hasBotAccess, setHasBotAccess] = useState(false);
+  const [featureToggles, setFeatureToggles] = useState<Record<string, boolean> | null>(
+    user?.id ? getCached(user.id) : null
+  );
 
   useEffect(() => {
     if (!user?.id) return;
     fetch("/api/ai-bots").then(r => r.ok ? r.json() : []).then((bots: any[]) => {
-      const hasAccess = bots.some((b: any) => b.teamMembers?.includes(user.id));
-      setHasBotAccess(hasAccess);
+      setHasBotAccess(bots.some((b: any) => b.teamMembers?.includes(user.id)));
     });
+    fetch(`/api/users/${user.id}`)
+      .then(r => r.ok ? r.json() : null)
+      .then(data => {
+        if (data?.featureToggles) {
+          setCache(user.id, data.featureToggles);
+          setFeatureToggles(data.featureToggles);
+        }
+      })
+      .catch(() => {});
   }, [user?.id]);
 
-  const sidebarItems = hasBotAccess
-    ? [...baseItems, { id: "ai-bot-builder", label: "Master Bot Builder" }]
+  const allItems = hasBotAccess
+    ? [...baseItems, { id: "ai-bot-builder", label: "Master Bot Builder", toggleKey: "aiBots" }]
     : baseItems;
+
+  const sidebarItems = featureToggles
+    ? allItems.filter(item => featureToggles[item.toggleKey] !== false)
+    : allItems;
 
   function handleNavigation(id: string) {
     router.push(`/sales/${id}`);

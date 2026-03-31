@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useRouter } from "next/router";
 import { Layout } from "../../components/Layout";
 import { SalesSidebar } from "../../components/SalesSidebar";
 import { Header } from "../../components/Header";
@@ -14,8 +15,35 @@ type SalesLayoutProps = {
 };
 
 export function SalesLayout({ children, currentView, userName, userId }: SalesLayoutProps) {
-  const { logout } = useAuth();
+  const { user, logout } = useAuth();
+  const router = useRouter();
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  const [allowed, setAllowed] = useState(true);
+
+  // Map page view IDs to featureToggle keys
+  const viewToToggleKey: Record<string, string> = {
+    dashboard: "dashboard",
+    plan: "plan",
+    training: "training",
+    aiChat: "aiChat",
+    "apps-tools": "appsTools",
+    profile: "profile",
+    "ai-bot-builder": "aiBots",
+  };
+
+  useEffect(() => {
+    if (!user?.id) return;
+    const toggleKey = viewToToggleKey[currentView];
+    if (!toggleKey) return;
+    fetch(`/api/users/${user.id}`)
+      .then(r => r.ok ? r.json() : null)
+      .then(data => {
+        if (data?.featureToggles?.[toggleKey] === false) {
+          setAllowed(false);
+          router.replace("/sales/dashboard");
+        }
+      }).catch(() => {});
+  }, [user?.id, currentView]);
 
   return (
     <Layout
@@ -39,7 +67,7 @@ export function SalesLayout({ children, currentView, userName, userId }: SalesLa
         />
       }
     >
-      {children}
+      {allowed ? children : null}
     </Layout>
   );
 }

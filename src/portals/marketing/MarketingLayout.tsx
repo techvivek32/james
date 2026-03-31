@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useRouter } from "next/router";
 import { Layout } from "../../components/Layout";
 import { MarketingSidebar } from "../../components/MarketingSidebar";
 import { Header } from "../../components/Header";
@@ -13,7 +14,33 @@ type MarketingLayoutProps = {
 
 export function MarketingLayout({ children, currentView }: MarketingLayoutProps) {
   const { user, logout } = useAuth();
+  const router = useRouter();
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  const [allowed, setAllowed] = useState(true);
+
+  const viewToToggleKey: Record<string, string> = {
+    dashboard: "dashboard",
+    assets: "assets",
+    approvals: "approvals",
+    socialMetrics: "socialMetrics",
+    "apps-tools": "appsTools",
+    "ai-chat": "aiAssistant",
+    "ai-bot-builder": "aiBots",
+  };
+
+  useEffect(() => {
+    if (!user?.id) return;
+    const toggleKey = viewToToggleKey[currentView];
+    if (!toggleKey) return;
+    fetch(`/api/users/${user.id}`)
+      .then(r => r.ok ? r.json() : null)
+      .then(data => {
+        if (data?.featureToggles?.[toggleKey] === false) {
+          setAllowed(false);
+          router.replace("/marketing/dashboard");
+        }
+      }).catch(() => {});
+  }, [user?.id, currentView]);
 
   return (
     <Layout
@@ -35,7 +62,7 @@ export function MarketingLayout({ children, currentView }: MarketingLayoutProps)
         />
       }
     >
-      {children}
+      {allowed ? children : null}
     </Layout>
   );
 }

@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useRouter } from "next/router";
 import { Layout } from "../../components/Layout";
 import { ManagerSidebar } from "../../components/ManagerSidebar";
 import { Header } from "../../components/Header";
@@ -13,7 +14,34 @@ type ManagerLayoutProps = {
 
 export function ManagerLayout({ children, currentView }: ManagerLayoutProps) {
   const { user, logout } = useAuth();
+  const router = useRouter();
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  const [allowed, setAllowed] = useState(true);
+
+  const viewToToggleKey: Record<string, string> = {
+    dashboard: "dashboard",
+    plans: "plans",
+    onlineTraining: "onlineTraining",
+    "jays-ai-clone": "aiChat",
+    "apps-tools": "appsTools",
+    "my-profile": "profile",
+    "task-manager": "taskTracker",
+    "ai-bot-builder": "aiBots",
+  };
+
+  useEffect(() => {
+    if (!user?.id) return;
+    const toggleKey = viewToToggleKey[currentView];
+    if (!toggleKey) return;
+    fetch(`/api/users/${user.id}`)
+      .then(r => r.ok ? r.json() : null)
+      .then(data => {
+        if (data?.featureToggles?.[toggleKey] === false) {
+          setAllowed(false);
+          router.replace("/manager/dashboard");
+        }
+      }).catch(() => {});
+  }, [user?.id, currentView]);
 
   return (
     <Layout
@@ -36,7 +64,7 @@ export function ManagerLayout({ children, currentView }: ManagerLayoutProps) {
         />
       }
     >
-      {children}
+      {allowed ? children : null}
     </Layout>
   );
 }

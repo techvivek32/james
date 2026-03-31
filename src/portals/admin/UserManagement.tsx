@@ -1124,9 +1124,16 @@ export function UserManagement(props: UserEditorProps) {
                           nextDraft = draftUsers.map((u) => {
                             if (u.id === selectedUser.id) return u;
                             const uRoles = u.roles || [u.role];
-                            const hasMatchingRole = userRolesList.some(r => uRoles.includes(r));
-                            if (!hasMatchingRole) return u;
-                            return { ...u, featureToggles: { ...u.featureToggles, ...selectedUser.featureToggles } };
+                            // Find which roles this user shares with the selected user
+                            const sharedRoles = userRolesList.filter(r => uRoles.includes(r));
+                            if (sharedRoles.length === 0) return u;
+                            // Only copy toggle keys that belong to the shared roles
+                            const sharedKeys = sharedRoles.flatMap(r => featureToggleKeysByRole[r] || []);
+                            const partialToggles: Partial<FeatureToggles> = {};
+                            sharedKeys.forEach(k => {
+                              partialToggles[k] = selectedUser.featureToggles[k];
+                            });
+                            return { ...u, featureToggles: { ...u.featureToggles, ...partialToggles } };
                           });
                           usersToSave = nextDraft.filter((u) => {
                             const uRoles = u.roles || [u.role];
