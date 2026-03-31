@@ -80,7 +80,13 @@ export default async function handler(
       return;
     }
     if (action === 'permanent-delete') {
+      const user = await UserModel.findOne({ id }).lean() as any;
       await UserModel.deleteOne({ id });
+      // Also delete the approved user request for this email
+      if (user?.email) {
+        const { UserRequestModel } = await import("../../../src/lib/models/UserRequest");
+        await UserRequestModel.deleteOne({ email: user.email, status: "approved" });
+      }
       res.status(200).json({ success: true });
       return;
     }
