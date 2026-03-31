@@ -82,41 +82,39 @@ export function UserManagement(props: UserEditorProps) {
   }
 
   const featureToggleKeysByRole: Record<UserProfile["role"], (keyof FeatureToggles)[]> = {
-    admin: ["dashboard", "userManagement", "roleHierarchy", "businessUnits", "salesOverview", "marketingOverview", "courseManagement", "materialsLibrary", "approvalWorkflows", "aiBots", "webTemplates", "webText", "appsTools", "socialMediaMetrics"],
-    manager: ["dashboard", "team", "plans", "training", "onlineTraining", "taskTracker", "webTemplates"],
-    sales: ["dashboard", "profile", "plan", "training", "materials", "aiChat", "webPage", "businessCards"],
-    marketing: ["dashboard", "assets", "approvals", "socialMetrics"]
+    admin: ["socialMediaMetrics", "businessUnits", "trainingCenter", "userManagement", "courseManagement", "appsTools", "aiBots", "courseAiBots", "messaging", "leaderboard"],
+    manager: ["dashboard", "plans", "onlineTraining", "aiChat", "appsTools", "profile", "taskTracker"],
+    sales: ["dashboard", "plan", "training", "aiChat", "appsTools", "profile"],
+    marketing: ["dashboard", "assets", "approvals", "socialMetrics", "appsTools", "aiAssistant"]
   };
 
   const featureToggleLabels: Record<string, string> = {
-    dashboard: "Dashboard",
+    // Admin
+    socialMediaMetrics: "Social Media Executive View",
+    businessUnits: "Business Planner Executive View",
+    trainingCenter: "Training Center Executive View",
     userManagement: "User Management",
-    roleHierarchy: "Role & Hierarchy Manager",
-    businessUnits: "Business Units",
-    salesOverview: "Sales Team Overview",
-    marketingOverview: "Marketing Overview",
-    courseManagement: "Course Management",
-    materialsLibrary: "Marketing Materials Library",
-    approvalWorkflows: "Approval Workflows",
-    aiBots: "AI Bot Management",
-    webTemplates: "Web Page Approval",
-    webText: "Web Text",
-    appsTools: "Apps/Tool",
-    socialMediaMetrics: "Social Media Metrics",
-    team: "My Team",
-    plans: "Team Business Plans",
-    training: "Training Center",
-    onlineTraining: "Online Training",
-    taskTracker: "Task Tracker",
+    courseManagement: "Course Builder",
+    appsTools: "Apps & Tool Builder",
+    aiBots: "Master Bot Builder",
+    courseAiBots: "Course Bots Builder",
+    messaging: "SMS Config",
+    leaderboard: "Zapier Config",
+    // Manager
+    dashboard: "Dashboard",
+    plans: "Team Business Planners",
+    onlineTraining: "Training Center",
+    aiChat: "Jay's AI Clone",
     profile: "My Profile",
-    plan: "My Business Plan",
-    materials: "Marketing Materials",
-    aiChat: "Jay Miller's Clone",
-    webPage: "My Web Page",
-    businessCards: "Tools/ Apps",
+    taskTracker: "Task Manager",
+    // Sales
+    plan: "Business Planner",
+    training: "Training Center",
+    // Marketing
     assets: "Marketing Assets",
     approvals: "Approval Queue",
-    socialMetrics: "Social Metrics"
+    socialMetrics: "Social Metrics",
+    aiAssistant: "AI Assistant"
   };
 
   const selectedUser = draftUsers.find((u) => u.id === selectedUserId);
