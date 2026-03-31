@@ -84,7 +84,7 @@ export function UserManagement(props: UserEditorProps) {
   }
 
   const featureToggleKeysByRole: Record<UserProfile["role"], (keyof FeatureToggles)[]> = {
-    admin: ["socialMediaMetrics", "businessUnits", "trainingCenter", "userManagement", "courseManagement", "appsTools", "aiBots", "courseAiBots", "messaging", "leaderboard", "emailConfig"],
+    admin: ["socialMediaMetrics", "businessUnits", "trainingCenter", "userManagement", "courseManagement", "appsTools", "aiBots", "courseAiBots", "messaging", "leaderboard"],
     manager: ["dashboard", "plans", "onlineTraining", "aiChat", "appsTools", "profile", "taskTracker"],
     sales: ["dashboard", "plan", "training", "aiChat", "appsTools", "profile"],
     marketing: ["dashboard", "assets", "approvals", "socialMetrics", "appsTools", "aiAssistant"]
