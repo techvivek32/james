@@ -28,9 +28,10 @@ export default async function handler(
     // Check if email exists in users
     const existingUser = await UserModel.findOne({ email: normalizedEmail });
     
-    // Check if email exists in ANY requests (pending, approved, or rejected)
+    // Check if email exists in pending requests only (not approved/rejected)
     const existingRequest = await UserRequestModel.findOne({ 
-      email: normalizedEmail
+      email: normalizedEmail,
+      status: "pending"
     });
 
     res.status(200).json({ 

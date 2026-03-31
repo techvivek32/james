@@ -98,8 +98,21 @@ export default async function handler(
       console.error("Failed to create user request:", error);
       res.status(500).json({ error: "Failed to submit registration request" });
     }
+  } else if (req.method === "DELETE") {
+    try {
+      const { ids } = req.body;
+      if (!Array.isArray(ids) || ids.length === 0) {
+        res.status(400).json({ error: "ids array required" });
+        return;
+      }
+      await UserRequestModel.deleteMany({ id: { $in: ids } });
+      res.status(200).json({ deleted: ids.length });
+    } catch (error) {
+      console.error("Failed to delete user requests:", error);
+      res.status(500).json({ error: "Failed to delete requests" });
+    }
   } else {
-    res.setHeader("Allow", ["GET", "POST"]);
+    res.setHeader("Allow", ["GET", "POST", "DELETE"]);
     res.status(405).end();
   }
 }
