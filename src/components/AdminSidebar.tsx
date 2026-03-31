@@ -22,24 +22,40 @@ type AdminSidebarProps = {
   onToggleCollapse?: () => void;
 };
 
+function getCached(userId: string): Record<string, boolean> | null {
+  try {
+    const raw = sessionStorage.getItem(`ft_${userId}`);
+    return raw ? JSON.parse(raw) : null;
+  } catch { return null; }
+}
+
+function setCache(userId: string, toggles: Record<string, boolean>) {
+  try { sessionStorage.setItem(`ft_${userId}`, JSON.stringify(toggles)); } catch {}
+}
+
 export function AdminSidebar({ activeId, isCollapsed, onToggleCollapse }: AdminSidebarProps) {
   const router = useRouter();
   const { user } = useAuth();
-  const [featureToggles, setFeatureToggles] = useState<Record<string, boolean> | null>(null);
-  const [togglesLoaded, setTogglesLoaded] = useState(false);
+  const [featureToggles, setFeatureToggles] = useState<Record<string, boolean> | null>(
+    user?.id ? getCached(user.id) : null
+  );
 
   useEffect(() => {
     if (!user?.id) return;
     fetch(`/api/users/${user.id}`)
       .then(r => r.ok ? r.json() : null)
-      .then(data => { if (data?.featureToggles) setFeatureToggles(data.featureToggles); })
-      .catch(() => {})
-      .finally(() => setTogglesLoaded(true));
+      .then(data => {
+        if (data?.featureToggles) {
+          setCache(user.id, data.featureToggles);
+          setFeatureToggles(data.featureToggles);
+        }
+      })
+      .catch(() => {});
   }, [user?.id]);
 
-  const sidebarItems = togglesLoaded
-    ? (featureToggles ? allSidebarItems.filter(item => featureToggles[item.toggleKey] !== false) : allSidebarItems)
-    : [];
+  const sidebarItems = featureToggles
+    ? allSidebarItems.filter(item => featureToggles[item.toggleKey] !== false)
+    : allSidebarItems;
 
   function handleNavigation(id: string) {
     router.push(`/admin/${id === "dashboard" ? "dashboard" : id.replace(/([A-Z])/g, "-$1").toLowerCase()}`);
