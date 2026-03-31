@@ -30,6 +30,10 @@ export function TrainingExecutiveView() {
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   // activeTab[courseId] = "manager" | "sales"
   const [activeTab, setActiveTab] = useState<Record<string, "manager" | "sales">>({});
+  // Admin controls
+  const [showAdminControls, setShowAdminControls] = useState(false);
+  const [selectedUsers, setSelectedUsers] = useState<Set<string>>(new Set());
+  const [hiddenUsers, setHiddenUsers] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     async function load() {
@@ -140,6 +144,21 @@ export function TrainingExecutiveView() {
     setActiveTab((prev) => ({ ...prev, [courseId]: prev[courseId] || "manager" }));
   }
 
+  function toggleUserSelection(userId: string) {
+    setSelectedUsers(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(userId)) newSet.delete(userId);
+      else newSet.add(userId);
+      return newSet;
+    });
+  }
+
+  function saveSelectedUsers() {
+    setHiddenUsers(prev => new Set([...prev, ...selectedUsers]));
+    setSelectedUsers(new Set());
+    setShowAdminControls(false);
+  }
+
   if (isLoading) {
     return (
       <div style={{ display: "flex", justifyContent: "center", alignItems: "center", height: 300 }}>
@@ -160,6 +179,43 @@ export function TrainingExecutiveView() {
         </div>
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+          {/* Admin Controls */}
+          <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+            <button
+              onClick={() => setShowAdminControls(!showAdminControls)}
+              style={{
+                opacity: 0, width: 1, height: 1, border: "none",
+                background: "none", cursor: "pointer", position: "absolute"
+              }}
+            />
+            {showAdminControls && (
+              <>
+                <span style={{ fontSize: 12, color: "#6b7280" }}>Select users to hide:</span>
+                <button
+                  onClick={saveSelectedUsers}
+                  disabled={selectedUsers.size === 0}
+                  style={{
+                    padding: "4px 12px", fontSize: 12, borderRadius: 4,
+                    border: "1px solid #d1d5db", background: "#fff",
+                    color: selectedUsers.size > 0 ? "#2563eb" : "#9ca3af",
+                    cursor: selectedUsers.size > 0 ? "pointer" : "not-allowed"
+                  }}
+                >
+                  Save ({selectedUsers.size})
+                </button>
+                <button
+                  onClick={() => { setSelectedUsers(new Set()); setShowAdminControls(false); }}
+                  style={{
+                    padding: "4px 12px", fontSize: 12, borderRadius: 4,
+                    border: "1px solid #d1d5db", background: "#fff",
+                    color: "#6b7280", cursor: "pointer"
+                  }}
+                >
+                  Cancel
+                </button>
+              </>
+            )}
+          </div>
           {/* Summary stat bar */}
           <div style={{
             display: "grid",
@@ -315,12 +371,24 @@ export function TrainingExecutiveView() {
                             </tr>
                           </thead>
                           <tbody>
-                            {rows.map((row, idx) => (
+                            {rows.filter(row => !hiddenUsers.has(row.id)).map((row, idx) => (
                               <tr key={row.id} style={{ background: idx % 2 === 0 ? "#fff" : "#fafafa" }}>
                                 {/* User */}
                                 <td style={{ padding: "10px 16px", borderBottom: "1px solid #f3f4f6" }}>
-                                  <div style={{ fontWeight: 600, color: "#111827" }}>{row.name}</div>
-                                  <div style={{ fontSize: 11, color: "#9ca3af" }}>{row.email}</div>
+                                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                                    {showAdminControls && (
+                                      <input
+                                        type="checkbox"
+                                        checked={selectedUsers.has(row.id)}
+                                        onChange={() => toggleUserSelection(row.id)}
+                                        style={{ cursor: "pointer" }}
+                                      />
+                                    )}
+                                    <div>
+                                      <div style={{ fontWeight: 600, color: "#111827" }}>{row.name}</div>
+                                      <div style={{ fontSize: 11, color: "#9ca3af" }}>{row.email}</div>
+                                    </div>
+                                  </div>
                                 </td>
                                 {/* Progress bar */}
                                 <td style={{ padding: "10px 16px", borderBottom: "1px solid #f3f4f6", minWidth: 140 }}>

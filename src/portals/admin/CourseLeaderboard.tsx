@@ -46,12 +46,11 @@ export function CourseLeaderboard() {
     }).catch(() => {});
   }
 
-  // Swipe tracking
-  const [swipeStart, setSwipeStart] = useState<{ x: number; userId: string } | null>(null);
-  const [swipeOffset, setSwipeOffset] = useState<{ userId: string; offset: number } | null>(null);
   const [showHiddenSection, setShowHiddenSection] = useState(false);
+  const [showAdminControls, setShowAdminControls] = useState(false);
+  const [selectedUsers, setSelectedUsers] = useState<Set<string>>(new Set());
 
-  // Override modal state
+  // Load courses on mount
   const [showOverride, setShowOverride] = useState(false);
   const [overrideUsers, setOverrideUsers] = useState<UserOption[]>([]);
   const [overrideSelectedUser, setOverrideSelectedUser] = useState<UserOption | null>(null);
@@ -62,6 +61,8 @@ export function CourseLeaderboard() {
   const [allCoursesRaw, setAllCoursesRaw] = useState<any[]>([]);
   const [showFormatPicker, setShowFormatPicker] = useState(false);
   const [show100Club, setShow100Club] = useState(false);
+  const [showHideModal, setShowHideModal] = useState(false);
+  const [hideSelection, setHideSelection] = useState<Set<string>>(new Set());
   const tableRef = useRef<HTMLDivElement>(null);
 
   function hideUser(userId: string) {
@@ -76,48 +77,20 @@ export function CourseLeaderboard() {
     saveHiddenUsers(newHidden);
   }
 
-  function handleTouchStart(e: React.TouchEvent, userId: string) {
-    setSwipeStart({ x: e.touches[0].clientX, userId });
+  function toggleUserSelection(userId: string) {
+    setSelectedUsers(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(userId)) newSet.delete(userId);
+      else newSet.add(userId);
+      return newSet;
+    });
   }
 
-  function handleTouchMove(e: React.TouchEvent, userId: string) {
-    if (!swipeStart || swipeStart.userId !== userId) return;
-    const deltaX = e.touches[0].clientX - swipeStart.x;
-    if (deltaX > 0) {
-      setSwipeOffset({ userId, offset: deltaX });
-    }
-  }
-
-  function handleTouchEnd(e: React.TouchEvent, userId: string) {
-    if (!swipeStart || swipeStart.userId !== userId) return;
-    const deltaX = e.changedTouches[0].clientX - swipeStart.x;
-    if (deltaX > 100) {
-      hideUser(userId);
-    }
-    setSwipeStart(null);
-    setSwipeOffset(null);
-  }
-
-  function handleMouseDown(e: React.MouseEvent, userId: string) {
-    setSwipeStart({ x: e.clientX, userId });
-  }
-
-  function handleMouseMove(e: React.MouseEvent, userId: string) {
-    if (!swipeStart || swipeStart.userId !== userId) return;
-    const deltaX = e.clientX - swipeStart.x;
-    if (deltaX > 0) {
-      setSwipeOffset({ userId, offset: deltaX });
-    }
-  }
-
-  function handleMouseUp(e: React.MouseEvent, userId: string) {
-    if (!swipeStart || swipeStart.userId !== userId) return;
-    const deltaX = e.clientX - swipeStart.x;
-    if (deltaX > 100) {
-      hideUser(userId);
-    }
-    setSwipeStart(null);
-    setSwipeOffset(null);
+  function saveSelectedUsers() {
+    const newHidden = new Set([...hiddenUsers, ...selectedUsers]);
+    saveHiddenUsers(newHidden);
+    setSelectedUsers(new Set());
+    setShowAdminControls(false);
   }
 
   // Load courses on mount
@@ -361,6 +334,44 @@ export function CourseLeaderboard() {
           {/* Header right side buttons */}
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
 
+          {/* Invisible Admin Control Button - positioned before screenshot */}
+          <button
+            onClick={() => setShowAdminControls(!showAdminControls)}
+            style={{
+              opacity: 0, width: 50, height: 40, border: "none",
+              background: "none", cursor: "pointer"
+            }}
+          />
+
+          {/* Admin Controls */}
+          {showAdminControls && (
+            <>
+              <span style={{ fontSize: 12, color: "#6b7280" }}>Select users to hide:</span>
+              <button
+                onClick={saveSelectedUsers}
+                disabled={selectedUsers.size === 0}
+                style={{
+                  padding: "6px 12px", fontSize: 12, borderRadius: 6,
+                  border: "1px solid #10b981", background: selectedUsers.size > 0 ? "#10b981" : "#d1d5db",
+                  color: selectedUsers.size > 0 ? "#fff" : "#9ca3af",
+                  cursor: selectedUsers.size > 0 ? "pointer" : "not-allowed"
+                }}
+              >
+                Save ({selectedUsers.size})
+              </button>
+              <button
+                onClick={() => { setSelectedUsers(new Set()); setShowAdminControls(false); }}
+                style={{
+                  padding: "6px 12px", fontSize: 12, borderRadius: 6,
+                  border: "1px solid #ef4444", background: "#ef4444",
+                  color: "#fff", cursor: "pointer"
+                }}
+              >
+                Cancel
+              </button>
+            </>
+          )}
+
           {/* Screenshot button */}
           <div style={{ position: "relative" }}>
             <button
@@ -530,25 +541,23 @@ export function CourseLeaderboard() {
                       </tr>
                     </thead>
                     <tbody>
-                      {clubMembers.map((row, idx) => {
-                        const offset = swipeOffset?.userId === row.id ? swipeOffset.offset : 0;
-                        return (
+                      {clubMembers.map((row, idx) => (
                         <tr key={row.id} style={{
                           background: idx % 2 === 0 ? "#f0fdf4" : "#ecfdf5",
-                          cursor: "grab", userSelect: "none",
-                          transform: `translateX(${offset}px)`,
-                          opacity: offset > 50 ? 1 - (offset - 50) / 100 : 1,
-                          transition: swipeStart?.userId === row.id ? "none" : "transform 0.3s, opacity 0.3s",
-                        }}
-                          onMouseDown={(e) => handleMouseDown(e, row.id)}
-                          onMouseMove={(e) => handleMouseMove(e, row.id)}
-                          onMouseUp={(e) => handleMouseUp(e, row.id)}
-                          onMouseLeave={(e) => { if (swipeStart?.userId === row.id) handleMouseUp(e, row.id); }}
-                          onTouchStart={(e) => handleTouchStart(e, row.id)}
-                          onTouchMove={(e) => handleTouchMove(e, row.id)}
-                          onTouchEnd={(e) => handleTouchEnd(e, row.id)}
-                        >
-                          <td style={{ padding: "10px 16px", borderBottom: "1px solid #d1fae5", color: "#059669", fontWeight: 700 }}>{idx + 1}</td>
+                        }}>
+                          <td style={{ padding: "10px 16px", borderBottom: "1px solid #d1fae5", color: "#059669", fontWeight: 700 }}>
+                            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                              {showAdminControls && (
+                                <input
+                                  type="checkbox"
+                                  checked={selectedUsers.has(row.id)}
+                                  onChange={() => toggleUserSelection(row.id)}
+                                  style={{ cursor: "pointer" }}
+                                />
+                              )}
+                              {idx + 1}
+                            </div>
+                          </td>
                           <td style={{ padding: "10px 16px", borderBottom: "1px solid #d1fae5" }}>
                             <div style={{ fontWeight: 600, color: "#111827" }}>{row.name}</div>
                             <div style={{ fontSize: 11, color: "#9ca3af" }}>{row.email}</div>
@@ -566,8 +575,7 @@ export function CourseLeaderboard() {
                             </div>
                           </td>
                         </tr>
-                        );
-                      })}
+                      ))}
                     </tbody>
                   </table>
                 </div>
@@ -605,27 +613,24 @@ export function CourseLeaderboard() {
                   <tbody>
                     {mainRows.map((row, idx) => {
                       const rank = idx + 1;
-                      const offset = swipeOffset?.userId === row.id ? swipeOffset.offset : 0;
                       return (
                         <tr key={row.id} style={{
                           background: rank === 1 ? "#fffbeb" : rank === 2 ? "#f9fafb" : rank === 3 ? "#fafafa" : "#fff",
-                          cursor: "grab", userSelect: "none",
-                          transform: `translateX(${offset}px)`,
-                          opacity: offset > 50 ? 1 - (offset - 50) / 100 : 1,
-                          transition: swipeStart?.userId === row.id ? "none" : "transform 0.3s, opacity 0.3s",
-                        }}
-                          onMouseDown={(e) => handleMouseDown(e, row.id)}
-                          onMouseMove={(e) => handleMouseMove(e, row.id)}
-                          onMouseUp={(e) => handleMouseUp(e, row.id)}
-                          onMouseLeave={(e) => { if (swipeStart?.userId === row.id) handleMouseUp(e, row.id); }}
-                          onTouchStart={(e) => handleTouchStart(e, row.id)}
-                          onTouchMove={(e) => handleTouchMove(e, row.id)}
-                          onTouchEnd={(e) => handleTouchEnd(e, row.id)}
-                        >
+                        }}>
                           <td style={{ padding: "11px 16px", borderBottom: "1px solid #f3f4f6", width: 60 }}>
-                            {MEDAL[rank] ? <span style={{ fontSize: 18 }}>{MEDAL[rank]}</span> : (
-                              <span style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: 24, height: 24, borderRadius: "50%", background: "#f3f4f6", color: "#6b7280", fontSize: 12, fontWeight: 700 }}>{rank}</span>
-                            )}
+                            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                              {showAdminControls && (
+                                <input
+                                  type="checkbox"
+                                  checked={selectedUsers.has(row.id)}
+                                  onChange={() => toggleUserSelection(row.id)}
+                                  style={{ cursor: "pointer" }}
+                                />
+                              )}
+                              {MEDAL[rank] ? <span style={{ fontSize: 18 }}>{MEDAL[rank]}</span> : (
+                                <span style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: 24, height: 24, borderRadius: "50%", background: "#f3f4f6", color: "#6b7280", fontSize: 12, fontWeight: 700 }}>{rank}</span>
+                              )}
+                            </div>
                           </td>
                           <td style={{ padding: "11px 16px", borderBottom: "1px solid #f3f4f6" }}>
                             <div style={{ fontWeight: 600, color: "#111827" }}>{row.name}</div>
@@ -712,6 +717,16 @@ export function CourseLeaderboard() {
                     These users are hidden from the main leaderboard
                   </div>
                 </div>
+                <button
+                  onClick={() => setShowHiddenSection(false)}
+                  style={{
+                    padding: "6px 12px", fontSize: 12, borderRadius: 6,
+                    border: "1px solid #ef4444", background: "#ef4444",
+                    color: "#fff", cursor: "pointer", fontWeight: 600
+                  }}
+                >
+                  Close
+                </button>
               </div>
 
               {/* Table */}
