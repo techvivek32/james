@@ -1035,25 +1035,88 @@ export function UserManagement(props: UserEditorProps) {
                 <span>{showFeatureToggles ? "▾" : "▸"}</span>
                 <span>Feature Toggles</span>
               </div>
-              {showFeatureToggles && togglesByRole.map(({ role, keys }) => (
-                <div key={role} style={{ marginBottom: 24 }}>
-                  <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 12, color: "#666" }}>
-                    {roleLabels[role]}
+              {showFeatureToggles && (
+                <>
+                  {togglesByRole.map(({ role, keys }) => (
+                    <div key={role} style={{ marginBottom: 24 }}>
+                      <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 12, color: "#666" }}>
+                        {roleLabels[role]}
+                      </div>
+                      <div className="toggle-grid">
+                        {keys.map((key) => {
+                          const enabled = selectedUser.featureToggles[key];
+                          const label = featureToggleLabels[key] || key.replace(/([A-Z])/g, " $1").replace(/^./, (str) => str.toUpperCase()).replace(/ai/gi, "AI").trim();
+                          return (
+                            <label key={key} className="toggle-item">
+                              <input type="checkbox" checked={enabled} onChange={(e) => updateFeatureToggles(selectedUser, { [key]: e.target.checked } as Partial<FeatureToggles>)} />
+                              <span className="toggle-label">{label}</span>
+                            </label>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  ))}
+                  {/* Save buttons */}
+                  <div style={{ display: "flex", alignItems: "center", gap: 12, marginTop: 8, padding: "12px 0", borderTop: "1px solid #e5e7eb" }}>
+                    <label style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer", fontSize: 13, color: "#374151", userSelect: "none" }}>
+                      <input
+                        type="checkbox"
+                        id="applyToAllCheck"
+                        style={{ width: 15, height: 15, cursor: "pointer" }}
+                      />
+                      Apply to all users with same role
+                    </label>
+                    <button
+                      type="button"
+                      className="btn-primary btn-small"
+                      onClick={async () => {
+                        const applyToAll = (document.getElementById("applyToAllCheck") as HTMLInputElement)?.checked;
+                        const userRolesList = selectedUser.roles || [selectedUser.role];
+
+                        // Build list of users to save
+                        let usersToSave: UserProfile[] = [selectedUser];
+                        let nextDraft = draftUsers;
+
+                        if (applyToAll) {
+                          nextDraft = draftUsers.map((u) => {
+                            if (u.id === selectedUser.id) return u;
+                            const uRoles = u.roles || [u.role];
+                            const hasMatchingRole = userRolesList.some(r => uRoles.includes(r));
+                            if (!hasMatchingRole) return u;
+                            return { ...u, featureToggles: { ...u.featureToggles, ...selectedUser.featureToggles } };
+                          });
+                          usersToSave = nextDraft.filter((u) => {
+                            const uRoles = u.roles || [u.role];
+                            return userRolesList.some(r => uRoles.includes(r));
+                          });
+                          setDraftUsers(nextDraft);
+                        }
+
+                        // Persist each user via API
+                        try {
+                          await Promise.all(usersToSave.map((u) =>
+                            fetch(`/api/users/${u.id}`, {
+                              method: "PATCH",
+                              headers: { "Content-Type": "application/json" },
+                              body: JSON.stringify({ featureToggles: u.featureToggles })
+                            })
+                          ));
+                          props.onUsersChange(nextDraft);
+                          setIsDirty(false);
+                          setSaveNotice(applyToAll ? "Feature toggles applied to all matching role users" : "Feature toggles saved for this user");
+                        } catch {
+                          setSaveNotice("Failed to save feature toggles");
+                        }
+                        if (saveNoticeTimeout.current) clearTimeout(saveNoticeTimeout.current);
+                        saveNoticeTimeout.current = setTimeout(() => setSaveNotice(""), 2500);
+                      }}
+                    >
+                      Save
+                    </button>
+                    {saveNotice && <span style={{ fontSize: 12, color: "#16a34a" }}>{saveNotice}</span>}
                   </div>
-                  <div className="toggle-grid">
-                    {keys.map((key) => {
-                      const enabled = selectedUser.featureToggles[key];
-                      const label = featureToggleLabels[key] || key.replace(/([A-Z])/g, " $1").replace(/^./, (str) => str.toUpperCase()).replace(/ai/gi, "AI").trim();
-                      return (
-                        <label key={key} className="toggle-item">
-                          <input type="checkbox" checked={enabled} onChange={(e) => updateFeatureToggles(selectedUser, { [key]: e.target.checked } as Partial<FeatureToggles>)} />
-                          <span className="toggle-label">{label}</span>
-                        </label>
-                      );
-                    })}
-                  </div>
-                </div>
-              ))}
+                </>
+              )}
             </div>
 
             {/* Training Progress - Collapsible Inline */}

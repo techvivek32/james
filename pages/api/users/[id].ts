@@ -70,7 +70,15 @@ export default async function handler(
   }
 
   if (req.method === "PATCH") {
-    const { action } = req.body;
+    const { action, featureToggles } = req.body;
+
+    // Save feature toggles only
+    if (!action && featureToggles) {
+      await UserModel.findOneAndUpdate({ id }, { featureToggles });
+      res.status(200).json({ success: true });
+      return;
+    }
+
     if (action === 'restore') {
       await UserModel.findOneAndUpdate(
         { id },
