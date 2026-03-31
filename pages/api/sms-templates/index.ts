@@ -16,6 +16,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       key,
       label: map[key]?.label ?? DEFAULT_SMS_TEMPLATES[key].label,
       template: map[key]?.template ?? DEFAULT_SMS_TEMPLATES[key].template,
+      status: map[key]?.status ?? "published",
     }));
 
     return res.status(200).json(result);
@@ -23,14 +24,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   if (req.method === "PUT") {
     // Save a single template: { key, template }
-    const { key, template } = req.body;
+    const { key, template, status } = req.body;
     if (!key || !template) return res.status(400).json({ error: "Missing key or template" });
     if (template.length > 200) return res.status(400).json({ error: "Template exceeds 200 characters" });
     if (!DEFAULT_SMS_TEMPLATES[key]) return res.status(400).json({ error: "Invalid template key" });
 
     await SmsTemplateModel.findOneAndUpdate(
       { key },
-      { key, label: DEFAULT_SMS_TEMPLATES[key].label, template },
+      { key, label: DEFAULT_SMS_TEMPLATES[key].label, template, ...(status ? { status } : {}) },
       { upsert: true, new: true }
     );
     return res.status(200).json({ ok: true });

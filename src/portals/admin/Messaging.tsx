@@ -4,6 +4,7 @@ type Template = {
   key: string;
   label: string;
   template: string;
+  status: "draft" | "published";
 };
 
 const VARIABLES = ["{user_name}", "{manager_name}", "{course_name}", "{training_duration}", "{time_remaining}"];
@@ -42,13 +43,13 @@ export function Messaging() {
       .catch(() => setLoading(false));
   }, []);
 
-  async function handleSave(key: string, template: string) {
+  async function handleSave(key: string, template: string, status: "draft" | "published") {
     setSaving(key);
     try {
       await fetch("/api/sms-templates", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ key, template }),
+        body: JSON.stringify({ key, template, status }),
       });
       setSaved(key);
       setTimeout(() => setSaved(null), 2500);
@@ -61,6 +62,10 @@ export function Messaging() {
 
   function updateTemplate(key: string, value: string) {
     setTemplates(prev => prev.map(t => t.key === key ? { ...t, template: value } : t));
+  }
+
+  function updateStatus(key: string, status: "draft" | "published") {
+    setTemplates(prev => prev.map(t => t.key === key ? { ...t, status } : t));
   }
 
   if (loading) {
@@ -150,6 +155,7 @@ export function Messaging() {
           const isSaved = saved === t.key;
           const isOver = t.template.length > 200;
           const charColor = isOver ? "#ef4444" : t.template.length > 160 ? "#f59e0b" : "#9ca3af";
+          const isPublished = (t.status ?? "published") === "published";
 
           return (
             <div
@@ -177,13 +183,36 @@ export function Messaging() {
                       </div>
                     </div>
                   </div>
-                  <span style={{
-                    background: ac.badge, color: ac.text,
-                    fontSize: 11, fontWeight: 700, padding: "3px 10px",
-                    borderRadius: 20, whiteSpace: "nowrap", flexShrink: 0,
-                  }}>
-                    {i + 1} of 4
-                  </span>
+                  <div style={{ display: "flex", alignItems: "center", gap: 10, flexShrink: 0 }}>
+                    {/* Draft / Published toggle */}
+                    <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                      <span style={{ fontSize: 12, fontWeight: 600, color: !isPublished ? "#1f2937" : "#9ca3af" }}>Draft</span>
+                      <div
+                        onClick={() => updateStatus(t.key, isPublished ? "draft" : "published")}
+                        style={{
+                          width: 40, height: 22, borderRadius: 11, cursor: "pointer",
+                          background: isPublished ? "#10b981" : "#d1d5db",
+                          position: "relative", transition: "background 0.2s", flexShrink: 0,
+                        }}
+                      >
+                        <span style={{
+                          position: "absolute", top: 2,
+                          left: isPublished ? 20 : 2,
+                          width: 18, height: 18, borderRadius: "50%",
+                          background: "#fff", transition: "left 0.2s",
+                          boxShadow: "0 1px 3px rgba(0,0,0,0.2)",
+                        }} />
+                      </div>
+                      <span style={{ fontSize: 12, fontWeight: 600, color: isPublished ? "#10b981" : "#9ca3af" }}>Published</span>
+                    </div>
+                    <span style={{
+                      background: ac.badge, color: ac.text,
+                      fontSize: 11, fontWeight: 700, padding: "3px 10px",
+                      borderRadius: 20, whiteSpace: "nowrap",
+                    }}>
+                      {i + 1} of 4
+                    </span>
+                  </div>
                 </div>
               </div>
 
@@ -228,7 +257,7 @@ export function Messaging() {
                 <div className="sms-card-foot" style={{ display: "flex", justifyContent: "flex-end", marginTop: 14 }}>
                   <button
                     className="sms-btn"
-                    onClick={() => handleSave(t.key, t.template)}
+                    onClick={() => handleSave(t.key, t.template, t.status ?? "published")}
                     disabled={isSaving || isOver}
                     style={{
                       padding: "9px 22px",

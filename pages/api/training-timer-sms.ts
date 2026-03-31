@@ -49,6 +49,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     // Get template from DB or fall back to default
     const tmplDoc = await SmsTemplateModel.findOne({ key: type }).lean() as any;
+    const templateStatus = tmplDoc?.status ?? "published";
+    if (templateStatus === "draft") {
+      console.log(`[SMS] Template '${type}' is in draft — skipping send`);
+      return res.status(200).json({ ok: true, sent: 0, note: "Template is in draft mode" });
+    }
     const templateStr = tmplDoc?.template ?? DEFAULT_SMS_TEMPLATES[type].template;
 
     // Build variables

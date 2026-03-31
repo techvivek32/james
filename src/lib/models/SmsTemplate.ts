@@ -5,6 +5,7 @@ const smsTemplateSchema = new Schema(
     key: { type: String, required: true, unique: true }, // 'start' | 'midpoint' | 'final' | 'complete'
     label: { type: String, required: true },
     template: { type: String, required: true, maxlength: 200 },
+    status: { type: String, enum: ["draft", "published"], default: "published" },
   },
   { timestamps: true }
 );
