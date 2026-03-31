@@ -61,6 +61,7 @@ export function CourseLeaderboard() {
   const [overrideSaving, setOverrideSaving] = useState(false);
   const [allCoursesRaw, setAllCoursesRaw] = useState<any[]>([]);
   const [showFormatPicker, setShowFormatPicker] = useState(false);
+  const [show100Club, setShow100Club] = useState(false);
   const tableRef = useRef<HTMLDivElement>(null);
 
   function hideUser(userId: string) {
@@ -484,7 +485,98 @@ export function CourseLeaderboard() {
 
         {/* Table wrapper for screenshot */}
         <div ref={tableRef}>
-        {/* Table */}
+
+        {/* 100 Club Section */}
+        {(() => {
+          const clubMembers = rows.filter(r => r.pct === 100 && !hiddenUsers.has(r.id));
+          if (clubMembers.length === 0) return null;
+          return (
+            <div style={{ borderBottom: "2px solid #d1fae5" }}>
+              <button
+                onClick={() => setShow100Club(p => !p)}
+                style={{
+                  width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between",
+                  padding: "12px 24px", border: "none", cursor: "pointer",
+                  background: "linear-gradient(90deg, #ecfdf5, #f0fdf4)",
+                  borderBottom: show100Club ? "1px solid #d1fae5" : "none",
+                }}
+              >
+                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                  <div style={{
+                    display: "inline-flex", alignItems: "center", gap: 5,
+                    background: "linear-gradient(135deg, #059669, #10b981)",
+                    color: "#fff", borderRadius: "0 6px 6px 0",
+                    padding: "4px 12px 4px 8px", fontSize: 12, fontWeight: 700,
+                    letterSpacing: 0.5, position: "relative", marginLeft: 8,
+                    boxShadow: "0 2px 6px rgba(16,185,129,0.35)",
+                  }}>
+                    <div style={{ position: "absolute", left: -8, top: 0, bottom: 0, width: 0, height: 0, borderTop: "13px solid transparent", borderBottom: "13px solid transparent", borderRight: "8px solid #059669" }} />
+                    <div style={{ position: "absolute", left: -2, top: "50%", transform: "translateY(-50%)", width: 4, height: 4, borderRadius: "50%", background: "#fff", opacity: 0.8 }} />
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                    100 Club
+                  </div>
+                  <span style={{ fontSize: 13, fontWeight: 600, color: "#065f46" }}>{clubMembers.length} member{clubMembers.length !== 1 ? "s" : ""} completed this course</span>
+                </div>
+                <span style={{ fontSize: 13, color: "#059669", fontWeight: 600 }}>{show100Club ? "▲ Hide" : "▼ Show"}</span>
+              </button>
+              {show100Club && (
+                <div style={{ overflowX: "auto" }}>
+                  <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+                    <thead>
+                      <tr style={{ background: "#f0fdf4" }}>
+                        {["#", "User", "Role", "Lessons", "Progress"].map(h => (
+                          <th key={h} style={{ padding: "10px 16px", textAlign: "left", fontWeight: 600, color: "#065f46", borderBottom: "1px solid #d1fae5", whiteSpace: "nowrap" }}>{h}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {clubMembers.map((row, idx) => {
+                        const offset = swipeOffset?.userId === row.id ? swipeOffset.offset : 0;
+                        return (
+                        <tr key={row.id} style={{
+                          background: idx % 2 === 0 ? "#f0fdf4" : "#ecfdf5",
+                          cursor: "grab", userSelect: "none",
+                          transform: `translateX(${offset}px)`,
+                          opacity: offset > 50 ? 1 - (offset - 50) / 100 : 1,
+                          transition: swipeStart?.userId === row.id ? "none" : "transform 0.3s, opacity 0.3s",
+                        }}
+                          onMouseDown={(e) => handleMouseDown(e, row.id)}
+                          onMouseMove={(e) => handleMouseMove(e, row.id)}
+                          onMouseUp={(e) => handleMouseUp(e, row.id)}
+                          onMouseLeave={(e) => { if (swipeStart?.userId === row.id) handleMouseUp(e, row.id); }}
+                          onTouchStart={(e) => handleTouchStart(e, row.id)}
+                          onTouchMove={(e) => handleTouchMove(e, row.id)}
+                          onTouchEnd={(e) => handleTouchEnd(e, row.id)}
+                        >
+                          <td style={{ padding: "10px 16px", borderBottom: "1px solid #d1fae5", color: "#059669", fontWeight: 700 }}>{idx + 1}</td>
+                          <td style={{ padding: "10px 16px", borderBottom: "1px solid #d1fae5" }}>
+                            <div style={{ fontWeight: 600, color: "#111827" }}>{row.name}</div>
+                            <div style={{ fontSize: 11, color: "#9ca3af" }}>{row.email}</div>
+                          </td>
+                          <td style={{ padding: "10px 16px", borderBottom: "1px solid #d1fae5" }}>
+                            <span style={{ padding: "2px 9px", borderRadius: 999, fontSize: 11, fontWeight: 600, background: row.role === "manager" ? "#ede9fe" : "#dbeafe", color: row.role === "manager" ? "#6d28d9" : "#1d4ed8", textTransform: "capitalize" }}>{row.role}</span>
+                          </td>
+                          <td style={{ padding: "10px 16px", borderBottom: "1px solid #d1fae5", color: "#065f46", fontWeight: 600 }}>{row.done} / {row.total}</td>
+                          <td style={{ padding: "10px 16px", borderBottom: "1px solid #d1fae5", minWidth: 140 }}>
+                            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                              <div style={{ flex: 1, height: 8, borderRadius: 999, background: "#d1fae5", overflow: "hidden" }}>
+                                <div style={{ width: "100%", height: "100%", background: "#10b981" }} />
+                              </div>
+                              <span style={{ fontSize: 12, fontWeight: 700, color: "#059669", minWidth: 36 }}>100%</span>
+                            </div>
+                          </td>
+                        </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          );
+        })()}
+
+        {/* Main Leaderboard - below 100% only */}
         {isLoading ? (
           <div style={{ display: "flex", justifyContent: "center", alignItems: "center", height: 200 }}>
             <div style={{ textAlign: "center" }}>
@@ -492,144 +584,73 @@ export function CourseLeaderboard() {
               <div style={{ color: "#6b7280", fontSize: 13 }}>Loading leaderboard...</div>
             </div>
           </div>
-        ) : rows.length === 0 ? (
-          <div style={{ padding: 48, textAlign: "center", color: "#9ca3af" }}>
-            <div style={{ fontSize: 40, marginBottom: 10 }}>🏆</div>
-            No data available for this course.
-          </div>
         ) : (
-          <div style={{ overflowX: "auto" }}>
-            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
-              <thead>
-                <tr style={{ background: "#f9fafb" }}>
-                  {["Rank", "User", "Role", "Lessons Completed", "Progress"].map((h) => (
-                    <th key={h} style={{
-                      padding: "11px 16px", textAlign: "left",
-                      fontWeight: 600, color: "#374151",
-                      borderBottom: "1px solid #e5e7eb",
-                      whiteSpace: "nowrap",
-                    }}>
-                      {h}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {(() => {
-                  const visibleRows = rows.filter(row => !hiddenUsers.has(row.id));
-                  const hundredClub = visibleRows.filter(r => r.pct === 100);
-                  const belowHundred = visibleRows.filter(r => r.pct < 100);
-                  const allSorted = [...hundredClub, ...belowHundred];
-                  let belowRank = 0;
-                  return allSorted.map((row) => {
-                  const is100 = row.pct === 100;
-                  if (!is100) belowRank++;
-                  const rank = belowRank;
-                  const isTop3 = !is100 && rank <= 3;
-                  const offset = swipeOffset?.userId === row.id ? swipeOffset.offset : 0;
-                  return (
-                    <tr
-                      key={row.id}
-                      style={{
-                        background: is100 ? "#f0fdf4" : isTop3 ? (rank === 1 ? "#fffbeb" : rank === 2 ? "#f9fafb" : "#fafafa") : "#fff",
-                        cursor: "grab",
-                        userSelect: "none",
-                        transform: `translateX(${offset}px)`,
-                        opacity: offset > 50 ? 1 - (offset - 50) / 100 : 1,
-                        transition: swipeStart?.userId === row.id ? "none" : "transform 0.3s, opacity 0.3s",
-                      }}
-                      onMouseDown={(e) => handleMouseDown(e, row.id)}
-                      onMouseMove={(e) => handleMouseMove(e, row.id)}
-                      onMouseUp={(e) => handleMouseUp(e, row.id)}
-                      onMouseLeave={(e) => {
-                        if (swipeStart?.userId === row.id) {
-                          handleMouseUp(e, row.id);
-                        }
-                      }}
-                      onTouchStart={(e) => handleTouchStart(e, row.id)}
-                      onTouchMove={(e) => handleTouchMove(e, row.id)}
-                      onTouchEnd={(e) => handleTouchEnd(e, row.id)}
-                    >
-                      <td style={{ padding: "11px 16px", borderBottom: "1px solid #f3f4f6", width: 80 }}>
-                        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                          {is100 ? (
-                            <div style={{
-                              display: "inline-flex", alignItems: "center", gap: 5,
-                              background: "linear-gradient(135deg, #059669, #10b981)",
-                              color: "#fff",
-                              borderRadius: "0 6px 6px 0",
-                              padding: "4px 10px 4px 8px",
-                              fontSize: 11, fontWeight: 700,
-                              letterSpacing: 0.5, whiteSpace: "nowrap",
-                              boxShadow: "0 2px 6px rgba(16,185,129,0.35)",
-                              position: "relative",
-                              marginLeft: 8,
-                            }}>
-                              {/* Tag notch on left */}
-                              <div style={{
-                                position: "absolute", left: -8, top: 0, bottom: 0,
-                                width: 0, height: 0,
-                                borderTop: "12px solid transparent",
-                                borderBottom: "12px solid transparent",
-                                borderRight: "8px solid #059669",
-                              }} />
-                              {/* Hole */}
-                              <div style={{
-                                position: "absolute", left: -2, top: "50%",
-                                transform: "translateY(-50%)",
-                                width: 4, height: 4, borderRadius: "50%",
-                                background: "#fff", opacity: 0.8,
-                              }} />
-                              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-                              100 Club
-                            </div>
-                          ) : MEDAL[rank] ? (
-                            <span style={{ fontSize: 18 }}>{MEDAL[rank]}</span>
-                          ) : (
-                            <span style={{
-                              display: "inline-flex", alignItems: "center", justifyContent: "center",
-                              width: 24, height: 24, borderRadius: "50%",
-                              background: "#f3f4f6", color: "#6b7280",
-                              fontSize: 12, fontWeight: 700,
-                            }}>{rank}</span>
-                          )}
-                        </div>
-                      </td>
-                      <td style={{ padding: "11px 16px", borderBottom: "1px solid #f3f4f6" }}>
-                        <div style={{ fontWeight: 600, color: "#111827" }}>{row.name}</div>
-                        <div style={{ fontSize: 11, color: "#9ca3af" }}>{row.email}</div>
-                      </td>
-                      <td style={{ padding: "11px 16px", borderBottom: "1px solid #f3f4f6" }}>
-                        <span style={{
-                          padding: "2px 9px", borderRadius: 999, fontSize: 11, fontWeight: 600,
-                          background: row.role === "manager" ? "#ede9fe" : "#dbeafe",
-                          color: row.role === "manager" ? "#6d28d9" : "#1d4ed8",
-                          textTransform: "capitalize",
-                        }}>
-                          {row.role}
-                        </span>
-                      </td>
-                      <td style={{ padding: "11px 16px", borderBottom: "1px solid #f3f4f6", whiteSpace: "nowrap", color: "#374151" }}>
-                        {row.done} / {row.total}
-                      </td>
-                      <td style={{ padding: "11px 16px", borderBottom: "1px solid #f3f4f6", minWidth: 160 }}>
-                        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                          <div style={{ flex: 1, height: 8, borderRadius: 999, background: "#e5e7eb", overflow: "hidden" }}>
-                            <div style={{
-                              width: `${row.pct}%`, height: "100%",
-                              background: row.pct === 100 ? "#10b981" : row.pct > 0 ? "#f59e0b" : "#e5e7eb",
-                              transition: "width 0.3s",
-                            }} />
-                          </div>
-                          <span style={{ fontSize: 12, fontWeight: 700, color: "#374151", minWidth: 36 }}>{row.pct}%</span>
-                        </div>
-                      </td>
+          (() => {
+            const mainRows = rows.filter(r => r.pct < 100 && !hiddenUsers.has(r.id));
+            if (mainRows.length === 0) return (
+              <div style={{ padding: 32, textAlign: "center", color: "#9ca3af", fontSize: 13 }}>
+                All users have completed this course!
+              </div>
+            );
+            return (
+              <div style={{ overflowX: "auto" }}>
+                <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+                  <thead>
+                    <tr style={{ background: "#f9fafb" }}>
+                      {["Rank", "User", "Role", "Lessons Completed", "Progress"].map((h) => (
+                        <th key={h} style={{ padding: "11px 16px", textAlign: "left", fontWeight: 600, color: "#374151", borderBottom: "1px solid #e5e7eb", whiteSpace: "nowrap" }}>{h}</th>
+                      ))}
                     </tr>
-                  );
-                })})()}
-              </tbody>
-            </table>
-          </div>
+                  </thead>
+                  <tbody>
+                    {mainRows.map((row, idx) => {
+                      const rank = idx + 1;
+                      const offset = swipeOffset?.userId === row.id ? swipeOffset.offset : 0;
+                      return (
+                        <tr key={row.id} style={{
+                          background: rank === 1 ? "#fffbeb" : rank === 2 ? "#f9fafb" : rank === 3 ? "#fafafa" : "#fff",
+                          cursor: "grab", userSelect: "none",
+                          transform: `translateX(${offset}px)`,
+                          opacity: offset > 50 ? 1 - (offset - 50) / 100 : 1,
+                          transition: swipeStart?.userId === row.id ? "none" : "transform 0.3s, opacity 0.3s",
+                        }}
+                          onMouseDown={(e) => handleMouseDown(e, row.id)}
+                          onMouseMove={(e) => handleMouseMove(e, row.id)}
+                          onMouseUp={(e) => handleMouseUp(e, row.id)}
+                          onMouseLeave={(e) => { if (swipeStart?.userId === row.id) handleMouseUp(e, row.id); }}
+                          onTouchStart={(e) => handleTouchStart(e, row.id)}
+                          onTouchMove={(e) => handleTouchMove(e, row.id)}
+                          onTouchEnd={(e) => handleTouchEnd(e, row.id)}
+                        >
+                          <td style={{ padding: "11px 16px", borderBottom: "1px solid #f3f4f6", width: 60 }}>
+                            {MEDAL[rank] ? <span style={{ fontSize: 18 }}>{MEDAL[rank]}</span> : (
+                              <span style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: 24, height: 24, borderRadius: "50%", background: "#f3f4f6", color: "#6b7280", fontSize: 12, fontWeight: 700 }}>{rank}</span>
+                            )}
+                          </td>
+                          <td style={{ padding: "11px 16px", borderBottom: "1px solid #f3f4f6" }}>
+                            <div style={{ fontWeight: 600, color: "#111827" }}>{row.name}</div>
+                            <div style={{ fontSize: 11, color: "#9ca3af" }}>{row.email}</div>
+                          </td>
+                          <td style={{ padding: "11px 16px", borderBottom: "1px solid #f3f4f6" }}>
+                            <span style={{ padding: "2px 9px", borderRadius: 999, fontSize: 11, fontWeight: 600, background: row.role === "manager" ? "#ede9fe" : "#dbeafe", color: row.role === "manager" ? "#6d28d9" : "#1d4ed8", textTransform: "capitalize" }}>{row.role}</span>
+                          </td>
+                          <td style={{ padding: "11px 16px", borderBottom: "1px solid #f3f4f6", whiteSpace: "nowrap", color: "#374151" }}>{row.done} / {row.total}</td>
+                          <td style={{ padding: "11px 16px", borderBottom: "1px solid #f3f4f6", minWidth: 160 }}>
+                            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                              <div style={{ flex: 1, height: 8, borderRadius: 999, background: "#e5e7eb", overflow: "hidden" }}>
+                                <div style={{ width: `${row.pct}%`, height: "100%", background: row.pct > 0 ? "#f59e0b" : "#e5e7eb", transition: "width 0.3s" }} />
+                              </div>
+                              <span style={{ fontSize: 12, fontWeight: 700, color: "#374151", minWidth: 36 }}>{row.pct}%</span>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            );
+          })()
         )}
         </div>
 
@@ -711,16 +732,39 @@ export function CourseLeaderboard() {
                     </tr>
                   </thead>
                   <tbody>
-                    {rows.filter(row => hiddenUsers.has(row.id)).map((row, idx) => {
-                      const originalRank = rows.findIndex(r => r.id === row.id) + 1;
+                    {(() => {
+                      const hiddenRows = rows.filter(row => hiddenUsers.has(row.id)).sort((a, b) => b.pct - a.pct || a.name.localeCompare(b.name));
+                      const hidden100 = hiddenRows.filter(r => r.pct === 100);
+                      const hiddenBelow = hiddenRows.filter(r => r.pct < 100);
+                      const hiddenSorted = [...hidden100, ...hiddenBelow];
+                      let hiddenBelowRank = 0;
+                      return hiddenSorted.map((row, idx) => {
+                      const is100 = row.pct === 100;
+                      if (!is100) hiddenBelowRank++;
+                      const originalRank = is100 ? null : hiddenBelowRank;
                       return (
                         <tr key={row.id} style={{
-                          background: idx % 2 === 0 ? "#fff" : "#fafafa",
+                          background: is100 ? "#f0fdf4" : idx % 2 === 0 ? "#fff" : "#fafafa",
                         }}>
-                          <td style={{ padding: "11px 16px", borderBottom: "1px solid #f3f4f6", width: 60 }}>
+                          <td style={{ padding: "11px 16px", borderBottom: "1px solid #f3f4f6", width: 80 }}>
                             <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                              {MEDAL[originalRank] ? (
-                                <span style={{ fontSize: 18 }}>{MEDAL[originalRank]}</span>
+                              {is100 ? (
+                                <div style={{
+                                  display: "inline-flex", alignItems: "center", gap: 5,
+                                  background: "linear-gradient(135deg, #059669, #10b981)",
+                                  color: "#fff", borderRadius: "0 6px 6px 0",
+                                  padding: "4px 10px 4px 8px", fontSize: 11, fontWeight: 700,
+                                  letterSpacing: 0.5, whiteSpace: "nowrap",
+                                  boxShadow: "0 2px 6px rgba(16,185,129,0.35)",
+                                  position: "relative", marginLeft: 8,
+                                }}>
+                                  <div style={{ position: "absolute", left: -8, top: 0, bottom: 0, width: 0, height: 0, borderTop: "12px solid transparent", borderBottom: "12px solid transparent", borderRight: "8px solid #059669" }} />
+                                  <div style={{ position: "absolute", left: -2, top: "50%", transform: "translateY(-50%)", width: 4, height: 4, borderRadius: "50%", background: "#fff", opacity: 0.8 }} />
+                                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                                  100 Club
+                                </div>
+                              ) : MEDAL[originalRank!] ? (
+                                <span style={{ fontSize: 18 }}>{MEDAL[originalRank!]}</span>
                               ) : (
                                 <span style={{
                                   display: "inline-flex", alignItems: "center", justifyContent: "center",
@@ -775,7 +819,7 @@ export function CourseLeaderboard() {
                           </td>
                         </tr>
                       );
-                    })}
+                    });})()}
                   </tbody>
                 </table>
               </div>
