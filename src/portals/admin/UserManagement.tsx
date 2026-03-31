@@ -156,11 +156,23 @@ export function UserManagement(props: UserEditorProps) {
       case "nameDesc":
         return filtered.sort((a, b) => b.name.localeCompare(a.name));
       case "newest":
-        return filtered.sort((a, b) => b.id.localeCompare(a.id));
+        return filtered.sort((a, b) => {
+          const aTime = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+          const bTime = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+          return bTime - aTime;
+        });
       case "oldest":
-        return filtered.sort((a, b) => a.id.localeCompare(b.id));
+        return filtered.sort((a, b) => {
+          const aTime = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+          const bTime = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+          return aTime - bTime;
+        });
       case "lastModified":
-        return filtered;
+        return filtered.sort((a, b) => {
+          const aTime = (a as any).updatedAt ? new Date((a as any).updatedAt).getTime() : 0;
+          const bTime = (b as any).updatedAt ? new Date((b as any).updatedAt).getTime() : 0;
+          return bTime - aTime;
+        });
       default:
         return filtered;
     }
@@ -528,6 +540,22 @@ export function UserManagement(props: UserEditorProps) {
       <div className="panel-header" style={{ marginBottom: 16 }}>
         <div className="panel-header-row">
           <span>User Management</span>
+          <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
+            {(['admin', 'manager', 'sales', 'marketing'] as UserRole[]).map(role => {
+              const count = draftUsers.filter(u => (u.roles || [u.role]).includes(role)).length;
+              const colors: Record<UserRole, { bg: string; color: string }> = {
+                admin: { bg: '#fef3c7', color: '#92400e' },
+                manager: { bg: '#dbeafe', color: '#1e40af' },
+                sales: { bg: '#dcfce7', color: '#166534' },
+                marketing: { bg: '#fce7f3', color: '#9d174d' }
+              };
+              return (
+                <span key={role} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '3px 10px', borderRadius: 999, fontSize: 12, fontWeight: 600, backgroundColor: colors[role].bg, color: colors[role].color }}>
+                  {role.charAt(0).toUpperCase() + role.slice(1)}: {count}
+                </span>
+              );
+            })}
+          </div>
           <div style={{ display: "flex", gap: 8 }}>
             <button 
               type="button" 
