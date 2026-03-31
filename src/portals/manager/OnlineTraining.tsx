@@ -53,6 +53,7 @@ export function ManagerOnlineTrainingPage(props: {
   const [startWidth, setStartWidth] = useState(280);
   const [isFirstPageVisit, setIsFirstPageVisit] = useState(true);
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
+  const [showCourseMenu, setShowCourseMenu] = useState(false);
 
   // Refs for video sequencing (must live at top level, not inside CourseView)
   const videoCleanupRef = useRef<(() => void) | undefined>(undefined);
@@ -1139,56 +1140,38 @@ export function ManagerOnlineTrainingPage(props: {
         <div className="panel-header">
           <div className="panel-header-row">
             <span>{selectedCourse.title}</span>
-            <div style={{ display: 'flex', gap: 8 }}>
+            {/* Desktop: show all buttons inline */}
+            <div className="course-header-desktop-actions">
               {!viewingPlaylist && (
-                <button type="button" className="btn-primary btn-small" onClick={() => setIsCreatePlaylistOpen(true)}>
-                  Make Playlist
-                </button>
+                <button type="button" className="btn-primary btn-small" onClick={() => setIsCreatePlaylistOpen(true)}>Make Playlist</button>
               )}
-              <button 
-                type="button" 
-                className="btn-secondary btn-small" 
-                onClick={() => { 
-                  setSelectedCourse(null); 
-                  setActivePageId(null);
-                  setViewingPlaylist(null);
-                  setCourseViewInitialized(null);
-                  setActiveTab('playlists');
-                }}
-              >
-                View Playlists
-              </button>
-              <button type="button" className="btn-secondary btn-small" onClick={() => { 
-                setSelectedCourse(null); 
-                setActivePageId(null);
-                setViewingPlaylist(null);
-                setCourseViewInitialized(null);
-              }}>
-                Back to Courses
-              </button>
-              {/* Autoplay Toggle */}
+              <button type="button" className="btn-secondary btn-small" onClick={() => { setSelectedCourse(null); setActivePageId(null); setViewingPlaylist(null); setCourseViewInitialized(null); setActiveTab('playlists'); }}>View Playlists</button>
+              <button type="button" className="btn-secondary btn-small" onClick={() => { setSelectedCourse(null); setActivePageId(null); setViewingPlaylist(null); setCourseViewInitialized(null); }}>Back to Courses</button>
               <label style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', userSelect: 'none' }}>
-                <div
-                  onClick={() => {
-                    const next = !autoPlay;
-                    setAutoPlay(next);
-                    localStorage.setItem('manager-autoplay', String(next));
-                  }}
-                  style={{
-                    width: 40, height: 22, borderRadius: 11,
-                    backgroundColor: autoPlay ? '#2563eb' : '#d1d5db',
-                    position: 'relative', transition: 'background 0.2s', cursor: 'pointer', flexShrink: 0
-                  }}
-                >
-                  <div style={{
-                    position: 'absolute', top: 3, left: autoPlay ? 21 : 3,
-                    width: 16, height: 16, borderRadius: '50%',
-                    backgroundColor: '#fff', transition: 'left 0.2s',
-                    boxShadow: '0 1px 3px rgba(0,0,0,0.2)'
-                  }} />
+                <div onClick={() => { const next = !autoPlay; setAutoPlay(next); localStorage.setItem('manager-autoplay', String(next)); }} style={{ width: 40, height: 22, borderRadius: 11, backgroundColor: autoPlay ? '#2563eb' : '#d1d5db', position: 'relative', transition: 'background 0.2s', cursor: 'pointer', flexShrink: 0 }}>
+                  <div style={{ position: 'absolute', top: 3, left: autoPlay ? 21 : 3, width: 16, height: 16, borderRadius: '50%', backgroundColor: '#fff', transition: 'left 0.2s', boxShadow: '0 1px 3px rgba(0,0,0,0.2)' }} />
                 </div>
                 <span style={{ fontSize: 13, color: '#374151', whiteSpace: 'nowrap' }}>Autoplay</span>
               </label>
+            </div>
+            {/* Mobile/Tablet: ⋯ menu inline with title */}
+            <div className="course-header-mobile-actions" style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+              <button type="button" onClick={() => setShowCourseMenu(p => !p)} style={{ background: 'none', border: 'none', padding: '2px 6px', fontSize: 22, cursor: 'pointer', lineHeight: 1, color: '#374151', letterSpacing: 1 }}>⋯</button>
+              {showCourseMenu && (
+                <div style={{ position: 'absolute', top: '110%', right: 0, background: '#fff', border: '1px solid #e5e7eb', borderRadius: 10, boxShadow: '0 8px 24px rgba(0,0,0,0.12)', zIndex: 200, minWidth: 170, padding: 8, display: 'flex', flexDirection: 'column', gap: 4 }}>
+                  {!viewingPlaylist && (
+                    <button type="button" className="btn-primary btn-small" style={{ width: '100%', textAlign: 'left' }} onClick={() => { setIsCreatePlaylistOpen(true); setShowCourseMenu(false); }}>Make Playlist</button>
+                  )}
+                  <button type="button" className="btn-secondary btn-small" style={{ width: '100%', textAlign: 'left' }} onClick={() => { setSelectedCourse(null); setActivePageId(null); setViewingPlaylist(null); setCourseViewInitialized(null); setActiveTab('playlists'); setShowCourseMenu(false); }}>View Playlists</button>
+                  <button type="button" className="btn-secondary btn-small" style={{ width: '100%', textAlign: 'left' }} onClick={() => { setSelectedCourse(null); setActivePageId(null); setViewingPlaylist(null); setCourseViewInitialized(null); setShowCourseMenu(false); }}>Back to Courses</button>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', padding: '4px 4px' }}>
+                    <div onClick={() => { const next = !autoPlay; setAutoPlay(next); localStorage.setItem('manager-autoplay', String(next)); }} style={{ width: 36, height: 20, borderRadius: 10, backgroundColor: autoPlay ? '#2563eb' : '#d1d5db', position: 'relative', transition: 'background 0.2s', cursor: 'pointer', flexShrink: 0 }}>
+                      <div style={{ position: 'absolute', top: 2, left: autoPlay ? 18 : 2, width: 16, height: 16, borderRadius: '50%', backgroundColor: '#fff', transition: 'left 0.2s', boxShadow: '0 1px 3px rgba(0,0,0,0.2)' }} />
+                    </div>
+                    <span style={{ fontSize: 13, color: '#374151' }}>Autoplay</span>
+                  </label>
+                </div>
+              )}
             </div>
           </div>
         </div>

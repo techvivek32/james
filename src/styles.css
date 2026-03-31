@@ -949,22 +949,26 @@ body {
 
   /* Training Center Header */
   .training-center-header {
-    flex-direction: column;
-    gap: 12px;
-    align-items: stretch !important;
-  }
-
-  .training-center-header .panel-header {
-    font-size: 20px !important;
-  }
-
-  .training-center-header > div:last-child {
-    flex-direction: column;
+    flex-direction: row !important;
+    align-items: center !important;
     gap: 8px;
   }
 
+  .training-center-header .panel-header {
+    font-size: 18px !important;
+    flex: 1;
+    min-width: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .training-center-header > div:last-child {
+    flex-shrink: 0;
+  }
+
   .training-center-header button {
-    width: 100%;
+    width: auto;
   }
 }
 
@@ -4356,5 +4360,23 @@ body {
   /* Ensure proper header styling on desktop */
   .app-header {
     padding-left: 24px;
+  }
+}
+
+/* Course header actions - desktop/mobile toggle */
+.course-header-desktop-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.course-header-mobile-actions {
+  display: none;
+}
+@media (max-width: 1024px) {
+  .course-header-desktop-actions {
+    display: none;
+  }
+  .course-header-mobile-actions {
+    display: block;
   }
 }
