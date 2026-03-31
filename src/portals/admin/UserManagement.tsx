@@ -26,7 +26,7 @@ export function UserManagement(props: UserEditorProps) {
   const [isDirty, setIsDirty] = useState(false);
   const [saveNotice, setSaveNotice] = useState("");
   const saveNoticeTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const [selectedUserId, setSelectedUserId] = useState(props.users[0]?.id ?? "");
+  const [selectedUserId, setSelectedUserId] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [showWebPreview, setShowWebPreview] = useState(false);
   const [showRolesDropdown, setShowRolesDropdown] = useState(false);
@@ -205,10 +205,21 @@ export function UserManagement(props: UserEditorProps) {
       setDraftUsers(props.users);
       setDraftDeletedUsers(props.deletedUsers);
       if (!props.users.find((u) => u.id === selectedUserId)) {
-        setSelectedUserId(props.users[0]?.id ?? "");
+        const activeUsers = props.users.filter(u => !u.suspended);
+        const firstSorted = sortUsers(activeUsers)[0];
+        setSelectedUserId(firstSorted?.id ?? props.users[0]?.id ?? "");
       }
     }
   }, [props.users, props.deletedUsers, isDirty, selectedUserId]);
+
+  // On first load, select the first user from the sorted active list
+  useEffect(() => {
+    if (!selectedUserId && draftUsers.length) {
+      const firstSorted = sortUsers(draftUsers.filter(u => !u.suspended))[0];
+      setSelectedUserId(firstSorted?.id ?? draftUsers[0].id);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [draftUsers]);
 
   useEffect(() => {
     if (!draftUsers.length) {
@@ -216,7 +227,8 @@ export function UserManagement(props: UserEditorProps) {
       return;
     }
     if (!draftUsers.find((u) => u.id === selectedUserId)) {
-      setSelectedUserId(draftUsers[0].id);
+      const firstSorted = sortUsers(draftUsers.filter(u => !u.suspended))[0];
+      setSelectedUserId(firstSorted?.id ?? draftUsers[0].id);
     }
   }, [draftUsers, selectedUserId]);
 
