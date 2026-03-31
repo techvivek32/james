@@ -54,6 +54,7 @@ export function ManagerOnlineTrainingPage(props: {
   const [isFirstPageVisit, setIsFirstPageVisit] = useState(true);
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const [showCourseMenu, setShowCourseMenu] = useState(false);
+  const [mobileCourseScreen, setMobileCourseScreen] = useState<'overview' | 'lesson'>('overview');
 
   // Refs for video sequencing (must live at top level, not inside CourseView)
   const videoCleanupRef = useRef<(() => void) | undefined>(undefined);
@@ -107,6 +108,12 @@ export function ManagerOnlineTrainingPage(props: {
         .catch(err => console.error('Failed to load sales users:', err));
     }
   }, [props.currentUser?.id]);
+
+  useEffect(() => {
+    if (selectedCourse) {
+      setMobileCourseScreen('overview');
+    }
+  }, [selectedCourse?.id]);
 
   // Load already assigned users when modal opens
   useEffect(() => {
@@ -1114,6 +1121,70 @@ export function ManagerOnlineTrainingPage(props: {
       }).catch(err => console.error("Failed to complete course:", err));
     };
 
+    const progress = courseProgress[selectedCourse.id] || { completed: 0, total: 0, isCompleted: false };
+    const pct = progress.total > 0 ? Math.round((progress.completed / progress.total) * 100) : 0;
+    const totalLessons = (selectedCourse.pages ?? []).filter(p => p.status === 'published').length;
+    const totalSections = (selectedCourse.folders ?? []).length;
+
+    const MobileOverview = () => (
+      <div className="mobile-course-overview">
+        <div style={{ padding: '20px 16px 0' }}>
+          <div style={{ fontSize: 13, fontWeight: 600, color: '#374151', marginBottom: 8 }}>Course Progress</div>
+          <div style={{ fontSize: 12, color: '#6b7280', marginBottom: 6 }}>Completed {progress.completed} of {progress.total} lessons</div>
+          <div style={{ height: 8, borderRadius: 999, background: '#e5e7eb', overflow: 'hidden', marginBottom: 4 }}>
+            <div style={{ height: '100%', borderRadius: 999, background: progress.isCompleted ? '#10b981' : '#3b82f6', width: `${pct}%`, transition: 'width 0.3s' }} />
+          </div>
+          <div style={{ fontSize: 12, color: '#6b7280', textAlign: 'right' }}>{pct}%</div>
+        </div>
+        <div style={{ padding: '16px 16px 0' }}>
+          <button type="button"
+            onClick={() => { const firstPage = pages[0]; if (firstPage) { setActivePageId(firstPage.id); setMobileCourseScreen('lesson'); } }}
+            style={{ width: '100%', padding: '14px', borderRadius: 999, border: 'none', background: '#111827', color: '#fff', fontSize: 16, fontWeight: 700, cursor: 'pointer' }}
+          >Continue course</button>
+        </div>
+        <div style={{ padding: '24px 16px 8px' }}>
+          <div style={{ fontSize: 16, fontWeight: 700, color: '#111827', marginBottom: 2 }}>Course Content</div>
+          <div style={{ fontSize: 13, color: '#6b7280', marginBottom: 12 }}>{totalSections > 0 ? `${totalSections} Sections • ` : ''}{totalLessons} Lessons</div>
+        </div>
+        <div style={{ borderTop: '1px solid #e5e7eb' }}>
+          {pages.filter(p => !p.folderId).map(page => (
+            <div key={page.id} onClick={() => { setActivePageId(page.id); setMobileCourseScreen('lesson'); }}
+              style={{ display: 'flex', alignItems: 'center', padding: '14px 16px', borderBottom: '1px solid #f1f5f9', cursor: 'pointer', background: activePageId === page.id ? '#fef3c7' : '#fff' }}
+            >
+              <div style={{ width: 18, height: 18, borderRadius: '50%', border: `2px solid ${completedPages.has(page.id) ? '#10b981' : '#d1d5db'}`, background: completedPages.has(page.id) ? '#10b981' : 'transparent', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', marginRight: 10 }}>
+                {completedPages.has(page.id) && <span style={{ color: '#fff', fontSize: 10 }}>✓</span>}
+              </div>
+              <span style={{ fontSize: 14, color: '#111827' }}>{page.title}</span>
+            </div>
+          ))}
+          {folders.map(folder => {
+            const folderPages = pages.filter(p => p.folderId === folder.id);
+            const isCollapsed = collapsedFolders.has(folder.id);
+            return (
+              <div key={folder.id}>
+                <div onClick={() => { const next = new Set(collapsedFolders); if (isCollapsed) next.delete(folder.id); else next.add(folder.id); setCollapsedFolders(next); }}
+                  style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '12px 16px', background: '#f3f4f6', borderBottom: '1px solid #e5e7eb', cursor: 'pointer' }}
+                >
+                  <span style={{ fontSize: 13, color: '#6b7280' }}>{isCollapsed ? '∧' : '∨'}</span>
+                  <span style={{ fontSize: 14, fontWeight: 600, color: '#374151' }}>{folder.title}</span>
+                </div>
+                {!isCollapsed && folderPages.map(page => (
+                  <div key={page.id} onClick={() => { setActivePageId(page.id); setMobileCourseScreen('lesson'); }}
+                    style={{ display: 'flex', alignItems: 'center', padding: '14px 16px 14px 32px', borderBottom: '1px solid #f1f5f9', cursor: 'pointer', background: activePageId === page.id ? '#fef3c7' : '#fff' }}
+                  >
+                    <div style={{ width: 18, height: 18, borderRadius: '50%', border: `2px solid ${completedPages.has(page.id) ? '#10b981' : '#d1d5db'}`, background: completedPages.has(page.id) ? '#10b981' : 'transparent', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', marginRight: 10 }}>
+                      {completedPages.has(page.id) && <span style={{ color: '#fff', fontSize: 10 }}>✓</span>}
+                    </div>
+                    <span style={{ fontSize: 14, color: '#111827' }}>{page.title}</span>
+                  </div>
+                ))}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    );
+
     return (
       <>
         <style>{`
@@ -1121,6 +1192,15 @@ export function ManagerOnlineTrainingPage(props: {
           .training-center [data-video-delete],
           .training-center [data-image-delete] {
             display: none !important;
+          }
+          @media (max-width: 767px) {
+            .mobile-course-overview { display: block; }
+            .desktop-course-view { display: none !important; }
+          }
+          @media (min-width: 768px) {
+            .mobile-course-overview { display: none !important; }
+            .mobile-lesson-fullpage { display: none !important; }
+            .desktop-course-view { display: contents; }
           }
         `}</style>
         <PlaybookTimer
@@ -1137,6 +1217,83 @@ export function ManagerOnlineTrainingPage(props: {
             return { pct, done, total };
           }}
         />
+
+        {/* MOBILE: Overview screen */}
+        {mobileCourseScreen === 'overview' && <MobileOverview />}
+
+        {/* MOBILE: Lesson screen */}
+        {mobileCourseScreen === 'lesson' && activePage && (
+          <div className="mobile-lesson-fullpage">
+            <button type="button" onClick={() => setMobileCourseScreen('overview')}
+              style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'none', border: 'none', cursor: 'pointer', padding: '12px 16px', fontSize: 14, color: '#374151', fontWeight: 500 }}
+            >← Course Content</button>
+            <div className="course-page-main">
+              <div className="course-page-main-header">
+                <h2 className="course-page-title-input" style={{ border: 'none', background: 'none', padding: 0 }}>{activePage.title}</h2>
+              </div>
+              {activePage.isQuiz && activePage.quizQuestions && activePage.quizQuestions.length > 0 ? (
+                <div className="course-page-editor-body">
+                  {quizSubmitted && quizScore && (
+                    <div style={{ padding: '16px', marginBottom: '16px', backgroundColor: quizScore.correct === quizScore.total ? '#d1fae5' : '#fef3c7', borderRadius: '8px', textAlign: 'center' }}>
+                      <div style={{ fontSize: '24px', fontWeight: 'bold', marginBottom: '8px' }}>Score: {quizScore.correct}/{quizScore.total}</div>
+                      <div style={{ fontSize: '14px', color: '#666' }}>{quizScore.correct === quizScore.total ? 'Perfect! 🎉' : `You got ${Math.round((quizScore.correct / quizScore.total) * 100)}%`}</div>
+                    </div>
+                  )}
+                  <div style={{ padding: '12px' }}>
+                    {activePage.quizQuestions.map((q, qIdx) => (
+                      <div key={q.id} style={{ marginBottom: 32 }}>
+                        <div style={{ fontSize: '16px', fontWeight: 600, marginBottom: 16 }}>Question {qIdx + 1}: {q.prompt}</div>
+                        {q.options.map((option, optIdx) => {
+                          const isSelected = selectedAnswers[q.id] === optIdx;
+                          const isCorrect = q.correctIndex === optIdx;
+                          return (
+                            <div key={optIdx} onClick={() => !quizSubmitted && setSelectedAnswers({ ...selectedAnswers, [q.id]: optIdx })}
+                              style={{ padding: '12px 16px', marginBottom: 12, border: '2px solid', borderColor: quizSubmitted ? (isCorrect ? '#10b981' : isSelected ? '#ef4444' : '#e5e7eb') : (isSelected ? '#3b82f6' : '#e5e7eb'), borderRadius: 8, cursor: quizSubmitted ? 'default' : 'pointer', backgroundColor: quizSubmitted ? (isCorrect ? '#d1fae5' : isSelected ? '#fee2e2' : '#fff') : (isSelected ? '#eff6ff' : '#fff') }}
+                            >
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                                <div style={{ width: 20, height: 20, borderRadius: '50%', border: '2px solid', borderColor: quizSubmitted ? (isCorrect ? '#10b981' : isSelected ? '#ef4444' : '#d1d5db') : (isSelected ? '#3b82f6' : '#d1d5db'), backgroundColor: isSelected ? (quizSubmitted ? (isCorrect ? '#10b981' : '#ef4444') : '#3b82f6') : '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                  {isSelected && <div style={{ width: 8, height: 8, borderRadius: '50%', backgroundColor: '#fff' }} />}
+                                </div>
+                                <span style={{ fontSize: 14 }}>{option}</span>
+                                {quizSubmitted && isCorrect && <span style={{ marginLeft: 'auto', color: '#10b981' }}>✓</span>}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                <div className="course-page-editor-body">
+                  <div className="course-page-body-input"
+                    dangerouslySetInnerHTML={{ __html: (activePage.body || '').replace(/(<iframe[^>]*vimeo[^>]*)loading="lazy"/gi, '$1') }}
+                    style={{ padding: '12px', border: '1px solid #ddd', borderRadius: '4px', whiteSpace: 'pre-wrap', minHeight: 'auto', maxHeight: 'none', overflow: 'visible' }}
+                  />
+                </div>
+              )}
+            </div>
+            <div className="mobile-lesson-actions" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div>
+                {courseCompleted && <div style={{ fontSize: 14, color: '#10b981', fontWeight: 600 }}>✓ Course Completed!</div>}
+              </div>
+              <div style={{ display: 'flex', gap: 8 }}>
+                {activePage.isQuiz && !quizSubmitted && (
+                  <button type="button" className="btn-primary" onClick={handleSubmitQuiz} disabled={Object.keys(selectedAnswers).length !== (activePage.quizQuestions?.length || 0)}>Submit Quiz</button>
+                )}
+                {pages.findIndex(p => p.id === activePage.id) === pages.length - 1 && (!activePage.isQuiz || quizSubmitted) && !courseCompleted && (
+                  <button type="button" className="btn-primary" onClick={handleCompleteCourse} style={{ backgroundColor: '#10b981' }}>✓ Complete Course</button>
+                )}
+                {(!activePage.isQuiz || quizSubmitted) && pages.findIndex(p => p.id === activePage.id) < pages.length - 1 && (
+                  <button type="button" className="btn-primary" onClick={() => { handleNextPage(); }}>Next Page →</button>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* DESKTOP: full layout */}
+        <div className="desktop-course-view">
         <div className="panel-header">
           <div className="panel-header-row">
             <span>{selectedCourse.title}</span>
@@ -1476,13 +1633,15 @@ export function ManagerOnlineTrainingPage(props: {
                   </div>
                 )}
                 <div style={{ padding: "16px", borderTop: "1px solid #e5e7eb", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                  {courseCompleted && (
-                    <div style={{ display: "flex", alignItems: "center", gap: "8px", color: "#10b981", fontWeight: 600 }}>
-                      <span>✓</span>
-                      <span>Course Completed!</span>
-                    </div>
-                  )}
-                  <div style={{ display: "flex", gap: "12px", marginLeft: "auto" }}>
+                  <div>
+                    {courseCompleted && (
+                      <div style={{ display: "flex", alignItems: "center", gap: "8px", color: "#10b981", fontWeight: 600 }}>
+                        <span>✓</span>
+                        <span>Course Completed!</span>
+                      </div>
+                    )}
+                  </div>
+                  <div style={{ display: "flex", gap: "12px" }}>
                     {activePage.isQuiz && !quizSubmitted && (
                       <button 
                         type="button" 
@@ -1511,6 +1670,7 @@ export function ManagerOnlineTrainingPage(props: {
           {/* Temporarily hidden - Coming Soon */}
           {/* {activePage && !activePage.isQuiz && <LessonAIChat lessonTitle={activePage.title || selectedCourse.title} lessonContent={activePage.body} videoUrl={activePage.videoUrl} courseTitle={selectedCourse.title} allPages={pages} />} */}
         </div>
+        </div>{/* end desktop-course-view */}
       </>
     );
   }
@@ -1518,7 +1678,7 @@ export function ManagerOnlineTrainingPage(props: {
   return (
     <>
       {renderModals()}
-      <div className="training-center">
+      <div className={`training-center${selectedCourse ? (mobileCourseScreen === 'lesson' ? ' mobile-lesson-active' : ' mobile-overview-active') : ''}`}>
         {/* Always show tabs */}
         <div style={{ display: 'flex', gap: 8, marginBottom: 24, borderBottom: '2px solid #e5e7eb' }}>
           <button

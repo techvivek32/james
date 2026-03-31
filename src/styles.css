@@ -4380,3 +4380,153 @@ body {
     display: block;
   }
 }
+
+/* ============================================
+   MOBILE COURSE LAYOUT - matching app screenshots
+   Layout only, no dark theme
+   ============================================ */
+@media (max-width: 767px) {
+
+  /* Course layout: stack vertically, full width */
+  .training-center .course-pages-layout {
+    flex-direction: column !important;
+    height: auto !important;
+    overflow: visible !important;
+  }
+
+  /* Hide the left sidebar panel - show inline below */
+  .training-center .course-pages-left {
+    position: static !important;
+    transform: none !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    box-shadow: none !important;
+    border-radius: 0 !important;
+    overflow: visible !important;
+    display: flex !important;
+    flex-direction: column !important;
+    order: 2;
+  }
+
+  /* Show course content list inline (not as overlay) */
+  .training-center .course-pages-left.mobile-open,
+  .training-center .course-pages-left {
+    transform: none !important;
+  }
+
+  /* Hide the floating ☰ toggle button - not needed */
+  .training-center .course-modules-mobile-toggle {
+    display: none !important;
+  }
+
+  /* Hide resizer */
+  .training-center .course-pages-resizer {
+    display: none !important;
+  }
+
+  /* Lesson content area above the list */
+  .training-center .course-page-main {
+    order: 1;
+    width: 100% !important;
+    max-height: none !important;
+    border-radius: 8px !important;
+    padding: 16px !important;
+    padding-bottom: 80px !important;
+    overflow-y: visible !important;
+  }
+
+  /* Lesson title bigger */
+  .training-center .course-page-title-input {
+    font-size: 22px !important;
+    font-weight: 700 !important;
+    border: none !important;
+    background: none !important;
+    padding: 0 0 8px 0 !important;
+  }
+
+  /* Video full width on mobile */
+  .training-center .course-page-body-input div[data-video-type],
+  .training-center .course-page-body-input div[style*="aspect-ratio"] {
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 0 8px 0 !important;
+    border-radius: 8px !important;
+    overflow: hidden !important;
+  }
+
+  /* Bottom action bar - fixed at bottom */
+  .training-center .course-page-main > div[style*="borderTop"] {
+    position: fixed !important;
+    bottom: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    background: #fff !important;
+    border-top: 1px solid #e5e7eb !important;
+    padding: 12px 16px !important;
+    z-index: 120;
+    display: flex !important;
+    justify-content: center !important;
+    gap: 8px !important;
+  }
+
+  /* Bottom buttons full width pill style */
+  .training-center .course-page-main > div[style*="borderTop"] button {
+    flex: 1 !important;
+    max-width: 320px !important;
+    border-radius: 999px !important;
+    padding: 14px 20px !important;
+    font-size: 15px !important;
+    font-weight: 700 !important;
+  }
+
+  /* Course content section header */
+  .training-center .course-modules-mobile-header {
+    display: flex !important;
+    padding: 16px !important;
+    border-bottom: 1px solid #e5e7eb !important;
+    background: #f9fafb !important;
+  }
+
+  /* Folder items - section headers like screenshot */
+  .training-center .course-folder-item {
+    padding: 12px 16px !important;
+    background: #f3f4f6 !important;
+    border-bottom: 1px solid #e5e7eb !important;
+    border-radius: 0 !important;
+    font-size: 14px !important;
+    font-weight: 600 !important;
+  }
+
+  /* Lesson items - clean rows like screenshot */
+  .training-center .course-pages-sidebar .course-pages-item {
+    border-radius: 0 !important;
+    border-bottom: 1px solid #f1f5f9 !important;
+    padding: 14px 16px !important;
+    font-size: 14px !important;
+    background: #fff !important;
+    margin: 0 !important;
+  }
+
+  .training-center .course-pages-sidebar .course-pages-item.active {
+    background: #fef3c7 !important;
+    border-left: 3px solid #f59e0b !important;
+  }
+
+  /* Child lesson items indented */
+  .training-center .course-pages-sidebar .course-pages-item-child {
+    padding-left: 32px !important;
+  }
+
+  /* Course sidebar scrollable */
+  .training-center .course-pages-sidebar {
+    gap: 0 !important;
+    overflow-y: auto !important;
+    max-height: 60vh !important;
+  }
+
+  /* Hide share button on mobile */
+  .training-center .course-page-main > div[style*="flex-end"][style*="marginBottom"] {
+    display: none !important;
+  }
+}
