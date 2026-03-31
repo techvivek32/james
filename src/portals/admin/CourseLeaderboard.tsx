@@ -1,4 +1,5 @@
 import { useEffect, useState, useRef } from "react";
+import html2canvas from "html2canvas";
 
 type LeaderRow = {
   id: string;
@@ -59,6 +60,8 @@ export function CourseLeaderboard() {
   const [overrideLoading, setOverrideLoading] = useState(false);
   const [overrideSaving, setOverrideSaving] = useState(false);
   const [allCoursesRaw, setAllCoursesRaw] = useState<any[]>([]);
+  const [showFormatPicker, setShowFormatPicker] = useState(false);
+  const tableRef = useRef<HTMLDivElement>(null);
 
   function hideUser(userId: string) {
     const newHidden = new Set(hiddenUsers);
@@ -267,6 +270,39 @@ export function CourseLeaderboard() {
     setOverrideChecked(new Set());
   }
 
+  async function takeScreenshot(format: "jpeg" | "png") {
+    if (!tableRef.current) return;
+    setShowFormatPicker(false);
+    const canvas = await html2canvas(tableRef.current, { scale: 2, useCORS: true, backgroundColor: "#ffffff" });
+    const mimeType = format === "png" ? "image/png" : "image/jpeg";
+    const ext = format === "jpeg" ? "jpg" : "png";
+    const link = document.createElement("a");
+    link.download = `leaderboard-${selectedCourse?.title || "export"}.${ext}`;
+    link.href = canvas.toDataURL(mimeType, 0.95);
+    link.click();
+  }
+
+  function exportCSV() {
+    const visible = rows.filter(r => !hiddenUsers.has(r.id));
+    const headers = ["Rank", "Name", "Email", "Role", "Lessons Completed", "Total Lessons", "Progress %"];
+    const csvRows = visible.map((row, idx) => [
+      idx + 1,
+      `"${row.name}"`,
+      `"${row.email}"`,
+      row.role,
+      row.done,
+      row.total,
+      row.pct
+    ]);
+    const csv = [headers.join(","), ...csvRows.map(r => r.join(","))].join("\n");
+    const blob = new Blob([csv], { type: "text/csv" });
+    const link = document.createElement("a");
+    link.download = `leaderboard-${selectedCourse?.title || "export"}.csv`;
+    link.href = URL.createObjectURL(blob);
+    link.click();
+    URL.revokeObjectURL(link.href);
+  }
+
   async function saveOverride() {
     if (!overrideSelectedUser || !selectedCourse) return;
     setOverrideSaving(true);
@@ -324,7 +360,61 @@ export function CourseLeaderboard() {
           {/* Header right side buttons */}
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
 
-          {/* Override button — invisible, bottom-right of leaderboard, hover to reveal */}
+          {/* Screenshot button */}
+          <div style={{ position: "relative" }}>
+            <button
+              onClick={() => setShowFormatPicker(p => !p)}
+              style={{
+                display: "flex", alignItems: "center", gap: 6,
+                padding: "8px 16px", borderRadius: 8,
+                border: "1px solid #d1d5db", background: "#fff",
+                fontSize: 13, fontWeight: 600, color: "#374151",
+                cursor: "pointer",
+              }}
+            >
+              📸 Screenshot
+            </button>
+            {showFormatPicker && (
+              <div style={{
+                position: "absolute", right: 0, top: "calc(100% + 6px)",
+                background: "#fff", border: "1px solid #e5e7eb",
+                borderRadius: 8, boxShadow: "0 8px 24px rgba(0,0,0,0.12)",
+                zIndex: 100, overflow: "hidden", minWidth: 120,
+              }}>
+                {(["jpeg", "jpg", "png"] as const).map((fmt) => (
+                  <button
+                    key={fmt}
+                    onClick={() => takeScreenshot(fmt === "jpg" ? "jpeg" : fmt)}
+                    style={{
+                      display: "block", width: "100%", textAlign: "left",
+                      padding: "9px 16px", border: "none", background: "#fff",
+                      fontSize: 13, cursor: "pointer", color: "#111827",
+                      borderBottom: fmt !== "png" ? "1px solid #f3f4f6" : "none",
+                    }}
+                    onMouseEnter={e => (e.currentTarget.style.background = "#f9fafb")}
+                    onMouseLeave={e => (e.currentTarget.style.background = "#fff")}
+                  >
+                    Save as .{fmt}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Export CSV button */}
+          <button
+            onClick={exportCSV}
+            style={{
+              display: "flex", alignItems: "center", gap: 6,
+              padding: "8px 16px", borderRadius: 8,
+              border: "1px solid #d1d5db", background: "#fff",
+              fontSize: 13, fontWeight: 600, color: "#374151",
+              cursor: "pointer",
+            }}
+          >
+            📥 Export CSV
+          </button>
+
           {/* Course filter button + picker */}
           <div style={{ position: "relative" }} ref={pickerRef}>
             <button
@@ -392,6 +482,8 @@ export function CourseLeaderboard() {
           </div>
         </div>
 
+        {/* Table wrapper for screenshot */}
+        <div ref={tableRef}>
         {/* Table */}
         {isLoading ? (
           <div style={{ display: "flex", justifyContent: "center", alignItems: "center", height: 200 }}>
@@ -501,6 +593,7 @@ export function CourseLeaderboard() {
             </table>
           </div>
         )}
+        </div>
 
         {/* Bottom buttons row */}
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px 24px 16px 24px" }}>
