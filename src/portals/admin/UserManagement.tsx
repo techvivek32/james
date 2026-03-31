@@ -94,7 +94,7 @@ export function UserManagement(props: UserEditorProps) {
     // Admin
     socialMediaMetrics: "Social Media Executive View",
     businessUnits: "Business Planner Executive View",
-    trainingCenter: "Training Center Executive View",
+    trainingCenter: "Course Leaderboard",
     userManagement: "User Management",
     courseManagement: "Course Builder",
     appsTools: "Apps & Tool Builder",

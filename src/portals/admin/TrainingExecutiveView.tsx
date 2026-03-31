@@ -153,12 +153,6 @@ export function TrainingExecutiveView() {
 
   return (
     <div>
-      <div className="panel-header" style={{ marginBottom: 24 }}>
-        <div className="panel-header-row">
-          <span>Training Center Executive View</span>
-        </div>
-      </div>
-
       {stats.length === 0 ? (
         <div style={{ textAlign: "center", padding: 60, color: "#9ca3af" }}>
           <div style={{ fontSize: 48, marginBottom: 12 }}>📚</div>

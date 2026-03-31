@@ -6,7 +6,7 @@ import { useAuth } from "../contexts/AuthContext";
 const allSidebarItems = [
   { id: "socialMediaMetrics", label: "Social Media Executive View", toggleKey: "socialMediaMetrics" },
   { id: "businessUnits", label: "Business Planner Executive View", toggleKey: "businessUnits" },
-  { id: "trainingExecutive", label: "Training Center Executive View", toggleKey: "trainingCenter" },
+  { id: "trainingExecutive", label: "Course Leaderboard", toggleKey: "trainingCenter" },
   { id: "userManagement", label: "User Management", toggleKey: "userManagement" },
   { id: "courseManagement", label: "Course Builder", toggleKey: "courseManagement" },
   { id: "appsTools", label: "Apps & Tool Builder", toggleKey: "appsTools" },
