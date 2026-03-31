@@ -41,7 +41,7 @@ export function MarketingSidebar({ activeId, isCollapsed, onToggleCollapse }: Ma
 
   return (
     <Sidebar
-      header={<div className="sidebar-title">Marketing Portal</div>}
+      header={<div style={{ display: 'flex', alignItems: 'center', gap: 10 }}><span className="sidebar-title">Marketing Portal</span><img src="/ChatGPT_Image_Feb_23__2026__07_00_52_PM-removebg-preview.png" alt="logo" style={{ width: 48, height: 48, objectFit: 'contain', flexShrink: 0 }} /></div>}
       items={sidebarItems}
       activeId={activeId}
       onSelect={handleNavigation}

@@ -20,8 +20,7 @@ export function MarketingLayout({ children, currentView }: MarketingLayoutProps)
       isSidebarCollapsed={isSidebarCollapsed}
       header={
         <Header
-          title="Sales & Marketing Operating System"
-          subtitle="Marketing view"
+          title="Miller Storm Operating System"
           userName={user?.name ?? "Marketing"}
           roleLabel="Marketing"
           panelName="Marketing Portal"

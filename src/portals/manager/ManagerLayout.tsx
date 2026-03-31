@@ -20,8 +20,7 @@ export function ManagerLayout({ children, currentView }: ManagerLayoutProps) {
       isSidebarCollapsed={isSidebarCollapsed}
       header={
         <Header
-          title="Sales & Marketing Operating System"
-          subtitle="Manager view"
+          title="Miller Storm Operating System"
           userName={user?.name ?? "Manager"}
           userId={user?.id}
           roleLabel="Manager"

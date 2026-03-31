@@ -42,7 +42,7 @@ export function ManagerSidebar({ activeId, isCollapsed, onToggleCollapse }: Mana
 
   return (
     <Sidebar
-      header={<div className="sidebar-title">Manager Portal</div>}
+      header={<div style={{ display: 'flex', alignItems: 'center', gap: 10 }}><span className="sidebar-title">Manager Portal</span><img src="/ChatGPT_Image_Feb_23__2026__07_00_52_PM-removebg-preview.png" alt="logo" style={{ width: 48, height: 48, objectFit: 'contain', flexShrink: 0 }} /></div>}
       items={sidebarItems}
       activeId={activeId}
       onSelect={handleNavigation}

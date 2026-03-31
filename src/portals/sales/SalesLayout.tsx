@@ -22,8 +22,7 @@ export function SalesLayout({ children, currentView, userName, userId }: SalesLa
       isSidebarCollapsed={isSidebarCollapsed}
       header={
         <Header
-          title="Sales Operating System"
-          subtitle="Sales Professional View"
+          title="Miller Storm Operating System"
           userName={userName ?? "Sales Rep"}
           userId={userId}
           roleLabel="Sales Rep"

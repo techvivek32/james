@@ -38,8 +38,7 @@ export function AdminLayout({ children, currentView }: AdminLayoutProps) {
       isSidebarCollapsed={isSidebarCollapsed}
       header={
         <Header
-          title="Sales & Marketing Operating System"
-          subtitle="Enterprise control center"
+          title="Miller Storm Operating System"
           userName={user?.name ?? "Admin"}
           userId={user?.id}
           roleLabel="Admin"
