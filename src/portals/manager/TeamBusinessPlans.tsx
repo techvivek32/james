@@ -55,9 +55,9 @@ export function TeamBusinessPlansPage() {
   const calculateMetrics = (incomeGoal: number, dealAve: number) => {
     const dealsPerYear = dealAve > 0 ? Math.round(incomeGoal / dealAve) : 0;
     const dealsPerMonth = dealsPerYear / 12;
-    const claimsPerYear = Math.round(dealsPerYear - (dealsPerYear * 0.25));
+    const claimsPerYear = Math.round(dealsPerYear * 3);
     const claimsPerMonth = claimsPerYear / 12;
-    const inspectionsPerYear = Math.round(claimsPerYear - (claimsPerYear * 0.30));
+    const inspectionsPerYear = Math.round(claimsPerYear * 3);
     const inspectionsPerMonth = inspectionsPerYear / 12;
 
     return {

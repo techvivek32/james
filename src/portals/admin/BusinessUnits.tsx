@@ -43,13 +43,15 @@ export function BusinessUnitsManager(props: { users: UserProfile[] }) {
   const managers = props.users.filter((u) => u.role === "manager" || (u.roles || []).includes("manager"));
   const salesReps = props.users.filter((u) => u.role === "sales" || (u.roles || []).includes("sales"));
 
-  // Calculate metrics
-  const calculateMetrics = (incomeGoal: number, dealAve: number) => {
-    const dealsPerYear = dealAve > 0 ? Math.round(incomeGoal / dealAve) : 0;
+  // Calculate metrics using same formula as sales rep business plan page
+  const calculateMetrics = (incomeGoal: number, dealAve: number, daysPerWeek: number = 5) => {
+    const averageDealSize = dealAve > 0 ? dealAve : 12000;
+
+    const dealsPerYear = averageDealSize > 0 ? Math.round(incomeGoal / averageDealSize) : 0;
     const dealsPerMonth = dealsPerYear / 12;
-    const claimsPerYear = Math.round(dealsPerYear - (dealsPerYear * 0.25));
+    const claimsPerYear = Math.round(dealsPerYear * 3);
     const claimsPerMonth = claimsPerYear / 12;
-    const inspectionsPerYear = Math.round(claimsPerYear - (claimsPerYear * 0.30));
+    const inspectionsPerYear = Math.round(claimsPerYear * 3);
     const inspectionsPerMonth = inspectionsPerYear / 12;
 
     return {
@@ -58,7 +60,10 @@ export function BusinessUnitsManager(props: { users: UserProfile[] }) {
       claimsPerYear,
       claimsPerMonth,
       inspectionsPerYear,
-      inspectionsPerMonth
+      inspectionsPerMonth,
+      doorsPerYear: 0,
+      doorsPerMonth: 0,
+      doorsPerDay: 0
     };
   };
 
@@ -66,7 +71,11 @@ export function BusinessUnitsManager(props: { users: UserProfile[] }) {
   const allCommittedPlans = useMemo(() => {
     return salesReps.filter(rep => rep.businessPlan?.committed).map(rep => ({
       ...rep,
-      metrics: calculateMetrics(rep.businessPlan?.revenueGoal || 0, rep.businessPlan?.averageDealSize || 0)
+      metrics: calculateMetrics(
+        rep.businessPlan?.revenueGoal || 0,
+        rep.businessPlan?.averageDealSize || 12000,
+        rep.businessPlan?.daysPerWeek || 5
+      )
     }));
   }, [salesReps]);
 
@@ -76,7 +85,6 @@ export function BusinessUnitsManager(props: { users: UserProfile[] }) {
       (acc, rep) => {
         const bp = rep.businessPlan;
         if (!bp) return acc;
-        
         acc.incomeGoal += bp.revenueGoal || 0;
         acc.dealsPerYear += rep.metrics.dealsPerYear;
         acc.dealsPerMonth += rep.metrics.dealsPerMonth;
@@ -84,6 +92,8 @@ export function BusinessUnitsManager(props: { users: UserProfile[] }) {
         acc.claimsPerMonth += rep.metrics.claimsPerMonth;
         acc.inspectionsPerYear += rep.metrics.inspectionsPerYear;
         acc.inspectionsPerMonth += rep.metrics.inspectionsPerMonth;
+        acc.doorsPerYear += rep.metrics.doorsPerYear;
+        acc.doorsPerMonth += rep.metrics.doorsPerMonth;
         return acc;
       },
       {
@@ -93,7 +103,9 @@ export function BusinessUnitsManager(props: { users: UserProfile[] }) {
         claimsPerYear: 0,
         claimsPerMonth: 0,
         inspectionsPerYear: 0,
-        inspectionsPerMonth: 0
+        inspectionsPerMonth: 0,
+        doorsPerYear: 0,
+        doorsPerMonth: 0
       }
     );
   }, [allCommittedPlans]);
