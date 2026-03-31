@@ -32,6 +32,7 @@ export function UserManagement(props: UserEditorProps) {
   const [showRolesDropdown, setShowRolesDropdown] = useState(false);
   const [managerDraftId, setManagerDraftId] = useState<string>(props.users.find((u) => u.id === selectedUserId)?.managerId ?? "");
   const [emailError, setEmailError] = useState("");
+  const [managerError, setManagerError] = useState("");
   const emailInputRef = useRef<HTMLInputElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [importing, setImporting] = useState(false);
@@ -876,6 +877,13 @@ export function UserManagement(props: UserEditorProps) {
                       emailInputRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
                       return;
                     }
+                    // Validate: sales user must have a manager
+                    const isSales = (selectedUser.roles || [selectedUser.role]).includes("sales");
+                    if (isSales && !selectedUser.managerId) {
+                      setManagerError("Please assign a Manager to this sales user before saving.");
+                      return;
+                    }
+                    setManagerError("");
                     const usersToSave = draftUsers.map((user) => {
                       if (user.password && user.password.trim().length > 0) return { ...user };
                       const { password, ...rest } = user;
@@ -979,19 +987,25 @@ export function UserManagement(props: UserEditorProps) {
               </label>
               {(selectedUser.roles || [selectedUser.role]).includes("sales") && (
                 <label className="field">
-                  <span className="field-label">Manager</span>
+                  <span className="field-label">Manager <span style={{ color: "#dc2626" }}>*</span></span>
                   <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                    <select className="field-input" style={{ flex: 1 }} value={managerDraftId} onChange={(e) => {
+                    <select className="field-input" style={{ flex: 1, borderColor: (!selectedUser.managerId || managerError) ? "#dc2626" : undefined }} value={managerDraftId} onChange={(e) => {
                       const nextManagerId = e.target.value;
                       setManagerDraftId(nextManagerId);
+                      setManagerError("");
                       updateUser({ ...selectedUser, managerId: nextManagerId || undefined });
                     }}>
-                      <option value="">No manager</option>
+                      <option value="">-- Select a manager (required) --</option>
                       {draftUsers.filter((u) => u.role === "manager").map((manager) => (
                         <option key={manager.id} value={manager.id}>{manager.name}</option>
                       ))}
                     </select>
                   </div>
+                  {(!selectedUser.managerId || managerError) && (
+                    <div style={{ fontSize: 12, color: "#dc2626", marginTop: 4, fontWeight: 500 }}>
+                      {managerError || "Manager is required for sales users"}
+                    </div>
+                  )}
                 </label>
               )}
             </div>
