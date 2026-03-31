@@ -23,6 +23,7 @@ export function UserManagement(props: UserEditorProps) {
   useEffect(() => {
     setDraftDeletedUsers(props.deletedUsers);
   }, [props.deletedUsers]);
+  const [notifyUser, setNotifyUser] = useState(false);
   const [isDirty, setIsDirty] = useState(false);
   const [saveNotice, setSaveNotice] = useState("");
   const saveNoticeTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -912,7 +913,16 @@ export function UserManagement(props: UserEditorProps) {
               <div className="panel-header-row">
                 <span>User Details{selectedUser.suspended && <span style={{ color: "#dc2626", marginLeft: 8 }}>• SUSPENDED</span>}</span>
                 <div className="panel-header-actions">
-                  <button type="button" className="btn-primary btn-small" disabled={!isDirty || !!emailError} onClick={() => {
+                  <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 13, color: "#374151", cursor: "pointer", userSelect: "none", marginRight: 4 }}>
+                    <input
+                      type="checkbox"
+                      checked={notifyUser}
+                      onChange={e => setNotifyUser(e.target.checked)}
+                      style={{ width: 15, height: 15, cursor: "pointer" }}
+                    />
+                    Notify user by email
+                  </label>
+                  <button type="button" className="btn-primary btn-small" disabled={!isDirty || !!emailError} onClick={async () => {
                     if (emailError) {
                       emailInputRef.current?.focus();
                       emailInputRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -930,13 +940,45 @@ export function UserManagement(props: UserEditorProps) {
                       const { password, ...rest } = user;
                       return rest;
                     });
+
+                    // Find manager name for email
+                    const managerUser = selectedUser.managerId ? draftUsers.find(u => u.id === selectedUser.managerId) : null;
+
+                    // Get admin info from localStorage
+                    const adminRaw = typeof window !== "undefined" ? localStorage.getItem("user") : null;
+                    const adminData = adminRaw ? JSON.parse(adminRaw) : null;
+
                     props.onUsersChange(usersToSave);
                     props.onDeletedUsersChange(draftDeletedUsers);
+
+                    // Send notification via API if checkbox checked
+                    if (notifyUser) {
+                      try {
+                        const userToSave = usersToSave.find(u => u.id === selectedUser.id);
+                        if (userToSave) {
+                          await fetch(`/api/users/${selectedUser.id}`, {
+                            method: "PUT",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({
+                              ...userToSave,
+                              sendNotification: true,
+                              adminName: adminData?.name || "Admin",
+                              adminEmail: adminData?.email || "",
+                              managerName: managerUser?.name || null
+                            })
+                          });
+                        }
+                      } catch (err) {
+                        console.error("Failed to send notification:", err);
+                      }
+                    }
+
                     setDraftUsers(usersToSave.map((user) => {
                       const { password, ...rest } = user as UserProfile;
                       return rest;
                     }));
                     setIsDirty(false);
+                    setNotifyUser(false);
                     setSaveNotice("Changes saved successfully");
                     if (saveNoticeTimeout.current) clearTimeout(saveNoticeTimeout.current);
                     saveNoticeTimeout.current = setTimeout(() => setSaveNotice(""), 2000);

@@ -426,6 +426,100 @@ If you have any questions or would like to discuss this decision, please contact
   return { html, text };
 }
 
+export function generateUserAccountUpdatedEmail(params: {
+  name: string;
+  email: string;
+  password: string | null;
+  roles: string[];
+  managerName: string | null;
+  loginUrl: string;
+}) {
+  const roleStr = params.roles.map(r => r.charAt(0).toUpperCase() + r.slice(1)).join(", ");
+  const passwordLine = params.password
+    ? `<tr><td style="padding:4px 0;color:#374151;font-size:14px;"><strong>Password:</strong> ${params.password}</td></tr>`
+    : `<tr><td style="padding:4px 0;color:#374151;font-size:14px;"><strong>Password:</strong> Unchanged (use your existing password)</td></tr>`;
+  const managerLine = params.managerName
+    ? `<tr><td style="padding:4px 0;color:#374151;font-size:14px;"><strong>Manager:</strong> ${params.managerName}</td></tr>`
+    : "";
+
+  const html = `<!DOCTYPE html><html><head><meta charset="utf-8"></head>
+<body style="margin:0;padding:0;font-family:Arial,sans-serif;background:#f3f4f6;">
+<table width="100%" cellpadding="0" cellspacing="0" style="background:#f3f4f6;padding:40px 0;">
+<tr><td align="center">
+<table width="600" cellpadding="0" cellspacing="0" style="background:#fff;border-radius:8px;box-shadow:0 2px 4px rgba(0,0,0,0.1);">
+<tr><td style="padding:40px 40px 20px;text-align:center;">
+  <h1 style="margin:0;color:#111827;font-size:24px;font-weight:600;">Miller Storm Operating System</h1>
+</td></tr>
+<tr><td style="padding:20px 40px;">
+  <p style="margin:0 0 16px;color:#374151;font-size:16px;">Hi ${params.name},</p>
+  <p style="margin:0 0 16px;color:#374151;font-size:16px;">Your account has been updated by an administrator. Here are your current login details:</p>
+  <table cellpadding="0" cellspacing="0" style="background:#f9fafb;border-radius:6px;padding:20px;width:100%;margin:0 0 24px;">
+    <tr><td style="padding:4px 0;color:#374151;font-size:14px;"><strong>Name:</strong> ${params.name}</td></tr>
+    <tr><td style="padding:4px 0;color:#374151;font-size:14px;"><strong>Email:</strong> ${params.email}</td></tr>
+    ${passwordLine}
+    <tr><td style="padding:4px 0;color:#374151;font-size:14px;"><strong>Role:</strong> ${roleStr}</td></tr>
+    ${managerLine}
+  </table>
+  <table width="100%" cellpadding="0" cellspacing="0"><tr><td align="center" style="padding:0 0 24px;">
+    <a href="${params.loginUrl}" style="display:inline-block;padding:14px 32px;background:#2563eb;color:#fff;text-decoration:none;border-radius:6px;font-size:16px;font-weight:500;">Login Now</a>
+  </td></tr></table>
+  <p style="margin:0;color:#6b7280;font-size:14px;">If you have any questions, please contact your administrator.</p>
+</td></tr>
+<tr><td style="padding:20px 40px 40px;border-top:1px solid #e5e7eb;">
+  <p style="margin:0;color:#9ca3af;font-size:12px;text-align:center;">© 2026-2027 Miller Storm. All Rights Reserved.</p>
+</td></tr>
+</table></td></tr></table></body></html>`;
+
+  const text = `Hi ${params.name},\n\nYour account has been updated.\n\nName: ${params.name}\nEmail: ${params.email}\nPassword: ${params.password || "Unchanged"}\nRole: ${roleStr}${params.managerName ? `\nManager: ${params.managerName}` : ""}\n\nLogin: ${params.loginUrl}\n\n© 2026-2027 Miller Storm.`;
+
+  return { html, text };
+}
+
+export function generateAdminUserUpdatedEmail(params: {
+  adminName: string;
+  userName: string;
+  userEmail: string;
+  roles: string[];
+  managerName: string | null;
+  passwordChanged: boolean;
+  updatedAt: string;
+}) {
+  const roleStr = params.roles.map(r => r.charAt(0).toUpperCase() + r.slice(1)).join(", ");
+  const managerLine = params.managerName
+    ? `<tr><td style="padding:4px 0;color:#374151;font-size:14px;"><strong>Manager:</strong> ${params.managerName}</td></tr>`
+    : "";
+
+  const html = `<!DOCTYPE html><html><head><meta charset="utf-8"></head>
+<body style="margin:0;padding:0;font-family:Arial,sans-serif;background:#f3f4f6;">
+<table width="100%" cellpadding="0" cellspacing="0" style="background:#f3f4f6;padding:40px 0;">
+<tr><td align="center">
+<table width="600" cellpadding="0" cellspacing="0" style="background:#fff;border-radius:8px;box-shadow:0 2px 4px rgba(0,0,0,0.1);">
+<tr><td style="padding:40px 40px 20px;text-align:center;">
+  <h1 style="margin:0;color:#111827;font-size:24px;font-weight:600;">Miller Storm Operating System</h1>
+</td></tr>
+<tr><td style="padding:20px 40px;">
+  <p style="margin:0 0 16px;color:#374151;font-size:16px;">Hi ${params.adminName},</p>
+  <p style="margin:0 0 16px;color:#374151;font-size:16px;">You have successfully updated the following user account:</p>
+  <table cellpadding="0" cellspacing="0" style="background:#f9fafb;border-radius:6px;padding:20px;width:100%;margin:0 0 24px;">
+    <tr><td style="padding:4px 0;color:#374151;font-size:14px;"><strong>Name:</strong> ${params.userName}</td></tr>
+    <tr><td style="padding:4px 0;color:#374151;font-size:14px;"><strong>Email:</strong> ${params.userEmail}</td></tr>
+    <tr><td style="padding:4px 0;color:#374151;font-size:14px;"><strong>Role:</strong> ${roleStr}</td></tr>
+    ${managerLine}
+    <tr><td style="padding:4px 0;color:#374151;font-size:14px;"><strong>Password:</strong> ${params.passwordChanged ? "Changed" : "Not Changed"}</td></tr>
+    <tr><td style="padding:4px 0;color:#374151;font-size:14px;"><strong>Updated At:</strong> ${params.updatedAt}</td></tr>
+  </table>
+  <p style="margin:0;color:#6b7280;font-size:14px;">This is an automated confirmation of the changes you made.</p>
+</td></tr>
+<tr><td style="padding:20px 40px 40px;border-top:1px solid #e5e7eb;">
+  <p style="margin:0;color:#9ca3af;font-size:12px;text-align:center;">© 2026-2027 Miller Storm. All Rights Reserved.</p>
+</td></tr>
+</table></td></tr></table></body></html>`;
+
+  const text = `Hi ${params.adminName},\n\nYou updated: ${params.userName}\nEmail: ${params.userEmail}\nRole: ${roleStr}${params.managerName ? `\nManager: ${params.managerName}` : ""}\nPassword: ${params.passwordChanged ? "Changed" : "Not Changed"}\nUpdated At: ${params.updatedAt}\n\n© 2026-2027 Miller Storm.`;
+
+  return { html, text };
+}
+
 export function generateQuickStartEmail(name: string): string {
   return `
 <!DOCTYPE html>
