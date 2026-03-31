@@ -14,6 +14,7 @@ const allSidebarItems = [
   { id: "aiBots", label: "Master Bot Builder", toggleKey: "aiBots" },
   { id: "messaging", label: "SMS Config", toggleKey: "messaging" },
   { id: "leaderboard", label: "Zapier Config", toggleKey: "leaderboard" },
+  { id: "emailConfig", label: "Email Config", toggleKey: "emailConfig" },
 ];
 
 type AdminSidebarProps = {

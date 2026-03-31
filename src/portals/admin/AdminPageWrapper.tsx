@@ -27,6 +27,7 @@ export function AdminPageWrapper({ children, currentView }: AdminPageWrapperProp
     aiBots: "aiBots",
     messaging: "messaging",
     leaderboard: "leaderboard",
+    emailConfig: "emailConfig",
   };
 
   useEffect(() => {

@@ -2,7 +2,7 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import bcrypt from "bcryptjs";
 import { connectMongo } from "../../../src/lib/mongodb";
 import { UserModel } from "../../../src/lib/models/User";
-import { sendEmail, generateUserAccountUpdatedEmail, generateAdminUserUpdatedEmail } from "../../../src/lib/email";
+import { sendEmail, sendUserAccountUpdatedEmail, sendAdminConfirmationEmail } from "../../../src/lib/email";
 
 export default async function handler(
   req: NextApiRequest,
@@ -64,21 +64,22 @@ export default async function handler(
       const updatedAt = new Date().toLocaleString("en-US", { dateStyle: "medium", timeStyle: "short" });
 
       try {
+        const roles = (safeUser.roles as string[]) || [safeUser.role as string];
+        const updatedAt = new Date().toLocaleString("en-US", { dateStyle: "medium", timeStyle: "short" });
         // Email to user
-        const userEmail = generateUserAccountUpdatedEmail({
+        await sendUserAccountUpdatedEmail({
           name: safeUser.name as string,
           email: safeUser.email as string,
           password: plainPassword,
           roles,
           managerName: managerName || null,
-          loginUrl
+          loginUrl: process.env.NEXT_PUBLIC_APP_URL ? `${process.env.NEXT_PUBLIC_APP_URL}/login` : "https://yourdomain.com/login"
         });
-        await sendEmail({ to: safeUser.email as string, subject: "Your Account Details - Miller Storm OS", html: userEmail.html, text: userEmail.text });
-
         // Email to admin
         if (adminEmail) {
-          const adminEmailContent = generateAdminUserUpdatedEmail({
+          await sendAdminConfirmationEmail({
             adminName: adminName || "Admin",
+            adminEmail,
             userName: safeUser.name as string,
             userEmail: safeUser.email as string,
             roles,
@@ -86,7 +87,6 @@ export default async function handler(
             passwordChanged: !!plainPassword,
             updatedAt
           });
-          await sendEmail({ to: adminEmail, subject: `User Account Updated - ${safeUser.name}`, html: adminEmailContent.html, text: adminEmailContent.text });
         }
       } catch (emailErr) {
         console.error("Failed to send update emails:", emailErr);

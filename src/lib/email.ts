@@ -1,4 +1,6 @@
 import nodemailer from "nodemailer";
+import { renderTemplate } from "./emailTemplates";
+import { getEmailTemplate } from "./emailTemplatesServer";
 
 type EmailOptions = {
   to: string;
@@ -9,29 +11,15 @@ type EmailOptions = {
 
 export async function sendEmail(options: EmailOptions) {
   try {
-    // Validate SMTP configuration
     if (!process.env.SMTP_HOST || !process.env.SMTP_USER || !process.env.SMTP_PASS) {
       throw new Error("SMTP configuration is missing in environment variables");
     }
-
-    console.log("Creating email transporter with:", {
-      host: process.env.SMTP_HOST,
-      port: process.env.SMTP_PORT,
-      user: process.env.SMTP_USER
-    });
-
-    // Create transporter using SMTP settings from environment variables
     const transporter = nodemailer.createTransport({
       host: process.env.SMTP_HOST,
       port: parseInt(process.env.SMTP_PORT || "587"),
       secure: process.env.SMTP_SECURE === "true",
-      auth: {
-        user: process.env.SMTP_USER,
-        pass: process.env.SMTP_PASS
-      }
+      auth: { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS }
     });
-
-    // Send email
     const info = await transporter.sendMail({
       from: process.env.SMTP_FROM || `"Miller Storm OS" <${process.env.SMTP_USER}>`,
       to: options.to,
@@ -39,7 +27,6 @@ export async function sendEmail(options: EmailOptions) {
       text: options.text,
       html: options.html
     });
-
     console.log("Email sent successfully. Message ID:", info.messageId);
     return info;
   } catch (error: any) {
@@ -48,385 +35,65 @@ export async function sendEmail(options: EmailOptions) {
   }
 }
 
-export function generatePasswordResetEmail(name: string, resetLink: string) {
-  const html = `
-    <!DOCTYPE html>
-    <html>
-    <head>
-      <meta charset="utf-8">
-      <meta name="viewport" content="width=device-width, initial-scale=1.0">
-      <title>Reset Your Password</title>
-    </head>
-    <body style="margin: 0; padding: 0; font-family: Arial, sans-serif; background-color: #f3f4f6;">
-      <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #f3f4f6; padding: 40px 0;">
-        <tr>
-          <td align="center">
-            <table width="600" cellpadding="0" cellspacing="0" style="background-color: #ffffff; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
-              <!-- Header -->
-              <tr>
-                <td style="padding: 40px 40px 20px 40px; text-align: center;">
-                  <h1 style="margin: 0; color: #111827; font-size: 24px; font-weight: 600;">
-                    Miller Storm Operating System
-                  </h1>
-                </td>
-              </tr>
-              
-              <!-- Content -->
-              <tr>
-                <td style="padding: 20px 40px;">
-                  <p style="margin: 0 0 16px 0; color: #374151; font-size: 16px; line-height: 1.5;">
-                    Hi ${name},
-                  </p>
-                  <p style="margin: 0 0 16px 0; color: #374151; font-size: 16px; line-height: 1.5;">
-                    We received a request to reset your password for your Miller Storm OS account.
-                  </p>
-                  <p style="margin: 0 0 24px 0; color: #374151; font-size: 16px; line-height: 1.5;">
-                    Click the button below to reset your password:
-                  </p>
-                  
-                  <!-- Button -->
-                  <table width="100%" cellpadding="0" cellspacing="0">
-                    <tr>
-                      <td align="center" style="padding: 0 0 24px 0;">
-                        <a href="${resetLink}" style="display: inline-block; padding: 14px 32px; background-color: #2563eb; color: #ffffff; text-decoration: none; border-radius: 6px; font-size: 16px; font-weight: 500;">
-                          Reset Password
-                        </a>
-                      </td>
-                    </tr>
-                  </table>
-                  
-                  <p style="margin: 0 0 16px 0; color: #6b7280; font-size: 14px; line-height: 1.5;">
-                    Or copy and paste this link into your browser:
-                  </p>
-                  <p style="margin: 0 0 24px 0; color: #2563eb; font-size: 14px; word-break: break-all;">
-                    ${resetLink}
-                  </p>
-                  
-                  <p style="margin: 0 0 16px 0; color: #6b7280; font-size: 14px; line-height: 1.5;">
-                    This link will expire in 1 hour for security reasons.
-                  </p>
-                  
-                  <p style="margin: 0; color: #6b7280; font-size: 14px; line-height: 1.5;">
-                    If you didn't request a password reset, you can safely ignore this email.
-                  </p>
-                </td>
-              </tr>
-              
-              <!-- Footer -->
-              <tr>
-                <td style="padding: 20px 40px 40px 40px; border-top: 1px solid #e5e7eb;">
-                  <p style="margin: 0; color: #9ca3af; font-size: 12px; text-align: center;">
-                    © 2026-2027 Miller Storm. All Rights Reserved.
-                  </p>
-                </td>
-              </tr>
-            </table>
-          </td>
-        </tr>
-      </table>
-    </body>
-    </html>
-  `;
+// ── Dynamic template-based senders ──────────────────────────────────────────
 
-  const text = `
-Hi ${name},
-
-We received a request to reset your password for your Miller Storm OS account.
-
-Click the link below to reset your password:
-${resetLink}
-
-This link will expire in 1 hour for security reasons.
-
-If you didn't request a password reset, you can safely ignore this email.
-
-© 2026-2027 Miller Storm. All Rights Reserved.
-  `;
-
-  return { html, text };
+export async function sendPasswordResetEmail(name: string, resetLink: string, to: string) {
+  const tmpl = await getEmailTemplate("passwordReset");
+  const { html, text, subject } = renderTemplate(tmpl.body, tmpl.subject, {
+    "{{name}}": name,
+    "{{resetLink}}": resetLink,
+  });
+  return sendEmail({ to, subject, html, text });
 }
 
-export function generateRegistrationConfirmationEmail(name: string, email: string, role: string) {
-  const html = `
-    <!DOCTYPE html>
-    <html>
-    <head>
-      <meta charset="utf-8">
-      <meta name="viewport" content="width=device-width, initial-scale=1.0">
-      <title>Registration Request Received</title>
-    </head>
-    <body style="margin: 0; padding: 0; font-family: Arial, sans-serif; background-color: #f3f4f6;">
-      <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #f3f4f6; padding: 40px 0;">
-        <tr>
-          <td align="center">
-            <table width="600" cellpadding="0" cellspacing="0" style="background-color: #ffffff; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
-              <tr>
-                <td style="padding: 40px 40px 20px 40px; text-align: center;">
-                  <h1 style="margin: 0; color: #111827; font-size: 24px; font-weight: 600;">
-                    Miller Storm Operating System
-                  </h1>
-                </td>
-              </tr>
-              
-              <tr>
-                <td style="padding: 20px 40px;">
-                  <p style="margin: 0 0 16px 0; color: #374151; font-size: 16px; line-height: 1.5;">
-                    Hi ${name},
-                  </p>
-                  <p style="margin: 0 0 16px 0; color: #374151; font-size: 16px; line-height: 1.5;">
-                    Thank you for requesting access to the Miller Storm Operating System.
-                  </p>
-                  
-                  <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #f9fafb; border-radius: 6px; margin: 24px 0;">
-                    <tr>
-                      <td style="padding: 20px;">
-                        <p style="margin: 0 0 8px 0; color: #6b7280; font-size: 14px; font-weight: 600;">Registration Details:</p>
-                        <p style="margin: 0 0 4px 0; color: #374151; font-size: 14px;"><strong>Name:</strong> ${name}</p>
-                        <p style="margin: 0 0 4px 0; color: #374151; font-size: 14px;"><strong>Email:</strong> ${email}</p>
-                        <p style="margin: 0; color: #374151; font-size: 14px;"><strong>Requested Role:</strong> ${role.charAt(0).toUpperCase() + role.slice(1)}</p>
-                      </td>
-                    </tr>
-                  </table>
-                  
-                  <p style="margin: 0 0 16px 0; color: #374151; font-size: 16px; line-height: 1.5;">
-                    Your request is currently <strong style="color: #f59e0b;">pending approval</strong>.
-                  </p>
-                  
-                  <p style="margin: 0 0 16px 0; color: #374151; font-size: 16px; line-height: 1.5;">
-                    Our admin team will review your request and approve it within <strong>24 to 48 hours</strong>.
-                  </p>
-                  
-                  <p style="margin: 0; color: #6b7280; font-size: 14px; line-height: 1.5;">
-                    You will receive another email once your account has been approved and is ready to use.
-                  </p>
-                </td>
-              </tr>
-              
-              <tr>
-                <td style="padding: 20px 40px 40px 40px; border-top: 1px solid #e5e7eb;">
-                  <p style="margin: 0; color: #9ca3af; font-size: 12px; text-align: center;">
-                    © 2026-2027 Miller Storm. All Rights Reserved.
-                  </p>
-                </td>
-              </tr>
-            </table>
-          </td>
-        </tr>
-      </table>
-    </body>
-    </html>
-  `;
-
-  const text = `
-Hi ${name},
-
-Thank you for requesting access to the Miller Storm Operating System.
-
-Registration Details:
-- Name: ${name}
-- Email: ${email}
-- Requested Role: ${role.charAt(0).toUpperCase() + role.slice(1)}
-
-Your request is currently pending approval.
-
-Our admin team will review your request and approve it within 24 to 48 hours.
-
-You will receive another email once your account has been approved and is ready to use.
-
-© 2026-2027 Miller Storm. All Rights Reserved.
-  `;
-
-  return { html, text };
+export async function sendRegistrationConfirmationEmail(name: string, email: string, role: string) {
+  const tmpl = await getEmailTemplate("registrationConfirmation");
+  const { html, text, subject } = renderTemplate(tmpl.body, tmpl.subject, {
+    "{{name}}": name,
+    "{{email}}": email,
+    "{{role}}": role.charAt(0).toUpperCase() + role.slice(1),
+  });
+  return sendEmail({ to: email, subject, html, text });
 }
 
-export function generateApprovalEmail(name: string, email: string, role: string, loginUrl: string) {
-  const html = `
-    <!DOCTYPE html>
-    <html>
-    <head>
-      <meta charset="utf-8">
-      <meta name="viewport" content="width=device-width, initial-scale=1.0">
-      <title>Account Approved</title>
-    </head>
-    <body style="margin: 0; padding: 0; font-family: Arial, sans-serif; background-color: #f3f4f6;">
-      <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #f3f4f6; padding: 40px 0;">
-        <tr>
-          <td align="center">
-            <table width="600" cellpadding="0" cellspacing="0" style="background-color: #ffffff; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
-              <tr>
-                <td style="padding: 40px 40px 20px 40px; text-align: center;">
-                  <h1 style="margin: 0; color: #111827; font-size: 24px; font-weight: 600;">
-                    Miller Storm Operating System
-                  </h1>
-                </td>
-              </tr>
-              
-              <tr>
-                <td style="padding: 20px 40px;">
-                  <div style="text-align: center; margin-bottom: 24px;">
-                    <div style="display: inline-block; padding: 12px 24px; background-color: #dcfce7; color: #166534; border-radius: 8px; font-size: 18px; font-weight: 600;">
-                      ✓ Account Approved!
-                    </div>
-                  </div>
-                  
-                  <p style="margin: 0 0 16px 0; color: #374151; font-size: 16px; line-height: 1.5;">
-                    Hi ${name},
-                  </p>
-                  <p style="margin: 0 0 16px 0; color: #374151; font-size: 16px; line-height: 1.5;">
-                    Great news! Your registration request has been <strong style="color: #16a34a;">approved</strong>.
-                  </p>
-                  
-                  <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #f9fafb; border-radius: 6px; margin: 24px 0;">
-                    <tr>
-                      <td style="padding: 20px;">
-                        <p style="margin: 0 0 12px 0; color: #6b7280; font-size: 14px; font-weight: 600;">Your Login Credentials:</p>
-                        <p style="margin: 0 0 4px 0; color: #374151; font-size: 14px;"><strong>Email:</strong> ${email}</p>
-                        <p style="margin: 0 0 4px 0; color: #374151; font-size: 14px;"><strong>Role:</strong> ${role.charAt(0).toUpperCase() + role.slice(1)}</p>
-                        <p style="margin: 0; color: #374151; font-size: 14px;"><strong>Password:</strong> The password you set during registration</p>
-                      </td>
-                    </tr>
-                  </table>
-                  
-                  <table width="100%" cellpadding="0" cellspacing="0">
-                    <tr>
-                      <td align="center" style="padding: 0 0 24px 0;">
-                        <a href="${loginUrl}" style="display: inline-block; padding: 14px 32px; background-color: #2563eb; color: #ffffff; text-decoration: none; border-radius: 6px; font-size: 16px; font-weight: 500;">
-                          Login Now
-                        </a>
-                      </td>
-                    </tr>
-                  </table>
-                  
-                  <p style="margin: 0 0 16px 0; color: #6b7280; font-size: 14px; line-height: 1.5;">
-                    Or copy and paste this link into your browser:
-                  </p>
-                  <p style="margin: 0 0 24px 0; color: #2563eb; font-size: 14px; word-break: break-all;">
-                    ${loginUrl}
-                  </p>
-                  
-                  <p style="margin: 0; color: #374151; font-size: 14px; line-height: 1.5;">
-                    Welcome to Miller Storm OS! If you have any questions, please contact your administrator.
-                  </p>
-                </td>
-              </tr>
-              
-              <tr>
-                <td style="padding: 20px 40px 40px 40px; border-top: 1px solid #e5e7eb;">
-                  <p style="margin: 0; color: #9ca3af; font-size: 12px; text-align: center;">
-                    © 2026-2027 Miller Storm. All Rights Reserved.
-                  </p>
-                </td>
-              </tr>
-            </table>
-          </td>
-        </tr>
-      </table>
-    </body>
-    </html>
-  `;
-
-  const text = `
-Hi ${name},
-
-Great news! Your registration request has been approved.
-
-Your Login Credentials:
-- Email: ${email}
-- Role: ${role.charAt(0).toUpperCase() + role.slice(1)}
-- Password: The password you set during registration
-
-Login here: ${loginUrl}
-
-Welcome to Miller Storm OS! If you have any questions, please contact your administrator.
-
-© 2026-2027 Miller Storm. All Rights Reserved.
-  `;
-
-  return { html, text };
+export async function sendAccountApprovedEmail(name: string, email: string, role: string, loginUrl: string) {
+  const tmpl = await getEmailTemplate("accountApproved");
+  const { html, text, subject } = renderTemplate(tmpl.body, tmpl.subject, {
+    "{{name}}": name,
+    "{{email}}": email,
+    "{{role}}": role.charAt(0).toUpperCase() + role.slice(1),
+    "{{loginUrl}}": loginUrl,
+  });
+  return sendEmail({ to: email, subject, html, text });
 }
 
-export function generateRejectionEmail(name: string, email: string, role: string, reason: string) {
-  const html = `
-    <!DOCTYPE html>
-    <html>
-    <head>
-      <meta charset="utf-8">
-      <meta name="viewport" content="width=device-width, initial-scale=1.0">
-      <title>Registration Request Update</title>
-    </head>
-    <body style="margin: 0; padding: 0; font-family: Arial, sans-serif; background-color: #f3f4f6;">
-      <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #f3f4f6; padding: 40px 0;">
-        <tr>
-          <td align="center">
-            <table width="600" cellpadding="0" cellspacing="0" style="background-color: #ffffff; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
-              <tr>
-                <td style="padding: 40px 40px 20px 40px; text-align: center;">
-                  <h1 style="margin: 0; color: #111827; font-size: 24px; font-weight: 600;">
-                    Miller Storm Operating System
-                  </h1>
-                </td>
-              </tr>
-              
-              <tr>
-                <td style="padding: 20px 40px;">
-                  <p style="margin: 0 0 16px 0; color: #374151; font-size: 16px; line-height: 1.5;">
-                    Hi ${name},
-                  </p>
-                  <p style="margin: 0 0 16px 0; color: #374151; font-size: 16px; line-height: 1.5;">
-                    Thank you for your interest in the Miller Storm Operating System.
-                  </p>
-                  <p style="margin: 0 0 24px 0; color: #374151; font-size: 16px; line-height: 1.5;">
-                    After careful review, we are unable to approve your registration request at this time.
-                  </p>
-                  
-                  <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #fef2f2; border-radius: 6px; margin: 24px 0;">
-                    <tr>
-                      <td style="padding: 20px;">
-                        <p style="margin: 0 0 8px 0; color: #991b1b; font-size: 14px; font-weight: 600;">Reason:</p>
-                        <p style="margin: 0; color: #7f1d1d; font-size: 14px; line-height: 1.5;">${reason}</p>
-                      </td>
-                    </tr>
-                  </table>
-                  
-                  <p style="margin: 0; color: #6b7280; font-size: 14px; line-height: 1.5;">
-                    If you have any questions or would like to discuss this decision, please contact your administrator.
-                  </p>
-                </td>
-              </tr>
-              
-              <tr>
-                <td style="padding: 20px 40px 40px 40px; border-top: 1px solid #e5e7eb;">
-                  <p style="margin: 0; color: #9ca3af; font-size: 12px; text-align: center;">
-                    © 2026-2027 Miller Storm. All Rights Reserved.
-                  </p>
-                </td>
-              </tr>
-            </table>
-          </td>
-        </tr>
-      </table>
-    </body>
-    </html>
-  `;
-
-  const text = `
-Hi ${name},
-
-Thank you for your interest in the Miller Storm Operating System.
-
-After careful review, we are unable to approve your registration request at this time.
-
-Reason: ${reason}
-
-If you have any questions or would like to discuss this decision, please contact your administrator.
-
-© 2026-2027 Miller Storm. All Rights Reserved.
-  `;
-
-  return { html, text };
+export async function sendAccountRejectedEmail(name: string, email: string, reason: string) {
+  const tmpl = await getEmailTemplate("accountRejected");
+  const { html, text, subject } = renderTemplate(tmpl.body, tmpl.subject, {
+    "{{name}}": name,
+    "{{reason}}": reason,
+  });
+  return sendEmail({ to: email, subject, html, text });
 }
 
-export function generateUserAccountUpdatedEmail(params: {
+export async function sendQuickStartUserEmail(name: string, email: string) {
+  const tmpl = await getEmailTemplate("quickStartUser");
+  const { html, text, subject } = renderTemplate(tmpl.body, tmpl.subject, {
+    "{{name}}": name,
+  });
+  return sendEmail({ to: email, subject, html, text });
+}
+
+export async function sendQuickStartManagerEmail(hireName: string, managerName: string, managerEmail: string) {
+  const tmpl = await getEmailTemplate("quickStartManager");
+  const { html, text, subject } = renderTemplate(tmpl.body, tmpl.subject, {
+    "{{hireName}}": hireName,
+    "{{managerName}}": managerName,
+  });
+  return sendEmail({ to: managerEmail, subject, html, text });
+}
+
+export async function sendUserAccountUpdatedEmail(params: {
   name: string;
   email: string;
   password: string | null;
@@ -434,49 +101,21 @@ export function generateUserAccountUpdatedEmail(params: {
   managerName: string | null;
   loginUrl: string;
 }) {
-  const roleStr = params.roles.map(r => r.charAt(0).toUpperCase() + r.slice(1)).join(", ");
-  const passwordLine = params.password
-    ? `<tr><td style="padding:4px 0;color:#374151;font-size:14px;"><strong>Password:</strong> ${params.password}</td></tr>`
-    : `<tr><td style="padding:4px 0;color:#374151;font-size:14px;"><strong>Password:</strong> Unchanged (use your existing password)</td></tr>`;
-  const managerLine = params.managerName
-    ? `<tr><td style="padding:4px 0;color:#374151;font-size:14px;"><strong>Manager:</strong> ${params.managerName}</td></tr>`
-    : "";
-
-  const html = `<!DOCTYPE html><html><head><meta charset="utf-8"></head>
-<body style="margin:0;padding:0;font-family:Arial,sans-serif;background:#f3f4f6;">
-<table width="100%" cellpadding="0" cellspacing="0" style="background:#f3f4f6;padding:40px 0;">
-<tr><td align="center">
-<table width="600" cellpadding="0" cellspacing="0" style="background:#fff;border-radius:8px;box-shadow:0 2px 4px rgba(0,0,0,0.1);">
-<tr><td style="padding:40px 40px 20px;text-align:center;">
-  <h1 style="margin:0;color:#111827;font-size:24px;font-weight:600;">Miller Storm Operating System</h1>
-</td></tr>
-<tr><td style="padding:20px 40px;">
-  <p style="margin:0 0 16px;color:#374151;font-size:16px;">Hi ${params.name},</p>
-  <p style="margin:0 0 16px;color:#374151;font-size:16px;">Your account has been updated by an administrator. Here are your current login details:</p>
-  <table cellpadding="0" cellspacing="0" style="background:#f9fafb;border-radius:6px;padding:20px;width:100%;margin:0 0 24px;">
-    <tr><td style="padding:4px 0;color:#374151;font-size:14px;"><strong>Name:</strong> ${params.name}</td></tr>
-    <tr><td style="padding:4px 0;color:#374151;font-size:14px;"><strong>Email:</strong> ${params.email}</td></tr>
-    ${passwordLine}
-    <tr><td style="padding:4px 0;color:#374151;font-size:14px;"><strong>Role:</strong> ${roleStr}</td></tr>
-    ${managerLine}
-  </table>
-  <table width="100%" cellpadding="0" cellspacing="0"><tr><td align="center" style="padding:0 0 24px;">
-    <a href="${params.loginUrl}" style="display:inline-block;padding:14px 32px;background:#2563eb;color:#fff;text-decoration:none;border-radius:6px;font-size:16px;font-weight:500;">Login Now</a>
-  </td></tr></table>
-  <p style="margin:0;color:#6b7280;font-size:14px;">If you have any questions, please contact your administrator.</p>
-</td></tr>
-<tr><td style="padding:20px 40px 40px;border-top:1px solid #e5e7eb;">
-  <p style="margin:0;color:#9ca3af;font-size:12px;text-align:center;">© 2026-2027 Miller Storm. All Rights Reserved.</p>
-</td></tr>
-</table></td></tr></table></body></html>`;
-
-  const text = `Hi ${params.name},\n\nYour account has been updated.\n\nName: ${params.name}\nEmail: ${params.email}\nPassword: ${params.password || "Unchanged"}\nRole: ${roleStr}${params.managerName ? `\nManager: ${params.managerName}` : ""}\n\nLogin: ${params.loginUrl}\n\n© 2026-2027 Miller Storm.`;
-
-  return { html, text };
+  const tmpl = await getEmailTemplate("userAccountUpdated");
+  const { html, text, subject } = renderTemplate(tmpl.body, tmpl.subject, {
+    "{{name}}": params.name,
+    "{{email}}": params.email,
+    "{{password}}": params.password || "Unchanged (use your existing password)",
+    "{{role}}": params.roles.map(r => r.charAt(0).toUpperCase() + r.slice(1)).join(", "),
+    "{{managerName}}": params.managerName || "N/A",
+    "{{loginUrl}}": params.loginUrl,
+  });
+  return sendEmail({ to: params.email, subject, html, text });
 }
 
-export function generateAdminUserUpdatedEmail(params: {
+export async function sendAdminConfirmationEmail(params: {
   adminName: string;
+  adminEmail: string;
   userName: string;
   userEmail: string;
   roles: string[];
@@ -484,110 +123,79 @@ export function generateAdminUserUpdatedEmail(params: {
   passwordChanged: boolean;
   updatedAt: string;
 }) {
-  const roleStr = params.roles.map(r => r.charAt(0).toUpperCase() + r.slice(1)).join(", ");
-  const managerLine = params.managerName
-    ? `<tr><td style="padding:4px 0;color:#374151;font-size:14px;"><strong>Manager:</strong> ${params.managerName}</td></tr>`
-    : "";
+  const tmpl = await getEmailTemplate("adminConfirmation");
+  const { html, text, subject } = renderTemplate(tmpl.body, tmpl.subject, {
+    "{{adminName}}": params.adminName,
+    "{{userName}}": params.userName,
+    "{{userEmail}}": params.userEmail,
+    "{{role}}": params.roles.map(r => r.charAt(0).toUpperCase() + r.slice(1)).join(", "),
+    "{{managerName}}": params.managerName || "N/A",
+    "{{passwordChanged}}": params.passwordChanged ? "Changed" : "Not Changed",
+    "{{updatedAt}}": params.updatedAt,
+  });
+  return sendEmail({ to: params.adminEmail, subject, html, text });
+}
 
-  const html = `<!DOCTYPE html><html><head><meta charset="utf-8"></head>
-<body style="margin:0;padding:0;font-family:Arial,sans-serif;background:#f3f4f6;">
-<table width="100%" cellpadding="0" cellspacing="0" style="background:#f3f4f6;padding:40px 0;">
-<tr><td align="center">
-<table width="600" cellpadding="0" cellspacing="0" style="background:#fff;border-radius:8px;box-shadow:0 2px 4px rgba(0,0,0,0.1);">
-<tr><td style="padding:40px 40px 20px;text-align:center;">
-  <h1 style="margin:0;color:#111827;font-size:24px;font-weight:600;">Miller Storm Operating System</h1>
-</td></tr>
-<tr><td style="padding:20px 40px;">
-  <p style="margin:0 0 16px;color:#374151;font-size:16px;">Hi ${params.adminName},</p>
-  <p style="margin:0 0 16px;color:#374151;font-size:16px;">You have successfully updated the following user account:</p>
-  <table cellpadding="0" cellspacing="0" style="background:#f9fafb;border-radius:6px;padding:20px;width:100%;margin:0 0 24px;">
-    <tr><td style="padding:4px 0;color:#374151;font-size:14px;"><strong>Name:</strong> ${params.userName}</td></tr>
-    <tr><td style="padding:4px 0;color:#374151;font-size:14px;"><strong>Email:</strong> ${params.userEmail}</td></tr>
-    <tr><td style="padding:4px 0;color:#374151;font-size:14px;"><strong>Role:</strong> ${roleStr}</td></tr>
-    ${managerLine}
-    <tr><td style="padding:4px 0;color:#374151;font-size:14px;"><strong>Password:</strong> ${params.passwordChanged ? "Changed" : "Not Changed"}</td></tr>
-    <tr><td style="padding:4px 0;color:#374151;font-size:14px;"><strong>Updated At:</strong> ${params.updatedAt}</td></tr>
-  </table>
-  <p style="margin:0;color:#6b7280;font-size:14px;">This is an automated confirmation of the changes you made.</p>
-</td></tr>
-<tr><td style="padding:20px 40px 40px;border-top:1px solid #e5e7eb;">
-  <p style="margin:0;color:#9ca3af;font-size:12px;text-align:center;">© 2026-2027 Miller Storm. All Rights Reserved.</p>
-</td></tr>
-</table></td></tr></table></body></html>`;
+// ── Legacy static generators (kept for backward compatibility) ───────────────
 
-  const text = `Hi ${params.adminName},\n\nYou updated: ${params.userName}\nEmail: ${params.userEmail}\nRole: ${roleStr}${params.managerName ? `\nManager: ${params.managerName}` : ""}\nPassword: ${params.passwordChanged ? "Changed" : "Not Changed"}\nUpdated At: ${params.updatedAt}\n\n© 2026-2027 Miller Storm.`;
+export function generatePasswordResetEmail(name: string, resetLink: string) {
+  const html = `<!DOCTYPE html><html><body style="font-family:Arial,sans-serif;">
+<p>Hi ${name},</p>
+<p>Click the link below to reset your password:</p>
+<p><a href="${resetLink}">${resetLink}</a></p>
+<p>This link expires in 1 hour.</p>
+<p>© 2026-2027 Miller Storm.</p>
+</body></html>`;
+  const text = `Hi ${name},\n\nReset your password: ${resetLink}\n\nExpires in 1 hour.\n\n© 2026-2027 Miller Storm.`;
+  return { html, text };
+}
 
+export function generateRegistrationConfirmationEmail(name: string, email: string, role: string) {
+  const html = `<!DOCTYPE html><html><body style="font-family:Arial,sans-serif;">
+<p>Hi ${name},</p>
+<p>Your registration request is pending approval.</p>
+<p>Name: ${name} | Email: ${email} | Role: ${role}</p>
+<p>© 2026-2027 Miller Storm.</p>
+</body></html>`;
+  const text = `Hi ${name},\n\nYour registration is pending approval.\nName: ${name}\nEmail: ${email}\nRole: ${role}\n\n© 2026-2027 Miller Storm.`;
+  return { html, text };
+}
+
+export function generateApprovalEmail(name: string, email: string, role: string, loginUrl: string) {
+  const html = `<!DOCTYPE html><html><body style="font-family:Arial,sans-serif;">
+<p>Hi ${name},</p>
+<p>Your account has been approved!</p>
+<p>Email: ${email} | Role: ${role}</p>
+<p><a href="${loginUrl}">Login Now</a></p>
+<p>© 2026-2027 Miller Storm.</p>
+</body></html>`;
+  const text = `Hi ${name},\n\nYour account has been approved!\nEmail: ${email}\nRole: ${role}\nLogin: ${loginUrl}\n\n© 2026-2027 Miller Storm.`;
+  return { html, text };
+}
+
+export function generateRejectionEmail(name: string, email: string, role: string, reason: string) {
+  const html = `<!DOCTYPE html><html><body style="font-family:Arial,sans-serif;">
+<p>Hi ${name},</p>
+<p>Your registration request could not be approved at this time.</p>
+<p>Reason: ${reason}</p>
+<p>© 2026-2027 Miller Storm.</p>
+</body></html>`;
+  const text = `Hi ${name},\n\nYour registration was not approved.\nReason: ${reason}\n\n© 2026-2027 Miller Storm.`;
   return { html, text };
 }
 
 export function generateQuickStartEmail(name: string): string {
-  return `
-<!DOCTYPE html>
-<html>
-<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"></head>
-<body style="margin:0;padding:0;font-family:Arial,sans-serif;background:#f3f4f6;">
-  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f3f4f6;padding:40px 0;">
-    <tr><td align="center">
-      <table width="600" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:8px;box-shadow:0 2px 4px rgba(0,0,0,0.1);">
-        <tr>
-          <td style="padding:40px 40px 30px;text-align:center;">
-            <h1 style="margin:0 0 4px;color:#111827;font-size:22px;font-weight:700;">Miller Storm Operating System</h1>
-          </td>
-        </tr>
-        <tr>
-          <td style="padding:0 40px 40px;">
-            <p style="margin:0 0 20px;color:#374151;font-size:16px;line-height:1.6;">Hi ${name},</p>
-            <p style="margin:0 0 20px;color:#374151;font-size:16px;line-height:1.6;">Welcome to Miller Storm.</p>
-            <p style="margin:0 0 20px;color:#374151;font-size:16px;line-height:1.6;">Your goal in the first 48 hours is simple:</p>
-            <p style="margin:0 0 20px;color:#374151;font-size:16px;line-height:1.6;">Complete training and get into the field.</p>
-            <p style="margin:0 0 20px;color:#374151;font-size:16px;line-height:1.6;">Your Quick Start Success Path is available inside the Miller Storm Operating System.</p>
-            <p style="margin:0;color:#374151;font-size:16px;line-height:1.6;">Your manager has also received this plan so you can coordinate your ride-along.</p>
-          </td>
-        </tr>
-        <tr>
-          <td style="padding:20px 40px 40px;border-top:1px solid #e5e7eb;">
-            <p style="margin:0;color:#9ca3af;font-size:12px;text-align:center;">© 2026-2027 Miller Storm. All Rights Reserved.</p>
-          </td>
-        </tr>
-      </table>
-    </td></tr>
-  </table>
-</body>
-</html>`;
+  return `<!DOCTYPE html><html><body style="font-family:Arial,sans-serif;">
+<p>Hi ${name},</p>
+<p>Welcome to Miller Storm. Complete training and get into the field within 48 hours.</p>
+<p>© 2026-2027 Miller Storm.</p>
+</body></html>`;
 }
 
 export function generateQuickStartManagerEmail(hireName: string, managerName: string): string {
-  return `
-<!DOCTYPE html>
-<html>
-<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"></head>
-<body style="margin:0;padding:0;font-family:Arial,sans-serif;background:#f3f4f6;">
-  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f3f4f6;padding:40px 0;">
-    <tr><td align="center">
-      <table width="600" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:8px;box-shadow:0 2px 4px rgba(0,0,0,0.1);">
-        <tr>
-          <td style="padding:40px 40px 30px;text-align:center;">
-            <h1 style="margin:0 0 4px;color:#111827;font-size:22px;font-weight:700;">Miller Storm Operating System</h1>
-          </td>
-        </tr>
-        <tr>
-          <td style="padding:0 40px 40px;">
-            <p style="margin:0 0 20px;color:#374151;font-size:16px;line-height:1.6;">Hi ${managerName},</p>
-            <p style="margin:0 0 20px;color:#374151;font-size:16px;line-height:1.6;">A new sales rep has joined your team: <strong>${hireName}</strong>.</p>
-            <p style="margin:0 0 20px;color:#374151;font-size:16px;line-height:1.6;">Their goal in the first 48 hours is simple:</p>
-            <p style="margin:0 0 20px;color:#374151;font-size:16px;line-height:1.6;">Complete training and get into the field.</p>
-            <p style="margin:0 0 20px;color:#374151;font-size:16px;line-height:1.6;">Their 48-Hour Quick Start Success Path is available inside the Miller Storm Operating System.</p>
-            <p style="margin:0;color:#374151;font-size:16px;line-height:1.6;">Please coordinate their ride-along as soon as possible.</p>
-          </td>
-        </tr>
-        <tr>
-          <td style="padding:20px 40px 40px;border-top:1px solid #e5e7eb;">
-            <p style="margin:0;color:#9ca3af;font-size:12px;text-align:center;">© 2026-2027 Miller Storm. All Rights Reserved.</p>
-          </td>
-        </tr>
-      </table>
-    </td></tr>
-  </table>
-</body>
-</html>`;
+  return `<!DOCTYPE html><html><body style="font-family:Arial,sans-serif;">
+<p>Hi ${managerName},</p>
+<p>A new sales rep has joined your team: ${hireName}. Please coordinate their ride-along.</p>
+<p>© 2026-2027 Miller Storm.</p>
+</body></html>`;
 }

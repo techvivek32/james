@@ -22,7 +22,8 @@ type AdminViewId =
   | "webText"
   | "trainingExecutive"
   | "messaging"
-  | "leaderboard";
+  | "leaderboard"
+  | "emailConfig";
 
 type AdminLayoutProps = {
   children: React.ReactNode;
