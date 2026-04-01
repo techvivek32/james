@@ -7,7 +7,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   if (req.method === 'GET') {
     try {
-      const appTools = await AppTool.find({}).sort({ createdAt: -1 });
+      const { published } = req.query;
+      const filter = published === 'true' ? { status: 'published' } : {};
+      const appTools = await AppTool.find(filter).sort({ createdAt: -1 });
       return res.status(200).json(appTools);
     } catch (error) {
       console.error('Error fetching apps/tools:', error);
@@ -33,7 +35,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         webLink: webLink || '',
         appStoreLink: appStoreLink || '',
         playStoreLink: playStoreLink || '',
-        category
+        category,
+        status: 'draft'
       });
 
       return res.status(201).json(appTool);

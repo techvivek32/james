@@ -27,7 +27,7 @@ export function AppsToolsViewer({ portal = 'sales' }: { portal?: 'sales' | 'mana
 
   async function fetchAppTools() {
     try {
-      const response = await fetch('/api/apps-tools');
+      const response = await fetch('/api/apps-tools?published=true');
       if (response.ok) {
         const data = await response.json();
         setApps(data.filter((item: AppToolItem) => item.category === 'apps'));
