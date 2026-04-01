@@ -369,13 +369,12 @@ export function BusinessUnitsManager(props: { users: UserProfile[] }) {
                       <tr style={{ backgroundColor: "#f3f4f6", borderBottom: "2px solid #e5e7eb" }}>
                         <th style={{ padding: 12, textAlign: "left", fontWeight: 600, color: "#111827" }}>Name</th>
                         <th style={{ padding: 12, textAlign: "right", fontWeight: 600, color: "#111827" }}>Income Goal</th>
-                        <th style={{ padding: 12, textAlign: "right", fontWeight: 600, color: "#111827" }}>Deal Ave</th>
-                        <th style={{ padding: 12, textAlign: "right", fontWeight: 600, color: "#111827" }}>Deals/Year</th>
                         <th style={{ padding: 12, textAlign: "right", fontWeight: 600, color: "#111827" }}>Deals/Month</th>
-                        <th style={{ padding: 12, textAlign: "right", fontWeight: 600, color: "#111827" }}>Claims/Year</th>
                         <th style={{ padding: 12, textAlign: "right", fontWeight: 600, color: "#111827" }}>Claims/Month</th>
-                        <th style={{ padding: 12, textAlign: "right", fontWeight: 600, color: "#111827" }}>Inspections/Year</th>
                         <th style={{ padding: 12, textAlign: "right", fontWeight: 600, color: "#111827" }}>Inspections/Month</th>
+                        <th style={{ padding: 12, textAlign: "right", fontWeight: 600, color: "#111827" }}>Deals/Year</th>
+                        <th style={{ padding: 12, textAlign: "right", fontWeight: 600, color: "#111827" }}>Claims/Year</th>
+                        <th style={{ padding: 12, textAlign: "right", fontWeight: 600, color: "#111827" }}>Inspections/Year</th>
                         <th style={{ padding: 12, textAlign: "center", fontWeight: 600, color: "#111827" }}>Status</th>
                         <th style={{ padding: 12, textAlign: "center", fontWeight: 600, color: "#111827" }}>Actions</th>
                       </tr>
@@ -389,24 +388,23 @@ export function BusinessUnitsManager(props: { users: UserProfile[] }) {
                         <td style={{ padding: 12, textAlign: "right", color: "#374151", fontWeight: 600 }}>
                           ${teamTotals.incomeGoal.toLocaleString()}
                         </td>
-                        <td style={{ padding: 12, textAlign: "right", color: "#374151" }}>-</td>
-                        <td style={{ padding: 12, textAlign: "right", color: "#374151", fontWeight: 600 }}>
-                          {teamTotals.dealsPerYear.toLocaleString()}
-                        </td>
                         <td style={{ padding: 12, textAlign: "right", color: "#374151", fontWeight: 600 }}>
                           {Math.ceil(teamTotals.dealsPerMonth).toLocaleString()}
-                        </td>
-                        <td style={{ padding: 12, textAlign: "right", color: "#374151", fontWeight: 600 }}>
-                          {teamTotals.claimsPerYear.toLocaleString()}
                         </td>
                         <td style={{ padding: 12, textAlign: "right", color: "#374151", fontWeight: 600 }}>
                           {Math.ceil(teamTotals.claimsPerMonth).toLocaleString()}
                         </td>
                         <td style={{ padding: 12, textAlign: "right", color: "#374151", fontWeight: 600 }}>
-                          {teamTotals.inspectionsPerYear.toLocaleString()}
+                          {Math.ceil(teamTotals.inspectionsPerMonth).toLocaleString()}
                         </td>
                         <td style={{ padding: 12, textAlign: "right", color: "#374151", fontWeight: 600 }}>
-                          {Math.ceil(teamTotals.inspectionsPerMonth).toLocaleString()}
+                          {teamTotals.dealsPerYear.toLocaleString()}
+                        </td>
+                        <td style={{ padding: 12, textAlign: "right", color: "#374151", fontWeight: 600 }}>
+                          {teamTotals.claimsPerYear.toLocaleString()}
+                        </td>
+                        <td style={{ padding: 12, textAlign: "right", color: "#374151", fontWeight: 600 }}>
+                          {teamTotals.inspectionsPerYear.toLocaleString()}
                         </td>
                         <td style={{ padding: 12, textAlign: "center" }}>
                           <span style={{ padding: "4px 8px", backgroundColor: "#e5e7eb", color: "#374151", borderRadius: 4, fontSize: 11, fontWeight: 600 }}>
@@ -446,25 +444,22 @@ export function BusinessUnitsManager(props: { users: UserProfile[] }) {
                               ${(bp?.revenueGoal || 0).toLocaleString()}
                             </td>
                             <td style={{ padding: 12, textAlign: "right", color: "#374151" }}>
-                              ${(bp?.averageDealSize || 0).toLocaleString()}
-                            </td>
-                            <td style={{ padding: 12, textAlign: "right", color: "#374151" }}>
-                              {metrics.dealsPerYear.toLocaleString()}
-                            </td>
-                            <td style={{ padding: 12, textAlign: "right", color: "#374151" }}>
                               {Math.ceil(metrics.dealsPerMonth).toLocaleString()}
-                            </td>
-                            <td style={{ padding: 12, textAlign: "right", color: "#374151" }}>
-                              {metrics.claimsPerYear.toLocaleString()}
                             </td>
                             <td style={{ padding: 12, textAlign: "right", color: "#374151" }}>
                               {Math.ceil(metrics.claimsPerMonth).toLocaleString()}
                             </td>
                             <td style={{ padding: 12, textAlign: "right", color: "#374151" }}>
-                              {metrics.inspectionsPerYear.toLocaleString()}
+                              {Math.ceil(metrics.inspectionsPerMonth).toLocaleString()}
                             </td>
                             <td style={{ padding: 12, textAlign: "right", color: "#374151" }}>
-                              {Math.ceil(metrics.inspectionsPerMonth).toLocaleString()}
+                              {metrics.dealsPerYear.toLocaleString()}
+                            </td>
+                            <td style={{ padding: 12, textAlign: "right", color: "#374151" }}>
+                              {metrics.claimsPerYear.toLocaleString()}
+                            </td>
+                            <td style={{ padding: 12, textAlign: "right", color: "#374151" }}>
+                              {metrics.inspectionsPerYear.toLocaleString()}
                             </td>
                             <td style={{ padding: 12, textAlign: "center" }}>
                               <span style={{ 
@@ -557,13 +552,12 @@ export function BusinessUnitsManager(props: { users: UserProfile[] }) {
                           <tr style={{ backgroundColor: "#f3f4f6", borderBottom: "2px solid #e5e7eb" }}>
                             <th style={{ padding: 12, textAlign: "left", fontWeight: 600, color: "#111827" }}>Name</th>
                             <th style={{ padding: 12, textAlign: "right", fontWeight: 600, color: "#111827" }}>Income Goal</th>
-                            <th style={{ padding: 12, textAlign: "right", fontWeight: 600, color: "#111827" }}>Deal Ave</th>
-                            <th style={{ padding: 12, textAlign: "right", fontWeight: 600, color: "#111827" }}>Deals/Year</th>
                             <th style={{ padding: 12, textAlign: "right", fontWeight: 600, color: "#111827" }}>Deals/Month</th>
-                            <th style={{ padding: 12, textAlign: "right", fontWeight: 600, color: "#111827" }}>Claims/Year</th>
                             <th style={{ padding: 12, textAlign: "right", fontWeight: 600, color: "#111827" }}>Claims/Month</th>
-                            <th style={{ padding: 12, textAlign: "right", fontWeight: 600, color: "#111827" }}>Inspections/Year</th>
                             <th style={{ padding: 12, textAlign: "right", fontWeight: 600, color: "#111827" }}>Inspections/Month</th>
+                            <th style={{ padding: 12, textAlign: "right", fontWeight: 600, color: "#111827" }}>Deals/Year</th>
+                            <th style={{ padding: 12, textAlign: "right", fontWeight: 600, color: "#111827" }}>Claims/Year</th>
+                            <th style={{ padding: 12, textAlign: "right", fontWeight: 600, color: "#111827" }}>Inspections/Year</th>
                             <th style={{ padding: 12, textAlign: "center", fontWeight: 600, color: "#111827" }}>Status</th>
                             <th style={{ padding: 12, textAlign: "center", fontWeight: 600, color: "#111827" }}>Actions</th>
                           </tr>
@@ -572,13 +566,12 @@ export function BusinessUnitsManager(props: { users: UserProfile[] }) {
                           <tr style={{ borderBottom: "1px solid #e5e7eb", backgroundColor: "#f8fafc" }}>
                             <td style={{ padding: 12, color: "#111827", fontWeight: 600 }}>{manager.name} (Manager)</td>
                             <td style={{ padding: 12, textAlign: "right" }}>${teamTotals.incomeGoal.toLocaleString()}</td>
-                            <td style={{ padding: 12, textAlign: "right" }}>-</td>
-                            <td style={{ padding: 12, textAlign: "right" }}>{teamTotals.dealsPerYear.toLocaleString()}</td>
                             <td style={{ padding: 12, textAlign: "right" }}>{Math.ceil(teamTotals.dealsPerMonth).toLocaleString()}</td>
-                            <td style={{ padding: 12, textAlign: "right" }}>{teamTotals.claimsPerYear.toLocaleString()}</td>
                             <td style={{ padding: 12, textAlign: "right" }}>{Math.ceil(teamTotals.claimsPerMonth).toLocaleString()}</td>
-                            <td style={{ padding: 12, textAlign: "right" }}>{teamTotals.inspectionsPerYear.toLocaleString()}</td>
                             <td style={{ padding: 12, textAlign: "right" }}>{Math.ceil(teamTotals.inspectionsPerMonth).toLocaleString()}</td>
+                            <td style={{ padding: 12, textAlign: "right" }}>{teamTotals.dealsPerYear.toLocaleString()}</td>
+                            <td style={{ padding: 12, textAlign: "right" }}>{teamTotals.claimsPerYear.toLocaleString()}</td>
+                            <td style={{ padding: 12, textAlign: "right" }}>{teamTotals.inspectionsPerYear.toLocaleString()}</td>
                             <td style={{ padding: 12, textAlign: "center" }}><span style={{ padding: "4px 8px", backgroundColor: "#e5e7eb", color: "#374151", borderRadius: 4, fontSize: 11, fontWeight: 600 }}>Team ({teamMembers.length})</span></td>
                             <td style={{ padding: 12, textAlign: "center" }}>
                               <button onClick={() => toggleManager(manager.id)} style={{ padding: "6px 12px", backgroundColor: "#10b981", color: "#fff", border: "none", borderRadius: 4, fontSize: 12, fontWeight: 600, cursor: "pointer" }}>See Team</button>
@@ -591,13 +584,12 @@ export function BusinessUnitsManager(props: { users: UserProfile[] }) {
                               <tr key={member.id} style={{ borderBottom: "1px solid #e5e7eb" }}>
                                 <td style={{ padding: 12, paddingLeft: 32 }}>└ {member.name}</td>
                                 <td style={{ padding: 12, textAlign: "right" }}>${(bp?.revenueGoal || 0).toLocaleString()}</td>
-                                <td style={{ padding: 12, textAlign: "right" }}>${(bp?.averageDealSize || 0).toLocaleString()}</td>
-                                <td style={{ padding: 12, textAlign: "right" }}>{metrics.dealsPerYear.toLocaleString()}</td>
                                 <td style={{ padding: 12, textAlign: "right" }}>{Math.ceil(metrics.dealsPerMonth).toLocaleString()}</td>
-                                <td style={{ padding: 12, textAlign: "right" }}>{metrics.claimsPerYear.toLocaleString()}</td>
                                 <td style={{ padding: 12, textAlign: "right" }}>{Math.ceil(metrics.claimsPerMonth).toLocaleString()}</td>
-                                <td style={{ padding: 12, textAlign: "right" }}>{metrics.inspectionsPerYear.toLocaleString()}</td>
                                 <td style={{ padding: 12, textAlign: "right" }}>{Math.ceil(metrics.inspectionsPerMonth).toLocaleString()}</td>
+                                <td style={{ padding: 12, textAlign: "right" }}>{metrics.dealsPerYear.toLocaleString()}</td>
+                                <td style={{ padding: 12, textAlign: "right" }}>{metrics.claimsPerYear.toLocaleString()}</td>
+                                <td style={{ padding: 12, textAlign: "right" }}>{metrics.inspectionsPerYear.toLocaleString()}</td>
                                 <td style={{ padding: 12, textAlign: "center" }}>
                                   <span style={{ padding: "4px 8px", backgroundColor: bp?.committed ? "#d1fae5" : "#fef3c7", color: bp?.committed ? "#065f46" : "#78350f", borderRadius: 4, fontSize: 11, fontWeight: 600 }}>
                                     {bp?.committed ? "Committed" : "Draft"}
