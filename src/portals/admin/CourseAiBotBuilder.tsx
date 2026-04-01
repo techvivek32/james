@@ -110,8 +110,6 @@ export function CourseAiBotBuilder() {
 
   async function saveBot(updates: Partial<CourseBot>) {
     if (!selected) return;
-    console.log('Saving bot with updates:', updates);
-    console.log('Current bot status:', selected.status);
     setSaving(true);
     try {
       const res = await fetch(`/api/course-ai-bots/${selected.id}`, {
@@ -120,21 +118,12 @@ export function CourseAiBotBuilder() {
       });
       if (res.ok) {
         const updated = await res.json();
-        console.log('Bot updated successfully:', updated);
-        console.log('Status in response:', updated.status);
-        // If status is not in response, add it manually
-        if (updates.status && !updated.status) {
-          updated.status = updates.status;
-        }
+        if (updates.status && !updated.status) updated.status = updates.status;
         setSelected(updated);
         setBots(prev => prev.map(b => b.id === updated.id ? updated : b));
-      } else {
-        console.error('Failed to update bot:', await res.text());
       }
-    } catch (error) {
-      console.error('Error saving bot:', error);
-    } finally { 
-      setSaving(false); 
+    } finally {
+      setSaving(false);
     }
   }
 
@@ -282,7 +271,7 @@ function AddCoursesPanel({ bot, onSave, saving }: { bot: CourseBot; onSave: (u: 
   const [selectedPages, setSelectedPages] = useState<Set<string>>(new Set(bot.selectedPages || []));
   const [selectedFolders, setSelectedFolders] = useState<Set<string>>(new Set(bot.selectedFolders || []));
   const [selectedCourses, setSelectedCourses] = useState<Set<string>>(new Set(bot.selectedCourses || []));
-  const { saved, flash } = useSaved();
+  const [trainStatus, setTrainStatus] = useState<"idle" | "saving" | "done">("idle");
 
   useEffect(() => {
     fetch("/api/courses").then(r => r.ok ? r.json() : []).then(data => {
@@ -296,7 +285,6 @@ function AddCoursesPanel({ bot, onSave, saving }: { bot: CourseBot; onSave: (u: 
     const newCourses = new Set(selectedCourses);
     const newFolders = new Set(selectedFolders);
     const newPages = new Set(selectedPages);
-
     if (newCourses.has(courseId)) {
       newCourses.delete(courseId);
       allFolderIds.forEach(id => newFolders.delete(id));
@@ -313,7 +301,6 @@ function AddCoursesPanel({ bot, onSave, saving }: { bot: CourseBot; onSave: (u: 
     const folderPages = (course.pages || []).filter((p: any) => p.folderId === folderId).map((p: any) => p.id);
     const newFolders = new Set(selectedFolders);
     const newPages = new Set(selectedPages);
-
     if (newFolders.has(folderId)) {
       newFolders.delete(folderId);
       folderPages.forEach(id => newPages.delete(id));
@@ -330,30 +317,53 @@ function AddCoursesPanel({ bot, onSave, saving }: { bot: CourseBot; onSave: (u: 
     setSelectedPages(newPages);
   }
 
-  function save() {
-    onSave({ selectedCourses: Array.from(selectedCourses), selectedFolders: Array.from(selectedFolders), selectedPages: Array.from(selectedPages) });
-    flash();
+  async function save() {
+    setTrainStatus("saving");
+    await onSave({ selectedCourses: Array.from(selectedCourses), selectedFolders: Array.from(selectedFolders), selectedPages: Array.from(selectedPages) });
+    setTrainStatus("done");
+    setTimeout(() => setTrainStatus("idle"), 3000);
   }
 
   const totalSelected = selectedPages.size;
+  const isTrained = !!bot.trainingText?.trim();
 
   return (
     <div style={{ padding: "32px" }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "24px" }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "20px" }}>
         <div>
           <h2 style={{ fontSize: "20px", fontWeight: 700, marginBottom: "4px" }}>Add Courses</h2>
-          <p style={{ color: "#6b7280", fontSize: "14px", margin: 0 }}>Select courses, modules, and lessons to train this bot</p>
+          <p style={{ color: "#6b7280", fontSize: "14px", margin: 0 }}>Select lessons to train this bot. The bot will only answer questions based on selected content.</p>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-          {totalSelected > 0 && <span style={{ fontSize: "13px", color: "#6b7280" }}>{totalSelected} lessons selected</span>}
-          <button onClick={save} disabled={saving} style={btnPrimary}>{saving ? "Saving..." : "Save & Train"}</button>
+          {totalSelected > 0 && <span style={{ fontSize: "13px", color: "#6b7280" }}>{totalSelected} lesson{totalSelected !== 1 ? "s" : ""} selected</span>}
+          <button onClick={save} disabled={saving || trainStatus === "saving"}
+            style={{ ...btnPrimary, opacity: saving || trainStatus === "saving" ? 0.7 : 1 }}>
+            {trainStatus === "saving" || saving ? "Training..." : trainStatus === "done" ? "✓ Trained!" : "Save & Train"}
+          </button>
         </div>
       </div>
+
+      {/* Training status banner */}
+      {isTrained && trainStatus === "idle" && (
+        <div style={{ background: "#f0fdf4", border: "1px solid #bbf7d0", borderRadius: 10, padding: "12px 16px", marginBottom: 20, display: "flex", alignItems: "center", gap: 10 }}>
+          <span style={{ fontSize: 18 }}>✅</span>
+          <div>
+            <div style={{ fontSize: 13, fontWeight: 600, color: "#15803d" }}>Bot is trained</div>
+            <div style={{ fontSize: 12, color: "#16a34a" }}>{bot.trainingText.length.toLocaleString()} characters of training data · {bot.selectedPages?.length || 0} lessons</div>
+          </div>
+        </div>
+      )}
+      {!isTrained && trainStatus === "idle" && totalSelected === 0 && (
+        <div style={{ background: "#fffbeb", border: "1px solid #fde68a", borderRadius: 10, padding: "12px 16px", marginBottom: 20, display: "flex", alignItems: "center", gap: 10 }}>
+          <span style={{ fontSize: 18 }}>⚠️</span>
+          <div style={{ fontSize: 13, color: "#92400e" }}>No training data yet. Select lessons below and click <strong>Save & Train</strong>.</div>
+        </div>
+      )}
 
       {loading ? (
         <div style={{ textAlign: "center", padding: "60px", color: "#9ca3af" }}>Loading courses...</div>
       ) : courses.length === 0 ? (
-        <div style={{ ...card, textAlign: "center", padding: "60px", color: "#9ca3af" }}>No courses found</div>
+        <div style={{ ...card, textAlign: "center", padding: "60px", color: "#9ca3af" }}>No courses found. Create courses first in Course Management.</div>
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
           {courses.map(course => {
@@ -361,26 +371,31 @@ function AddCoursesPanel({ bot, onSave, saving }: { bot: CourseBot; onSave: (u: 
             const isCourseChecked = selectedCourses.has(course.id);
             const coursePageCount = (course.pages || []).length;
             const selectedInCourse = (course.pages || []).filter(p => selectedPages.has(p.id)).length;
+            const hasNoPages = coursePageCount === 0;
 
             return (
-              <div key={course.id} style={{ ...card, padding: 0, overflow: "hidden" }}>
+              <div key={course.id} style={{ ...card, padding: 0, overflow: "hidden", opacity: hasNoPages ? 0.6 : 1 }}>
                 {/* Course header */}
                 <div style={{ display: "flex", alignItems: "center", gap: "12px", padding: "14px 20px", background: "#f8fafc", borderBottom: isExpanded ? "1px solid #e5e7eb" : "none" }}>
-                  <input type="checkbox" checked={isCourseChecked} onChange={() => toggleCourse(course.id, course)}
-                    style={{ width: 16, height: 16, accentColor: "#3b82f6", cursor: "pointer", flexShrink: 0 }} />
-                  <button onClick={() => setExpanded(prev => { const n = new Set(prev); n.has(course.id) ? n.delete(course.id) : n.add(course.id); return n; })}
-                    style={{ background: "none", border: "none", cursor: "pointer", flex: 1, textAlign: "left", display: "flex", alignItems: "center", gap: "10px" }}>
+                  <input type="checkbox" checked={isCourseChecked} onChange={() => !hasNoPages && toggleCourse(course.id, course)}
+                    disabled={hasNoPages}
+                    style={{ width: 16, height: 16, accentColor: "#3b82f6", cursor: hasNoPages ? "not-allowed" : "pointer", flexShrink: 0 }} />
+                  <button onClick={() => !hasNoPages && setExpanded(prev => { const n = new Set(prev); n.has(course.id) ? n.delete(course.id) : n.add(course.id); return n; })}
+                    disabled={hasNoPages}
+                    style={{ background: "none", border: "none", cursor: hasNoPages ? "default" : "pointer", flex: 1, textAlign: "left", display: "flex", alignItems: "center", gap: "10px" }}>
                     <span style={{ fontSize: "18px" }}>📚</span>
                     <span style={{ fontWeight: 700, fontSize: "15px", color: "#1f2937" }}>{course.title}</span>
-                    <span style={{ fontSize: "12px", color: "#9ca3af", marginLeft: "auto" }}>{selectedInCourse}/{coursePageCount} lessons</span>
-                    <span style={{ color: "#9ca3af", fontSize: "12px" }}>{isExpanded ? "▲" : "▼"}</span>
+                    {hasNoPages
+                      ? <span style={{ fontSize: "11px", color: "#f59e0b", marginLeft: "auto", background: "#fef3c7", padding: "2px 8px", borderRadius: 6 }}>No lessons</span>
+                      : <span style={{ fontSize: "12px", color: selectedInCourse > 0 ? "#3b82f6" : "#9ca3af", marginLeft: "auto", fontWeight: selectedInCourse > 0 ? 600 : 400 }}>{selectedInCourse}/{coursePageCount} lessons</span>
+                    }
+                    {!hasNoPages && <span style={{ color: "#9ca3af", fontSize: "12px" }}>{isExpanded ? "▲" : "▼"}</span>}
                   </button>
                 </div>
 
                 {/* Folders + Pages */}
                 {isExpanded && (
                   <div style={{ padding: "8px 0" }}>
-                    {/* Pages without folder */}
                     {(course.pages || []).filter(p => !p.folderId).map(page => (
                       <label key={page.id} style={{ display: "flex", alignItems: "center", gap: "10px", padding: "8px 20px 8px 44px", cursor: "pointer" }}
                         onMouseEnter={e => (e.currentTarget.style.background = "#f9fafb")}
@@ -392,8 +407,6 @@ function AddCoursesPanel({ bot, onSave, saving }: { bot: CourseBot; onSave: (u: 
                         {page.transcript && <span style={{ fontSize: "11px", color: "#10b981", marginLeft: "auto" }}>✓ transcript</span>}
                       </label>
                     ))}
-
-                    {/* Folders */}
                     {(course.folders || []).map(folder => {
                       const folderPages = (course.pages || []).filter(p => p.folderId === folder.id);
                       const isFolderChecked = selectedFolders.has(folder.id);
@@ -919,6 +932,7 @@ function CourseTestPanel({ bot }: { bot: CourseBot }) {
   const [messages, setMessages] = useState<Msg[]>([{ role: "assistant", content: bot.welcomeMessage || "Hi! Ask me anything about this course." }]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
+  const [chatId] = useState(() => `course-test-${bot.id}-${Date.now()}`);
   const bottomRef = useRef<HTMLDivElement>(null);
   const color = bot.colorTheme || "#3b82f6";
 
@@ -932,7 +946,15 @@ function CourseTestPanel({ bot }: { bot: CourseBot }) {
     try {
       const res = await fetch("/api/course-ai-bots/chat", {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ botId: bot.id, messages: newMessages })
+        body: JSON.stringify({
+          botId: bot.id,
+          messages: newMessages.filter(m => m.role !== "assistant" || newMessages.indexOf(m) > 0),
+          chatId,
+          userId: "admin-test",
+          userName: "Admin (Test)",
+          userEmail: "",
+          userRole: "admin"
+        })
       });
       const data = await res.json();
       setMessages(prev => [...prev, { role: "assistant", content: data.message || data.error || "Error" }]);

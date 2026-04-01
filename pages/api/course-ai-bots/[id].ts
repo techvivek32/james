@@ -15,14 +15,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   if (req.method === "PATCH") {
     const updates = req.body;
-    console.log('PATCH request - updates:', updates);
 
-    // If course selection changed, rebuild trainingText
+    // Rebuild trainingText whenever selectedPages changes
     if (updates.selectedPages !== undefined || updates.selectedCourses !== undefined) {
       const bot = await CourseAiBotModel.findOne({ id }).lean() as any;
       const selectedPages: string[] = updates.selectedPages ?? bot?.selectedPages ?? [];
 
-      if (selectedPages.length > 0) {
+      if (selectedPages.length === 0) {
+        updates.trainingText = "";
+      } else {
         const courses = await CourseModel.find({}).lean() as any[];
         let trainingText = "";
 
@@ -31,10 +32,40 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           if (coursePages.length === 0) continue;
 
           trainingText += `\n\n=== COURSE: ${course.title} ===\n`;
+          if (course.description) trainingText += `Description: ${course.description}\n`;
+
           for (const page of coursePages) {
             trainingText += `\n--- Lesson: ${page.title} ---\n`;
-            if (page.body) trainingText += page.body + "\n";
+
+            // Strip HTML tags from body
+            if (page.body) {
+              const plainBody = page.body
+                .replace(/<[^>]+>/g, " ")
+                .replace(/&amp;/g, "&")
+                .replace(/&lt;/g, "<")
+                .replace(/&gt;/g, ">")
+                .replace(/&nbsp;/g, " ")
+                .replace(/\s{2,}/g, " ")
+                .trim();
+              if (plainBody) trainingText += plainBody + "\n";
+            }
+
             if (page.transcript) trainingText += `\nTranscript:\n${page.transcript}\n`;
+
+            if (page.resourceLinks?.length) {
+              trainingText += `\nResources:\n`;
+              page.resourceLinks.forEach((r: any) => { trainingText += `- ${r.label}: ${r.href}\n`; });
+            }
+
+            if (page.isQuiz && page.quizQuestions?.length) {
+              trainingText += `\nQuiz Questions:\n`;
+              page.quizQuestions.forEach((q: any, i: number) => {
+                trainingText += `${i + 1}. ${q.prompt}\n`;
+                (q.options || []).forEach((opt: string, oi: number) => {
+                  trainingText += `   ${oi === q.correctIndex ? "✓" : " "} ${opt}\n`;
+                });
+              });
+            }
           }
         }
         updates.trainingText = trainingText.trim();
@@ -46,10 +77,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       { $set: updates },
       { new: true, returnDocument: "after" }
     ).lean();
-    
-    console.log('Updated bot from DB:', updated);
-    console.log('Status field in updated bot:', updated?.status);
-    
+
     if (!updated) return res.status(404).json({ error: "Not found" });
     return res.status(200).json(updated);
   }

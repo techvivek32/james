@@ -16,9 +16,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const bot = await CourseAiBotModel.findOne({ id: botId }).lean() as any;
   if (!bot) return res.status(404).json({ error: "Bot not found" });
 
-  const systemPrompt = bot.trainingText?.trim()
-    ? `${bot.systemPrompt || "You are a helpful course assistant. Only answer questions related to the course content provided."}\n\nCOURSE CONTENT:\n${bot.trainingText}`
-    : (bot.systemPrompt || "You are a helpful course assistant.");
+  const hasTraining = !!bot.trainingText?.trim();
+  const baseInstruction = bot.systemPrompt?.trim() ||
+    "You are a helpful course assistant. Answer questions ONLY based on the course content provided below. If the user asks about anything not covered in the training content, politely say: 'I can only assist with topics covered in this course.' Do not use any outside knowledge.";
+
+  const systemPrompt = hasTraining
+    ? `${baseInstruction}\n\n===== TRAINING CONTENT =====\n${bot.trainingText}\n===== END OF TRAINING CONTENT =====`
+    : `You are a helpful course assistant. No course content has been added yet. Let the user know that training content needs to be added first.`;
 
   try {
     const response = await fetch("https://api.openai.com/v1/chat/completions", {
