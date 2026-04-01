@@ -1,4 +1,4 @@
-import { useState, useMemo, ChangeEvent, useEffect } from "react";
+import { useState, useMemo, ChangeEvent, useEffect, useRef } from "react";
 import { DashboardCard } from "../../components/DashboardCard";
 import { UserProfile, BusinessPlan } from "../../types";
 
@@ -34,6 +34,10 @@ export function BusinessUnitsManager(props: { users: UserProfile[] }) {
     n.delete(id);
     saveHiddenManagers(n);
   }
+  const [colOrder, setColOrder] = useState<("metric" | "value" | "desc")[]>(["metric", "value", "desc"]);
+  const dragCol = useRef<string | null>(null);
+  const colLabels: Record<string, string> = { metric: "Metric", value: "Value", desc: "Description" };
+
   const [editingUserId, setEditingUserId] = useState<string | null>(null);
   const [editForm, setEditForm] = useState<{
     incomeGoal: string;
@@ -186,98 +190,81 @@ export function BusinessUnitsManager(props: { users: UserProfile[] }) {
           <span>All Committed Sales Plans - Global Dashboard</span>
         </div>
         <div className="panel-body">
-          <div style={{ overflowX: "auto" }}>
-            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13, border: "1px solid #e5e7eb" }}>
-              <thead>
-                <tr style={{ backgroundColor: "#f3f4f6", borderBottom: "2px solid #e5e7eb" }}>
-                  <th style={{ padding: 12, textAlign: "left", fontWeight: 600, color: "#111827", border: "1px solid #e5e7eb" }}>Metric</th>
-                  <th style={{ padding: 12, textAlign: "right", fontWeight: 600, color: "#111827", border: "1px solid #e5e7eb" }}>Value</th>
-                  <th style={{ padding: 12, textAlign: "left", fontWeight: 600, color: "#111827", border: "1px solid #e5e7eb" }}>Description</th>
-                </tr>
-              </thead>
-              <tbody>
-                {/* Global Totals Section */}
-                <tr style={{ backgroundColor: "#f8fafc" }}>
-                  <td colSpan={3} style={{ padding: 12, fontWeight: 600, color: "#111827", fontSize: 14, border: "1px solid #e5e7eb" }}>
-                    Global Totals
-                  </td>
-                </tr>
-                <tr>
-                  <td style={{ padding: 12, color: "#374151", paddingLeft: 24, border: "1px solid #e5e7eb" }}>Total Income Goal</td>
-                  <td style={{ padding: 12, textAlign: "right", color: "#111827", fontWeight: 600, border: "1px solid #e5e7eb" }}>
-                    ${globalTotals.incomeGoal.toLocaleString()}
-                  </td>
-                  <td style={{ padding: 12, color: "#6b7280", fontSize: 12, border: "1px solid #e5e7eb" }}>Sum of all committed reps</td>
-                </tr>
-                <tr style={{ display: "none" }}>
-                  <td style={{ padding: 12, color: "#374151", paddingLeft: 24, border: "1px solid #e5e7eb" }}>Claims Ratio</td>
-                  <td style={{ padding: 12, textAlign: "right", color: "#111827", fontWeight: 600, border: "1px solid #e5e7eb" }}>25%</td>
-                  <td style={{ padding: 12, color: "#6b7280", fontSize: 12, border: "1px solid #e5e7eb" }}>Hardcoded</td>
-                </tr>
-                <tr style={{ display: "none" }}>
-                  <td style={{ padding: 12, color: "#374151", paddingLeft: 24, border: "1px solid #e5e7eb" }}>Inspection Ratio</td>
-                  <td style={{ padding: 12, textAlign: "right", color: "#111827", fontWeight: 600, border: "1px solid #e5e7eb" }}>30%</td>
-                  <td style={{ padding: 12, color: "#6b7280", fontSize: 12, border: "1px solid #e5e7eb" }}>Hardcoded</td>
-                </tr>
-
-                {/* Yearly Targets Section */}
-                <tr style={{ backgroundColor: "#f8fafc" }}>
-                  <td colSpan={3} style={{ padding: 12, fontWeight: 600, color: "#111827", fontSize: 14, paddingTop: 24, border: "1px solid #e5e7eb" }}>
-                    Yearly Targets
-                  </td>
-                </tr>
-                <tr>
-                  <td style={{ padding: 12, color: "#374151", paddingLeft: 24, border: "1px solid #e5e7eb" }}>Deals Per Year</td>
-                  <td style={{ padding: 12, textAlign: "right", color: "#111827", fontWeight: 600, border: "1px solid #e5e7eb" }}>
-                    {globalTotals.dealsPerYear.toLocaleString()}
-                  </td>
-                  <td style={{ padding: 12, color: "#6b7280", fontSize: 12, border: "1px solid #e5e7eb" }}>Total from all reps</td>
-                </tr>
-                <tr>
-                  <td style={{ padding: 12, color: "#374151", paddingLeft: 24, border: "1px solid #e5e7eb" }}>Claims Per Year</td>
-                  <td style={{ padding: 12, textAlign: "right", color: "#111827", fontWeight: 600, border: "1px solid #e5e7eb" }}>
-                    {globalTotals.claimsPerYear.toLocaleString()}
-                  </td>
-                  <td style={{ padding: 12, color: "#6b7280", fontSize: 12, border: "1px solid #e5e7eb" }}>Total from all reps</td>
-                </tr>
-                <tr>
-                  <td style={{ padding: 12, color: "#374151", paddingLeft: 24, border: "1px solid #e5e7eb" }}>Inspections Per Year</td>
-                  <td style={{ padding: 12, textAlign: "right", color: "#111827", fontWeight: 600, border: "1px solid #e5e7eb" }}>
-                    {globalTotals.inspectionsPerYear.toLocaleString()}
-                  </td>
-                  <td style={{ padding: 12, color: "#6b7280", fontSize: 12, border: "1px solid #e5e7eb" }}>Total from all reps</td>
-                </tr>
-
-                {/* Monthly Targets Section */}
-                <tr style={{ backgroundColor: "#f8fafc" }}>
-                  <td colSpan={3} style={{ padding: 12, fontWeight: 600, color: "#111827", fontSize: 14, paddingTop: 24, border: "1px solid #e5e7eb" }}>
-                    Monthly Targets
-                  </td>
-                </tr>
-                <tr>
-                  <td style={{ padding: 12, color: "#374151", paddingLeft: 24, border: "1px solid #e5e7eb" }}>Deals Per Month</td>
-                  <td style={{ padding: 12, textAlign: "right", color: "#111827", fontWeight: 600, border: "1px solid #e5e7eb" }}>
-                    {Math.ceil(globalTotals.dealsPerMonth).toLocaleString()}
-                  </td>
-                  <td style={{ padding: 12, color: "#6b7280", fontSize: 12, border: "1px solid #e5e7eb" }}>Total from all reps</td>
-                </tr>
-                <tr>
-                  <td style={{ padding: 12, color: "#374151", paddingLeft: 24, border: "1px solid #e5e7eb" }}>Claims Per Month</td>
-                  <td style={{ padding: 12, textAlign: "right", color: "#111827", fontWeight: 600, border: "1px solid #e5e7eb" }}>
-                    {Math.ceil(globalTotals.claimsPerMonth).toLocaleString()}
-                  </td>
-                  <td style={{ padding: 12, color: "#6b7280", fontSize: 12, border: "1px solid #e5e7eb" }}>Total from all reps</td>
-                </tr>
-                <tr>
-                  <td style={{ padding: 12, color: "#374151", paddingLeft: 24, border: "1px solid #e5e7eb" }}>Inspections Per Month</td>
-                  <td style={{ padding: 12, textAlign: "right", color: "#111827", fontWeight: 600, border: "1px solid #e5e7eb" }}>
-                    {Math.ceil(globalTotals.inspectionsPerMonth).toLocaleString()}
-                  </td>
-                  <td style={{ padding: 12, color: "#6b7280", fontSize: 12, border: "1px solid #e5e7eb" }}>Total from all reps</td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
+          {(() => {
+            const rows = [
+              { section: "Global Totals", metric: "Total Income Goal", value: `$${globalTotals.incomeGoal.toLocaleString()}`, desc: "Sum of all committed reps" },
+              { section: "Yearly Targets", metric: "Deals Per Year", value: globalTotals.dealsPerYear.toLocaleString(), desc: "Total from all reps" },
+              { section: "Yearly Targets", metric: "Claims Per Year", value: globalTotals.claimsPerYear.toLocaleString(), desc: "Total from all reps" },
+              { section: "Yearly Targets", metric: "Inspections Per Year", value: globalTotals.inspectionsPerYear.toLocaleString(), desc: "Total from all reps" },
+              { section: "Monthly Targets", metric: "Deals Per Month", value: Math.ceil(globalTotals.dealsPerMonth).toLocaleString(), desc: "Total from all reps" },
+              { section: "Monthly Targets", metric: "Claims Per Month", value: Math.ceil(globalTotals.claimsPerMonth).toLocaleString(), desc: "Total from all reps" },
+              { section: "Monthly Targets", metric: "Inspections Per Month", value: Math.ceil(globalTotals.inspectionsPerMonth).toLocaleString(), desc: "Total from all reps" },
+            ];
+            const sections = ["Global Totals", "Yearly Targets", "Monthly Targets"];
+            const getCellValue = (col: string, row: typeof rows[0]) =>
+              col === "metric" ? row.metric : col === "value" ? row.value : row.desc;
+            const getCellStyle = (col: string): React.CSSProperties =>
+              col === "value"
+                ? { padding: 12, textAlign: "right", color: "#111827", fontWeight: 600, border: "1px solid #e5e7eb" }
+                : col === "desc"
+                ? { padding: 12, color: "#6b7280", fontSize: 12, border: "1px solid #e5e7eb" }
+                : { padding: 12, color: "#374151", paddingLeft: 24, border: "1px solid #e5e7eb" };
+            return (
+              <div style={{ overflowX: "auto" }}>
+                <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13, border: "1px solid #e5e7eb" }}>
+                  <thead>
+                    <tr style={{ backgroundColor: "#f3f4f6", borderBottom: "2px solid #e5e7eb" }}>
+                      {colOrder.map(col => (
+                        <th
+                          key={col}
+                          draggable
+                          onDragStart={e => {
+                            dragCol.current = col;
+                            e.dataTransfer.effectAllowed = "move";
+                            e.dataTransfer.setData("text/plain", col);
+                          }}
+                          onDragOver={e => { e.preventDefault(); e.dataTransfer.dropEffect = "move"; }}
+                          onDrop={e => {
+                            e.preventDefault();
+                            const from = e.dataTransfer.getData("text/plain");
+                            if (!from || from === col) return;
+                            setColOrder(prev => {
+                              const next = [...prev];
+                              const fi = next.indexOf(from as any);
+                              const ti = next.indexOf(col);
+                              next.splice(fi, 1);
+                              next.splice(ti, 0, from as any);
+                              return next;
+                            });
+                            dragCol.current = null;
+                          }}
+                          style={{ padding: 12, textAlign: col === "value" ? "right" : "left", fontWeight: 600, color: "#111827", border: "1px solid #e5e7eb", cursor: "grab", userSelect: "none", whiteSpace: "nowrap" }}
+                        >
+                          {colLabels[col]}
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {sections.map(section => (
+                      <>
+                        <tr key={section} style={{ backgroundColor: "#f8fafc" }}>
+                          <td colSpan={3} style={{ padding: 12, fontWeight: 600, color: "#111827", fontSize: 14, border: "1px solid #e5e7eb" }}>{section}</td>
+                        </tr>
+                        {rows.filter(r => r.section === section).map((row, i) => (
+                          <tr key={i}>
+                            {colOrder.map(col => (
+                              <td key={col} style={getCellStyle(col)}>{getCellValue(col, row)}</td>
+                            ))}
+                          </tr>
+                        ))}
+                      </>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            );
+          })()}
         </div>
       </div>
 
