@@ -609,13 +609,37 @@ function CourseOverviewPanel({ bot }: { bot: CourseBot }) {
 
 // ─── Chat History Panel ───────────────────────────────────────────────────────
 
+const ROLE_COLORS: Record<string, { bg: string; color: string }> = {
+  admin:   { bg: "#e5e7eb", color: "#1f2937" },
+  sales:   { bg: "#dbeafe", color: "#1d4ed8" },
+  manager: { bg: "#ede9fe", color: "#6d28d9" },
+  marketing: { bg: "#fce7f3", color: "#be185d" },
+};
+
+function RoleBadge({ role }: { role: string }) {
+  const r = role?.toLowerCase() || "";
+  const style = ROLE_COLORS[r] || { bg: "#f3f4f6", color: "#374151" };
+  return (
+    <span style={{ padding: "3px 10px", borderRadius: 20, fontSize: 12, fontWeight: 600, background: style.bg, color: style.color, textTransform: "capitalize" }}>
+      {role || "—"}
+    </span>
+  );
+}
+
+function fmtStarted(d: string) {
+  const dt = new Date(d);
+  const month = dt.toLocaleString("default", { month: "short" });
+  const day = dt.getDate();
+  const time = dt.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+  return { date: `${month} ${day}`, time };
+}
+
 function CourseChatHistoryPanel({ bot }: { bot: CourseBot }) {
   const [chats, setChats] = useState<any[]>([]);
   const [selected, setSelected] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
-  const [dateFrom, setDateFrom] = useState<Date | null>(null);
-  const [dateTo, setDateTo] = useState<Date | null>(null);
+  const [checked, setChecked] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     setLoading(true);
@@ -625,59 +649,67 @@ function CourseChatHistoryPanel({ bot }: { bot: CourseBot }) {
       .catch(() => setLoading(false));
   }, [bot.id]);
 
-  const filtered = chats.filter(c => {
-    const matchSearch = !search ||
-      c.userName?.toLowerCase().includes(search.toLowerCase()) ||
-      c.title?.toLowerCase().includes(search.toLowerCase());
-    let matchDate = true;
-    if (dateFrom || dateTo) {
-      const d = new Date(c.updatedAt); d.setHours(0, 0, 0, 0);
-      if (dateFrom && d < dateFrom) matchDate = false;
-      if (dateTo) { const end = new Date(dateTo); end.setHours(23, 59, 59, 999); if (d > end) matchDate = false; }
-    }
-    return matchSearch && matchDate;
-  });
+  const filtered = chats.filter(c =>
+    !search ||
+    c.userName?.toLowerCase().includes(search.toLowerCase()) ||
+    c.userEmail?.toLowerCase().includes(search.toLowerCase()) ||
+    c.title?.toLowerCase().includes(search.toLowerCase())
+  );
 
+  function toggleAll() {
+    if (checked.size === filtered.length) setChecked(new Set());
+    else setChecked(new Set(filtered.map((c: any) => c.chatId)));
+  }
+
+  function toggleOne(id: string) {
+    setChecked(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; });
+  }
+
+  function lastMsg(chat: any) {
+    const msgs = chat.messages || [];
+    const last = msgs[msgs.length - 1];
+    if (!last) return "—";
+    const txt = last.content || "";
+    return txt.length > 45 ? txt.slice(0, 45) + "..." : txt;
+  }
+
+  // ── View single chat ──
   if (selected) return (
     <div style={{ padding: 32 }}>
-      <button onClick={() => setSelected(null)} style={{ background: "none", border: "none", cursor: "pointer", color: "#6b7280", fontSize: 14, marginBottom: 20 }}>← Back</button>
-      <div style={{ fontWeight: 700, fontSize: 16, marginBottom: 4 }}>{selected.title}</div>
-      <div style={{ fontSize: 13, color: "#6b7280", marginBottom: 20 }}>{selected.userName} · {selected.userEmail}</div>
+      <button onClick={() => setSelected(null)} style={{ background: "none", border: "none", cursor: "pointer", color: "#6b7280", fontSize: 14, marginBottom: 20, display: "flex", alignItems: "center", gap: 6 }}>← Back to Chat History</button>
+      <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 20 }}>
+        <div>
+          <div style={{ fontWeight: 700, fontSize: 16 }}>{selected.title || "Untitled"}</div>
+          <div style={{ fontSize: 13, color: "#6b7280", marginTop: 2 }}>
+            {selected.userName} {selected.userEmail ? `· ${selected.userEmail}` : ""}
+          </div>
+        </div>
+        <RoleBadge role={selected.userRole} />
+      </div>
       <div style={{ display: "flex", flexDirection: "column", gap: 12, maxWidth: 700 }}>
-        {selected.messages?.map((m: any, i: number) => (
+        {(selected.messages || []).map((m: any, i: number) => (
           <div key={i} style={{ display: "flex", justifyContent: m.role === "user" ? "flex-end" : "flex-start" }}>
-            <div style={{ maxWidth: "75%", padding: "10px 14px", borderRadius: 16, fontSize: 14, lineHeight: 1.6, background: m.role === "user" ? "#1f2937" : "#f3f4f6", color: m.role === "user" ? "#fff" : "#1f2937", whiteSpace: "pre-wrap" }}>{m.content}</div>
+            <div style={{ maxWidth: "75%", padding: "10px 14px", borderRadius: 16, fontSize: 14, lineHeight: 1.6, background: m.role === "user" ? "#1f2937" : "#f3f4f6", color: m.role === "user" ? "#fff" : "#1f2937", whiteSpace: "pre-wrap" }}>
+              {m.content}
+            </div>
           </div>
         ))}
       </div>
     </div>
   );
 
-  const fmtDate = (d: Date) => `${d.toLocaleString('default', { month: 'short' })} ${d.getDate()}`;
-  const dateLabel = dateFrom && dateTo ? `${fmtDate(dateFrom)} → ${fmtDate(dateTo)}` : dateFrom ? `From ${fmtDate(dateFrom)}` : dateTo ? `Until ${fmtDate(dateTo)}` : "Date range";
+  // ── Table view ──
+  const thStyle: React.CSSProperties = { padding: "10px 16px", textAlign: "left", fontSize: 11, fontWeight: 700, color: "#9ca3af", letterSpacing: "0.05em", textTransform: "uppercase", borderBottom: "1px solid #e5e7eb", whiteSpace: "nowrap" };
+  const tdStyle: React.CSSProperties = { padding: "14px 16px", fontSize: 13, color: "#374151", borderBottom: "1px solid #f3f4f6", verticalAlign: "middle" };
 
   return (
     <div style={{ padding: 32 }}>
-      <h2 style={{ fontSize: 20, fontWeight: 700, marginBottom: 8 }}>Chat History</h2>
-      <p style={{ color: "#6b7280", fontSize: 14, marginBottom: 20 }}>All conversations with this course bot</p>
-
-      {/* Filters */}
-      <div style={{ display: "flex", gap: 12, marginBottom: 20, flexWrap: "wrap", alignItems: "center" }}>
-        <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search by user or title..." style={{ ...inputStyle, maxWidth: 260, marginBottom: 0 }} />
-        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-          <input type="date" value={dateFrom ? dateFrom.toISOString().split('T')[0] : ''}
-            onChange={e => setDateFrom(e.target.value ? new Date(e.target.value) : null)}
-            style={{ ...inputStyle, marginBottom: 0, width: "auto", fontSize: 12 }} />
-          <span style={{ fontSize: 12, color: "#9ca3af" }}>→</span>
-          <input type="date" value={dateTo ? dateTo.toISOString().split('T')[0] : ''}
-            onChange={e => setDateTo(e.target.value ? new Date(e.target.value) : null)}
-            style={{ ...inputStyle, marginBottom: 0, width: "auto", fontSize: 12 }} />
-          {(dateFrom || dateTo) && (
-            <button onClick={() => { setDateFrom(null); setDateTo(null); }}
-              style={{ ...btnSecondary, padding: "6px 10px", fontSize: 12 }}>✕ Clear</button>
-          )}
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 20 }}>
+        <div>
+          <h2 style={{ fontSize: 20, fontWeight: 700, marginBottom: 4 }}>Chat History</h2>
+          <p style={{ color: "#6b7280", fontSize: 14, margin: 0 }}>All user conversations with this course bot</p>
         </div>
-        <span style={{ fontSize: 12, color: "#9ca3af", marginLeft: "auto" }}>{filtered.length} total</span>
+        <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search user or title..." style={{ ...inputStyle, maxWidth: 240, marginBottom: 0 }} />
       </div>
 
       {loading ? (
@@ -689,18 +721,66 @@ function CourseChatHistoryPanel({ bot }: { bot: CourseBot }) {
         </div>
       ) : (
         <div style={{ background: "#fff", borderRadius: 12, border: "1px solid #e5e7eb", overflow: "hidden" }}>
-          {filtered.map((chat, idx) => (
-            <div key={chat.chatId} onClick={() => setSelected(chat)}
-              style={{ padding: "14px 20px", borderBottom: idx < filtered.length - 1 ? "1px solid #f3f4f6" : "none", cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center" }}
-              onMouseEnter={e => (e.currentTarget.style.background = "#f9fafb")}
-              onMouseLeave={e => (e.currentTarget.style.background = "#fff")}>
-              <div>
-                <div style={{ fontWeight: 600, fontSize: 13 }}>{chat.title || "Untitled"}</div>
-                <div style={{ fontSize: 12, color: "#9ca3af", marginTop: 2 }}>{chat.userName} · {chat.messages?.length || 0} messages</div>
-              </div>
-              <div style={{ fontSize: 12, color: "#9ca3af" }}>{new Date(chat.updatedAt).toLocaleDateString()}</div>
-            </div>
-          ))}
+          <table style={{ width: "100%", borderCollapse: "collapse" }}>
+            <thead style={{ background: "#f9fafb" }}>
+              <tr>
+                <th style={{ ...thStyle, width: 40 }}>
+                  <input type="checkbox" checked={checked.size === filtered.length && filtered.length > 0} onChange={toggleAll} style={{ cursor: "pointer" }} />
+                </th>
+                <th style={thStyle}>Started</th>
+                <th style={thStyle}>Last Message</th>
+                <th style={thStyle}>User</th>
+                <th style={thStyle}>Role</th>
+                <th style={thStyle}>Language</th>
+                <th style={thStyle}>Model</th>
+                <th style={thStyle}>Messages</th>
+                <th style={thStyle}>Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filtered.map(chat => {
+                const { date, time } = fmtStarted(chat.createdAt || chat.updatedAt);
+                return (
+                  <tr key={chat.chatId}
+                    onMouseEnter={e => (e.currentTarget.style.background = "#f9fafb")}
+                    onMouseLeave={e => (e.currentTarget.style.background = "#fff")}>
+                    <td style={tdStyle}>
+                      <input type="checkbox" checked={checked.has(chat.chatId)} onChange={() => toggleOne(chat.chatId)} style={{ cursor: "pointer" }} />
+                    </td>
+                    <td style={tdStyle}>
+                      <div style={{ fontWeight: 500 }}>{date}</div>
+                      <div style={{ fontSize: 12, color: "#9ca3af" }}>{time}</div>
+                    </td>
+                    <td style={{ ...tdStyle, maxWidth: 260, color: "#6b7280" }}>{lastMsg(chat)}</td>
+                    <td style={tdStyle}>
+                      <div style={{ fontWeight: 600 }}>{chat.userName || "—"}</div>
+                      {chat.userEmail && <div style={{ fontSize: 12, color: "#9ca3af" }}>{chat.userEmail}</div>}
+                    </td>
+                    <td style={tdStyle}><RoleBadge role={chat.userRole} /></td>
+                    <td style={{ ...tdStyle, color: "#6b7280" }}>English</td>
+                    <td style={tdStyle}>
+                      <span style={{ display: "flex", alignItems: "center", gap: 5 }}>
+                        <span>🤖</span>
+                        <span style={{ fontSize: 12 }}>{bot.model || "gpt-4o-mini"}</span>
+                      </span>
+                    </td>
+                    <td style={{ ...tdStyle, textAlign: "center" }}>{chat.messages?.length || 0}</td>
+                    <td style={tdStyle}>
+                      <button onClick={() => setSelected(chat)}
+                        style={{ padding: "5px 14px", borderRadius: 8, border: "1px solid #e5e7eb", background: "#fff", fontSize: 13, cursor: "pointer", fontWeight: 500 }}
+                        onMouseEnter={e => (e.currentTarget.style.background = "#f3f4f6")}
+                        onMouseLeave={e => (e.currentTarget.style.background = "#fff")}>
+                        View
+                      </button>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+          <div style={{ padding: "10px 16px", fontSize: 12, color: "#9ca3af", borderTop: "1px solid #f3f4f6" }}>
+            {filtered.length} conversation{filtered.length !== 1 ? "s" : ""}
+          </div>
         </div>
       )}
     </div>
