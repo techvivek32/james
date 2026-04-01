@@ -14,6 +14,7 @@ type SidebarProps = {
   onLogout?: () => void;
   isCollapsed?: boolean;
   onToggleCollapse?: () => void;
+  footerContent?: ReactNode;
 };
 
 const collapsedIconMap: Record<string, ReactNode> = {
@@ -257,7 +258,10 @@ export function Sidebar(props: SidebarProps) {
           </button>
         ))}
       </nav>
-      {props.onLogout && (
+      {props.footerContent && (
+        <div className="sidebar-footer">{props.footerContent}</div>
+      )}
+      {!props.footerContent && props.onLogout && (
         <div className="sidebar-footer">
           <button className="sidebar-logout-button" onClick={props.onLogout}>
             Logout
