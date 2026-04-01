@@ -21,6 +21,7 @@ type AdminSidebarProps = {
   activeId: string;
   isCollapsed?: boolean;
   onToggleCollapse?: () => void;
+  onLogout?: () => void;
 };
 
 function getCached(userId: string): Record<string, boolean> | null {
@@ -34,7 +35,7 @@ function setCache(userId: string, toggles: Record<string, boolean>) {
   try { sessionStorage.setItem(`ft_${userId}`, JSON.stringify(toggles)); } catch {}
 }
 
-export function AdminSidebar({ activeId, isCollapsed, onToggleCollapse }: AdminSidebarProps) {
+export function AdminSidebar({ activeId, isCollapsed, onToggleCollapse, onLogout }: AdminSidebarProps) {
   const router = useRouter();
   const { user } = useAuth();
   const [featureToggles, setFeatureToggles] = useState<Record<string, boolean> | null>(
@@ -64,12 +65,22 @@ export function AdminSidebar({ activeId, isCollapsed, onToggleCollapse }: AdminS
 
   return (
     <Sidebar
-      header={<div style={{ display: 'flex', alignItems: 'center', gap: 10 }}><span className="sidebar-title">Admin Portal</span><img src="/ChatGPT_Image_Feb_23__2026__07_00_52_PM-removebg-preview.png" alt="logo" style={{ width: 48, height: 48, objectFit: 'contain', flexShrink: 0 }} /></div>}
+      header={
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2, width: '100%', paddingTop: 0, marginTop: -30 }}>
+          <img src="/ChatGPT_Image_Feb_23__2026__07_00_52_PM-removebg-preview.png" alt="Miller Storm" style={{ width: 160, height: 160, objectFit: 'contain', marginTop: -20, marginBottom: -40 }} />
+        </div>
+      }
       items={sidebarItems}
       activeId={activeId}
       onSelect={handleNavigation}
       isCollapsed={isCollapsed}
       onToggleCollapse={onToggleCollapse}
+      footerContent={
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, border: '2px solid #fff', borderRadius: 999, padding: '8px 14px' }}>
+          <button onClick={onLogout} style={{ background: 'none', border: 'none', color: '#fff', fontWeight: 700, fontSize: 13, cursor: 'pointer', padding: 0 }}>Logout</button>
+          <span style={{ color: '#fff', fontWeight: 700, fontSize: 13, letterSpacing: '0.05em' }}>ADMIN PANEL</span>
+        </div>
+      }
     />
   );
 }

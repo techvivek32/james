@@ -37,7 +37,7 @@ export function Header(props: HeaderProps) {
             {props.panelName}
           </div>
         )}
-        <h1 className="header-title">{props.title}</h1>
+        <h1 className="header-title">{props.title} {props.panelName && <span style={{ fontSize: '1em', marginLeft: 2 }}><span style={{ color: 'inherit' }}>| </span><span style={{ color: '#dc2626' }}>{props.panelName}</span></span>}</h1>
         {props.subtitle && (
           <p className="header-subtitle">{props.subtitle}</p>
         )}
