@@ -360,6 +360,7 @@ export function BusinessUnitsManager(props: { users: UserProfile[] }) {
                       <tr style={{ backgroundColor: "#f3f4f6", borderBottom: "2px solid #e5e7eb" }}>
                         <th style={{ padding: 12, textAlign: "left", fontWeight: 600, color: "#111827" }}>Name</th>
                         <th style={{ padding: 12, textAlign: "right", fontWeight: 600, color: "#111827" }}>Income Goal</th>
+                        <th style={{ padding: 12, textAlign: "right", fontWeight: 600, color: "#111827" }}>Deal Avg</th>
                         <th style={{ padding: 12, textAlign: "right", fontWeight: 600, color: "#111827" }}>Deals/Month</th>
                         <th style={{ padding: 12, textAlign: "right", fontWeight: 600, color: "#111827" }}>Claims/Month</th>
                         <th style={{ padding: 12, textAlign: "right", fontWeight: 600, color: "#111827" }}>Inspections/Month</th>
@@ -379,6 +380,7 @@ export function BusinessUnitsManager(props: { users: UserProfile[] }) {
                         <td style={{ padding: 12, textAlign: "right", color: "#374151", fontWeight: 600 }}>
                           ${teamTotals.incomeGoal.toLocaleString()}
                         </td>
+                        <td style={{ padding: 12, textAlign: "right", color: "#374151", fontWeight: 600 }}>—</td>
                         <td style={{ padding: 12, textAlign: "right", color: "#374151", fontWeight: 600 }}>
                           {Math.ceil(teamTotals.dealsPerMonth).toLocaleString()}
                         </td>
@@ -435,6 +437,9 @@ export function BusinessUnitsManager(props: { users: UserProfile[] }) {
                               ${(bp?.revenueGoal || 0).toLocaleString()}
                             </td>
                             <td style={{ padding: 12, textAlign: "right", color: "#374151" }}>
+                              ${(bp?.averageDealSize || 3800).toLocaleString()}
+                            </td>
+                            <td style={{ padding: 12, textAlign: "right", color: "#374151" }}>
                               {Math.ceil(metrics.dealsPerMonth).toLocaleString()}
                             </td>
                             <td style={{ padding: 12, textAlign: "right", color: "#374151" }}>
@@ -470,7 +475,7 @@ export function BusinessUnitsManager(props: { users: UserProfile[] }) {
                                   setEditingUserId(member.id);
                                   setEditForm({
                                     incomeGoal: String(bp?.revenueGoal || 0),
-                                    dealAve: String(bp?.averageDealSize || 0),
+                                    dealAve: String(bp?.averageDealSize || 3800),
                                     committed: bp?.committed || false
                                   });
                                 }}
@@ -543,6 +548,7 @@ export function BusinessUnitsManager(props: { users: UserProfile[] }) {
                           <tr style={{ backgroundColor: "#f3f4f6", borderBottom: "2px solid #e5e7eb" }}>
                             <th style={{ padding: 12, textAlign: "left", fontWeight: 600, color: "#111827" }}>Name</th>
                             <th style={{ padding: 12, textAlign: "right", fontWeight: 600, color: "#111827" }}>Income Goal</th>
+                            <th style={{ padding: 12, textAlign: "right", fontWeight: 600, color: "#111827" }}>Deal Avg</th>
                             <th style={{ padding: 12, textAlign: "right", fontWeight: 600, color: "#111827" }}>Deals/Month</th>
                             <th style={{ padding: 12, textAlign: "right", fontWeight: 600, color: "#111827" }}>Claims/Month</th>
                             <th style={{ padding: 12, textAlign: "right", fontWeight: 600, color: "#111827" }}>Inspections/Month</th>
@@ -557,6 +563,7 @@ export function BusinessUnitsManager(props: { users: UserProfile[] }) {
                           <tr style={{ borderBottom: "1px solid #e5e7eb", backgroundColor: "#f8fafc" }}>
                             <td style={{ padding: 12, color: "#111827", fontWeight: 600 }}>{manager.name} (Manager)</td>
                             <td style={{ padding: 12, textAlign: "right" }}>${teamTotals.incomeGoal.toLocaleString()}</td>
+                            <td style={{ padding: 12, textAlign: "right" }}>—</td>
                             <td style={{ padding: 12, textAlign: "right" }}>{Math.ceil(teamTotals.dealsPerMonth).toLocaleString()}</td>
                             <td style={{ padding: 12, textAlign: "right" }}>{Math.ceil(teamTotals.claimsPerMonth).toLocaleString()}</td>
                             <td style={{ padding: 12, textAlign: "right" }}>{Math.ceil(teamTotals.inspectionsPerMonth).toLocaleString()}</td>
@@ -575,6 +582,7 @@ export function BusinessUnitsManager(props: { users: UserProfile[] }) {
                               <tr key={member.id} style={{ borderBottom: "1px solid #e5e7eb" }}>
                                 <td style={{ padding: 12, paddingLeft: 32 }}>└ {member.name}</td>
                                 <td style={{ padding: 12, textAlign: "right" }}>${(bp?.revenueGoal || 0).toLocaleString()}</td>
+                                <td style={{ padding: 12, textAlign: "right" }}>${(bp?.averageDealSize || 3800).toLocaleString()}</td>
                                 <td style={{ padding: 12, textAlign: "right" }}>{Math.ceil(metrics.dealsPerMonth).toLocaleString()}</td>
                                 <td style={{ padding: 12, textAlign: "right" }}>{Math.ceil(metrics.claimsPerMonth).toLocaleString()}</td>
                                 <td style={{ padding: 12, textAlign: "right" }}>{Math.ceil(metrics.inspectionsPerMonth).toLocaleString()}</td>
@@ -587,7 +595,7 @@ export function BusinessUnitsManager(props: { users: UserProfile[] }) {
                                   </span>
                                 </td>
                                 <td style={{ padding: 12, textAlign: "center" }}>
-                                  <button onClick={() => { setEditingUserId(member.id); setEditForm({ incomeGoal: String(bp?.revenueGoal || 0), dealAve: String(bp?.averageDealSize || 0), committed: bp?.committed || false }); }} style={{ padding: "6px 12px", backgroundColor: "#3b82f6", color: "#fff", border: "none", borderRadius: 4, fontSize: 12, fontWeight: 600, cursor: "pointer" }}>Edit</button>
+                                  <button onClick={() => { setEditingUserId(member.id); setEditForm({ incomeGoal: String(bp?.revenueGoal || 0), dealAve: String(bp?.averageDealSize || 3800), committed: bp?.committed || false }); }} style={{ padding: "6px 12px", backgroundColor: "#3b82f6", color: "#fff", border: "none", borderRadius: 4, fontSize: 12, fontWeight: 600, cursor: "pointer" }}>Edit</button>
                                 </td>
                               </tr>
                             );

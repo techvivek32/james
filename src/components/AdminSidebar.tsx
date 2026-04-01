@@ -75,12 +75,6 @@ export function AdminSidebar({ activeId, isCollapsed, onToggleCollapse, onLogout
       onSelect={handleNavigation}
       isCollapsed={isCollapsed}
       onToggleCollapse={onToggleCollapse}
-      footerContent={
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, border: '2px solid #fff', borderRadius: 999, padding: '8px 14px' }}>
-          <button onClick={onLogout} style={{ background: 'none', border: 'none', color: '#fff', fontWeight: 700, fontSize: 13, cursor: 'pointer', padding: 0 }}>Logout</button>
-          <span style={{ color: '#fff', fontWeight: 700, fontSize: 13, letterSpacing: '0.05em' }}>ADMIN PANEL</span>
-        </div>
-      }
     />
   );
 }
