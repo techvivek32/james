@@ -44,6 +44,7 @@ export function BusinessUnitsManager(props: { users: UserProfile[] }) {
     dealAve: string;
     committed: boolean;
   } | null>(null);
+  const [savedUserId, setSavedUserId] = useState<string | null>(null);
   const managers = props.users.filter((u) => u.role === "manager" || (u.roles || []).includes("manager"));
   const salesReps = props.users.filter((u) => u.role === "sales" || (u.roles || []).includes("sales"));
 
@@ -174,8 +175,11 @@ export function BusinessUnitsManager(props: { users: UserProfile[] }) {
         })
       });
 
+      const savedId = editingUserId;
       setEditingUserId(null);
       setEditForm(null);
+      setSavedUserId(savedId);
+      setTimeout(() => setSavedUserId(null), 3000);
       window.location.reload();
     } catch (error) {
       console.error('Failed to save plan:', error);
@@ -695,8 +699,11 @@ export function BusinessUnitsManager(props: { users: UserProfile[] }) {
                   cursor: "pointer"
                 }}
               >
-                Save
+                Save Changes
               </button>
+              {savedUserId === editingUserId && (
+                <span style={{ color: "#10b981", fontWeight: 600, fontSize: 13, alignSelf: "center" }}>Saved!</span>
+              )}
             </div>
           </div>
         </div>

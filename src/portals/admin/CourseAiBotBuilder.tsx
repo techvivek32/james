@@ -1,4 +1,7 @@
 import { useState, useEffect, useRef } from "react";
+import dynamic from "next/dynamic";
+
+const WorldMap = dynamic(() => import("../../components/WorldMap"), { ssr: false, loading: () => <div style={{ width: "100%", height: "100%", background: "#f3f4f6", borderRadius: "8px", display: "flex", alignItems: "center", justifyContent: "center", color: "#9ca3af", fontSize: "13px" }}>Loading map...</div> });
 
 type Course = {
   id: string; title: string;
@@ -11,17 +14,34 @@ type CourseBot = {
   selectedCourses: string[]; selectedFolders: string[]; selectedPages: string[];
   trainingText: string;
   model: string; creativity: number; systemPrompt: string;
-  botTitle: string; welcomeMessage: string; placeholder: string;
-  colorTheme: string; botAvatarUrl: string;
+  botTitle: string; welcomeMessage: string; placeholder: string; suggestions: string[];
+  colorTheme: string; botAvatarUrl: string; chatIconSize: number;
+  displayMessage: string; displayMessageEnabled: boolean; showWelcomePopup: boolean;
+  removeSuggestionsAfterFirst: boolean; leadCollection: boolean;
+  privacyPolicyEnabled: boolean; privacyActionText: string; privacyLinkText: string; privacyLink: string;
+  enterMessage: string; attentionSound: string; attentionAnimation: string; immediatelyOpenChat: boolean;
   totalMessages: number;
   status?: 'published' | 'draft';
+  teamMembers: string[]; teamMemberAccess: Record<string, string[]>;
 };
+
+type CourseBotView = "overview" | "chat-history" | "live-chat" | "courses" | "tune" | "test" | "appearance" | "settings";
 
 const card: React.CSSProperties = { background: "#fff", borderRadius: "12px", border: "1px solid #e5e7eb", padding: "20px 24px" };
 const btn: React.CSSProperties = { padding: "9px 18px", borderRadius: "8px", border: "none", cursor: "pointer", fontSize: "13px", fontWeight: 600 };
 const btnPrimary: React.CSSProperties = { ...btn, background: "#1f2937", color: "#fff" };
 const btnSecondary: React.CSSProperties = { ...btn, background: "#f3f4f6", color: "#374151", border: "1px solid #e5e7eb" };
 const inputStyle: React.CSSProperties = { width: "100%", padding: "9px 12px", border: "1px solid #e5e7eb", borderRadius: "8px", fontSize: "13px", outline: "none", boxSizing: "border-box", marginBottom: "12px" };
+
+function useSaved() {
+  const [saved, setSaved] = useState(false);
+  function flash() { setSaved(true); setTimeout(() => setSaved(false), 2000); }
+  return { saved, flash };
+}
+
+function SavedBadge({ visible }: { visible: boolean }) {
+  return visible ? <span style={{ fontSize: 12, color: "#10b981", fontWeight: 600, marginLeft: 10 }}>✓ Saved!</span> : null;
+}
 
 function EditableBotName({ bot, onSave }: { bot: CourseBot; onSave: (u: Partial<CourseBot>) => void }) {
   const [editing, setEditing] = useState(false);
@@ -66,7 +86,7 @@ export function CourseAiBotBuilder() {
   const [showCreate, setShowCreate] = useState(false);
   const [newName, setNewName] = useState("");
   const [saving, setSaving] = useState(false);
-  const [activeTab, setActiveTab] = useState<"courses" | "tune">("courses");
+  const [activeTab, setActiveTab] = useState<CourseBotView>("courses");
 
   useEffect(() => { loadBots(); }, []);
 
@@ -126,6 +146,17 @@ export function CourseAiBotBuilder() {
   }
 
   if (selected) {
+    const navItems: { id: CourseBotView; label: string; icon: string; section?: string }[] = [
+      { id: "overview",     label: "Overview",      icon: "📊", section: "ACTIVITY" },
+      { id: "chat-history", label: "Chat History",  icon: "💬" },
+      { id: "live-chat",    label: "Live Chat",     icon: "🟢" },
+      { id: "courses",      label: "Add Courses",   icon: "📚", section: "TRAINING" },
+      { id: "tune",         label: "Tune AI",       icon: "⚙️" },
+      { id: "test",         label: "Test Your Bot", icon: "🧪", section: "DEPLOYMENT" },
+      { id: "appearance",   label: "Appearance",    icon: "🎨" },
+      { id: "settings",     label: "Settings",      icon: "🔧", section: "ADVANCED" },
+    ];
+
     return (
       <div style={{ display: "flex", height: "calc(100vh - 64px)", overflow: "hidden" }}>
         {/* Sidebar */}
@@ -133,77 +164,41 @@ export function CourseAiBotBuilder() {
           <div style={{ padding: "16px 20px", borderBottom: "1px solid #e5e7eb" }}>
             <button onClick={() => setSelected(null)} style={{ background: "none", border: "none", cursor: "pointer", color: "#6b7280", fontSize: "14px", display: "flex", alignItems: "center", gap: "6px", marginBottom: "12px" }}>← All Bots</button>
             <EditableBotName bot={selected} onSave={saveBot} />
-            {/* Published/Draft Toggle */}
-            <div style={{ display: "flex", alignItems: "center", gap: "12px", marginTop: "4px" }}>
-              <span style={{ fontSize: "13px", color: "#6b7280", fontWeight: 500 }}>Status:</span>
-              <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                <span style={{ 
-                  fontSize: "12px", 
-                  fontWeight: 600,
-                  color: (selected.status || 'draft') === 'draft' ? '#1f2937' : '#9ca3af'
-                }}>
-                  Draft
-                </span>
-                <div
-                  onClick={async () => {
-                    const currentStatus = selected.status || 'draft';
-                    const newStatus = currentStatus === 'published' ? 'draft' : 'published';
-                    console.log('Toggle clicked! Current:', currentStatus, 'New:', newStatus);
-                    await saveBot({ status: newStatus });
-                  }}
-                  style={{
-                    width: "44px",
-                    height: "24px",
-                    borderRadius: "12px",
-                    cursor: "pointer",
-                    background: (selected.status || 'draft') === 'published' ? '#10b981' : '#d1d5db',
-                    position: "relative",
-                    transition: "all 0.3s ease",
-                    padding: 0
-                  }}
-                >
-                  <div style={{
-                    width: "20px",
-                    height: "20px",
-                    borderRadius: "50%",
-                    background: "#fff",
-                    position: "absolute",
-                    top: "2px",
-                    left: (selected.status || 'draft') === 'published' ? "22px" : "2px",
-                    transition: "all 0.3s ease",
-                    boxShadow: "0 2px 4px rgba(0,0,0,0.2)"
-                  }} />
-                </div>
-                <span style={{ 
-                  fontSize: "12px", 
-                  fontWeight: 600,
-                  color: (selected.status || 'draft') === 'published' ? '#10b981' : '#9ca3af'
-                }}>
-                  Published
-                </span>
+            <div style={{ display: "flex", alignItems: "center", gap: "8px", marginTop: "4px" }}>
+              <span style={{ fontSize: "12px", fontWeight: 600, color: (selected.status || 'draft') === 'draft' ? '#1f2937' : '#9ca3af' }}>Draft</span>
+              <div onClick={() => saveBot({ status: (selected.status || 'draft') === 'published' ? 'draft' : 'published' })}
+                style={{ width: 44, height: 24, borderRadius: 12, cursor: "pointer", background: (selected.status || 'draft') === 'published' ? '#10b981' : '#d1d5db', position: "relative", transition: "all 0.3s" }}>
+                <div style={{ width: 20, height: 20, borderRadius: "50%", background: "#fff", position: "absolute", top: 2, left: (selected.status || 'draft') === 'published' ? 22 : 2, transition: "all 0.3s", boxShadow: "0 2px 4px rgba(0,0,0,0.2)" }} />
               </div>
+              <span style={{ fontSize: "12px", fontWeight: 600, color: (selected.status || 'draft') === 'published' ? '#10b981' : '#9ca3af' }}>Published</span>
             </div>
           </div>
-          <nav style={{ padding: "8px 0" }}>
-            {([
-              { id: "courses", label: "Add Courses", icon: "📚" },
-              { id: "tune", label: "Tune AI", icon: "⚙️" },
-            ] as { id: typeof activeTab; label: string; icon: string }[]).map(item => (
-              <button key={item.id} onClick={() => setActiveTab(item.id)}
-                style={{ width: "100%", textAlign: "left", padding: "11px 20px", border: "none", cursor: "pointer", fontSize: "14px", fontWeight: activeTab === item.id ? 600 : 500, background: activeTab === item.id ? "#f3f4f6" : "transparent", color: activeTab === item.id ? "#1f2937" : "#4b5563", borderLeft: activeTab === item.id ? "3px solid #1f2937" : "3px solid transparent", display: "flex", alignItems: "center", gap: "10px" }}>
-                <span>{item.icon}</span>{item.label}
-              </button>
+          <nav style={{ padding: "8px 0", flex: 1, overflowY: "auto" }}>
+            {navItems.map(item => (
+              <div key={item.id}>
+                {item.section && <div style={{ padding: "14px 20px 6px", fontSize: "11px", fontWeight: 700, color: "#9ca3af", letterSpacing: "0.1em" }}>{item.section}</div>}
+                <button onClick={() => setActiveTab(item.id)}
+                  style={{ width: "100%", textAlign: "left", padding: "11px 20px", border: "none", cursor: "pointer", fontSize: "14px", fontWeight: activeTab === item.id ? 600 : 500, background: activeTab === item.id ? "#f3f4f6" : "transparent", color: activeTab === item.id ? "#1f2937" : "#4b5563", borderLeft: activeTab === item.id ? "3px solid #1f2937" : "3px solid transparent", display: "flex", alignItems: "center", gap: "10px" }}>
+                  <span style={{ fontSize: 17 }}>{item.icon}</span>{item.label}
+                </button>
+              </div>
             ))}
           </nav>
-          <div style={{ marginTop: "auto", padding: "16px 20px", borderTop: "1px solid #e5e7eb" }}>
+          <div style={{ padding: "16px 20px", borderTop: "1px solid #e5e7eb" }}>
             <div style={{ fontSize: "12px", color: "#9ca3af" }}>{selected.totalMessages || 0} messages</div>
           </div>
         </div>
 
         {/* Main */}
         <div style={{ flex: 1, overflowY: "auto", background: "#f9fafb" }}>
-          {activeTab === "courses" && <AddCoursesPanel bot={selected} onSave={saveBot} saving={saving} />}
-          {activeTab === "tune" && <TunePanel bot={selected} onSave={saveBot} saving={saving} />}
+          {activeTab === "overview"     && <CourseOverviewPanel bot={selected} />}
+          {activeTab === "chat-history" && <CourseChatHistoryPanel bot={selected} />}
+          {activeTab === "live-chat"    && <CourseLiveChatPanel bot={selected} />}
+          {activeTab === "courses"      && <AddCoursesPanel bot={selected} onSave={saveBot} saving={saving} />}
+          {activeTab === "tune"         && <TunePanel bot={selected} onSave={saveBot} saving={saving} />}
+          {activeTab === "test"         && <CourseTestPanel bot={selected} />}
+          {activeTab === "appearance"   && <AppearancePanel bot={selected} onSave={saveBot} saving={saving} />}
+          {activeTab === "settings"     && <CourseSettingsPanel bot={selected} onSave={saveBot} saving={saving} onDelete={() => deleteBot(selected.id)} />}
         </div>
       </div>
     );
@@ -287,6 +282,7 @@ function AddCoursesPanel({ bot, onSave, saving }: { bot: CourseBot; onSave: (u: 
   const [selectedPages, setSelectedPages] = useState<Set<string>>(new Set(bot.selectedPages || []));
   const [selectedFolders, setSelectedFolders] = useState<Set<string>>(new Set(bot.selectedFolders || []));
   const [selectedCourses, setSelectedCourses] = useState<Set<string>>(new Set(bot.selectedCourses || []));
+  const { saved, flash } = useSaved();
 
   useEffect(() => {
     fetch("/api/courses").then(r => r.ok ? r.json() : []).then(data => {
@@ -335,11 +331,8 @@ function AddCoursesPanel({ bot, onSave, saving }: { bot: CourseBot; onSave: (u: 
   }
 
   function save() {
-    onSave({
-      selectedCourses: Array.from(selectedCourses),
-      selectedFolders: Array.from(selectedFolders),
-      selectedPages: Array.from(selectedPages),
-    });
+    onSave({ selectedCourses: Array.from(selectedCourses), selectedFolders: Array.from(selectedFolders), selectedPages: Array.from(selectedPages) });
+    flash();
   }
 
   const totalSelected = selectedPages.size;
@@ -444,6 +437,7 @@ function TunePanel({ bot, onSave, saving }: { bot: CourseBot; onSave: (u: Partia
   const [model, setModel] = useState(bot.model || "gpt-4o-mini");
   const [creativity, setCreativity] = useState(bot.creativity || 0);
   const [systemPrompt, setSystemPrompt] = useState(bot.systemPrompt || "");
+  const { saved, flash } = useSaved();
 
   return (
     <div style={{ padding: "32px" }}>
@@ -473,8 +467,9 @@ function TunePanel({ bot, onSave, saving }: { bot: CourseBot; onSave: (u: Partia
         <textarea value={systemPrompt} onChange={e => setSystemPrompt(e.target.value)}
           placeholder="e.g. You are a helpful course assistant. Only answer questions related to the course content provided."
           style={{ ...inputStyle, minHeight: "160px", resize: "vertical" } as any} />
-        <div style={{ display: "flex", justifyContent: "flex-end" }}>
-          <button onClick={() => onSave({ model, creativity, systemPrompt })} disabled={saving} style={btnPrimary}>{saving ? "Saving..." : "Save"}</button>
+        <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", gap: "10px" }}>
+          <SavedBadge visible={saved} />
+          <button onClick={() => { onSave({ model, creativity, systemPrompt }); flash(); }} disabled={saving} style={btnPrimary}>{saving ? "Saving..." : "Save"}</button>
         </div>
       </div>
     </div>
@@ -490,6 +485,7 @@ function AppearancePanel({ bot, onSave, saving }: { bot: CourseBot; onSave: (u: 
   const [welcomeMessage, setWelcomeMessage] = useState(bot.welcomeMessage || "Hi! Ask me anything about this course.");
   const [placeholder, setPlaceholder] = useState(bot.placeholder || "Ask about the course...");
   const [colorTheme, setColorTheme] = useState(bot.colorTheme || "#3b82f6");
+  const { saved, flash } = useSaved();
 
   return (
     <div style={{ padding: "32px" }}>
@@ -518,8 +514,489 @@ function AppearancePanel({ bot, onSave, saving }: { bot: CourseBot; onSave: (u: 
         </div>
       </div>
 
-      <div style={{ display: "flex", justifyContent: "flex-end" }}>
-        <button onClick={() => onSave({ botTitle, welcomeMessage, placeholder, colorTheme })} disabled={saving} style={btnPrimary}>{saving ? "Saving..." : "Save Changes"}</button>
+      <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", gap: "10px" }}>
+        <SavedBadge visible={saved} />
+        <button onClick={() => { onSave({ botTitle, welcomeMessage, placeholder, colorTheme }); flash(); }} disabled={saving} style={btnPrimary}>{saving ? "Saving..." : "Save Changes"}</button>
+      </div>
+    </div>
+  );
+}
+
+// ─── Overview Panel ───────────────────────────────────────────────────────────
+
+function CourseOverviewPanel({ bot }: { bot: CourseBot }) {
+  const [realChars, setRealChars] = useState<number | null>(null);
+
+  useEffect(() => {
+    fetch(`/api/course-ai-bots/${bot.id}`)
+      .then(r => r.ok ? r.json() : null)
+      .then(data => { if (data?.totalChars != null) setRealChars(data.totalChars); })
+      .catch(() => {});
+  }, [bot.id]);
+
+  const totalChars = realChars ?? (bot.selectedPages?.length || 0) * 500;
+  const maxChars = 1_000_000;
+
+  const statCards = [
+    {
+      icon: "⏱",
+      label: "Today's Users and time",
+      values: [
+        { num: 0, sub: "Users" },
+        { num: bot.totalMessages || 0, sub: "Messages" },
+      ],
+    },
+    {
+      icon: "💬",
+      label: "Message",
+      values: [{ num: `${bot.totalMessages || 0} / 50`, sub: "Has sent" }],
+      corner: "💬",
+    },
+    {
+      icon: "📝",
+      label: "Training",
+      values: [{ num: `${totalChars.toLocaleString()} / 1M`, sub: realChars != null ? "Characters used" : "Characters (est.)" }],
+      corner: "✏️",
+    },
+  ];
+
+  return (
+    <div style={{ padding: "32px" }}>
+      <h2 style={{ fontSize: "22px", fontWeight: 700, marginBottom: "24px", color: "#1f2937" }}>Overview</h2>
+
+      {/* 3 stat cards */}
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "16px", marginBottom: "20px" }}>
+        {statCards.map((c, i) => (
+          <div key={i} style={{ background: "#fff", borderRadius: "14px", padding: "22px 24px", border: "1px solid #e5e7eb", position: "relative", minHeight: "120px" }}>
+            {c.corner && <div style={{ position: "absolute", top: "16px", right: "16px", fontSize: "18px", color: "#d1d5db" }}>{c.corner}</div>}
+            <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "14px" }}>
+              <div style={{ width: 32, height: 32, borderRadius: "50%", background: "#f3f4f6", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "15px" }}>{c.icon}</div>
+              <span style={{ fontSize: "13px", color: "#9ca3af" }}>{c.label}</span>
+            </div>
+            <div style={{ display: "flex", gap: "32px" }}>
+              {c.values.map((v, vi) => (
+                <div key={vi}>
+                  <div style={{ fontSize: "28px", fontWeight: 700, color: "#1f2937", lineHeight: 1 }}>{v.num}</div>
+                  <div style={{ fontSize: "12px", color: "#9ca3af", marginTop: "4px" }}>{v.sub}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* World map card */}
+      <div style={{ background: "#fff", borderRadius: "14px", border: "1px solid #e5e7eb", padding: "22px 24px", overflow: "hidden" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "12px" }}>
+          <div style={{ width: 32, height: 32, borderRadius: "50%", background: "#f3f4f6", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "15px" }}>🌐</div>
+          <div>
+            <div style={{ fontSize: "13px", color: "#9ca3af" }}>Popular Countries</div>
+            <div style={{ fontSize: "11px", color: "#d1d5db" }}>Last 28 days</div>
+          </div>
+        </div>
+        <div style={{ width: "100%", height: "380px", borderRadius: "8px", overflow: "hidden", background: "#f8fafc" }}>
+          <WorldMap />
+        </div>
+        <div style={{ display: "flex", alignItems: "center", gap: "8px", marginTop: "10px" }}>
+          <span style={{ fontSize: "10px", color: "#9ca3af" }}>0</span>
+          <div style={{ flex: 1, height: "5px", borderRadius: "3px", background: "linear-gradient(to right, #e0f2fe, #38bdf8, #818cf8, #f472b6, #fb923c, #4ade80)" }} />
+          <span style={{ fontSize: "10px", color: "#9ca3af" }}>∞</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Chat History Panel ───────────────────────────────────────────────────────
+
+function CourseChatHistoryPanel({ bot }: { bot: CourseBot }) {
+  const [chats, setChats] = useState<any[]>([]);
+  const [selected, setSelected] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState("");
+  const [dateFrom, setDateFrom] = useState<Date | null>(null);
+  const [dateTo, setDateTo] = useState<Date | null>(null);
+
+  useEffect(() => {
+    setLoading(true);
+    fetch(`/api/course-ai-bots/chats?botId=${bot.id}`)
+      .then(r => r.ok ? r.json() : [])
+      .then(data => { setChats(data); setLoading(false); })
+      .catch(() => setLoading(false));
+  }, [bot.id]);
+
+  const filtered = chats.filter(c => {
+    const matchSearch = !search ||
+      c.userName?.toLowerCase().includes(search.toLowerCase()) ||
+      c.title?.toLowerCase().includes(search.toLowerCase());
+    let matchDate = true;
+    if (dateFrom || dateTo) {
+      const d = new Date(c.updatedAt); d.setHours(0, 0, 0, 0);
+      if (dateFrom && d < dateFrom) matchDate = false;
+      if (dateTo) { const end = new Date(dateTo); end.setHours(23, 59, 59, 999); if (d > end) matchDate = false; }
+    }
+    return matchSearch && matchDate;
+  });
+
+  if (selected) return (
+    <div style={{ padding: 32 }}>
+      <button onClick={() => setSelected(null)} style={{ background: "none", border: "none", cursor: "pointer", color: "#6b7280", fontSize: 14, marginBottom: 20 }}>← Back</button>
+      <div style={{ fontWeight: 700, fontSize: 16, marginBottom: 4 }}>{selected.title}</div>
+      <div style={{ fontSize: 13, color: "#6b7280", marginBottom: 20 }}>{selected.userName} · {selected.userEmail}</div>
+      <div style={{ display: "flex", flexDirection: "column", gap: 12, maxWidth: 700 }}>
+        {selected.messages?.map((m: any, i: number) => (
+          <div key={i} style={{ display: "flex", justifyContent: m.role === "user" ? "flex-end" : "flex-start" }}>
+            <div style={{ maxWidth: "75%", padding: "10px 14px", borderRadius: 16, fontSize: 14, lineHeight: 1.6, background: m.role === "user" ? "#1f2937" : "#f3f4f6", color: m.role === "user" ? "#fff" : "#1f2937", whiteSpace: "pre-wrap" }}>{m.content}</div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+
+  const fmtDate = (d: Date) => `${d.toLocaleString('default', { month: 'short' })} ${d.getDate()}`;
+  const dateLabel = dateFrom && dateTo ? `${fmtDate(dateFrom)} → ${fmtDate(dateTo)}` : dateFrom ? `From ${fmtDate(dateFrom)}` : dateTo ? `Until ${fmtDate(dateTo)}` : "Date range";
+
+  return (
+    <div style={{ padding: 32 }}>
+      <h2 style={{ fontSize: 20, fontWeight: 700, marginBottom: 8 }}>Chat History</h2>
+      <p style={{ color: "#6b7280", fontSize: 14, marginBottom: 20 }}>All conversations with this course bot</p>
+
+      {/* Filters */}
+      <div style={{ display: "flex", gap: 12, marginBottom: 20, flexWrap: "wrap", alignItems: "center" }}>
+        <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search by user or title..." style={{ ...inputStyle, maxWidth: 260, marginBottom: 0 }} />
+        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+          <input type="date" value={dateFrom ? dateFrom.toISOString().split('T')[0] : ''}
+            onChange={e => setDateFrom(e.target.value ? new Date(e.target.value) : null)}
+            style={{ ...inputStyle, marginBottom: 0, width: "auto", fontSize: 12 }} />
+          <span style={{ fontSize: 12, color: "#9ca3af" }}>→</span>
+          <input type="date" value={dateTo ? dateTo.toISOString().split('T')[0] : ''}
+            onChange={e => setDateTo(e.target.value ? new Date(e.target.value) : null)}
+            style={{ ...inputStyle, marginBottom: 0, width: "auto", fontSize: 12 }} />
+          {(dateFrom || dateTo) && (
+            <button onClick={() => { setDateFrom(null); setDateTo(null); }}
+              style={{ ...btnSecondary, padding: "6px 10px", fontSize: 12 }}>✕ Clear</button>
+          )}
+        </div>
+        <span style={{ fontSize: 12, color: "#9ca3af", marginLeft: "auto" }}>{filtered.length} total</span>
+      </div>
+
+      {loading ? (
+        <div style={{ textAlign: "center", padding: 60, color: "#9ca3af" }}>Loading...</div>
+      ) : filtered.length === 0 ? (
+        <div style={{ ...card, textAlign: "center", padding: 60, color: "#9ca3af" }}>
+          <div style={{ fontSize: 48, marginBottom: 12 }}>💬</div>
+          <div style={{ fontSize: 15, fontWeight: 500, color: "#374151" }}>No conversations yet</div>
+        </div>
+      ) : (
+        <div style={{ background: "#fff", borderRadius: 12, border: "1px solid #e5e7eb", overflow: "hidden" }}>
+          {filtered.map((chat, idx) => (
+            <div key={chat.chatId} onClick={() => setSelected(chat)}
+              style={{ padding: "14px 20px", borderBottom: idx < filtered.length - 1 ? "1px solid #f3f4f6" : "none", cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center" }}
+              onMouseEnter={e => (e.currentTarget.style.background = "#f9fafb")}
+              onMouseLeave={e => (e.currentTarget.style.background = "#fff")}>
+              <div>
+                <div style={{ fontWeight: 600, fontSize: 13 }}>{chat.title || "Untitled"}</div>
+                <div style={{ fontSize: 12, color: "#9ca3af", marginTop: 2 }}>{chat.userName} · {chat.messages?.length || 0} messages</div>
+              </div>
+              <div style={{ fontSize: 12, color: "#9ca3af" }}>{new Date(chat.updatedAt).toLocaleDateString()}</div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Live Chat Panel ──────────────────────────────────────────────────────────
+
+function CourseLiveChatPanel({ bot }: { bot: CourseBot }) {
+  type Msg = { role: "user" | "assistant"; content: string; timestamp: string };
+  const [sessions, setSessions] = useState<any[]>([]);
+  const [currentChatId, setCurrentChatId] = useState(() => `course-live-${bot.id}-${Date.now()}`);
+  const [messages, setMessages] = useState<Msg[]>([]);
+  const [input, setInput] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const bottomRef = useRef<HTMLDivElement>(null);
+  const theme = bot.colorTheme || "#3b82f6";
+
+  useEffect(() => { loadSessions(); }, [bot.id]);
+  useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages]);
+
+  async function loadSessions() {
+    const res = await fetch(`/api/course-ai-bots/chats?botId=${bot.id}`);
+    if (res.ok) setSessions(await res.json());
+  }
+
+  function startNewChat() {
+    setMessages([]); setInput("");
+    setCurrentChatId(`course-live-${bot.id}-${Date.now()}`);
+  }
+
+  function loadSession(s: any) {
+    setMessages(s.messages || []);
+    setCurrentChatId(s.chatId);
+    setSidebarCollapsed(true);
+  }
+
+  async function deleteSession(chatId: string, e: React.MouseEvent) {
+    e.stopPropagation();
+    await fetch("/api/course-ai-bots/chats", { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ chatId }) });
+    setSessions(prev => prev.filter(s => s.chatId !== chatId));
+    if (currentChatId === chatId) startNewChat();
+  }
+
+  async function send() {
+    if (!input.trim() || loading) return;
+    const userMsg: Msg = { role: "user", content: input.trim(), timestamp: new Date().toISOString() };
+    const newMessages = [...messages, userMsg];
+    setMessages(newMessages); setInput(""); setLoading(true);
+    try {
+      const res = await fetch("/api/course-ai-bots/chat", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ botId: bot.id, messages: newMessages, chatId: currentChatId, userId: "admin", userName: "Admin", userRole: "admin" })
+      });
+      const data = await res.json();
+      setMessages(prev => [...prev, { role: "assistant", content: data.message || "Error", timestamp: new Date().toISOString() }]);
+      loadSessions();
+    } catch {
+      setMessages(prev => [...prev, { role: "assistant", content: "Failed to get response.", timestamp: new Date().toISOString() }]);
+    } finally { setLoading(false); }
+  }
+
+  const adminSessions = sessions.filter(s => s.userId === "admin");
+
+  return (
+    <div style={{ padding: 32, height: "100%", display: "flex", flexDirection: "column" }}>
+      <div style={{ marginBottom: 20 }}>
+        <h2 style={{ fontSize: 20, fontWeight: 700, marginBottom: 4 }}>Live Chat</h2>
+        <p style={{ color: "#6b7280", fontSize: 14, margin: 0 }}>Chat with the course bot — conversations are saved to Chat History</p>
+      </div>
+      <div style={{ flex: 1, display: "flex", background: "#fff", borderRadius: 12, border: "1px solid #e5e7eb", overflow: "hidden", minHeight: 500 }}>
+
+        {/* Sidebar */}
+        <div style={{ width: sidebarCollapsed ? 0 : 220, minWidth: sidebarCollapsed ? 0 : 220, borderRight: "1px solid #e5e7eb", display: "flex", flexDirection: "column", overflow: "hidden", transition: "width 0.2s, min-width 0.2s", flexShrink: 0 }}>
+          <div style={{ padding: 12, borderBottom: "1px solid #e5e7eb" }}>
+            <button onClick={startNewChat} style={{ width: "100%", padding: "8px 12px", background: "#f3f4f6", border: "1px solid #e5e7eb", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", gap: 6 }}>✏️ New Chat</button>
+          </div>
+          <div style={{ flex: 1, overflowY: "auto", padding: 8 }}>
+            {adminSessions.length === 0
+              ? <div style={{ padding: "16px 12px", color: "#9ca3af", fontSize: 12, textAlign: "center" }}>No chats yet</div>
+              : adminSessions.map(s => (
+                <div key={s.chatId} onClick={() => loadSession(s)}
+                  style={{ padding: "9px 10px", borderRadius: 8, cursor: "pointer", marginBottom: 2, background: currentChatId === s.chatId ? "#f3f4f6" : "transparent", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 6 }}>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 12, color: "#1f2937", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>💬 {s.title || "Untitled"}</div>
+                    <div style={{ fontSize: 11, color: "#9ca3af", marginTop: 2 }}>{new Date(s.updatedAt).toLocaleDateString()}</div>
+                  </div>
+                  <button onClick={e => deleteSession(s.chatId, e)} style={{ background: "none", border: "none", color: "#ef4444", cursor: "pointer", fontSize: 13, padding: "2px 4px", flexShrink: 0 }}>🗑</button>
+                </div>
+              ))
+            }
+          </div>
+        </div>
+
+        {/* Main chat */}
+        <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
+          <div style={{ padding: "0 16px", background: theme, display: "flex", alignItems: "center", gap: 10, minHeight: 52, flexShrink: 0 }}>
+            <button onClick={() => setSidebarCollapsed(p => !p)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 18, color: "rgba(255,255,255,0.8)", padding: 4 }}>☰</button>
+            <div style={{ width: 30, height: 30, borderRadius: "50%", background: "rgba(255,255,255,0.25)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 15 }}>🎓</div>
+            <span style={{ color: "#fff", fontWeight: 700, fontSize: 14, flex: 1 }}>{bot.botTitle || bot.name}</span>
+            <span style={{ fontSize: 11, color: "rgba(255,255,255,0.7)", background: "rgba(255,255,255,0.15)", padding: "3px 10px", borderRadius: 12 }}>Admin</span>
+          </div>
+          <div style={{ flex: 1, overflowY: "auto", padding: 20, display: "flex", flexDirection: "column", gap: 16 }}>
+            {messages.length === 0 && (
+              <div style={{ textAlign: "center", color: "#9ca3af", marginTop: 40 }}>
+                <div style={{ fontSize: 40, marginBottom: 8 }}>🎓</div>
+                <div style={{ fontSize: 15 }}>{bot.welcomeMessage || "Hi! Ask me anything about this course."}</div>
+              </div>
+            )}
+            {messages.map((m, i) => (
+              <div key={i} style={{ display: "flex", justifyContent: m.role === "user" ? "flex-end" : "flex-start" }}>
+                <div style={{ maxWidth: "75%", padding: "10px 14px", borderRadius: m.role === "user" ? "18px 18px 4px 18px" : "18px 18px 18px 4px", background: m.role === "user" ? "#1f2937" : "#f3f4f6", color: m.role === "user" ? "#fff" : "#1f2937", fontSize: 14, lineHeight: 1.6, whiteSpace: "pre-wrap" }}>{m.content}</div>
+              </div>
+            ))}
+            {loading && <div style={{ display: "flex" }}><div style={{ padding: "10px 14px", borderRadius: "18px 18px 18px 4px", background: "#f3f4f6", color: "#9ca3af", fontSize: 14 }}>Thinking...</div></div>}
+            <div ref={bottomRef} />
+          </div>
+          <div style={{ padding: "12px 16px", borderTop: "1px solid #e5e7eb", display: "flex", gap: 8 }}>
+            <input value={input} onChange={e => setInput(e.target.value)} onKeyDown={e => e.key === "Enter" && send()}
+              placeholder={bot.placeholder || "Ask about the course..."}
+              style={{ ...inputStyle, flex: 1, marginBottom: 0 }} />
+            <button onClick={send} disabled={loading || !input.trim()}
+              style={{ ...btnPrimary, opacity: loading || !input.trim() ? 0.5 : 1, padding: "9px 18px" }}>Send</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Test Panel ───────────────────────────────────────────────────────────────
+
+function CourseTestPanel({ bot }: { bot: CourseBot }) {
+  type Msg = { role: "user" | "assistant"; content: string };
+  const [messages, setMessages] = useState<Msg[]>([{ role: "assistant", content: bot.welcomeMessage || "Hi! Ask me anything about this course." }]);
+  const [input, setInput] = useState("");
+  const [loading, setLoading] = useState(false);
+  const bottomRef = useRef<HTMLDivElement>(null);
+  const color = bot.colorTheme || "#3b82f6";
+
+  useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages]);
+
+  async function send() {
+    if (!input.trim() || loading) return;
+    const userMsg: Msg = { role: "user", content: input.trim() };
+    const newMessages = [...messages, userMsg];
+    setMessages(newMessages); setInput(""); setLoading(true);
+    try {
+      const res = await fetch("/api/course-ai-bots/chat", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ botId: bot.id, messages: newMessages })
+      });
+      const data = await res.json();
+      setMessages(prev => [...prev, { role: "assistant", content: data.message || data.error || "Error" }]);
+    } catch {
+      setMessages(prev => [...prev, { role: "assistant", content: "Failed to get response." }]);
+    } finally { setLoading(false); }
+  }
+
+  return (
+    <div style={{ padding: 32, height: "100%", display: "flex", flexDirection: "column" }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 24 }}>
+        <div>
+          <h2 style={{ fontSize: 20, fontWeight: 700, marginBottom: 4 }}>Test Your Bot</h2>
+          <p style={{ color: "#6b7280", fontSize: 14, margin: 0 }}>Test how your course bot responds</p>
+        </div>
+        <button onClick={() => setMessages([{ role: "assistant", content: bot.welcomeMessage || "Hi! Ask me anything about this course." }])} style={btnSecondary}>Clear</button>
+      </div>
+      <div style={{ flex: 1, display: "flex", justifyContent: "center" }}>
+        <div style={{ width: "100%", maxWidth: 520, borderRadius: 16, overflow: "hidden", boxShadow: "0 4px 24px rgba(0,0,0,0.10)", border: "1px solid #e5e7eb", background: "#fff", display: "flex", flexDirection: "column", height: "calc(100vh - 220px)", minHeight: 500 }}>
+          <div style={{ background: color, padding: "12px 16px", display: "flex", alignItems: "center", gap: 10 }}>
+            <div style={{ width: 32, height: 32, borderRadius: "50%", background: "rgba(255,255,255,0.25)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16 }}>🎓</div>
+            <span style={{ color: "#fff", fontWeight: 700, fontSize: 15, flex: 1 }}>{bot.botTitle || bot.name}</span>
+          </div>
+          <div style={{ flex: 1, overflowY: "auto", padding: 20, display: "flex", flexDirection: "column", gap: 12, background: "#f8fafc" }}>
+            {messages.map((m, i) => (
+              <div key={i} style={{ display: "flex", justifyContent: m.role === "user" ? "flex-end" : "flex-start", alignItems: "flex-end", gap: 8 }}>
+                {m.role === "assistant" && <div style={{ width: 28, height: 28, borderRadius: "50%", background: color, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14, flexShrink: 0 }}>🎓</div>}
+                <div style={{ padding: "10px 14px", borderRadius: m.role === "user" ? "16px 16px 4px 16px" : "16px 16px 16px 4px", fontSize: 14, lineHeight: 1.6, background: m.role === "user" ? color : "#fff", color: m.role === "user" ? "#fff" : "#1f2937", boxShadow: "0 1px 4px rgba(0,0,0,0.07)", maxWidth: "72%" }}>{m.content}</div>
+              </div>
+            ))}
+            {loading && <div style={{ display: "flex", gap: 8, alignItems: "flex-end" }}><div style={{ width: 28, height: 28, borderRadius: "50%", background: color, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14 }}>🎓</div><div style={{ padding: "10px 14px", borderRadius: "16px 16px 16px 4px", background: "#fff", color: "#6b7280", fontSize: 14 }}>Thinking...</div></div>}
+            <div ref={bottomRef} />
+          </div>
+          <div style={{ padding: "12px 16px", borderTop: "1px solid #e5e7eb", display: "flex", gap: 8, background: "#fff" }}>
+            <input value={input} onChange={e => setInput(e.target.value)} onKeyDown={e => e.key === "Enter" && send()}
+              placeholder={bot.placeholder || "Ask about the course..."}
+              style={{ ...inputStyle, flex: 1, marginBottom: 0, borderRadius: 20, padding: "10px 16px" }} />
+            <button onClick={send} disabled={loading || !input.trim()}
+              style={{ width: 40, height: 40, borderRadius: "50%", background: color, border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", opacity: loading || !input.trim() ? 0.5 : 1, flexShrink: 0 }}>
+              <span style={{ color: "#fff", fontSize: 16 }}>➤</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Settings Panel ───────────────────────────────────────────────────────────
+
+function CourseSettingsPanel({ bot, onSave, saving, onDelete }: { bot: CourseBot; onSave: (u: Partial<CourseBot>) => void; saving: boolean; onDelete: () => void }) {
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [allUsers, setAllUsers] = useState<{ id: string; name: string; email: string; role: string }[]>([]);
+  const [userSearch, setUserSearch] = useState("");
+  const [showDropdown, setShowDropdown] = useState(false);
+  const [teamMembers, setTeamMembers] = useState<string[]>(bot.teamMembers || []);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    fetch("/api/users").then(r => r.ok ? r.json() : []).then(data => setAllUsers(data.filter((u: any) => u.role !== "admin")));
+  }, []);
+
+  useEffect(() => {
+    function h(e: MouseEvent) { if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) setShowDropdown(false); }
+    document.addEventListener("mousedown", h);
+    return () => document.removeEventListener("mousedown", h);
+  }, []);
+
+  const filteredUsers = allUsers.filter(u => !teamMembers.includes(u.id) && (u.name?.toLowerCase().includes(userSearch.toLowerCase()) || u.email?.toLowerCase().includes(userSearch.toLowerCase())));
+
+  function addMember(user: any) {
+    const updated = [...teamMembers, user.id];
+    setTeamMembers(updated); setUserSearch(""); setShowDropdown(false);
+    onSave({ teamMembers: updated });
+  }
+
+  function removeMember(id: string) {
+    const updated = teamMembers.filter(m => m !== id);
+    setTeamMembers(updated);
+    onSave({ teamMembers: updated });
+  }
+
+  async function handleDelete() {
+    if (!confirmDelete) return;
+    setDeleting(true);
+    await fetch(`/api/course-ai-bots/${bot.id}`, { method: "DELETE" });
+    onDelete();
+  }
+
+  return (
+    <div style={{ padding: 32 }}>
+      <h2 style={{ fontSize: 20, fontWeight: 700, marginBottom: 4 }}>Settings</h2>
+      <p style={{ color: "#6b7280", fontSize: 14, marginBottom: 28 }}>Manage team members and delete this bot.</p>
+
+      <div style={{ ...card, marginBottom: 20 }}>
+        <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 4 }}>👥 Team Members</div>
+        <p style={{ fontSize: 13, color: "#6b7280", marginBottom: 16 }}>Add users who can access this course bot.</p>
+        <div style={{ position: "relative", marginBottom: 16 }} ref={dropdownRef}>
+          <input value={userSearch} onChange={e => { setUserSearch(e.target.value); setShowDropdown(true); }} onFocus={() => setShowDropdown(true)}
+            placeholder="Search users..." style={{ ...inputStyle, marginBottom: 0 }} />
+          {showDropdown && filteredUsers.length > 0 && (
+            <div style={{ position: "absolute", top: "calc(100% + 4px)", left: 0, right: 0, background: "#fff", border: "1px solid #e5e7eb", borderRadius: 8, boxShadow: "0 4px 16px rgba(0,0,0,0.1)", zIndex: 100, maxHeight: 200, overflowY: "auto" }}>
+              {filteredUsers.map(u => (
+                <div key={u.id} onClick={() => addMember(u)} style={{ padding: "10px 14px", cursor: "pointer", fontSize: 13, borderBottom: "1px solid #f3f4f6" }}
+                  onMouseEnter={e => (e.currentTarget.style.background = "#f9fafb")}
+                  onMouseLeave={e => (e.currentTarget.style.background = "#fff")}>
+                  <span style={{ fontWeight: 600 }}>{u.name || u.email}</span> <span style={{ color: "#9ca3af" }}>· {u.role}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+        {teamMembers.length === 0 ? (
+          <div style={{ textAlign: "center", padding: "24px", color: "#9ca3af", background: "#f9fafb", borderRadius: 8, fontSize: 13 }}>No team members added yet</div>
+        ) : (
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            {teamMembers.map(id => {
+              const u = allUsers.find(u => u.id === id);
+              return (
+                <div key={id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 14px", background: "#f9fafb", borderRadius: 8, border: "1px solid #e5e7eb" }}>
+                  <div>
+                    <div style={{ fontSize: 13, fontWeight: 600 }}>{u?.name || u?.email || id}</div>
+                    <div style={{ fontSize: 11, color: "#9ca3af" }}>{u?.email} · {u?.role}</div>
+                  </div>
+                  <button onClick={() => removeMember(id)} style={{ background: "none", border: "none", cursor: "pointer", color: "#ef4444", fontSize: 14 }}>🗑</button>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
+      <div style={{ ...card, border: "1px solid #fecaca" }}>
+        <div style={{ fontWeight: 700, fontSize: 15, color: "#dc2626", marginBottom: 8 }}>🗑️ Delete Bot</div>
+        <p style={{ fontSize: 13, color: "#6b7280", marginBottom: 16 }}>This is permanent and cannot be undone.</p>
+        <label style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer", marginBottom: 16, fontSize: 13 }}>
+          <input type="checkbox" checked={confirmDelete} onChange={e => setConfirmDelete(e.target.checked)} style={{ accentColor: "#dc2626" }} />
+          Yes, I want to permanently delete this bot.
+        </label>
+        <button onClick={handleDelete} disabled={!confirmDelete || deleting}
+          style={{ ...btnPrimary, background: confirmDelete ? "#dc2626" : "#e5e7eb", color: confirmDelete ? "#fff" : "#9ca3af", cursor: confirmDelete ? "pointer" : "not-allowed" }}>
+          {deleting ? "Deleting..." : "Delete"}
+        </button>
       </div>
     </div>
   );

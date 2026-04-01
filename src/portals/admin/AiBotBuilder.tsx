@@ -1506,6 +1506,7 @@ function LinksPanel({ bot, onSave, saving }: { bot: AiBot; onSave: (u: Partial<A
 
 function TextPanel({ bot, onSave, saving }: { bot: AiBot; onSave: (u: Partial<AiBot>) => void; saving: boolean }) {
   const [text, setText] = useState(bot.trainingText || "");
+  const { saved, flash } = useSaved();
 
   return (
     <div style={{ padding: "32px" }} className="bot-panel-padding">
@@ -1520,9 +1521,10 @@ function TextPanel({ bot, onSave, saving }: { bot: AiBot; onSave: (u: Partial<Ai
         />
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: "12px", paddingTop: "12px", borderTop: "1px solid #f3f4f6" }}>
           <span style={{ fontSize: "12px", color: "#9ca3af" }}>{text.length.toLocaleString()} characters</span>
-          <button onClick={() => onSave({ trainingText: text })} disabled={saving} style={btnPrimary}>
+          <button onClick={() => { onSave({ trainingText: text }); flash(); }} disabled={saving} style={btnPrimary}>
             {saving ? "Saving..." : "Save"}
           </button>
+          <SavedBadge visible={saved} />
         </div>
       </div>
     </div>
@@ -1533,6 +1535,7 @@ function TextPanel({ bot, onSave, saving }: { bot: AiBot; onSave: (u: Partial<Ai
 
 function QAPanel({ bot, onSave, saving }: { bot: AiBot; onSave: (u: Partial<AiBot>) => void; saving: boolean }) {
   const [items, setItems] = useState<QAItem[]>(bot.qaItems || []);
+  const { saved, flash } = useSaved();
 
   function addItem() {
     setItems(prev => [...prev, { id: `qa-${Date.now()}`, question: "", answer: "" }]);
@@ -1548,6 +1551,7 @@ function QAPanel({ bot, onSave, saving }: { bot: AiBot; onSave: (u: Partial<AiBo
 
   function save() {
     onSave({ qaItems: items });
+    flash();
   }
 
   return (
@@ -1560,6 +1564,7 @@ function QAPanel({ bot, onSave, saving }: { bot: AiBot; onSave: (u: Partial<AiBo
         <div style={{ display: "flex", gap: "8px" }}>
           <button onClick={addItem} style={btnPrimary}>+ Add</button>
           <button onClick={save} disabled={saving} style={btnSecondary}>{saving ? "Saving..." : "Save"}</button>
+          <SavedBadge visible={saved} />
         </div>
       </div>
 
@@ -1611,6 +1616,7 @@ function CoursesPanel({ bot, onSave, saving }: { bot: AiBot; onSave: (u: Partial
   const [selectedPages, setSelectedPages] = useState<Set<string>>(new Set(bot.selectedPages || []));
   const [selectedFolders, setSelectedFolders] = useState<Set<string>>(new Set(bot.selectedFolders || []));
   const [selectedCourses, setSelectedCourses] = useState<Set<string>>(new Set(bot.selectedCourses || []));
+  const { saved, flash } = useSaved();
 
   useEffect(() => {
     fetch("/api/courses").then(r => r.ok ? r.json() : []).then(data => {
@@ -1669,6 +1675,7 @@ function CoursesPanel({ bot, onSave, saving }: { bot: AiBot; onSave: (u: Partial
       selectedFolders: Array.from(selectedFolders),
       selectedPages: Array.from(selectedPages),
     });
+    flash();
   }
 
   const totalSelected = selectedPages.size;
@@ -1683,6 +1690,7 @@ function CoursesPanel({ bot, onSave, saving }: { bot: AiBot; onSave: (u: Partial
         <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
           {totalSelected > 0 && <span style={{ fontSize: "13px", color: "#6b7280" }}>{totalSelected} lessons selected</span>}
           <button onClick={save} disabled={saving} style={btnPrimary}>{saving ? "Saving..." : "Save & Train"}</button>
+          <SavedBadge visible={saved} />
         </div>
       </div>
 
@@ -1778,6 +1786,7 @@ function TunePanel({ bot, onSave, saving }: { bot: AiBot; onSave: (u: Partial<Ai
   const [creativity, setCreativity] = useState(bot.creativity || 0);
   const [systemPrompt, setSystemPrompt] = useState(bot.systemPrompt || "");
   const [selectedPreset, setSelectedPreset] = useState("General Customer Service");
+  const { saved: tuneSaved, flash: tuneFlash } = useSaved();
 
   function applyPreset(preset: string) {
     setSelectedPreset(preset);
@@ -1837,8 +1846,9 @@ function TunePanel({ bot, onSave, saving }: { bot: AiBot; onSave: (u: Partial<Ai
           placeholder="Enter your AI instructions here..."
           style={{ ...inputStyle, minHeight: "200px", resize: "vertical" } as any}
         />
-        <div style={{ display: "flex", justifyContent: "flex-end", marginTop: "12px" }}>
-          <button onClick={() => onSave({ model, creativity, systemPrompt })} disabled={saving} style={btnPrimary}>
+        <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", gap: "10px", marginTop: "12px" }}>
+          <SavedBadge visible={tuneSaved} />
+          <button onClick={() => { onSave({ model, creativity, systemPrompt }); tuneFlash(); }} disabled={saving} style={btnPrimary}>
             {saving ? "Saving..." : "Save Changes"}
           </button>
         </div>
@@ -2159,6 +2169,7 @@ function AppearancePanel({ bot, onSave, saving }: { bot: AiBot; onSave: (u: Part
   const [avatarPreview, setAvatarPreview] = useState(bot.botAvatarUrl || "");
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
+  const { saved: appearSaved, flash: appearFlash } = useSaved();
 
   // Re-sync ONLY when switching to a different bot (not after save of same bot)
   const prevBotIdRef = useRef<string>("");
@@ -2425,9 +2436,12 @@ function AppearancePanel({ bot, onSave, saving }: { bot: AiBot; onSave: (u: Part
 
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: "24px" }}>
         <button onClick={() => { setBotTitle(bot.name); setWelcomeMessage("Hi, How can I help you today?"); setColorTheme("#3b82f6"); setSuggestions([]); setPlaceholder("Ask me anything..."); }} style={btnSecondary}>Reset Appearance</button>
-        <button onClick={save} disabled={saving || uploadingAvatar} style={{ ...btnPrimary, opacity: saving || uploadingAvatar ? 0.7 : 1 }}>
-          {uploadingAvatar ? "Uploading avatar..." : saving ? "Saving..." : "Save Changes"}
-        </button>
+        <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+          <SavedBadge visible={appearSaved} />
+          <button onClick={async () => { await save(); appearFlash(); }} disabled={saving || uploadingAvatar} style={{ ...btnPrimary, opacity: saving || uploadingAvatar ? 0.7 : 1 }}>
+            {uploadingAvatar ? "Uploading avatar..." : saving ? "Saving..." : "Save Changes"}
+          </button>
+        </div>
       </div>
 
       <style>{`
@@ -2839,3 +2853,13 @@ const inputStyle: React.CSSProperties = { width: "100%", padding: "10px 12px", b
 const btnPrimary: React.CSSProperties = { padding: "10px 20px", background: "#1f2937", color: "#fff", border: "none", borderRadius: "8px", fontSize: "15px", fontWeight: 600, cursor: "pointer" };
 const btnSecondary: React.CSSProperties = { padding: "10px 20px", background: "#fff", color: "#374151", border: "1px solid #d1d5db", borderRadius: "8px", fontSize: "15px", fontWeight: 500, cursor: "pointer" };
 const botCard: React.CSSProperties = { background: "#fff", borderRadius: "12px", padding: "20px", border: "1px solid #e5e7eb", cursor: "pointer", transition: "box-shadow 0.2s" };
+
+function useSaved() {
+  const [saved, setSaved] = useState(false);
+  function flash() { setSaved(true); setTimeout(() => setSaved(false), 2000); }
+  return { saved, flash };
+}
+
+function SavedBadge({ visible }: { visible: boolean }) {
+  return visible ? <span style={{ fontSize: 12, color: "#10b981", fontWeight: 600, marginLeft: 10 }}>✓ Saved!</span> : null;
+}
