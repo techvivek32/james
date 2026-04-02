@@ -45,6 +45,8 @@ export function BusinessUnitsManager(props: { users: UserProfile[] }) {
     committed: boolean;
   } | null>(null);
   const [savedUserId, setSavedUserId] = useState<string | null>(null);
+  const [yearlyExpanded, setYearlyExpanded] = useState(true);
+  const [monthlyExpanded, setMonthlyExpanded] = useState(true);
   const managers = props.users.filter((u) => u.role === "manager" || (u.roles || []).includes("manager"));
   const salesReps = props.users.filter((u) => u.role === "sales" || (u.roles || []).includes("sales"));
 
@@ -209,7 +211,7 @@ export function BusinessUnitsManager(props: { users: UserProfile[] }) {
               col === "metric" ? row.metric : row.value;
             const getCellStyle = (col: string): React.CSSProperties =>
               col === "value"
-                ? { padding: 12, textAlign: "right", color: "#111827", fontWeight: 600, border: "1px solid #e5e7eb" }
+                ? { padding: 12, textAlign: "left", color: "#111827", fontWeight: 600, border: "1px solid #e5e7eb" }
                 : col === "value"
                 ? { padding: 12, color: "#6b7280", fontSize: 12, border: "1px solid #e5e7eb" }
                 : { padding: 12, color: "#374151", paddingLeft: 24, border: "1px solid #e5e7eb" };
@@ -224,9 +226,27 @@ export function BusinessUnitsManager(props: { users: UserProfile[] }) {
                     {sections.map(section => (
                       <>
                         <tr key={section} style={{ backgroundColor: "#f8fafc" }}>
-                          <td colSpan={2} style={{ padding: 12, fontWeight: 600, color: "#111827", fontSize: 14, border: "1px solid #e5e7eb" }}>{section}</td>
+                          <td style={{ padding: 12, fontWeight: 600, color: "#111827", fontSize: 14, border: "1px solid #e5e7eb" }}>{section}</td>
+                          <td style={{ padding: 12, border: "1px solid #e5e7eb", textAlign: "right" }}>
+                            {section === "Yearly Targets" && (
+                              <button
+                                onClick={() => setYearlyExpanded(p => !p)}
+                                style={{ fontSize: 13, padding: "4px 14px", borderRadius: 4, border: "none", background: "#2563eb", color: "#fff", cursor: "pointer", fontWeight: 600 }}
+                              >
+                                {yearlyExpanded ? "Collapse" : "Expand"}
+                              </button>
+                            )}
+                            {section === "Monthly Targets" && (
+                              <button
+                                onClick={() => setMonthlyExpanded(p => !p)}
+                                style={{ fontSize: 13, padding: "4px 14px", borderRadius: 4, border: "none", background: "#2563eb", color: "#fff", cursor: "pointer", fontWeight: 600 }}
+                              >
+                                {monthlyExpanded ? "Collapse" : "Expand"}
+                              </button>
+                            )}
+                          </td>
                         </tr>
-                        {rows.filter(r => r.section === section).map((row, i) => (
+                        {(section !== "Yearly Targets" || yearlyExpanded) && (section !== "Monthly Targets" || monthlyExpanded) && rows.filter(r => r.section === section).map((row, i) => (
                           <tr key={i}>
                             {colOrder.map(col => (
                               <td key={col} style={getCellStyle(col)}>{getCellValue(col, row)}</td>
