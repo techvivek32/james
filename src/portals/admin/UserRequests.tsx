@@ -14,7 +14,7 @@ type UserRequest = {
   reviewedBy?: string;
 };
 
-export function UserRequests() {
+export function UserRequests({ onUserApproved }: { onUserApproved?: () => void }) {
   const { user } = useAuth();
   const [requests, setRequests] = useState<UserRequest[]>([]);
   const [loading, setLoading] = useState(true);
@@ -55,6 +55,7 @@ export function UserRequests() {
       if (res.ok) {
         alert("User approved successfully!");
         loadRequests();
+        onUserApproved?.();
       } else {
         const data = await res.json();
         alert(data.error || "Failed to approve user");
