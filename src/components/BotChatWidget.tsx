@@ -59,7 +59,7 @@ const ANIM_MAP: Record<string, string> = {
   Bounce: "bcw-bounce", Pulse: "bcw-pulse", Shake: "bcw-shake", Wiggle: "bcw-wiggle",
 };
 
-export function BotChatWidget({ role }: { role: string }) {
+export function BotChatWidget({ role, onBotsLoaded }: { role: string; onBotsLoaded?: (bots: AiBot[], selected: AiBot | null, select: (b: AiBot) => void) => void }) {
   const { user } = useAuth();
   const [bots, setBots] = useState<AiBot[]>([]);
   const [selectedBot, setSelectedBot] = useState<AiBot | null>(null);
@@ -118,6 +118,7 @@ export function BotChatWidget({ role }: { role: string }) {
         if (assigned.length >= 1) {
           setSelectedBot(assigned[0]);
           setCurrentChatId(newChatId());
+          onBotsLoaded?.(assigned, assigned[0], (b) => { setSelectedBot(b); startNewChat(); });
         }
       }
     } finally { setLoadingBots(false); }
@@ -248,14 +249,6 @@ export function BotChatWidget({ role }: { role: string }) {
         style={{ width: "260px", minWidth: "260px", background: sidebarBg, display: "flex", flexDirection: "column", overflow: "hidden", transition: "transform 0.25s ease, width 0.2s, min-width 0.2s", flexShrink: 0 }}>
 
         <div style={{ padding: "16px", borderBottom: "1px solid rgba(255,255,255,0.1)" }}>
-          {bots.length > 1 && (
-            <select value={selectedBot?.id || ""} onChange={e => {
-              const bot = bots.find(b => b.id === e.target.value);
-              if (bot) { setSelectedBot(bot); startNewChat(); }
-            }} style={{ width: "100%", padding: "8px 10px", borderRadius: "8px", border: "1px solid rgba(255,255,255,0.2)", background: "rgba(255,255,255,0.1)", color: "#fff", fontSize: "13px", marginBottom: "12px", cursor: "pointer" }}>
-              {bots.map(b => <option key={b.id} value={b.id} style={{ background: sidebarDark }}>{b.botTitle || b.name}</option>)}
-            </select>
-          )}
           <button onClick={startNewChat} style={{ width: "100%", padding: "10px 14px", background: "rgba(255,255,255,0.1)", color: "#fff", border: "1px solid rgba(255,255,255,0.2)", borderRadius: "8px", fontSize: "13px", fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", gap: "8px" }}>
             <span style={{ fontSize: "16px" }}>✏️</span> New Chat
           </button>
