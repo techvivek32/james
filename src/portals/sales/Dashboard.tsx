@@ -95,17 +95,19 @@ export function SalesDashboard(props: { profile: UserProfile }) {
     setLbPickerOpen(false);
     setLbSearch("");
     try {
-      const [coursesData, usersData] = await Promise.all([
+      const [coursesData, usersData, hiddenPrefs] = await Promise.all([
         allCoursesData
           ? Promise.resolve(allCoursesData)
           : fetch("/api/courses").then((r) => r.ok ? r.json() : []),
         fetch("/api/users").then((r) => r.ok ? r.json() : []),
+        fetch("/api/admin/ui-prefs?key=hiddenLeaderboardUsers").then((r) => r.ok ? r.json() : { hiddenIds: [] }),
       ]);
 
+      const hiddenIds = new Set<string>(hiddenPrefs.hiddenIds || []);
       const fullCourse = (Array.isArray(coursesData) ? coursesData : []).find((c: any) => c.id === course.id);
       const targetUsers = (Array.isArray(usersData) ? usersData : []).filter(
         (u: any) =>
-          !u.deleted && !u.suspended &&
+          !u.deleted && !u.suspended && !hiddenIds.has(u.id) &&
           (u.role === "manager" || u.role === "sales" ||
             (u.roles || []).some((r: string) => r === "manager" || r === "sales"))
       );

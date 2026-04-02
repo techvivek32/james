@@ -127,17 +127,19 @@ export function ManagerDashboard(props: { teamMembers: UserProfile[] }) {
     setLbPickerOpen(false);
     setLbSearch("");
     try {
-      const [coursesData, usersData] = await Promise.all([
+      const [coursesData, usersData, hiddenPrefs] = await Promise.all([
         allCoursesData
           ? Promise.resolve(allCoursesData)
           : fetch("/api/courses").then((r) => r.ok ? r.json() : []),
         fetch("/api/users").then((r) => r.ok ? r.json() : []),
+        fetch("/api/admin/ui-prefs?key=hiddenLeaderboardUsers").then((r) => r.ok ? r.json() : { hiddenIds: [] }),
       ]);
 
+      const hiddenIds = new Set<string>(hiddenPrefs.hiddenIds || []);
       const fullCourse = (Array.isArray(coursesData) ? coursesData : []).find((c: any) => c.id === course.id);
       // Only this manager's sales team
       const teamUsers = (Array.isArray(usersData) ? usersData : []).filter(
-        (u: any) => !u.deleted && !u.suspended && u.managerId === user?.id && u.role === "sales"
+        (u: any) => !u.deleted && !u.suspended && !hiddenIds.has(u.id) && u.managerId === user?.id && u.role === "sales"
       );
 
       if (!fullCourse || !teamUsers.length) { setLbRows([]); setLbLoading(false); return; }
