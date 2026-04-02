@@ -102,13 +102,13 @@ export function SocialMediaCharts({ platforms, customColumns = [] }: SocialMedia
           />
           {pct >= 5 && (
             <text
-              x={lx}
-              y={ly}
               textAnchor="middle"
               dominantBaseline="middle"
-              style={{ transform: "rotate(90deg)", transformOrigin: `${lx}px ${ly}px`, fontSize: 12, fontWeight: 700, fill: "#fff", pointerEvents: "none" }}
+              style={{ pointerEvents: "none" }}
+              transform={`rotate(90, ${lx}, ${ly})`}
             >
-              {pct}%
+              <tspan x={lx} y={ly - 7} style={{ fontSize: 11, fontWeight: 700, fill: "#fff" }}>{slice.label}</tspan>
+              <tspan x={lx} y={ly + 8} style={{ fontSize: 11, fontWeight: 600, fill: "#fff" }}>{pct}%</tspan>
             </text>
           )}
         </g>

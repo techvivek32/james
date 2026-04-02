@@ -932,7 +932,6 @@ function CourseTestPanel({ bot }: { bot: CourseBot }) {
   const [messages, setMessages] = useState<Msg[]>([{ role: "assistant", content: bot.welcomeMessage || "Hi! Ask me anything about this course." }]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
-  const [chatId] = useState(() => `course-test-${bot.id}-${Date.now()}`);
   const bottomRef = useRef<HTMLDivElement>(null);
   const color = bot.colorTheme || "#3b82f6";
 
@@ -946,15 +945,7 @@ function CourseTestPanel({ bot }: { bot: CourseBot }) {
     try {
       const res = await fetch("/api/course-ai-bots/chat", {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          botId: bot.id,
-          messages: newMessages.filter(m => m.role !== "assistant" || newMessages.indexOf(m) > 0),
-          chatId,
-          userId: "admin-test",
-          userName: "Admin (Test)",
-          userEmail: "",
-          userRole: "admin"
-        })
+        body: JSON.stringify({ botId: bot.id, messages: newMessages })
       });
       const data = await res.json();
       setMessages(prev => [...prev, { role: "assistant", content: data.message || data.error || "Error" }]);
