@@ -70,11 +70,11 @@ export function SocialMediaCharts({ platforms, customColumns = [] }: SocialMedia
       return <circle cx="150" cy="150" r="120" fill={slices[0].color} stroke="#ffffff" strokeWidth="2" />;
     }
 
-    let currentAngle = 0;
+    let currentAngle = -90; // start from top
     return slices.map(slice => {
       const angle = (slice.value / total) * 360;
       const pct = Math.round((slice.value / total) * 100);
-      const radius = 120, cx = 150, cy = 150;
+      const radius = 110, cx = 150, cy = 150;
       const start = (currentAngle * Math.PI) / 180;
       const end = ((currentAngle + angle) * Math.PI) / 180;
       const x1 = cx + radius * Math.cos(start);
@@ -83,11 +83,15 @@ export function SocialMediaCharts({ platforms, customColumns = [] }: SocialMedia
       const y2 = cy + radius * Math.sin(end);
       const largeArc = angle > 180 ? 1 : 0;
       const d = `M ${cx} ${cy} L ${x1} ${y1} A ${radius} ${radius} 0 ${largeArc} 1 ${x2} ${y2} Z`;
-      // midpoint angle for label
       const midAngle = ((currentAngle + angle / 2) * Math.PI) / 180;
-      const labelR = radius * 0.65;
-      const lx = cx + labelR * Math.cos(midAngle);
-      const ly = cy + labelR * Math.sin(midAngle);
+      // % label inside slice
+      const innerR = radius * 0.62;
+      const ix = cx + innerR * Math.cos(midAngle);
+      const iy = cy + innerR * Math.sin(midAngle);
+      // name label outside slice
+      const outerR = radius + 22;
+      const ox = cx + outerR * Math.cos(midAngle);
+      const oy = cy + outerR * Math.sin(midAngle);
       currentAngle += angle;
       return (
         <g key={slice.id}>
@@ -100,15 +104,14 @@ export function SocialMediaCharts({ platforms, customColumns = [] }: SocialMedia
             onMouseEnter={() => setHoveredId(slice.id)}
             onMouseLeave={() => setHoveredId(null)}
           />
-          {pct >= 5 && (
-            <text
-              textAnchor="middle"
-              dominantBaseline="middle"
-              style={{ pointerEvents: "none" }}
-              transform={`rotate(90, ${lx}, ${ly})`}
-            >
-              <tspan x={lx} y={ly - 7} style={{ fontSize: 11, fontWeight: 700, fill: "#fff" }}>{slice.label}</tspan>
-              <tspan x={lx} y={ly + 8} style={{ fontSize: 11, fontWeight: 600, fill: "#fff" }}>{pct}%</tspan>
+          {pct >= 4 && (
+            <text x={ix} y={iy} textAnchor="middle" dominantBaseline="middle" style={{ pointerEvents: "none", fontSize: 11, fontWeight: 700, fill: "#fff" }}>
+              {pct}%
+            </text>
+          )}
+          {angle >= 15 && (
+            <text x={ox} y={oy} textAnchor="middle" dominantBaseline="middle" style={{ pointerEvents: "none", fontSize: 11, fontWeight: 600, fill: "#374151" }}>
+              {slice.label}
             </text>
           )}
         </g>
@@ -160,8 +163,8 @@ export function SocialMediaCharts({ platforms, customColumns = [] }: SocialMedia
           {/* Left: Pie Chart */}
           <div style={{ flex: 0.4 }}>
             <div style={{ fontSize: 14, fontWeight: 600, color: "#111827", marginBottom: 16 }}>{chartTitle}</div>
-            <div style={{ position: "relative", width: 300, height: 300 }}>
-              <svg width="300" height="300" style={{ transform: "rotate(-90deg)" }}>
+            <div style={{ position: "relative", width: 340, height: 340 }}>
+              <svg width="340" height="340" viewBox="0 0 300 300">
                 {drawPieSlices()}
               </svg>
             </div>

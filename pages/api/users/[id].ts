@@ -2,7 +2,7 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import bcrypt from "bcryptjs";
 import { connectMongo } from "../../../src/lib/mongodb";
 import { UserModel } from "../../../src/lib/models/User";
-import { sendEmail, sendUserAccountUpdatedEmail, sendAdminConfirmationEmail } from "../../../src/lib/email";
+import { sendUserAccountUpdatedEmail, sendAdminConfirmationEmail } from "../../../src/lib/email";
 
 export default async function handler(
   req: NextApiRequest,

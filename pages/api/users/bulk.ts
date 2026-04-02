@@ -2,7 +2,7 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import bcrypt from "bcryptjs";
 import { connectMongo } from "../../../src/lib/mongodb";
 import { UserModel } from "../../../src/lib/models/User";
-import { sendEmail, generateQuickStartEmail, generateQuickStartManagerEmail } from "../../../src/lib/email";
+import { sendQuickStartUserEmail, sendQuickStartManagerEmail } from "../../../src/lib/email";
 
 export default async function handler(
   req: NextApiRequest,
@@ -90,13 +90,7 @@ export default async function handler(
       for (const newUser of newSalesUsers) {
         try {
           const name = newUser.name || newUser.email;
-          const html = generateQuickStartEmail(name);
-
-          await sendEmail({
-            to: newUser.email.trim(),
-            subject: "Your 48-Hour Quick Start Plan",
-            html,
-          });
+          await sendQuickStartUserEmail(name, newUser.email.trim());
           console.log(`[bulk] Quick Start email sent to: ${newUser.email}`);
 
           if (newUser.managerId) {
@@ -104,12 +98,7 @@ export default async function handler(
               $or: [{ id: newUser.managerId }, { email: newUser.managerId }],
             }).lean();
             if (manager?.email) {
-              const managerHtml = generateQuickStartManagerEmail(name, manager.name || manager.email);
-              await sendEmail({
-                to: manager.email,
-                subject: `48-Hour Quick Start Plan – ${name}`,
-                html: managerHtml,
-              });
+              await sendQuickStartManagerEmail(name, manager.name || manager.email, manager.email);
               console.log(`[bulk] Quick Start email sent to manager: ${manager.email}`);
             } else {
               console.log(`[bulk] Manager not found for managerId: ${newUser.managerId}`);

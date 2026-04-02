@@ -3,7 +3,7 @@ import crypto from "crypto";
 import { connectMongo } from "../../src/lib/mongodb";
 import { UserModel } from "../../src/lib/models/User";
 import { PasswordResetModel } from "../../src/lib/models/PasswordReset";
-import { sendEmail, generatePasswordResetEmail } from "../../src/lib/email";
+import { sendPasswordResetEmail } from "../../src/lib/email";
 
 export default async function handler(
   req: NextApiRequest,
@@ -73,22 +73,12 @@ export default async function handler(
     // Generate reset link
     const resetLink = `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/reset-password?token=${token}`;
 
-    // Generate email content
-    const { html, text } = generatePasswordResetEmail(user.name, resetLink);
-
     // Send email
     try {
-      await sendEmail({
-        to: user.email,
-        subject: "Reset Your Password - Miller Storm OS",
-        html,
-        text
-      });
-
+      await sendPasswordResetEmail(user.name, resetLink, user.email);
       console.log(`Password reset email sent to ${user.email}`);
     } catch (emailError) {
       console.error("Failed to send email:", emailError);
-      // Don't expose email sending errors to user
       res.status(200).json({ 
         message: "If an account exists with this email, you will receive a password reset link shortly." 
       });

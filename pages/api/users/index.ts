@@ -2,7 +2,7 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import bcrypt from "bcryptjs";
 import { connectMongo } from "../../../src/lib/mongodb";
 import { UserModel } from "../../../src/lib/models/User";
-import { sendEmail, generateQuickStartEmail } from "../../../src/lib/email";
+import { sendQuickStartUserEmail, sendQuickStartManagerEmail } from "../../../src/lib/email";
 
 export default async function handler(
   req: NextApiRequest,
@@ -58,22 +58,12 @@ export default async function handler(
     if (rest.role === "sales" && rest.email) {
       try {
         const newHireName = rest.name || rest.email;
-        const quickStartHtml = generateQuickStartEmail(newHireName);
-
-        await sendEmail({
-          to: rest.email,
-          subject: "Your 48-Hour Quick Start Plan",
-          html: quickStartHtml,
-        });
+        await sendQuickStartUserEmail(newHireName, rest.email);
 
         if (rest.managerId) {
           const manager = await UserModel.findOne({ id: rest.managerId }).lean();
           if (manager?.email) {
-            await sendEmail({
-              to: manager.email,
-              subject: `48-Hour Quick Start Plan – ${newHireName}`,
-              html: quickStartHtml,
-            });
+            await sendQuickStartManagerEmail(newHireName, manager.name || manager.email, manager.email);
           }
         }
       } catch (emailErr) {

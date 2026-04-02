@@ -2,7 +2,7 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { connectMongo } from "../../../src/lib/mongodb";
 import { UserRequestModel } from "../../../src/lib/models/UserRequest";
 import { UserModel } from "../../../src/lib/models/User";
-import { sendEmail, generateApprovalEmail, generateRejectionEmail, generateQuickStartEmail, generateQuickStartManagerEmail } from "../../../src/lib/email";
+import { sendAccountApprovedEmail, sendAccountRejectedEmail, sendQuickStartUserEmail, sendQuickStartManagerEmail } from "../../../src/lib/email";
 
 export default async function handler(
   req: NextApiRequest,
@@ -107,20 +107,7 @@ export default async function handler(
         // Send approval email
         try {
           const loginUrl = `http://${process.env.PRIMARY_DOMAIN || 'localhost:6789'}/login`;
-          const emailContent = generateApprovalEmail(
-            userRequest.name,
-            userRequest.email,
-            userRequest.role,
-            loginUrl
-          );
-          
-          await sendEmail({
-            to: userRequest.email,
-            subject: "Account Approved - Miller Storm OS",
-            html: emailContent.html,
-            text: emailContent.text
-          });
-          
+          await sendAccountApprovedEmail(userRequest.name, userRequest.email, userRequest.role, loginUrl);
           console.log("Approval email sent to:", userRequest.email);
         } catch (emailError: any) {
           console.error("Failed to send approval email:", emailError.message || emailError);
@@ -129,24 +116,12 @@ export default async function handler(
         // Send 48-hour Quick Start onboarding email for sales users
         if (userRequest.role === "sales") {
           try {
-            const quickStartHtml = generateQuickStartEmail(userRequest.name);
+            await sendQuickStartUserEmail(userRequest.name, userRequest.email);
 
-            await sendEmail({
-              to: userRequest.email,
-              subject: "Your 48-Hour Quick Start Plan",
-              html: quickStartHtml,
-            });
-
-            // Also send to assigned manager if one exists
             if (newUser.managerId) {
               const manager = await UserModel.findOne({ id: newUser.managerId }).lean();
               if (manager?.email) {
-                const managerHtml = generateQuickStartManagerEmail(userRequest.name, manager.name || manager.email);
-                await sendEmail({
-                  to: manager.email,
-                  subject: `48-Hour Quick Start Plan – ${userRequest.name}`,
-                  html: managerHtml,
-                });
+                await sendQuickStartManagerEmail(userRequest.name, manager.name || manager.email, manager.email);
               }
             }
 
@@ -171,20 +146,7 @@ export default async function handler(
 
         // Send rejection email
         try {
-          const emailContent = generateRejectionEmail(
-            userRequest.name,
-            userRequest.email,
-            userRequest.role,
-            userRequest.rejectionReason
-          );
-          
-          await sendEmail({
-            to: userRequest.email,
-            subject: "Registration Request Update - Miller Storm OS",
-            html: emailContent.html,
-            text: emailContent.text
-          });
-          
+          await sendAccountRejectedEmail(userRequest.name, userRequest.email, userRequest.rejectionReason);
           console.log("Rejection email sent to:", userRequest.email);
         } catch (emailError: any) {
           console.error("Failed to send rejection email:", emailError.message || emailError);
