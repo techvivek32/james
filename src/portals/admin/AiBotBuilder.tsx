@@ -256,8 +256,31 @@ export function AiBotBuilder() {
         </div>
       ) : (
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: "16px" }}>
-          {bots.map(bot => (
-            <div key={bot.id} style={{...botCard, position: "relative"}} onClick={() => { selectBot(bot, "links"); }}>
+          {bots.map((bot, index) => (
+            <div
+              key={bot.id}
+              draggable
+              onDragStart={e => { e.dataTransfer.setData("dragIndex", String(index)); e.dataTransfer.effectAllowed = "move"; (e.currentTarget as HTMLElement).style.opacity = "0.5"; }}
+              onDragEnd={e => { (e.currentTarget as HTMLElement).style.opacity = "1"; }}
+              onDragOver={e => { e.preventDefault(); e.dataTransfer.dropEffect = "move"; (e.currentTarget as HTMLElement).style.outline = "2px dashed #3b82f6"; }}
+              onDragLeave={e => { (e.currentTarget as HTMLElement).style.outline = "none"; }}
+              onDrop={e => {
+                e.preventDefault();
+                (e.currentTarget as HTMLElement).style.outline = "none";
+                const fromIndex = Number(e.dataTransfer.getData("dragIndex"));
+                if (fromIndex === index) return;
+                const updated = [...bots];
+                const [moved] = updated.splice(fromIndex, 1);
+                updated.splice(index, 0, moved);
+                setBots(updated);
+                fetch("/api/ai-bots", {
+                  method: "PUT",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ orderedIds: updated.map((b: any) => b.id) })
+                }).then(r => r.json()).then(data => console.log("[drag-drop] save result:", data)).catch(console.error);
+              }}
+              style={{...botCard, position: "relative", cursor: "grab"}}
+              onClick={() => { selectBot(bot, "links"); }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
                 <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
                   <div style={{ width: 40, height: 40, borderRadius: "50%", background: "#1f2937", display: "flex", alignItems: "center", justifyContent: "center", color: "white", fontSize: "18px", overflow: "hidden", flexShrink: 0 }}>
