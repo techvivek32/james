@@ -48,6 +48,7 @@ export function UserManagement(props: UserEditorProps) {
   const [roleFilter, setRoleFilter] = useState<"all" | "admin" | "manager" | "sales" | "marketing">("all");
   const [showRoleDropdown, setShowRoleDropdown] = useState(false);
   const [showDeveloperModal, setShowDeveloperModal] = useState(false);
+  const [devSearch, setDevSearch] = useState("");
   const [developerModalTab, setDeveloperModalTab] = useState<"selection" | "selected">("selection");
   const [developerUsers, setDeveloperUsers] = useState<Set<string>>(() => {
     try {
@@ -1376,6 +1377,7 @@ export function UserManagement(props: UserEditorProps) {
                 onClick={() => {
                   setShowDeveloperModal(false);
                   setDeveloperModalTab("selection");
+                  setDevSearch("");
                 }}
                 style={{
                   background: "none", border: "none", cursor: "pointer",
@@ -1428,13 +1430,20 @@ export function UserManagement(props: UserEditorProps) {
 
             {/* Modal body */}
             <div style={{ flex: 1, overflowY: "auto", padding: "20px 24px" }}>
+              <input
+                type="text"
+                placeholder="Search users..."
+                value={devSearch}
+                onChange={e => setDevSearch(e.target.value)}
+                style={{ width: "100%", padding: "9px 12px", fontSize: 13, border: "1px solid #e5e7eb", borderRadius: 6, marginBottom: 16, boxSizing: "border-box" }}
+              />
               {developerModalTab === "selection" ? (
                 <>
                   <div style={{ marginBottom: 16, fontSize: 13, color: "#6b7280" }}>
                     Select users to mark as developers
                   </div>
                   <div style={{ border: "1px solid #e5e7eb", borderRadius: 8, overflow: "hidden" }}>
-                    {[...draftUsers].sort((a, b) => (a.name || "").localeCompare(b.name || "")).map((user, idx) => {
+                    {[...draftUsers].sort((a, b) => (a.name || "").localeCompare(b.name || "")).filter(u => (u.name || "").toLowerCase().includes(devSearch.toLowerCase())).map((user, idx) => {
                       const isSelected = developerUsers.has(user.id);
                       return (
                         <label
@@ -1478,7 +1487,7 @@ export function UserManagement(props: UserEditorProps) {
                     </div>
                   ) : (
                     <div style={{ border: "1px solid #e5e7eb", borderRadius: 8, overflow: "hidden" }}>
-                      {[...draftUsers].filter(u => developerUsers.has(u.id)).sort((a, b) => (a.name || "").localeCompare(b.name || "")).map((user, idx) => (
+                      {[...draftUsers].filter(u => developerUsers.has(u.id)).sort((a, b) => (a.name || "").localeCompare(b.name || "")).filter(u => (u.name || "").toLowerCase().includes(devSearch.toLowerCase())).map((user, idx) => (
                         <div
                           key={user.id}
                           style={{
