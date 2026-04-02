@@ -196,7 +196,8 @@ export function CourseLeaderboard() {
         .filter((u: any) => !u.deleted && !u.suspended &&
           (u.role === "manager" || u.role === "sales" ||
             (u.roles || []).some((r: string) => r === "manager" || r === "sales")))
-        .map((u: any) => ({ id: u.id, name: u.name || u.email, email: u.email }));
+        .map((u: any) => ({ id: u.id, name: u.name || u.email, email: u.email }))
+        .sort((a: UserOption, b: UserOption) => a.name.localeCompare(b.name));
       setOverrideUsers(eligible);
 
       // Build lesson list from raw course data
