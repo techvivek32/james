@@ -294,15 +294,7 @@ export function BusinessPlanPage(props: {
         </table>
 
         {/* Commitment Section */}
-        <div style={{ borderTop: "2px solid #e5e7eb", paddingTop: 24, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-          <div>
-            <h3 style={{ fontSize: 14, fontWeight: 600, color: "#111827", margin: 0, marginBottom: 4 }}>
-              {committed ? "Plan Committed" : "Save Your Plan"}
-            </h3>
-            <p style={{ fontSize: 12, color: "#6b7280", margin: 0 }}>
-              {committed ? "Your plan has been committed to your manager" : "Save as draft or commit your plan"}
-            </p>
-          </div>
+        <div style={{ borderTop: "2px solid #e5e7eb", paddingTop: 24, display: "flex", alignItems: "center", justifyContent: "flex-end" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
             {committed && (
               <span style={{
@@ -328,7 +320,7 @@ export function BusinessPlanPage(props: {
               onClick={handleCommitPlan}
               style={{ padding: "10px 24px", fontSize: 13, fontWeight: 600 }}
             >
-              {committed ? "Update Commitment" : "Commit Plan"}
+              {committed ? "Update Commitment" : "Submit"}
             </button>
           </div>
         </div>
