@@ -29,7 +29,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   if (bot.courseTrainingText?.trim()) {
-    systemContent += `\n\nCOURSE TRAINING CONTENT:\n${bot.courseTrainingText}`;
+    const maxCourseChars = 60000; // ~15k tokens, safe for gpt-4o-mini 128k context
+    const courseText = bot.courseTrainingText.length > maxCourseChars
+      ? bot.courseTrainingText.substring(0, maxCourseChars) + "\n\n[Content truncated due to length...]"
+      : bot.courseTrainingText;
+    systemContent += `\n\nCOURSE TRAINING CONTENT:\n${courseText}`;
   }
 
   if (bot.qaItems?.length > 0) {
@@ -53,7 +57,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         model: bot.model || "gpt-4o-mini",
         messages: [{ role: "system", content: systemContent }, ...messages.map((m: any) => ({ role: m.role, content: m.content }))],
         temperature,
-        max_tokens: 800
+        max_tokens: 1500
       })
     });
 
