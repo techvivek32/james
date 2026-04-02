@@ -408,7 +408,7 @@ export function BusinessUnitsManager(props: { users: UserProfile[] }) {
                               ${(bp?.revenueGoal || 0).toLocaleString()}
                             </td>
                             <td style={{ padding: 12, textAlign: "right", color: "#374151" }}>
-                              ${(bp?.averageDealSize || 3800).toLocaleString()}
+                              ${(bp?.averageDealSize || 3500).toLocaleString()}
                             </td>
                             <td style={{ padding: 12, textAlign: "right", color: "#374151" }}>
                               {Math.ceil(metrics.dealsPerMonth).toLocaleString()}
@@ -446,7 +446,7 @@ export function BusinessUnitsManager(props: { users: UserProfile[] }) {
                                   setEditingUserId(member.id);
                                   setEditForm({
                                     incomeGoal: String(bp?.revenueGoal || 0),
-                                    dealAve: String(bp?.averageDealSize || 3800),
+                                    dealAve: String(bp?.averageDealSize || 3500),
                                     committed: bp?.committed || false
                                   });
                                 }}
@@ -553,7 +553,7 @@ export function BusinessUnitsManager(props: { users: UserProfile[] }) {
                               <tr key={member.id} style={{ borderBottom: "1px solid #e5e7eb" }}>
                                 <td style={{ padding: 12, paddingLeft: 32 }}>└ {member.name}</td>
                                 <td style={{ padding: 12, textAlign: "right" }}>${(bp?.revenueGoal || 0).toLocaleString()}</td>
-                                <td style={{ padding: 12, textAlign: "right" }}>${(bp?.averageDealSize || 3800).toLocaleString()}</td>
+                                <td style={{ padding: 12, textAlign: "right" }}>${(bp?.averageDealSize || 3500).toLocaleString()}</td>
                                 <td style={{ padding: 12, textAlign: "right" }}>{Math.ceil(metrics.dealsPerMonth).toLocaleString()}</td>
                                 <td style={{ padding: 12, textAlign: "right" }}>{Math.ceil(metrics.claimsPerMonth).toLocaleString()}</td>
                                 <td style={{ padding: 12, textAlign: "right" }}>{Math.ceil(metrics.inspectionsPerMonth).toLocaleString()}</td>
@@ -566,7 +566,7 @@ export function BusinessUnitsManager(props: { users: UserProfile[] }) {
                                   </span>
                                 </td>
                                 <td style={{ padding: 12, textAlign: "center" }}>
-                                  <button onClick={() => { setEditingUserId(member.id); setEditForm({ incomeGoal: String(bp?.revenueGoal || 0), dealAve: String(bp?.averageDealSize || 3800), committed: bp?.committed || false }); }} style={{ padding: "6px 12px", backgroundColor: "#3b82f6", color: "#fff", border: "none", borderRadius: 4, fontSize: 12, fontWeight: 600, cursor: "pointer" }}>Edit</button>
+                                  <button onClick={() => { setEditingUserId(member.id); setEditForm({ incomeGoal: String(bp?.revenueGoal || 0), dealAve: String(bp?.averageDealSize || 3500), committed: bp?.committed || false }); }} style={{ padding: "6px 12px", backgroundColor: "#3b82f6", color: "#fff", border: "none", borderRadius: 4, fontSize: 12, fontWeight: 600, cursor: "pointer" }}>Edit</button>
                                 </td>
                               </tr>
                             );
