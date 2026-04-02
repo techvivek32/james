@@ -60,7 +60,7 @@ export function CourseLeaderboard() {
   const [overrideSaving, setOverrideSaving] = useState(false);
   const [allCoursesRaw, setAllCoursesRaw] = useState<any[]>([]);
   const [showFormatPicker, setShowFormatPicker] = useState(false);
-  const [show100Club, setShow100Club] = useState(false);
+  const [show100Club, setShow100Club] = useState(true);
   const [showHideModal, setShowHideModal] = useState(false);
   const [hideSelection, setHideSelection] = useState<Set<string>>(new Set());
   const tableRef = useRef<HTMLDivElement>(null);
