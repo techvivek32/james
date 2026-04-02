@@ -1434,7 +1434,7 @@ export function UserManagement(props: UserEditorProps) {
                     Select users to mark as developers
                   </div>
                   <div style={{ border: "1px solid #e5e7eb", borderRadius: 8, overflow: "hidden" }}>
-                    {draftUsers.map((user, idx) => {
+                    {[...draftUsers].sort((a, b) => (a.name || "").localeCompare(b.name || "")).map((user, idx) => {
                       const isSelected = developerUsers.has(user.id);
                       return (
                         <label
@@ -1478,7 +1478,7 @@ export function UserManagement(props: UserEditorProps) {
                     </div>
                   ) : (
                     <div style={{ border: "1px solid #e5e7eb", borderRadius: 8, overflow: "hidden" }}>
-                      {draftUsers.filter(u => developerUsers.has(u.id)).map((user, idx) => (
+                      {[...draftUsers].filter(u => developerUsers.has(u.id)).sort((a, b) => (a.name || "").localeCompare(b.name || "")).map((user, idx) => (
                         <div
                           key={user.id}
                           style={{
