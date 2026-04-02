@@ -25,7 +25,7 @@ export function SocialMediaCharts({ platforms, customColumns = [] }: SocialMedia
   const numericColumns = customColumns.filter(col => col.datatype === "number");
 
   const [selectedPlatformId, setSelectedPlatformId] = useState<string>(platforms[0]?.id || "");
-  const [selectedColumnId, setSelectedColumnId] = useState<string | null>(null);
+  const [selectedColumnId, setSelectedColumnId] = useState<string | null>(numericColumns[0]?.id || null);
   const [isChartVisible, setIsChartVisible] = useState(true);
   const [hoveredId, setHoveredId] = useState<string | null>(null);
 
