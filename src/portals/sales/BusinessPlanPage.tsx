@@ -305,7 +305,7 @@ export function BusinessPlanPage(props: {
                 fontSize: 12,
                 fontWeight: 600
               }}>
-                ✓ Committed
+                ✓ Submitted Successfully
               </span>
             )}
             <button
@@ -320,7 +320,7 @@ export function BusinessPlanPage(props: {
               onClick={handleCommitPlan}
               style={{ padding: "10px 24px", fontSize: 13, fontWeight: 600 }}
             >
-              {committed ? "Update Commitment" : "Submit"}
+              {committed ? "Submit" : "Submit"}
             </button>
           </div>
         </div>
