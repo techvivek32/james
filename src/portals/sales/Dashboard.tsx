@@ -39,6 +39,7 @@ export function SalesDashboard(props: { profile: UserProfile }) {
   const [lbLoading, setLbLoading] = useState(false);
   const [lbPickerOpen, setLbPickerOpen] = useState(false);
   const [lbSearch, setLbSearch] = useState("");
+  const [show100Club, setShow100Club] = useState(true);
   const lbPickerRef = useRef<HTMLDivElement>(null);
 
   // Load actuals from database
@@ -541,6 +542,81 @@ export function SalesDashboard(props: { profile: UserProfile }) {
                 </div>
               </div>
 
+              {/* 100 Club Section */}
+              {(() => {
+                const clubMembers = lbRows.filter(r => r.pct === 100);
+                if (!lbLoading && clubMembers.length > 0) return (
+                  <div style={{ borderBottom: "2px solid #d1fae5" }}>
+                    <button
+                      onClick={() => setShow100Club(p => !p)}
+                      style={{
+                        width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between",
+                        padding: "12px 24px", border: "none", cursor: "pointer",
+                        background: "linear-gradient(90deg, #ecfdf5, #f0fdf4)",
+                        borderBottom: show100Club ? "1px solid #d1fae5" : "none",
+                      }}
+                    >
+                      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                        <div style={{
+                          display: "inline-flex", alignItems: "center", gap: 5,
+                          background: "linear-gradient(135deg, #059669, #10b981)",
+                          color: "#fff", borderRadius: "0 6px 6px 0",
+                          padding: "4px 12px 4px 8px", fontSize: 12, fontWeight: 700,
+                          letterSpacing: 0.5, position: "relative", marginLeft: 8,
+                          boxShadow: "0 2px 6px rgba(16,185,129,0.35)",
+                        }}>
+                          <div style={{ position: "absolute", left: -8, top: 0, bottom: 0, width: 0, height: 0, borderTop: "13px solid transparent", borderBottom: "13px solid transparent", borderRight: "8px solid #059669" }} />
+                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                          100 Club
+                        </div>
+                        <span style={{ fontSize: 13, fontWeight: 600, color: "#065f46" }}>{clubMembers.length} member{clubMembers.length !== 1 ? "s" : ""} completed this course</span>
+                      </div>
+                      <span style={{ fontSize: 13, color: "#059669", fontWeight: 600 }}>{show100Club ? "▲ Hide" : "▼ Show"}</span>
+                    </button>
+                    {show100Club && (
+                      <div style={{ overflowX: "auto" }}>
+                        <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+                          <thead>
+                            <tr style={{ background: "#f0fdf4" }}>
+                              {["#", "User", "Role", "Lessons", "Progress"].map(h => (
+                                <th key={h} style={{ padding: "10px 16px", textAlign: "left", fontWeight: 600, color: "#065f46", borderBottom: "1px solid #d1fae5", whiteSpace: "nowrap" }}>{h}</th>
+                              ))}
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {clubMembers.map((row, idx) => (
+                              <tr key={row.id} style={{ background: idx % 2 === 0 ? "#f0fdf4" : "#ecfdf5" }}>
+                                <td style={{ padding: "10px 16px", borderBottom: "1px solid #d1fae5", color: "#059669", fontWeight: 700 }}>{idx + 1}</td>
+                                <td style={{ padding: "10px 16px", borderBottom: "1px solid #d1fae5" }}>
+                                  <div style={{ fontWeight: 600, color: "#111827", display: "flex", alignItems: "center", gap: 6 }}>
+                                    {row.name}
+                                    {row.id === props.profile.id && <span style={{ fontSize: 10, fontWeight: 700, background: "#3b82f6", color: "#fff", borderRadius: 999, padding: "1px 6px" }}>YOU</span>}
+                                  </div>
+                                  <div style={{ fontSize: 11, color: "#9ca3af" }}>{row.email}</div>
+                                </td>
+                                <td style={{ padding: "10px 16px", borderBottom: "1px solid #d1fae5" }}>
+                                  <span style={{ padding: "2px 9px", borderRadius: 999, fontSize: 11, fontWeight: 600, background: row.role === "manager" ? "#ede9fe" : "#dbeafe", color: row.role === "manager" ? "#6d28d9" : "#1d4ed8", textTransform: "capitalize" }}>{row.role}</span>
+                                </td>
+                                <td style={{ padding: "10px 16px", borderBottom: "1px solid #d1fae5", color: "#065f46", fontWeight: 600 }}>{row.done} / {row.total}</td>
+                                <td style={{ padding: "10px 16px", borderBottom: "1px solid #d1fae5", minWidth: 140 }}>
+                                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                                    <div style={{ flex: 1, height: 8, borderRadius: 999, background: "#d1fae5", overflow: "hidden" }}>
+                                      <div style={{ width: "100%", height: "100%", background: "#10b981" }} />
+                                    </div>
+                                    <span style={{ fontSize: 12, fontWeight: 700, color: "#059669", minWidth: 36 }}>100%</span>
+                                  </div>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                  </div>
+                );
+                return null;
+              })()}
+
               {/* Table */}
               {lbLoading ? (
                 <div style={{ display: "flex", justifyContent: "center", alignItems: "center", height: 160 }}>
@@ -549,7 +625,7 @@ export function SalesDashboard(props: { profile: UserProfile }) {
                     <div style={{ color: "#6b7280", fontSize: 13 }}>Loading leaderboard...</div>
                   </div>
                 </div>
-              ) : lbRows.length === 0 ? (
+              ) : lbRows.filter(r => r.pct < 100).length === 0 ? (
                 <div style={{ padding: 40, textAlign: "center", color: "#9ca3af" }}>
                   <div style={{ fontSize: 36, marginBottom: 8 }}>🏆</div>
                   No data available.
@@ -572,7 +648,7 @@ export function SalesDashboard(props: { profile: UserProfile }) {
                       </tr>
                     </thead>
                     <tbody>
-                      {lbRows.map((row, idx) => {
+                      {lbRows.filter(r => r.pct < 100).map((row, idx) => {
                         const rank = idx + 1;
                         const isMe = row.id === props.profile.id;
                         return (
