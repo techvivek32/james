@@ -191,7 +191,7 @@ export function BusinessUnitsManager(props: { users: UserProfile[] }) {
       {/* Global Dashboard */}
       <div className="panel" style={{ marginBottom: 32 }}>
         <div className="panel-header">
-          <span>All Committed Sales Plans - Global Dashboard</span>
+          <span>All Committed Business Plans</span>
         </div>
         <div className="panel-body">
           {(() => {
