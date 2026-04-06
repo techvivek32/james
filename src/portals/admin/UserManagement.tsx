@@ -255,7 +255,8 @@ export function UserManagement(props: UserEditorProps) {
   }, []);
 
   function updateUser(updated: UserProfile) {
-    const nextUser = updated.id.startsWith("user-") && updated.email.trim().length > 0 ? { ...updated, id: updated.email.trim() } : updated;
+    const lowerEmail = updated.email.trim().toLowerCase();
+    const nextUser = updated.id.startsWith("user-") && lowerEmail.length > 0 ? { ...updated, email: lowerEmail, id: lowerEmail } : { ...updated, email: updated.email.trim().toLowerCase() };
     const next = draftUsers.map((u) => (u.id === updated.id ? nextUser : u));
     setDraftUsers(next);
     setIsDirty(true);

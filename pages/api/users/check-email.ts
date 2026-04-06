@@ -26,11 +26,11 @@ export default async function handler(
     const normalizedEmail = email.trim().toLowerCase();
 
     // Check if email exists in users
-    const existingUser = await UserModel.findOne({ email: normalizedEmail });
+    const existingUser = await UserModel.findOne({ email: { $regex: new RegExp(`^${normalizedEmail}$`, "i") } });
     
     // Check if email exists in pending requests only (not approved/rejected)
     const existingRequest = await UserRequestModel.findOne({ 
-      email: normalizedEmail,
+      email: { $regex: new RegExp(`^${normalizedEmail}$`, "i") },
       status: "pending"
     });
 

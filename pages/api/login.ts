@@ -15,7 +15,7 @@ export default async function handler(
 
   await connectMongo();
   const { email, password } = req.body || {};
-  const normalizedEmail = typeof email === "string" ? email.trim() : "";
+  const normalizedEmail = typeof email === "string" ? email.trim().toLowerCase() : "";
   const normalizedPassword =
     typeof password === "string" ? password.trim() : "";
   const moduleKeys = [
@@ -71,7 +71,7 @@ export default async function handler(
     const created = await UserModel.create({
       id: `user-${Date.now()}`,
       name,
-      email: normalizedEmail,
+      email: normalizedEmail.toLowerCase(),
       role: "admin",
       strengths: "",
       weaknesses: "",
@@ -90,7 +90,7 @@ export default async function handler(
     return;
   }
 
-  const user = await UserModel.findOne({ email: normalizedEmail }).lean();
+  const user = await UserModel.findOne({ email: { $regex: new RegExp(`^${normalizedEmail}$`, "i") } }).lean();
 
   if (!user) {
     res.status(404).json({ error: "User not found" });

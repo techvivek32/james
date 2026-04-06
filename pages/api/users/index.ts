@@ -37,7 +37,7 @@ export default async function handler(
 
     // Check if a deleted user with same email exists — restore + update instead of creating new
     if (rest.email) {
-      const existingDeleted = await UserModel.findOne({ email: rest.email, deleted: true });
+      const existingDeleted = await UserModel.findOne({ email: { $regex: new RegExp(`^${rest.email}$`, "i") }, deleted: true });
       if (existingDeleted) {
         const restored = await UserModel.findOneAndUpdate(
           { id: existingDeleted.id },
