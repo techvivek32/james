@@ -950,17 +950,39 @@ export function UserManagement(props: UserEditorProps) {
                       const adminData = adminRaw ? JSON.parse(adminRaw) : null;
                       const userToSave = usersToSave.find(u => u.id === selectedUser.id);
                       if (userToSave) {
-                        await fetch(`/api/users/${encodeURIComponent(selectedUser.id)}`, {
-                          method: "PUT",
-                          headers: { "Content-Type": "application/json" },
-                          body: JSON.stringify({
-                            ...userToSave,
-                            sendNotification: !!notifyUsers[selectedUserId],
-                            adminName: adminData?.name || "Admin",
-                            adminEmail: adminData?.email || "",
-                            managerName: managerUser?.name || null
-                          })
-                        });
+                        const isNewUser = selectedUser.id.startsWith("user-");
+                        if (isNewUser) {
+                          // New user — POST to create
+                          const res = await fetch(`/api/users`, {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({
+                              ...userToSave,
+                              sendNotification: !!notifyUsers[selectedUserId],
+                              adminName: adminData?.name || "Admin",
+                              adminEmail: adminData?.email || "",
+                              managerName: managerUser?.name || null
+                            })
+                          });
+                          if (!res.ok) {
+                            const err = await res.json();
+                            alert(`Failed to create user: ${err.error || "Unknown error"}`);
+                            return;
+                          }
+                        } else {
+                          // Existing user — PUT to update
+                          await fetch(`/api/users/${encodeURIComponent(selectedUser.id)}`, {
+                            method: "PUT",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({
+                              ...userToSave,
+                              sendNotification: !!notifyUsers[selectedUserId],
+                              adminName: adminData?.name || "Admin",
+                              adminEmail: adminData?.email || "",
+                              managerName: managerUser?.name || null
+                            })
+                          });
+                        }
                       }
                       props.onUsersChange(usersToSave);
                       props.onDeletedUsersChange(draftDeletedUsers);
@@ -1004,14 +1026,14 @@ export function UserManagement(props: UserEditorProps) {
             <div className="form-grid">
               <label className="field">
                 <span className="field-label">Name</span>
-                <input className="field-input" value={selectedUser.name} onChange={(e) => updateUser({ ...selectedUser, name: e.target.value })} />
+                <input className="field-input" value={selectedUser.name ?? ""} onChange={(e) => updateUser({ ...selectedUser, name: e.target.value })} />
               </label>
               <label className="field">
                 <span className="field-label">Email</span>
                 <input
                   ref={emailInputRef}
                   className="field-input" 
-                  value={selectedUser.email} 
+                  value={selectedUser.email ?? ""} 
                   onChange={(e) => {
                     updateUser({ ...selectedUser, email: e.target.value });
                     setEmailError("");
@@ -1100,11 +1122,11 @@ export function UserManagement(props: UserEditorProps) {
             <div className="form-grid">
               <label className="field">
                 <span className="field-label">Strengths / Superpowers</span>
-                <textarea className="field-input" rows={3} value={selectedUser.strengths} onChange={(e) => updateUser({ ...selectedUser, strengths: e.target.value })} />
+                <textarea className="field-input" rows={3} value={selectedUser.strengths ?? ""} onChange={(e) => updateUser({ ...selectedUser, strengths: e.target.value })} />
               </label>
               <label className="field">
                 <span className="field-label">Weaknesses / Insecurities</span>
-                <textarea className="field-input" rows={3} value={selectedUser.weaknesses} onChange={(e) => updateUser({ ...selectedUser, weaknesses: e.target.value })} />
+                <textarea className="field-input" rows={3} value={selectedUser.weaknesses ?? ""} onChange={(e) => updateUser({ ...selectedUser, weaknesses: e.target.value })} />
               </label>
             </div>
             {showWebPreview && selectedUser && (
