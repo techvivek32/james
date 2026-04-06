@@ -954,7 +954,7 @@ export function UserManagement(props: UserEditorProps) {
                         try {
                           const userToSave = usersToSave.find(u => u.id === selectedUser.id);
                           if (userToSave) {
-                            await fetch(`/api/users/${selectedUser.id}`, {
+                            await fetch(`/api/users/${encodeURIComponent(selectedUser.id)}`, {
                               method: "PUT",
                               headers: { "Content-Type": "application/json" },
                               body: JSON.stringify({
@@ -983,7 +983,18 @@ export function UserManagement(props: UserEditorProps) {
                       setIsSaving(false);
                     }
                   }}>{isSaving ? "Saving..." : "Save Changes"}</button>
-                  {saveNotice && <span style={{ fontSize: 12, color: "#16a34a" }}>{saveNotice}</span>}
+                  {saveNotice && (
+                    <span style={{
+                      fontSize: 13,
+                      fontWeight: 600,
+                      color: "#fff",
+                      backgroundColor: "#16a34a",
+                      padding: "6px 14px",
+                      borderRadius: 8,
+                      boxShadow: "0 2px 8px rgba(22,163,74,0.25)",
+                      animation: "fadeIn 0.3s"
+                    }}>✓ {saveNotice}</span>
+                  )}
                   <button type="button" className="btn-secondary btn-warning btn-small" onClick={() => {
                     const action = selectedUser.suspended ? "Unsuspend" : "Suspend";
                     if (window.confirm(`${action} ${selectedUser.name}?`)) {

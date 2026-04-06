@@ -9,9 +9,10 @@ export default async function handler(
   res: NextApiResponse
 ) {
   await connectMongo();
-  const { id } = req.query;
+  const rawId = req.query.id;
+  const id = typeof rawId === "string" ? decodeURIComponent(rawId) : null;
 
-  if (typeof id !== "string") {
+  if (!id) {
     res.status(400).json({ error: "Invalid id" });
     return;
   }
