@@ -50,12 +50,13 @@ export default async function handler(
       : passwordHash;
     const updated = await UserModel.findOneAndUpdate(
       { id },
-      { ...rest, passwordHash: hashedPassword },
-      {
-        returnDocument: 'after',
-        upsert: true
-      }
+      { $set: { ...rest, passwordHash: hashedPassword } },
+      { returnDocument: 'after', new: true }
     ).lean();
+    if (!updated) {
+      res.status(404).json({ error: "User not found" });
+      return;
+    }
     const { passwordHash: updatedPasswordHash, ...safeUser } = updated;
 
     // Send emails if admin checked the notify checkbox
