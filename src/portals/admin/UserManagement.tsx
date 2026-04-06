@@ -256,7 +256,10 @@ export function UserManagement(props: UserEditorProps) {
 
   function updateUser(updated: UserProfile) {
     const lowerEmail = updated.email.trim().toLowerCase();
-    const nextUser = updated.id.startsWith("user-") && lowerEmail.length > 0 ? { ...updated, email: lowerEmail, id: lowerEmail } : { ...updated, email: updated.email.trim().toLowerCase() };
+    const isNew = updated.id.startsWith("user-");
+    const nextUser = isNew
+      ? { ...updated, email: lowerEmail }
+      : { ...updated, email: lowerEmail, id: lowerEmail };
     const next = draftUsers.map((u) => (u.id === updated.id ? nextUser : u));
     setDraftUsers(next);
     setIsDirty(true);
@@ -336,7 +339,7 @@ export function UserManagement(props: UserEditorProps) {
       name: "New User",
       email: "",
       password: "",
-      role: "sales",
+      role: "manager",
       strengths: "",
       weaknesses: "",
       phone: "",
@@ -951,8 +954,15 @@ export function UserManagement(props: UserEditorProps) {
                       const userToSave = usersToSave.find(u => u.id === selectedUser.id);
                       if (userToSave) {
                         const isNewUser = selectedUser.id.startsWith("user-");
+                        if (isNewUser && !userToSave.email) {
+                          alert("Please enter an email address before saving.");
+                          return;
+                        }
+                        if (isNewUser && !userToSave.password) {
+                          alert("Please set a password before saving.");
+                          return;
+                        }
                         if (isNewUser) {
-                          // New user — POST to create
                           const res = await fetch(`/api/users`, {
                             method: "POST",
                             headers: { "Content-Type": "application/json" },
@@ -969,8 +979,21 @@ export function UserManagement(props: UserEditorProps) {
                             alert(`Failed to create user: ${err.error || "Unknown error"}`);
                             return;
                           }
+                          const created = await res.json();
+                          const freshRes = await fetch("/api/users?deleted=false");
+                          if (freshRes.ok) {
+                            const freshUsers = await freshRes.json();
+                            setDraftUsers(freshUsers);
+                            props.onUsersChange(freshUsers);
+                            setSelectedUserId(created.id || created.email);
+                          }
+                          setIsDirty(false);
+                          setNotifyUsers(prev => ({ ...prev, [selectedUserId]: false }));
+                          setSaveNotice("Changes saved successfully");
+                          if (saveNoticeTimeout.current) clearTimeout(saveNoticeTimeout.current);
+                          saveNoticeTimeout.current = setTimeout(() => setSaveNotice(""), 2000);
+                          return;
                         } else {
-                          // Existing user — PUT to update
                           await fetch(`/api/users/${encodeURIComponent(selectedUser.id)}`, {
                             method: "PUT",
                             headers: { "Content-Type": "application/json" },
@@ -982,14 +1005,14 @@ export function UserManagement(props: UserEditorProps) {
                               managerName: managerUser?.name || null
                             })
                           });
+                          props.onUsersChange(usersToSave);
+                          props.onDeletedUsersChange(draftDeletedUsers);
+                          setDraftUsers(usersToSave.map((user) => {
+                            const { password, ...rest } = user as UserProfile;
+                            return rest;
+                          }));
                         }
                       }
-                      props.onUsersChange(usersToSave);
-                      props.onDeletedUsersChange(draftDeletedUsers);
-                      setDraftUsers(usersToSave.map((user) => {
-                        const { password, ...rest } = user as UserProfile;
-                        return rest;
-                      }));
                       setIsDirty(false);
                       setNotifyUsers(prev => ({ ...prev, [selectedUserId]: false }));
                       setSaveNotice("Changes saved successfully");

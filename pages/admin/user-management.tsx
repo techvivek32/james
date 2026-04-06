@@ -45,18 +45,8 @@ const UserManagementPage: NextPage = () => {
     return () => clearInterval(interval);
   }, []);
 
-  async function handleUsersChange(next: UserProfile[]) {
+  function handleUsersChange(next: UserProfile[]) {
     setUsers(next);
-    try {
-      const [usersRes, deletedRes] = await Promise.all([
-        fetch("/api/users?deleted=false"),
-        fetch("/api/users?deleted=true")
-      ]);
-      if (usersRes.ok) setUsers(await usersRes.json());
-      if (deletedRes.ok) setDeletedUsers(await deletedRes.json());
-    } catch (error) {
-      console.error("Failed to reload users:", error);
-    }
   }
 
   async function handleDeletedUsersChange(next: UserProfile[]) {
