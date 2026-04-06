@@ -1014,6 +1014,7 @@ export function UserManagement(props: UserEditorProps) {
                         setSaveNotice("Changes saved successfully");
                         if (saveNoticeTimeout.current) clearTimeout(saveNoticeTimeout.current);
                         saveNoticeTimeout.current = setTimeout(() => setSaveNotice(""), 2000);
+                      }
                     } finally {
                       isSavingRef.current = false;
                       setIsSaving(false);
