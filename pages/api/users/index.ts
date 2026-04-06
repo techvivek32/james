@@ -29,7 +29,7 @@ export default async function handler(
   if (req.method === "POST") {
     const payload = req.body || {};
     const { password, passwordHash, _id, sendNotification, adminName, adminEmail, managerName, ...rest } = payload;
-    const id = payload.id || `user-${Date.now()}`;
+    const id = rest.email ? rest.email.trim().toLowerCase() : (payload.id || `user-${Date.now()}`);
     const hashedPassword =
       typeof password === "string" && password.trim().length > 0
         ? await bcrypt.hash(password.trim(), 10)
