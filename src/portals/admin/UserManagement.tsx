@@ -962,7 +962,7 @@ export function UserManagement(props: UserEditorProps) {
                           return;
                         }
                         if (isNewUser) {
-                          if (isSaving) return;
+                          // New user — POST
                           const res = await fetch(`/api/users`, {
                             method: "POST",
                             headers: { "Content-Type": "application/json" },
@@ -976,25 +976,21 @@ export function UserManagement(props: UserEditorProps) {
                             })
                           });
                           if (!res.ok) {
-                            const err = await res.json();
+                            const err = await res.json().catch(() => ({}));
                             alert(`Failed to create user: ${err.error || "Unknown error"}`);
                             return;
                           }
                           const created = await res.json();
+                          const newId = created.id || created.email;
                           const freshRes = await fetch("/api/users?deleted=false");
                           if (freshRes.ok) {
                             const freshUsers = await freshRes.json();
                             setDraftUsers(freshUsers);
                             props.onUsersChange(freshUsers);
-                            setSelectedUserId(created.id || created.email);
+                            setSelectedUserId(newId);
                           }
-                          setIsDirty(false);
-                          setNotifyUsers(prev => ({ ...prev, [selectedUserId]: false }));
-                          setSaveNotice("Changes saved successfully");
-                          if (saveNoticeTimeout.current) clearTimeout(saveNoticeTimeout.current);
-                          saveNoticeTimeout.current = setTimeout(() => setSaveNotice(""), 2000);
-                          return;
                         } else {
+                          // Existing user — PUT
                           await fetch(`/api/users/${encodeURIComponent(selectedUser.id)}`, {
                             method: "PUT",
                             headers: { "Content-Type": "application/json" },
@@ -1006,19 +1002,18 @@ export function UserManagement(props: UserEditorProps) {
                               managerName: managerUser?.name || null
                             })
                           });
-                          props.onUsersChange(usersToSave);
-                          props.onDeletedUsersChange(draftDeletedUsers);
-                          setDraftUsers(usersToSave.map((user) => {
-                            const { password, ...rest } = user as UserProfile;
-                            return rest;
-                          }));
+                          const freshRes = await fetch("/api/users?deleted=false");
+                          if (freshRes.ok) {
+                            const freshUsers = await freshRes.json();
+                            setDraftUsers(freshUsers);
+                            props.onUsersChange(freshUsers);
+                          }
                         }
-                      }
-                      setIsDirty(false);
-                      setNotifyUsers(prev => ({ ...prev, [selectedUserId]: false }));
-                      setSaveNotice("Changes saved successfully");
-                      if (saveNoticeTimeout.current) clearTimeout(saveNoticeTimeout.current);
-                      saveNoticeTimeout.current = setTimeout(() => setSaveNotice(""), 2000);
+                        setIsDirty(false);
+                        setNotifyUsers(prev => ({ ...prev, [selectedUserId]: false }));
+                        setSaveNotice("Changes saved successfully");
+                        if (saveNoticeTimeout.current) clearTimeout(saveNoticeTimeout.current);
+                        saveNoticeTimeout.current = setTimeout(() => setSaveNotice(""), 2000);
                     } finally {
                       isSavingRef.current = false;
                       setIsSaving(false);
