@@ -48,23 +48,14 @@ const UserManagementPage: NextPage = () => {
   async function handleUsersChange(next: UserProfile[]) {
     setUsers(next);
     try {
-      // Save all users (including restored ones)
-      await fetch("/api/users/bulk", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(next)
-      });
-      
-      // Reload both lists to get fresh data
       const [usersRes, deletedRes] = await Promise.all([
         fetch("/api/users?deleted=false"),
         fetch("/api/users?deleted=true")
       ]);
-      
       if (usersRes.ok) setUsers(await usersRes.json());
       if (deletedRes.ok) setDeletedUsers(await deletedRes.json());
     } catch (error) {
-      console.error("Failed to save users:", error);
+      console.error("Failed to reload users:", error);
     }
   }
 

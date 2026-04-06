@@ -948,28 +948,22 @@ export function UserManagement(props: UserEditorProps) {
                       const managerUser = selectedUser.managerId ? draftUsers.find(u => u.id === selectedUser.managerId) : null;
                       const adminRaw = typeof window !== "undefined" ? localStorage.getItem("user") : null;
                       const adminData = adminRaw ? JSON.parse(adminRaw) : null;
+                      const userToSave = usersToSave.find(u => u.id === selectedUser.id);
+                      if (userToSave) {
+                        await fetch(`/api/users/${encodeURIComponent(selectedUser.id)}`, {
+                          method: "PUT",
+                          headers: { "Content-Type": "application/json" },
+                          body: JSON.stringify({
+                            ...userToSave,
+                            sendNotification: !!notifyUsers[selectedUserId],
+                            adminName: adminData?.name || "Admin",
+                            adminEmail: adminData?.email || "",
+                            managerName: managerUser?.name || null
+                          })
+                        });
+                      }
                       props.onUsersChange(usersToSave);
                       props.onDeletedUsersChange(draftDeletedUsers);
-                      if (notifyUsers[selectedUserId]) {
-                        try {
-                          const userToSave = usersToSave.find(u => u.id === selectedUser.id);
-                          if (userToSave) {
-                            await fetch(`/api/users/${encodeURIComponent(selectedUser.id)}`, {
-                              method: "PUT",
-                              headers: { "Content-Type": "application/json" },
-                              body: JSON.stringify({
-                                ...userToSave,
-                                sendNotification: true,
-                                adminName: adminData?.name || "Admin",
-                                adminEmail: adminData?.email || "",
-                                managerName: managerUser?.name || null
-                              })
-                            });
-                          }
-                        } catch (err) {
-                          console.error("Failed to send notification:", err);
-                        }
-                      }
                       setDraftUsers(usersToSave.map((user) => {
                         const { password, ...rest } = user as UserProfile;
                         return rest;
