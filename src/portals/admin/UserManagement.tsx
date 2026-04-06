@@ -23,7 +23,7 @@ export function UserManagement(props: UserEditorProps) {
   useEffect(() => {
     setDraftDeletedUsers(props.deletedUsers);
   }, [props.deletedUsers]);
-  const [notifyUser, setNotifyUser] = useState(false);
+  const [notifyUsers, setNotifyUsers] = useState<Record<string, boolean>>({});
   const [isSaving, setIsSaving] = useState(false);
   const [isDirty, setIsDirty] = useState(false);
   const [saveNotice, setSaveNotice] = useState("");
@@ -920,8 +920,8 @@ export function UserManagement(props: UserEditorProps) {
                   <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 13, color: "#374151", cursor: "pointer", userSelect: "none", marginRight: 4 }}>
                     <input
                       type="checkbox"
-                      checked={notifyUser}
-                      onChange={e => setNotifyUser(e.target.checked)}
+                      checked={!!notifyUsers[selectedUserId]}
+                      onChange={e => setNotifyUsers(prev => ({ ...prev, [selectedUserId]: e.target.checked }))}
                       style={{ width: 15, height: 15, cursor: "pointer" }}
                     />
                     Notify user by email
@@ -950,7 +950,7 @@ export function UserManagement(props: UserEditorProps) {
                       const adminData = adminRaw ? JSON.parse(adminRaw) : null;
                       props.onUsersChange(usersToSave);
                       props.onDeletedUsersChange(draftDeletedUsers);
-                      if (notifyUser) {
+                      if (notifyUsers[selectedUserId]) {
                         try {
                           const userToSave = usersToSave.find(u => u.id === selectedUser.id);
                           if (userToSave) {
@@ -975,7 +975,7 @@ export function UserManagement(props: UserEditorProps) {
                         return rest;
                       }));
                       setIsDirty(false);
-                      setNotifyUser(false);
+                      setNotifyUsers(prev => ({ ...prev, [selectedUserId]: false }));
                       setSaveNotice("Changes saved successfully");
                       if (saveNoticeTimeout.current) clearTimeout(saveNoticeTimeout.current);
                       saveNoticeTimeout.current = setTimeout(() => setSaveNotice(""), 2000);
