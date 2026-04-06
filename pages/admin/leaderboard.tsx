@@ -25,7 +25,7 @@ const LeaderboardPage: NextPage = () => {
   const inspections = events.filter(e => e.eventType?.toLowerCase().includes("inspection") && e.status !== "failed");
   const claims = events.filter(e => e.eventType?.toLowerCase().includes("claim") && e.status !== "failed");
 
-  const cols = ["#", "Rep Name", "Rep ID", "Job ID", "Amount", "Date", "Location", "Company", "Status"];
+  const cols = ["#", "Rep Name", "Job Number", "Amount", "Date", "Location", "Status"];
 
   function EventTable({ rows, type }: { rows: any[]; type: "inspection" | "claim" }) {
     return (
@@ -38,12 +38,11 @@ const LeaderboardPage: NextPage = () => {
           </thead>
           <tbody>
             {rows.length === 0 ? (
-              <tr><td colSpan={9} style={{ textAlign: "center", padding: 16, color: "#9ca3af" }}>No data yet</td></tr>
+              <tr><td colSpan={7} style={{ textAlign: "center", padding: 16, color: "#9ca3af" }}>No data yet</td></tr>
             ) : rows.map((e, i) => (
               <tr key={e._id} style={{ borderBottom: "1px solid #e2e8f0", background: i % 2 === 0 ? "#fff" : "#fafafa" }}>
                 <td style={td}>{i + 1}</td>
                 <td style={{ ...td, fontWeight: 600 }}>{e.repName}</td>
-                <td style={td}>{e.repExternalId || "—"}</td>
                 <td style={{ ...td, fontFamily: "monospace", fontSize: 11 }}>{e.externalEventId}</td>
                 <td style={{ ...td, fontWeight: 600, color: type === "claim" ? "#16a34a" : "#374151" }}>{e.revenue ? fmt(e.revenue) : "—"}</td>
                 <td style={td}>{fmtDate(e.eventDate)}</td>
@@ -52,7 +51,6 @@ const LeaderboardPage: NextPage = () => {
                     {e.location || "—"}
                   </span>
                 </td>
-                <td style={{ ...td, maxWidth: 180, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{e.companyName || "—"}</td>
                 <td style={td}><span style={{ color: statusColor[e.status] ?? "#555", fontWeight: 600 }}>{e.status}</span></td>
               </tr>
             ))}
@@ -83,7 +81,7 @@ const LeaderboardPage: NextPage = () => {
               <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 700 }}>
                 <thead>
                   <tr style={{ background: "#f1f5f9" }}>
-                    {["Time", "Rep Name", "Event Type", "Job ID", "Amount", "Location", "Status"].map(c => <th key={c} style={th}>{c}</th>)}
+                    {["Time", "Rep Name", "Event Type", "Job Number", "Amount", "Location", "Status"].map(c => <th key={c} style={th}>{c}</th>)}
                   </tr>
                 </thead>
                 <tbody>
