@@ -28,7 +28,7 @@ export default async function handler(
 
   if (req.method === "POST") {
     const payload = req.body || {};
-    const { password, passwordHash, ...rest } = payload;
+    const { password, passwordHash, _id, sendNotification, adminName, adminEmail, managerName, ...rest } = payload;
     const id = payload.id || `user-${Date.now()}`;
     const hashedPassword =
       typeof password === "string" && password.trim().length > 0
@@ -50,9 +50,52 @@ export default async function handler(
       }
     }
 
-    const created = await UserModel.create({ ...rest, id, passwordHash: hashedPassword });
-    const createdObj = created.toObject();
+    try {
+      const created = await UserModel.create({ ...rest, id, passwordHash: hashedPassword });
+      const createdObj = created.toObject();
+    } catch (dupErr: any) {
+      if (dupErr.code === 11000) {
+        // Already exists — just return it
+        const existing = await UserModel.findOne({ id }).lean();
+        const { passwordHash: _eph, ...safeExisting } = existing as any;
+        res.status(201).json(safeExisting);
+        return;
+      }
+      throw dupErr;
+    }
+    const createdObj = (await UserModel.findOne({ id }).lean()) as any;
     const { passwordHash: _ph, ...safeUser } = createdObj;
+
+    // Send notification email if requested
+    if (sendNotification && safeUser.email) {
+      try {
+        const { sendUserAccountUpdatedEmail, sendAdminConfirmationEmail } = await import("../../../src/lib/email");
+        const roles = (safeUser.roles as string[]) || [safeUser.role as string];
+        await sendUserAccountUpdatedEmail({
+          name: safeUser.name as string,
+          email: safeUser.email as string,
+          password: typeof password === "string" && password.trim().length > 0 ? password.trim() : null,
+          roles,
+          managerName: managerName || null,
+          loginUrl: process.env.NEXT_PUBLIC_APP_URL ? `${process.env.NEXT_PUBLIC_APP_URL}/login` : "https://yourdomain.com/login"
+        });
+        if (adminEmail) {
+          await sendAdminConfirmationEmail({
+            adminName: adminName || "Admin",
+            adminEmail,
+            userName: safeUser.name as string,
+            userEmail: safeUser.email as string,
+            roles,
+            managerName: managerName || null,
+            passwordChanged: typeof password === "string" && password.trim().length > 0,
+            updatedAt: new Date().toLocaleString("en-US", { dateStyle: "medium", timeStyle: "short" })
+          });
+        }
+        console.log("Notification email sent to:", safeUser.email);
+      } catch (emailErr) {
+        console.error("Failed to send notification email:", emailErr);
+      }
+    }
 
     // Send 48-hour Quick Start onboarding email for new sales users
     if (rest.role === "sales" && rest.email) {

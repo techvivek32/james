@@ -25,6 +25,7 @@ export function UserManagement(props: UserEditorProps) {
   }, [props.deletedUsers]);
   const [notifyUsers, setNotifyUsers] = useState<Record<string, boolean>>({});
   const [isSaving, setIsSaving] = useState(false);
+  const isSavingRef = useRef(false);
   const [isDirty, setIsDirty] = useState(false);
   const [saveNotice, setSaveNotice] = useState("");
   const saveNoticeTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -941,13 +942,11 @@ export function UserManagement(props: UserEditorProps) {
                       return;
                     }
                     setManagerError("");
+                    if (isSavingRef.current) return;
+                    isSavingRef.current = true;
                     setIsSaving(true);
                     try {
-                      const usersToSave = draftUsers.map((user) => {
-                        if (user.password && user.password.trim().length > 0) return { ...user };
-                        const { password, ...rest } = user;
-                        return rest;
-                      });
+                      const usersToSave = draftUsers.map((user) => ({ ...user }));
                       const managerUser = selectedUser.managerId ? draftUsers.find(u => u.id === selectedUser.managerId) : null;
                       const adminRaw = typeof window !== "undefined" ? localStorage.getItem("user") : null;
                       const adminData = adminRaw ? JSON.parse(adminRaw) : null;
@@ -963,11 +962,13 @@ export function UserManagement(props: UserEditorProps) {
                           return;
                         }
                         if (isNewUser) {
+                          if (isSaving) return;
                           const res = await fetch(`/api/users`, {
                             method: "POST",
                             headers: { "Content-Type": "application/json" },
                             body: JSON.stringify({
                               ...userToSave,
+                              _id: undefined,
                               sendNotification: !!notifyUsers[selectedUserId],
                               adminName: adminData?.name || "Admin",
                               adminEmail: adminData?.email || "",
@@ -1019,6 +1020,7 @@ export function UserManagement(props: UserEditorProps) {
                       if (saveNoticeTimeout.current) clearTimeout(saveNoticeTimeout.current);
                       saveNoticeTimeout.current = setTimeout(() => setSaveNotice(""), 2000);
                     } finally {
+                      isSavingRef.current = false;
                       setIsSaving(false);
                     }
                   }}>{isSaving ? "Saving..." : "Save Changes"}</button>
