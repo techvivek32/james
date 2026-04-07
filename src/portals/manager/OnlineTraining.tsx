@@ -289,7 +289,7 @@ export function ManagerOnlineTrainingPage(props: {
       videoCleanupRef.current = undefined;
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activePageId, selectedCourse?.id, viewingPlaylist?.id]);
+  }, [activePageId, selectedCourse?.id, viewingPlaylist?.id, mobileCourseScreen]);
 
   const [courseProgress, setCourseProgress] = useState<Record<string, { completed: number; total: number; isCompleted: boolean }>>({});
   const [isLoadingProgress, setIsLoadingProgress] = useState(false);

@@ -281,7 +281,7 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
       videoCleanupRef.current = undefined;
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activePageId, selectedCourse?.id, viewingPlaylist?.id]);
+  }, [activePageId, selectedCourse?.id, viewingPlaylist?.id, mobileCourseScreen]);
 
   const filteredCourses = useMemo(() => {
     const term = search.toLowerCase();
