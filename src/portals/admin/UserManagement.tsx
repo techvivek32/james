@@ -15,13 +15,13 @@ export function UserManagement(props: UserEditorProps) {
   const [draftUsers, setDraftUsers] = useState<UserProfile[]>(props.users);
   const [draftDeletedUsers, setDraftDeletedUsers] = useState<UserProfile[]>(props.deletedUsers);
   
-  // Update when props change
+  // Update from props only when NOT dirty (no unsaved changes)
   useEffect(() => {
-    setDraftUsers(props.users);
+    if (!isDirty) setDraftUsers(props.users);
   }, [props.users]);
   
   useEffect(() => {
-    setDraftDeletedUsers(props.deletedUsers);
+    if (!isDirty) setDraftDeletedUsers(props.deletedUsers);
   }, [props.deletedUsers]);
   const [notifyUsers, setNotifyUsers] = useState<Record<string, boolean>>({});
   const [isSaving, setIsSaving] = useState(false);
@@ -201,7 +201,7 @@ export function UserManagement(props: UserEditorProps) {
   useEffect(() => {
     const current = draftUsers.find((u) => u.id === selectedUserId);
     setManagerDraftId(current?.managerId ?? "");
-  }, [selectedUserId, draftUsers]);
+  }, [selectedUserId]); // only reset when user selection changes, not on every draftUsers update
 
   // Load assigned sales users when manager is selected
   useEffect(() => {
@@ -218,16 +218,12 @@ export function UserManagement(props: UserEditorProps) {
   }, [selectedUserId]);
 
   useEffect(() => {
-    if (!isDirty) {
-      setDraftUsers(props.users);
-      setDraftDeletedUsers(props.deletedUsers);
-      if (!props.users.find((u) => u.id === selectedUserId)) {
-        const activeUsers = props.users.filter(u => !u.suspended);
-        const firstSorted = sortUsers(activeUsers)[0];
-        setSelectedUserId(firstSorted?.id ?? props.users[0]?.id ?? "");
-      }
+    if (!isDirty && !props.users.find((u) => u.id === selectedUserId) && props.users.length > 0) {
+      const activeUsers = props.users.filter(u => !u.suspended);
+      const firstSorted = sortUsers(activeUsers)[0];
+      setSelectedUserId(firstSorted?.id ?? props.users[0]?.id ?? "");
     }
-  }, [props.users, props.deletedUsers, isDirty, selectedUserId]);
+  }, [props.users, isDirty, selectedUserId]);
 
   // On first load, select the first user from the sorted active list
   useEffect(() => {
@@ -257,16 +253,10 @@ export function UserManagement(props: UserEditorProps) {
 
   function updateUser(updated: UserProfile) {
     const lowerEmail = updated.email.trim().toLowerCase();
-    const isNew = updated.id.startsWith("user-");
-    const nextUser = isNew
-      ? { ...updated, email: lowerEmail }
-      : { ...updated, email: lowerEmail, id: lowerEmail };
+    const nextUser = { ...updated, email: lowerEmail };
     const next = draftUsers.map((u) => (u.id === updated.id ? nextUser : u));
     setDraftUsers(next);
     setIsDirty(true);
-    if (selectedUserId === updated.id && nextUser.id !== updated.id) {
-      setSelectedUserId(nextUser.id);
-    }
   }
 
   async function checkEmailAvailability(email: string, currentUserId: string) {
@@ -340,7 +330,8 @@ export function UserManagement(props: UserEditorProps) {
       name: "New User",
       email: "",
       password: "",
-      role: "manager",
+      role: "" as any,
+      roles: [],
       strengths: "",
       weaknesses: "",
       phone: "",
@@ -936,7 +927,13 @@ export function UserManagement(props: UserEditorProps) {
                       emailInputRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
                       return;
                     }
-                    const isSales = (selectedUser.roles || [selectedUser.role]).includes("sales");
+                    const isNewUser = selectedUser.id.startsWith("user-");
+                    const selectedRoles = (selectedUser.roles || [selectedUser.role]).filter(Boolean);
+                    if (isNewUser && selectedRoles.length === 0) {
+                      alert("Please select a Role before saving.");
+                      return;
+                    }
+                    const isSales = selectedRoles.includes("sales");
                     if (isSales && !selectedUser.managerId) {
                       setManagerError("Please assign a Manager to this sales user before saving.");
                       return;
@@ -991,7 +988,7 @@ export function UserManagement(props: UserEditorProps) {
                           }
                         } else {
                           // Existing user — PUT
-                          await fetch(`/api/users/${encodeURIComponent(selectedUser.id)}`, {
+                          const putRes = await fetch(`/api/users/${encodeURIComponent(selectedUser.id)}`, {
                             method: "PUT",
                             headers: { "Content-Type": "application/json" },
                             body: JSON.stringify({
@@ -1002,11 +999,18 @@ export function UserManagement(props: UserEditorProps) {
                               managerName: managerUser?.name || null
                             })
                           });
+                          if (!putRes.ok) {
+                            const err = await putRes.json().catch(() => ({}));
+                            alert(`Failed to save: ${err.error || "Unknown error"}`);
+                            return;
+                          }
                           const freshRes = await fetch("/api/users?deleted=false");
                           if (freshRes.ok) {
                             const freshUsers = await freshRes.json();
                             setDraftUsers(freshUsers);
                             props.onUsersChange(freshUsers);
+                            // Keep selected user in view
+                            setSelectedUserId(selectedUser.id);
                           }
                         }
                         setIsDirty(false);
@@ -1094,8 +1098,10 @@ export function UserManagement(props: UserEditorProps) {
                 <span className="field-label">Roles (Multiple Selection)</span>
                 <div className="territory-field">
                   <button type="button" className={showRolesDropdown ? "territory-trigger territory-trigger-open" : "territory-trigger"} onClick={() => setShowRolesDropdown(!showRolesDropdown)}>
-                    <span className="territory-trigger-value">
-                      {(selectedUser.roles || [selectedUser.role]).map(r => r.charAt(0).toUpperCase() + r.slice(1)).join(", ")}
+                    <span className="territory-trigger-value" style={{ color: (selectedUser.roles || [selectedUser.role]).filter(Boolean).length === 0 ? '#9ca3af' : undefined }}>
+                      {(selectedUser.roles || [selectedUser.role]).filter(Boolean).length === 0
+                        ? "-- Select a role (required) --"
+                        : (selectedUser.roles || [selectedUser.role]).map(r => r.charAt(0).toUpperCase() + r.slice(1)).join(", ")}
                     </span>
                     <span className="territory-trigger-icon">{showRolesDropdown ? "▲" : "▼"}</span>
                   </button>
@@ -1103,10 +1109,15 @@ export function UserManagement(props: UserEditorProps) {
                     <div className="territory-dropdown" style={{ gridTemplateColumns: "1fr" }}>
                       {(["admin", "manager", "sales", "marketing"] as UserRole[]).map((role) => (
                         <div key={role} className={(selectedUser.roles || [selectedUser.role]).includes(role) ? "territory-option territory-option-active" : "territory-option"} onClick={() => {
-                          const currentRoles = selectedUser.roles || [selectedUser.role];
+                          const currentRoles = (selectedUser.roles || [selectedUser.role]).filter(Boolean);
                           const newRoles = currentRoles.includes(role) ? currentRoles.filter((r) => r !== role) : [...currentRoles, role];
-                          if (newRoles.length === 0) return;
-                          updateUser({ ...selectedUser, role: newRoles[0], roles: newRoles, managerId: newRoles.includes("sales") ? selectedUser.managerId : undefined });
+                          if (newRoles.length === 0) {
+                            updateUser({ ...selectedUser, role: "" as any, roles: [] });
+                            return;
+                          }
+                          const newManagerId = newRoles.includes("sales") ? selectedUser.managerId : undefined;
+                          if (!newRoles.includes("sales")) setManagerDraftId("");
+                          updateUser({ ...selectedUser, role: newRoles[0], roles: newRoles, managerId: newManagerId });
                         }}>
                           <input type="checkbox" checked={(selectedUser.roles || [selectedUser.role]).includes(role)} readOnly />
                           <span style={{ textTransform: "capitalize" }}>{role}</span>
@@ -1115,6 +1126,9 @@ export function UserManagement(props: UserEditorProps) {
                     </div>
                   )}
                 </div>
+                {selectedUser.id.startsWith("user-") && (selectedUser.roles || [selectedUser.role]).filter(Boolean).length === 0 && (
+                  <div style={{ fontSize: 12, color: "#dc2626", marginTop: 4, fontWeight: 500 }}>Role is required</div>
+                )}
               </label>
               {(selectedUser.roles || [selectedUser.role]).includes("sales") && (
                 <label className="field">
@@ -1127,7 +1141,7 @@ export function UserManagement(props: UserEditorProps) {
                       updateUser({ ...selectedUser, managerId: nextManagerId || undefined });
                     }}>
                       <option value="">-- Select a manager (required) --</option>
-                      {draftUsers.filter((u) => u.role === "manager").map((manager) => (
+                      {draftUsers.filter((u) => (u.roles || [u.role]).includes("manager")).map((manager) => (
                         <option key={manager.id} value={manager.id}>{manager.name}</option>
                       ))}
                     </select>

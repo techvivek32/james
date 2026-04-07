@@ -53,8 +53,7 @@ export function UserRequests({ onUserApproved }: { onUserApproved?: () => void }
         body: JSON.stringify({ action: "approve", reviewedBy: user?.name || "Admin" })
       });
       if (res.ok) {
-        alert("User approved successfully!");
-        loadRequests();
+        await loadRequests();
         onUserApproved?.();
       } else {
         const data = await res.json();

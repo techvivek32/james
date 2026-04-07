@@ -253,8 +253,12 @@ const UserManagementPage: NextPage = () => {
         </div>
       ) : (
         <UserRequests onUserApproved={async () => {
-          const res = await fetch("/api/users?deleted=false");
-          if (res.ok) setUsers(await res.json());
+          const [usersRes, deletedRes] = await Promise.all([
+            fetch("/api/users?deleted=false"),
+            fetch("/api/users?deleted=true")
+          ]);
+          if (usersRes.ok) setUsers(await usersRes.json());
+          if (deletedRes.ok) setDeletedUsers(await deletedRes.json());
         }} />
       )}
     </AdminPageWrapper>

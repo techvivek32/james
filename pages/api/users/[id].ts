@@ -43,11 +43,19 @@ export default async function handler(
 
   if (req.method === "PUT") {
     const payload = req.body || {};
-    const { password, passwordHash, sendNotification, adminName, adminEmail, managerName, ...rest } = payload;
+    const { password, passwordHash: _ph, sendNotification, adminName, adminEmail, managerName, id: _id, createdAt: _ca, updatedAt: _ua, __v: _v, _id: _mid, ...rest } = payload;
     const plainPassword = typeof password === "string" && password.trim().length > 0 ? password.trim() : null;
+
+    // Fetch existing user to get current passwordHash
+    const existingUser = await UserModel.findOne({ id }).lean() as any;
+    if (!existingUser) {
+      res.status(404).json({ error: "User not found" });
+      return;
+    }
     const hashedPassword = plainPassword
       ? await bcrypt.hash(plainPassword, 10)
-      : passwordHash;
+      : existingUser.passwordHash;
+
     const updated = await UserModel.findOneAndUpdate(
       { id },
       { $set: { ...rest, passwordHash: hashedPassword } },
@@ -61,24 +69,24 @@ export default async function handler(
 
     // Send emails if admin checked the notify checkbox
     if (sendNotification && safeUser.email) {
-      const loginUrl = process.env.NEXT_PUBLIC_APP_URL ? `${process.env.NEXT_PUBLIC_APP_URL}/login` : "https://yourdomain.com/login";
-      const roles = (safeUser.roles as string[]) || [safeUser.role as string];
-      const updatedAt = new Date().toLocaleString("en-US", { dateStyle: "medium", timeStyle: "short" });
-
+      const loginUrl = process.env.NEXT_PUBLIC_APP_URL
+        ? process.env.NEXT_PUBLIC_APP_URL.replace(/\/login$/, "") + "/login"
+        : "https://yourdomain.com/login";
       try {
         const roles = (safeUser.roles as string[]) || [safeUser.role as string];
         const updatedAt = new Date().toLocaleString("en-US", { dateStyle: "medium", timeStyle: "short" });
-        // Email to user
+        console.log("[Email] Sending userAccountUpdated to:", safeUser.email);
         await sendUserAccountUpdatedEmail({
           name: safeUser.name as string,
           email: safeUser.email as string,
           password: plainPassword,
           roles,
           managerName: managerName || null,
-          loginUrl: process.env.NEXT_PUBLIC_APP_URL ? `${process.env.NEXT_PUBLIC_APP_URL}/login` : "https://yourdomain.com/login"
+          loginUrl
         });
-        // Email to admin
+        console.log("[Email] userAccountUpdated sent OK");
         if (adminEmail) {
+          console.log("[Email] Sending adminConfirmation to:", adminEmail);
           await sendAdminConfirmationEmail({
             adminName: adminName || "Admin",
             adminEmail,
@@ -89,10 +97,13 @@ export default async function handler(
             passwordChanged: !!plainPassword,
             updatedAt
           });
+          console.log("[Email] adminConfirmation sent OK");
         }
-      } catch (emailErr) {
-        console.error("Failed to send update emails:", emailErr);
+      } catch (emailErr: any) {
+        console.error("[Email] Failed to send update emails:", emailErr?.message || emailErr);
       }
+    } else {
+      console.log("[Email] Skipped - sendNotification:", sendNotification, "email:", safeUser.email);
     }
 
     res.status(200).json(safeUser);
