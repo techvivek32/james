@@ -33,8 +33,20 @@ class _LoginScreenState extends State<LoginScreen> {
         _passwordController.text.trim(),
       );
       if (!mounted) return;
+      
       // Navigate based on role
-      Navigator.pushReplacementNamed(context, '/training');
+      final role = user['role'] as String?;
+      String route = '/training'; // default
+      
+      if (role == 'admin' || role == 'manager') {
+        route = '/training'; // Admin and Manager see training
+      } else if (role == 'sales') {
+        route = '/training'; // Sales rep sees training
+      } else if (role == 'marketing') {
+        route = '/training'; // Marketing sees training
+      }
+      
+      Navigator.pushReplacementNamed(context, route);
     } catch (e) {
       setState(() { _error = e.toString().replaceFirst('Exception: ', ''); });
     } finally {
@@ -164,7 +176,7 @@ class _LoginScreenState extends State<LoginScreen> {
                             child: TextButton(
                               onPressed: () => Navigator.pushNamed(context, '/forgot-password'),
                               style: TextButton.styleFrom(padding: EdgeInsets.zero, minimumSize: Size.zero),
-                              child: const Text('Forgot Password', style: TextStyle(fontSize: 13, color: Color(0xFF2563EB))),
+                              child: const Text('Forgot Password', style: TextStyle(fontSize: 13, color: Color(0xFFDC2626))),
                             ),
                           ),
                           const SizedBox(height: 20),
@@ -175,7 +187,7 @@ class _LoginScreenState extends State<LoginScreen> {
                             child: ElevatedButton(
                               onPressed: _isLoading ? null : _handleLogin,
                               style: ElevatedButton.styleFrom(
-                                backgroundColor: const Color(0xFF1D4ED8),
+                                backgroundColor: const Color(0xFFDC2626),
                                 foregroundColor: Colors.white,
                                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                               ),
@@ -187,7 +199,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           const SizedBox(height: 12),
                           TextButton(
                             onPressed: () => Navigator.pushNamed(context, '/register'),
-                            child: const Text('Register', style: TextStyle(fontSize: 13, color: Color(0xFF2563EB))),
+                            child: const Text('Register', style: TextStyle(fontSize: 13, color: Color(0xFFDC2626))),
                           ),
                         ],
                       ),
@@ -225,7 +237,7 @@ class _LoginScreenState extends State<LoginScreen> {
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(8),
-        borderSide: const BorderSide(color: Color(0xFF2563EB), width: 1.5),
+        borderSide: const BorderSide(color: Color(0xFFDC2626), width: 1.5),
       ),
     );
   }

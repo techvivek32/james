@@ -14,7 +14,7 @@ class _PlannerScreenState extends State<PlannerScreen> {
   static const _textLight = Color(0xFF6B7280);
   static const _textPlaceholder = Color(0xFF9CA3AF);
   static const _border = Color(0xFFD1D5DB);
-  static const _link = Color(0xFF2563EB);
+  static const _link = Color(0xFFDC2626);
 
   bool _isDaily = true;
   double _inspections = 5;

@@ -4,6 +4,7 @@ import 'screens/training_screen.dart';
 import 'screens/stormchat_screen.dart';
 import 'screens/rankings_screen.dart';
 import 'screens/planner_screen.dart';
+import 'screens/courses_screen.dart';
 
 void main() {
   runApp(const MillerStormApp());
@@ -18,17 +19,28 @@ class MillerStormApp extends StatelessWidget {
       title: 'Miller Storm',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF1D4ED8)),
+        colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFFDC2626)),
         fontFamily: 'sans-serif',
         useMaterial3: true,
       ),
       initialRoute: '/login',
-      routes: {
-        '/login': (context) => const LoginScreen(),
-        '/training': (context) => const TrainingScreen(),
-        '/stormchat': (context) => const StormChatScreen(),
-        '/rankings': (context) => const RankingsScreen(),
-        '/planner': (context) => const PlannerScreen(),
+      onGenerateRoute: (settings) {
+        switch (settings.name) {
+          case '/login':
+            return MaterialPageRoute(builder: (_) => const LoginScreen());
+          case '/training':
+            return MaterialPageRoute(builder: (_) => const TrainingScreen());
+          case '/stormchat':
+            return MaterialPageRoute(builder: (_) => const StormChatScreen());
+          case '/rankings':
+            return MaterialPageRoute(builder: (_) => const RankingsScreen());
+          case '/planner':
+            return MaterialPageRoute(builder: (_) => const PlannerScreen());
+          case '/courses':
+            return MaterialPageRoute(builder: (_) => CoursesScreen());
+          default:
+            return MaterialPageRoute(builder: (_) => const LoginScreen());
+        }
       },
     );
   }

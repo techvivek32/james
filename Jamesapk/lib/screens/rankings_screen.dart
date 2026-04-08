@@ -5,12 +5,12 @@ class RankingsScreen extends StatelessWidget {
 
   static const _bg = Color(0xFFF3F4F6);
   static const _white = Color(0xFFFFFFFF);
-  static const _primary = Color(0xFF1D4ED8);
+  static const _primary = Color(0xFFDC2626);
   static const _textDark = Color(0xFF111827);
   static const _textLight = Color(0xFF6B7280);
   static const _textPlaceholder = Color(0xFF9CA3AF);
   static const _border = Color(0xFFD1D5DB);
-  static const _link = Color(0xFF2563EB);
+  static const _link = Color(0xFFDC2626);
 
   static const _avatarColors = [
     Color(0xFF3B82F6),
@@ -130,7 +130,7 @@ class RankingsScreen extends StatelessWidget {
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         gradient: const LinearGradient(
-          colors: [Color(0xFF3B82F6), Color(0xFF2563EB)],
+          colors: [Color(0xFFDC2626), Color(0xFFB91C1C)],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
