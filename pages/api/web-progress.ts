@@ -1,4 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from "next";
+import { connectMongo } from "../../src/lib/mongodb";
+import { UserProgressModel } from "../../src/lib/models/UserProgress";
+import { CourseModel } from "../../src/lib/models/Course";
 
 // Direct web progress API - returns exact percentages that web shows
 export default async function handler(
@@ -26,29 +29,27 @@ export default async function handler(
     }
 
     try {
-      // Call web's existing course-progress API to get exact data
-      const webApiUrl = `https://millerstorm.tech/api/course-progress?userId=${userId}&courseIds=${courseIds}`;
-      const webResponse = await fetch(webApiUrl);
+      await connectMongo();
       
-      if (!webResponse.ok) {
-        throw new Error(`Web API failed: ${webResponse.status}`);
-      }
+      const courseIdArray = (courseIds as string).split(',');
       
-      const webProgressData = await webResponse.json();
-      console.log('✅ Got web progress data:', Object.keys(webProgressData).length, 'courses');
+      // Get progress from database
+      const progressRecords = await UserProgressModel.find({ 
+        userId, 
+        courseId: { $in: courseIdArray } 
+      });
       
-      // Get course details to calculate percentages exactly like web does
-      const coursesResponse = await fetch(`https://millerstorm.tech/api/courses`);
-      const coursesData = await coursesResponse.json();
+      // Get course details to calculate percentages
+      const courses = await CourseModel.find({ id: { $in: courseIdArray } });
       
       const result: Record<string, number> = {};
       
-      Object.keys(webProgressData).forEach(courseId => {
-        const progressData = webProgressData[courseId];
-        const course = coursesData.find((c: any) => c.id === courseId);
+      courseIdArray.forEach(courseId => {
+        const progressRecord = progressRecords.find(p => p.courseId === courseId);
+        const course = courses.find(c => c.id === courseId);
         
-        const completedPages = progressData.completedPages?.length || 0;
-        const totalPages = course?.pages?.length || 0;
+        const completedPages = progressRecord?.completedPages?.length || 0;
+        const totalPages = course?.pages?.filter((p: any) => p.status === 'published' && !p.isQuiz)?.length || 0;
         const percentage = totalPages > 0 ? Math.round((completedPages / totalPages) * 100) : 0;
         
         result[courseId] = percentage;

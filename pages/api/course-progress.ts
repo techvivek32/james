@@ -1,111 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import { connectMongo } from "../../src/lib/mongodb";
-
-// Mock progress data - same as progress.ts
-const mockProgressData: Record<string, Record<string, any>> = {
-  "ishitapatel3456@gmail.com": {
-    // Live server course IDs
-    "course-1772692234004": { // Million Dollar Playbook
-      completedPages: ["page1", "page2"],
-      totalPages: 33,
-      isCompleted: false
-    },
-    "course-1773328848873": { // Adjuster Appointment
-      completedPages: ["page1"],
-      totalPages: 15,
-      isCompleted: false
-    },
-    "course-1773283521827": { // Objections Masterclass
-      completedPages: [],
-      totalPages: 20,
-      isCompleted: false
-    },
-    // Local course IDs (fallback)
-    "million-dollar-playbook": {
-      completedPages: ["page1", "page2"],
-      totalPages: 33,
-      isCompleted: false
-    },
-    "adjuster-appointment": {
-      completedPages: ["page1"],
-      totalPages: 15,
-      isCompleted: false
-    },
-    "objections-masterclass": {
-      completedPages: [],
-      totalPages: 20,
-      isCompleted: false
-    }
-  },
-  "chris.lee@company.com": {
-    // Live server course IDs
-    "course-1772692234004": {
-      completedPages: ["page1", "page2", "page3"],
-      totalPages: 33,
-      isCompleted: false
-    },
-    "course-1773328848873": {
-      completedPages: ["page1", "page2"],
-      totalPages: 15,
-      isCompleted: false
-    },
-    "course-1773283521827": {
-      completedPages: ["page1"],
-      totalPages: 20,
-      isCompleted: false
-    },
-    // Local course IDs (fallback)
-    "million-dollar-playbook": {
-      completedPages: ["page1", "page2", "page3"],
-      totalPages: 33,
-      isCompleted: false
-    },
-    "adjuster-appointment": {
-      completedPages: ["page1", "page2"],
-      totalPages: 15,
-      isCompleted: false
-    },
-    "objections-masterclass": {
-      completedPages: ["page1"],
-      totalPages: 20,
-      isCompleted: false
-    }
-  },
-  "sales-1": {
-    // Live server course IDs
-    "course-1772692234004": {
-      completedPages: ["page1", "page2", "page3"],
-      totalPages: 33,
-      isCompleted: false
-    },
-    "course-1773328848873": {
-      completedPages: ["page1", "page2"],
-      totalPages: 15,
-      isCompleted: false
-    },
-    "course-1773283521827": {
-      completedPages: ["page1"],
-      totalPages: 20,
-      isCompleted: false
-    },
-    // Local course IDs (fallback)
-    "million-dollar-playbook": {
-      completedPages: ["page1", "page2", "page3"],
-      totalPages: 33,
-      isCompleted: false
-    },
-    "adjuster-appointment": {
-      completedPages: ["page1", "page2"],
-      totalPages: 15,
-      isCompleted: false
-    },
-    "objections-masterclass": {
-      completedPages: ["page1"],
-      totalPages: 20,
-      isCompleted: false
-    }
-  }
-};
+import { UserProgressModel } from "../../src/lib/models/UserProgress";
 
 export default async function handler(
   req: NextApiRequest,
@@ -135,38 +30,36 @@ export default async function handler(
     }
 
     try {
-      // Try to fetch real progress from live API first
-      const liveApiUrl = `https://millerstorm.tech/api/course-progress?userId=${userId}&courseIds=${courseIds}`;
-      console.log('📊 Calling live API:', liveApiUrl);
-      
-      try {
-        const liveResponse = await fetch(liveApiUrl);
-        if (liveResponse.ok) {
-          const liveData = await liveResponse.json();
-          console.log('✅ Got live progress data:', Object.keys(liveData).length, 'courses');
-          res.status(200).json(liveData);
-          return;
-        }
-      } catch (liveError) {
-        console.log('⚠️ Live API failed, using fallback:', liveError instanceof Error ? liveError.message : String(liveError));
-      }
-      
-      // Fallback to mock data
       const courseIdArray = (courseIds as string).split(',');
-      const userProgress = mockProgressData[userId as string] || {};
-      
       const result: Record<string, any> = {};
       
+      // Fetch progress for all courses from database
+      const progressRecords = await UserProgressModel.find({ 
+        userId, 
+        courseId: { $in: courseIdArray } 
+      });
+      
+      // Create a map of courseId -> progress
+      const progressMap = new Map();
+      progressRecords.forEach(record => {
+        progressMap.set(record.courseId, {
+          completedPages: record.completedPages || [],
+          quizResults: record.quizResults || [],
+          courseCompleted: record.courseCompleted || false
+        });
+      });
+      
+      // Build result object with all requested courses
       courseIdArray.forEach(courseId => {
-        const courseProgress = userProgress[courseId] || {
+        const courseProgress = progressMap.get(courseId) || {
           completedPages: [],
-          totalPages: 0,
-          isCompleted: false
+          quizResults: [],
+          courseCompleted: false
         };
         result[courseId] = courseProgress;
       });
 
-      console.log('📊 Fallback progress found:', result);
+      console.log('📊 Database progress found for', Object.keys(result).length, 'courses');
       res.status(200).json(result);
       return;
     } catch (error) {

@@ -1,78 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import { connectMongo } from "../../src/lib/mongodb";
-import { UserModel } from "../../src/lib/models/User";
-
-// Mock progress data for now - you can implement real progress tracking later
-const mockProgressData: Record<string, Record<string, any>> = {
-  "ishitapatel3456@gmail.com": {
-    // Live server course IDs
-    "course-1772692234004": { // Million Dollar Playbook
-      completedPages: ["page1", "page2"],
-      totalPages: 33,
-      isCompleted: false
-    },
-    "course-1773328848873": { // Adjuster Appointment
-      completedPages: ["page1"],
-      totalPages: 15,
-      isCompleted: false
-    },
-    "course-1773283521827": { // Objections Masterclass
-      completedPages: [],
-      totalPages: 20,
-      isCompleted: false
-    },
-    // Local course IDs (fallback)
-    "million-dollar-playbook": {
-      completedPages: ["page1", "page2"],
-      totalPages: 33,
-      isCompleted: false
-    },
-    "adjuster-appointment": {
-      completedPages: ["page1"],
-      totalPages: 15,
-      isCompleted: false
-    },
-    "objections-masterclass": {
-      completedPages: [],
-      totalPages: 20,
-      isCompleted: false
-    }
-  },
-  "chris.lee@company.com": {
-    // Live server course IDs
-    "course-1772692234004": {
-      completedPages: ["page1", "page2", "page3"],
-      totalPages: 33,
-      isCompleted: false
-    },
-    "course-1773328848873": {
-      completedPages: ["page1", "page2"],
-      totalPages: 15,
-      isCompleted: false
-    },
-    "course-1773283521827": {
-      completedPages: ["page1"],
-      totalPages: 20,
-      isCompleted: false
-    },
-    // Local course IDs (fallback)
-    "million-dollar-playbook": {
-      completedPages: ["page1", "page2", "page3"],
-      totalPages: 33,
-      isCompleted: false
-    },
-    "adjuster-appointment": {
-      completedPages: ["page1", "page2"],
-      totalPages: 15,
-      isCompleted: false
-    },
-    "objections-masterclass": {
-      completedPages: ["page1"],
-      totalPages: 20,
-      isCompleted: false
-    }
-  }
-};
+import { UserProgressModel } from "../../src/lib/models/UserProgress";
 
 export default async function handler(
   req: NextApiRequest,
@@ -94,7 +22,7 @@ export default async function handler(
   if (req.method === "GET") {
     const { userId, courseId } = req.query;
     
-    console.log('📊 Progress API called for userId:', userId, 'courseId:', courseId);
+    console.log('📊 Progress API GET called for userId:', userId, 'courseId:', courseId);
     
     if (!userId || !courseId) {
       res.status(400).json({ error: 'userId and courseId are required' });
@@ -102,16 +30,30 @@ export default async function handler(
     }
 
     try {
-      // Get user progress (mock data for now)
-      const userProgress = mockProgressData[userId as string] || {};
-      const courseProgress = userProgress[courseId as string] || {
-        completedPages: [],
-        totalPages: 0,
-        isCompleted: false
-      };
+      // Get user progress from database
+      const progress = await UserProgressModel.findOne({ userId, courseId });
+      
+      if (!progress) {
+        console.log('📊 No progress found, returning empty');
+        res.status(200).json({
+          completedPages: [],
+          quizResults: [],
+          courseCompleted: false
+        });
+        return;
+      }
 
-      console.log('📊 Progress found:', courseProgress);
-      res.status(200).json(courseProgress);
+      console.log('📊 Progress found:', {
+        completedPages: progress.completedPages?.length || 0,
+        quizResults: progress.quizResults?.length || 0,
+        courseCompleted: progress.courseCompleted
+      });
+      
+      res.status(200).json({
+        completedPages: progress.completedPages || [],
+        quizResults: progress.quizResults || [],
+        courseCompleted: progress.courseCompleted || false
+      });
       return;
     } catch (error) {
       console.error('❌ Error fetching progress:', error);
@@ -120,6 +62,68 @@ export default async function handler(
     }
   }
 
-  res.setHeader("Allow", "GET");
+  if (req.method === "POST") {
+    const { userId, courseId, completedPages, quizResults, courseCompleted } = req.body;
+    
+    console.log('💾 Progress API POST called:', { userId, courseId, completedPages: completedPages?.length, courseCompleted });
+    
+    if (!userId || !courseId) {
+      res.status(400).json({ error: 'userId and courseId are required' });
+      return;
+    }
+
+    try {
+      // Find existing progress or create new
+      let progress = await UserProgressModel.findOne({ userId, courseId });
+      
+      if (!progress) {
+        // Create new progress record
+        progress = new UserProgressModel({
+          userId,
+          courseId,
+          completedPages: completedPages || [],
+          quizResults: quizResults || [],
+          courseCompleted: courseCompleted || false
+        });
+        console.log('📝 Creating new progress record');
+      } else {
+        // Update existing progress
+        if (completedPages !== undefined) {
+          progress.completedPages = completedPages;
+        }
+        if (quizResults !== undefined) {
+          progress.quizResults = quizResults;
+        }
+        if (courseCompleted !== undefined) {
+          progress.courseCompleted = courseCompleted;
+        }
+        console.log('📝 Updating existing progress record');
+      }
+
+      // Save to database
+      await progress.save();
+      console.log('💾 Progress saved successfully');
+
+      res.status(200).json({
+        success: true,
+        progress: {
+          userId: progress.userId,
+          courseId: progress.courseId,
+          completedPages: progress.completedPages,
+          quizResults: progress.quizResults,
+          courseCompleted: progress.courseCompleted,
+          updatedAt: progress.updatedAt
+        }
+      });
+      return;
+      
+    } catch (error) {
+      console.error('❌ Error saving progress:', error);
+      res.status(500).json({ error: 'Failed to save progress' });
+      return;
+    }
+  }
+
+  res.setHeader("Allow", "GET, POST");
   res.status(405).end();
 }

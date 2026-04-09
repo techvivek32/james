@@ -31,6 +31,9 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
   int _completedLessons = 0;
   int _totalLessons = 0;
   int _progressPercent = 0;
+  
+  // Track which sections are expanded
+  Set<int> _expandedSections = <int>{};
 
   @override
   void initState() {
@@ -291,44 +294,185 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
             children: sections.asMap().entries.map((entry) {
               final index = entry.key;
               final section = entry.value;
+              final isExpanded = _expandedSections.contains(index);
+              final sectionPages = section['pages'] as List<dynamic>? ?? [];
+              
               return Column(
                 children: [
-                  Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: Row(
-                      children: [
-                        Icon(
-                          Icons.keyboard_arrow_down,
-                          color: _textLight,
-                          size: 20,
-                        ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                section['title'] as String,
-                                style: const TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w600,
-                                  color: _textDark,
-                                ),
-                              ),
-                              if (section['lessons'] > 0)
+                  // Section Header (Clickable)
+                  InkWell(
+                    onTap: () {
+                      setState(() {
+                        if (isExpanded) {
+                          _expandedSections.remove(index);
+                        } else {
+                          _expandedSections.add(index);
+                        }
+                      });
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                      child: Row(
+                        children: [
+                          AnimatedRotation(
+                            turns: isExpanded ? 0.25 : 0,
+                            duration: const Duration(milliseconds: 200),
+                            child: Icon(
+                              Icons.chevron_right,
+                              color: _textMedium,
+                              size: 20,
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
                                 Text(
-                                  '${section['lessons']} lessons',
+                                  section['title'] as String,
                                   style: const TextStyle(
-                                    fontSize: 12,
-                                    color: _textLight,
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w600,
+                                    color: _textDark,
                                   ),
                                 ),
-                            ],
+                                const SizedBox(height: 2),
+                                if (section['lessons'] > 0)
+                                  Text(
+                                    '${section['lessons']} lessons',
+                                    style: const TextStyle(
+                                      fontSize: 13,
+                                      color: _textLight,
+                                    ),
+                                  ),
+                              ],
+                            ),
                           ),
-                        ),
-                      ],
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: _bg,
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Text(
+                              '${section['lessons']}',
+                              style: const TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                                color: _textMedium,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
+                  
+                  // Expandable Content with Animation
+                  AnimatedContainer(
+                    duration: const Duration(milliseconds: 300),
+                    curve: Curves.easeInOut,
+                    height: isExpanded && sectionPages.isNotEmpty ? null : 0,
+                    child: isExpanded && sectionPages.isNotEmpty
+                        ? Container(
+                            color: const Color(0xFFFAFAFA),
+                            padding: const EdgeInsets.only(top: 8, bottom: 16),
+                            child: Column(
+                              children: sectionPages.asMap().entries.map<Widget>((pageEntry) {
+                                final pageIndex = pageEntry.key;
+                                final page = pageEntry.value;
+                                final isCompleted = false; // You can add completion logic here
+                                
+                                return Container(
+                                  margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
+                                  padding: const EdgeInsets.all(12),
+                                  decoration: BoxDecoration(
+                                    color: _white,
+                                    borderRadius: BorderRadius.circular(8),
+                                    border: Border.all(color: _border.withOpacity(0.3)),
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      Container(
+                                        width: 32,
+                                        height: 32,
+                                        decoration: BoxDecoration(
+                                          color: isCompleted ? _primary : _bg,
+                                          shape: BoxShape.circle,
+                                        ),
+                                        child: Icon(
+                                          page['isQuiz'] == true 
+                                              ? Icons.quiz_outlined
+                                              : isCompleted 
+                                                  ? Icons.check 
+                                                  : Icons.play_arrow,
+                                          size: 16,
+                                          color: isCompleted ? _white : _textLight,
+                                        ),
+                                      ),
+                                      const SizedBox(width: 12),
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          children: [
+                                            Text(
+                                              page['title'] ?? 'Lesson ${pageIndex + 1}',
+                                              style: TextStyle(
+                                                fontSize: 14,
+                                                fontWeight: FontWeight.w500,
+                                                color: isCompleted ? _textMedium : _textDark,
+                                                decoration: isCompleted ? TextDecoration.lineThrough : null,
+                                              ),
+                                            ),
+                                            if (page['videoUrl'] != null)
+                                              const SizedBox(height: 2),
+                                            if (page['videoUrl'] != null)
+                                              Row(
+                                                children: [
+                                                  Icon(
+                                                    Icons.videocam_outlined,
+                                                    size: 12,
+                                                    color: _textLight,
+                                                  ),
+                                                  const SizedBox(width: 4),
+                                                  Text(
+                                                    'Video lesson',
+                                                    style: TextStyle(
+                                                      fontSize: 11,
+                                                      color: _textLight,
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                          ],
+                                        ),
+                                      ),
+                                      if (page['isQuiz'] == true)
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                          decoration: BoxDecoration(
+                                            color: Colors.orange.withOpacity(0.1),
+                                            borderRadius: BorderRadius.circular(4),
+                                          ),
+                                          child: Text(
+                                            'Quiz',
+                                            style: TextStyle(
+                                              fontSize: 10,
+                                              fontWeight: FontWeight.w600,
+                                              color: Colors.orange.shade700,
+                                            ),
+                                          ),
+                                        ),
+                                    ],
+                                  ),
+                                );
+                              }).toList(),
+                            ),
+                          )
+                        : const SizedBox(),
+                  ),
+                  
+                  // Divider (except for last item)
                   if (index < sections.length - 1)
                     Divider(height: 1, color: _border, indent: 16, endIndent: 16),
                 ],
