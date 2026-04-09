@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import 'package:webview_flutter/webview_flutter.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../services/auth_service.dart';
 
 class LessonPlayerScreen extends StatefulWidget {
@@ -33,8 +35,11 @@ class _LessonPlayerScreenState extends State<LessonPlayerScreen> {
 
   Map<String, dynamic>? _lesson;
   Map<String, dynamic>? _course;
+  List<dynamic> _allLessons = [];
+  int _currentLessonIndex = 0;
   bool _isLoading = true;
   bool _isFullscreen = false;
+  WebViewController? _webViewController;
 
   @override
   void initState() {
@@ -57,19 +62,30 @@ class _LessonPlayerScreenState extends State<LessonPlayerScreen> {
       if (response.statusCode == 200) {
         final courseData = jsonDecode(response.body);
         final pages = courseData['pages'] as List<dynamic>? ?? [];
-        final lesson = pages.firstWhere(
-          (page) => page['id'] == widget.lessonId,
-          orElse: () => null,
-        );
+        
+        // Filter only published lesson pages (not quizzes)
+        final lessons = pages.where((page) => 
+          page['status'] == 'published' && page['isQuiz'] != true
+        ).toList();
+        
+        final currentIndex = lessons.indexWhere((page) => page['id'] == widget.lessonId);
+        final lesson = currentIndex >= 0 ? lessons[currentIndex] : null;
 
         setState(() {
           _course = courseData;
           _lesson = lesson;
+          _allLessons = lessons;
+          _currentLessonIndex = currentIndex >= 0 ? currentIndex : 0;
           _isLoading = false;
         });
         
         print('✅ Lesson loaded: ${lesson?['title']}');
         print('🎥 Video URL: ${lesson?['videoUrl']}');
+        
+        // Initialize WebView for video
+        if (lesson?['videoUrl'] != null) {
+          _initializeWebView(lesson!['videoUrl']);
+        }
       } else {
         setState(() {
           _isLoading = false;
@@ -83,41 +99,113 @@ class _LessonPlayerScreenState extends State<LessonPlayerScreen> {
     }
   }
 
+  void _initializeWebView(String videoUrl) {
+    String embedUrl = _getEmbedUrl(videoUrl);
+    
+    _webViewController = WebViewController()
+      ..setJavaScriptMode(JavaScriptMode.unrestricted)
+      ..loadRequest(Uri.parse(embedUrl));
+  }
+
+  String _getEmbedUrl(String videoUrl) {
+    // Convert various video URL formats to embeddable URLs
+    if (videoUrl.contains('vimeo.com')) {
+      final vimeoMatch = RegExp(r'vimeo\.com/(\d+)').firstMatch(videoUrl);
+      if (vimeoMatch != null) {
+        return 'https://player.vimeo.com/video/${vimeoMatch.group(1)}?autoplay=1&title=0&byline=0&portrait=0';
+      }
+    } else if (videoUrl.contains('youtube.com') || videoUrl.contains('youtu.be')) {
+      final youtubeMatch = RegExp(r'(?:youtube\.com/watch\?v=|youtu\.be/)([^&\n?#]+)').firstMatch(videoUrl);
+      if (youtubeMatch != null) {
+        return 'https://www.youtube.com/embed/${youtubeMatch.group(1)}?autoplay=1&rel=0&modestbranding=1';
+      }
+    }
+    
+    // If it's already an embed URL or other format, use as is
+    return videoUrl;
+  }
+
   void _toggleFullscreen() {
     setState(() {
       _isFullscreen = !_isFullscreen;
     });
     
     if (_isFullscreen) {
-      // Hide system UI for fullscreen
       SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
       SystemChrome.setPreferredOrientations([
         DeviceOrientation.landscapeLeft,
         DeviceOrientation.landscapeRight,
       ]);
     } else {
-      // Show system UI
       SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
-      SystemChrome.setPreferredOrientations([
-        DeviceOrientation.portraitUp,
-      ]);
+      SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
     }
   }
 
-  @override
-  void dispose() {
-    // Reset orientation when leaving screen
-    SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
-    SystemChrome.setPreferredOrientations([
-      DeviceOrientation.portraitUp,
-    ]);
-    super.dispose();
+  Future<void> _markCompleteAndNext() async {
+    if (_lesson == null) return;
+    
+    try {
+      final user = await AuthService.getStoredUser();
+      final userId = user?['id'] ?? '';
+      
+      // Mark current lesson as complete
+      await http.post(
+        Uri.parse('https://millerstorm.tech/api/progress/save'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'userId': userId,
+          'courseId': widget.courseId,
+          'pageId': _lesson!['id'],
+        }),
+      );
+      
+      print('✅ Lesson marked as complete: ${_lesson!['title']}');
+      
+      // Navigate to next lesson if available
+      if (_currentLessonIndex < _allLessons.length - 1) {
+        final nextLesson = _allLessons[_currentLessonIndex + 1];
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (context) => LessonPlayerScreen(
+              courseId: widget.courseId,
+              courseTitle: widget.courseTitle,
+              lessonId: nextLesson['id'],
+              lessonTitle: nextLesson['title'],
+            ),
+          ),
+        );
+      } else {
+        // Last lesson - go back to course detail
+        Navigator.pop(context);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('🎉 Course completed!'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+    } catch (e) {
+      print('❌ Error marking lesson complete: $e');
+    }
+  }
+
+  Future<void> _launchUrl(String url) async {
+    try {
+      final uri = Uri.parse(url);
+      if (await canLaunchUrl(uri)) {
+        await launchUrl(uri, mode: LaunchMode.externalApplication);
+      }
+    } catch (e) {
+      print('❌ Error launching URL: $e');
+    }
   }
 
   Widget _buildVideoPlayer() {
     if (_lesson?['videoUrl'] == null) {
       return Container(
-        height: 200,
+        height: 220,
         color: Colors.black,
         child: const Center(
           child: Text(
@@ -128,83 +216,39 @@ class _LessonPlayerScreenState extends State<LessonPlayerScreen> {
       );
     }
 
-    // Extract video ID from various URL formats
-    String videoUrl = _lesson!['videoUrl'];
-    String? videoId;
-    
-    if (videoUrl.contains('vimeo.com')) {
-      // Vimeo URL
-      final vimeoMatch = RegExp(r'vimeo\.com/(\d+)').firstMatch(videoUrl);
-      if (vimeoMatch != null) {
-        videoId = vimeoMatch.group(1);
-        videoUrl = 'https://player.vimeo.com/video/$videoId';
-      }
-    } else if (videoUrl.contains('youtube.com') || videoUrl.contains('youtu.be')) {
-      // YouTube URL
-      final youtubeMatch = RegExp(r'(?:youtube\.com/watch\?v=|youtu\.be/)([^&\n?#]+)').firstMatch(videoUrl);
-      if (youtubeMatch != null) {
-        videoId = youtubeMatch.group(1);
-        videoUrl = 'https://www.youtube.com/embed/$videoId';
-      }
-    }
-
     return Container(
       height: _isFullscreen ? MediaQuery.of(context).size.height : 220,
       width: double.infinity,
-      color: Colors.black,
       child: Stack(
         children: [
-          // Video iframe placeholder (you'll need to use webview_flutter package for actual video)
-          Container(
-            width: double.infinity,
-            height: double.infinity,
-            color: Colors.black87,
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(
-                  Icons.play_circle_outline,
-                  size: 80,
-                  color: Colors.white.withOpacity(0.8),
-                ),
-                const SizedBox(height: 16),
-                Text(
-                  'Video Player',
-                  style: TextStyle(
-                    color: Colors.white.withOpacity(0.8),
-                    fontSize: 18,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  'Tap to play video',
-                  style: TextStyle(
-                    color: Colors.white.withOpacity(0.6),
-                    fontSize: 14,
-                  ),
-                ),
-              ],
+          // Real WebView video player
+          if (_webViewController != null)
+            WebViewWidget(controller: _webViewController!)
+          else
+            Container(
+              color: Colors.black,
+              child: const Center(
+                child: CircularProgressIndicator(color: Colors.white),
+              ),
             ),
-          ),
           
           // Fullscreen toggle button
           if (!_isFullscreen)
             Positioned(
-              top: 16,
-              right: 16,
+              top: 8,
+              right: 8,
               child: GestureDetector(
                 onTap: _toggleFullscreen,
                 child: Container(
-                  padding: const EdgeInsets.all(8),
+                  padding: const EdgeInsets.all(6),
                   decoration: BoxDecoration(
-                    color: Colors.black.withOpacity(0.5),
-                    borderRadius: BorderRadius.circular(6),
+                    color: Colors.black.withOpacity(0.6),
+                    borderRadius: BorderRadius.circular(4),
                   ),
                   child: const Icon(
                     Icons.fullscreen,
                     color: Colors.white,
-                    size: 20,
+                    size: 18,
                   ),
                 ),
               ),
@@ -213,20 +257,20 @@ class _LessonPlayerScreenState extends State<LessonPlayerScreen> {
           // Exit fullscreen button
           if (_isFullscreen)
             Positioned(
-              top: 16,
-              right: 16,
+              top: 8,
+              right: 8,
               child: GestureDetector(
                 onTap: _toggleFullscreen,
                 child: Container(
-                  padding: const EdgeInsets.all(8),
+                  padding: const EdgeInsets.all(6),
                   decoration: BoxDecoration(
-                    color: Colors.black.withOpacity(0.5),
-                    borderRadius: BorderRadius.circular(6),
+                    color: Colors.black.withOpacity(0.6),
+                    borderRadius: BorderRadius.circular(4),
                   ),
                   child: const Icon(
                     Icons.fullscreen_exit,
                     color: Colors.white,
-                    size: 20,
+                    size: 18,
                   ),
                 ),
               ),
@@ -237,61 +281,36 @@ class _LessonPlayerScreenState extends State<LessonPlayerScreen> {
   }
 
   Widget _buildLessonContent() {
-    if (_lesson?['body'] == null) {
-      return const Padding(
-        padding: EdgeInsets.all(16),
-        child: Text(
-          'No content available for this lesson.',
-          style: TextStyle(fontSize: 16, color: Colors.grey),
-        ),
-      );
+    if (_lesson?['body'] == null || _lesson!['body'].toString().trim().isEmpty) {
+      return const SizedBox();
     }
 
-    // Parse HTML content (basic parsing - you might want to use flutter_html package)
+    // Parse HTML content (basic parsing)
     String content = _lesson!['body'];
-    
-    // Remove HTML tags for basic display
     content = content.replaceAll(RegExp(r'<[^>]*>'), '');
     content = content.replaceAll('&nbsp;', ' ');
     content = content.replaceAll('&amp;', '&');
     content = content.replaceAll('&lt;', '<');
     content = content.replaceAll('&gt;', '>');
+    content = content.trim();
+
+    if (content.isEmpty) return const SizedBox();
 
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(20),
+      margin: const EdgeInsets.only(bottom: 16),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: _white,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.04),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
+        borderRadius: BorderRadius.circular(8),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Lesson Content',
-            style: const TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.w700,
-              color: _textDark,
-            ),
-          ),
-          const SizedBox(height: 16),
-          Text(
-            content,
-            style: const TextStyle(
-              fontSize: 16,
-              height: 1.6,
-              color: _textMedium,
-            ),
-          ),
-        ],
+      child: Text(
+        content,
+        style: const TextStyle(
+          fontSize: 16,
+          height: 1.5,
+          color: _textMedium,
+        ),
       ),
     );
   }
@@ -306,17 +325,11 @@ class _LessonPlayerScreenState extends State<LessonPlayerScreen> {
 
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(20),
+      margin: const EdgeInsets.only(bottom: 16),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: _white,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.04),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
+        borderRadius: BorderRadius.circular(8),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -325,70 +338,83 @@ class _LessonPlayerScreenState extends State<LessonPlayerScreen> {
             'Resources',
             style: TextStyle(
               fontSize: 18,
-              fontWeight: FontWeight.w700,
+              fontWeight: FontWeight.w600,
               color: _textDark,
             ),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 12),
           
           // Resource links
-          ...resourceLinks.map((link) => Container(
-            margin: const EdgeInsets.only(bottom: 12),
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: _bg,
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: _border.withOpacity(0.3)),
-            ),
-            child: Row(
-              children: [
-                Icon(Icons.link, color: _primary, size: 20),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Text(
-                    link['label'] ?? 'Resource Link',
-                    style: const TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w500,
-                      color: _textDark,
+          ...resourceLinks.map((link) => GestureDetector(
+            onTap: () => _launchUrl(link['href'] ?? ''),
+            child: Container(
+              margin: const EdgeInsets.only(bottom: 8),
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: _bg,
+                borderRadius: BorderRadius.circular(6),
+                border: Border.all(color: _border.withOpacity(0.3)),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.link, color: _primary, size: 18),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      link['label'] ?? 'Resource Link',
+                      style: const TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w500,
+                        color: _textDark,
+                      ),
                     ),
                   ),
-                ),
-                Icon(Icons.open_in_new, color: _textLight, size: 16),
-              ],
+                  Icon(Icons.open_in_new, color: _textLight, size: 14),
+                ],
+              ),
             ),
           )).toList(),
           
           // File downloads
-          ...fileUrls.map((file) => Container(
-            margin: const EdgeInsets.only(bottom: 12),
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: _bg,
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: _border.withOpacity(0.3)),
-            ),
-            child: Row(
-              children: [
-                Icon(Icons.file_download, color: _primary, size: 20),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Text(
-                    file['label'] ?? 'Download File',
-                    style: const TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w500,
-                      color: _textDark,
+          ...fileUrls.map((file) => GestureDetector(
+            onTap: () => _launchUrl(file['href'] ?? ''),
+            child: Container(
+              margin: const EdgeInsets.only(bottom: 8),
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: _bg,
+                borderRadius: BorderRadius.circular(6),
+                border: Border.all(color: _border.withOpacity(0.3)),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.file_download, color: _primary, size: 18),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      file['label'] ?? 'Download File',
+                      style: const TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w500,
+                        color: _textDark,
+                      ),
                     ),
                   ),
-                ),
-                Icon(Icons.download, color: _textLight, size: 16),
-              ],
+                  Icon(Icons.download, color: _textLight, size: 14),
+                ],
+              ),
             ),
           )).toList(),
         ],
       ),
     );
+  }
+
+  @override
+  void dispose() {
+    SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+    SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
+    super.dispose();
   }
 
   @override
@@ -430,76 +456,110 @@ class _LessonPlayerScreenState extends State<LessonPlayerScreen> {
             ),
           ],
         ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.more_vert, color: _textDark),
-            onPressed: () {},
-          ),
-        ],
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator(color: _primary))
-          : SingleChildScrollView(
-              child: Column(
-                children: [
-                  // Video Player (full width, no padding)
-                  _buildVideoPlayer(),
-                  
-                  // Content below video
-                  Padding(
+          : Column(
+              children: [
+                // Video Player (full width, no padding)
+                _buildVideoPlayer(),
+                
+                // Content below video
+                Expanded(
+                  child: SingleChildScrollView(
                     padding: const EdgeInsets.all(16),
                     child: Column(
                       children: [
                         // Lesson content
                         _buildLessonContent(),
                         
-                        const SizedBox(height: 16),
-                        
                         // Resources
                         _buildResourceLinks(),
                         
-                        const SizedBox(height: 32),
-                        
-                        // Action buttons
-                        Row(
-                          children: [
-                            Expanded(
-                              child: Container(
-                                height: 50,
-                                decoration: BoxDecoration(
-                                  color: _primary,
-                                  borderRadius: BorderRadius.circular(25),
-                                ),
-                                child: const Center(
-                                  child: Text(
-                                    'Mark as Complete',
-                                    style: TextStyle(
-                                      color: _white,
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ),
-                            const SizedBox(width: 12),
-                            Container(
-                              width: 50,
-                              height: 50,
-                              decoration: BoxDecoration(
-                                color: _white,
-                                borderRadius: BorderRadius.circular(25),
-                                border: Border.all(color: _border),
-                              ),
-                              child: Icon(Icons.bookmark_border, color: _textMedium),
-                            ),
-                          ],
-                        ),
+                        const SizedBox(height: 16),
                       ],
                     ),
                   ),
-                ],
-              ),
+                ),
+                
+                // Bottom action bar
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: _white,
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.05),
+                        blurRadius: 8,
+                        offset: const Offset(0, -2),
+                      ),
+                    ],
+                  ),
+                  child: Row(
+                    children: [
+                      // Progress indicator
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              'Lesson ${_currentLessonIndex + 1} of ${_allLessons.length}',
+                              style: const TextStyle(
+                                fontSize: 12,
+                                color: _textLight,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            LinearProgressIndicator(
+                              value: _allLessons.isNotEmpty ? (_currentLessonIndex + 1) / _allLessons.length : 0,
+                              backgroundColor: _border,
+                              valueColor: AlwaysStoppedAnimation<Color>(_primary),
+                              minHeight: 3,
+                            ),
+                          ],
+                        ),
+                      ),
+                      
+                      const SizedBox(width: 16),
+                      
+                      // Next button
+                      GestureDetector(
+                        onTap: _markCompleteAndNext,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                          decoration: BoxDecoration(
+                            color: _primary,
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                _currentLessonIndex < _allLessons.length - 1 ? 'Next' : 'Complete',
+                                style: const TextStyle(
+                                  color: _white,
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                              const SizedBox(width: 4),
+                              Icon(
+                                _currentLessonIndex < _allLessons.length - 1 
+                                    ? Icons.arrow_forward 
+                                    : Icons.check,
+                                color: _white,
+                                size: 16,
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
             ),
     );
   }

@@ -95,12 +95,6 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
           widget.courseTitle,
           style: const TextStyle(color: _textDark, fontSize: 18, fontWeight: FontWeight.w700),
         ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.more_vert, color: _textDark),
-            onPressed: () {},
-          ),
-        ],
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator(color: _primary))
