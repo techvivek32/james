@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../services/auth_service.dart';
+import 'lesson_player_screen.dart';
 
 class CourseDetailScreen extends StatefulWidget {
   final String courseId;
@@ -211,17 +212,39 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
   }
 
   Widget _buildContinueButton() {
-    return Container(
-      width: double.infinity,
-      height: 50,
-      decoration: BoxDecoration(
-        color: _textDark,
-        borderRadius: BorderRadius.circular(25),
-      ),
-      child: const Center(
-        child: Text(
-          'Continue course',
-          style: TextStyle(color: _white, fontSize: 16, fontWeight: FontWeight.w600),
+    return GestureDetector(
+      onTap: () {
+        if (_course != null) {
+          final pages = _course!['pages'] as List<dynamic>? ?? [];
+          final firstLesson = pages.isNotEmpty ? pages.first : null;
+          
+          if (firstLesson != null) {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => LessonPlayerScreen(
+                  courseId: widget.courseId,
+                  courseTitle: widget.courseTitle,
+                  lessonId: firstLesson['id'] ?? '',
+                  lessonTitle: firstLesson['title'] ?? 'First Lesson',
+                ),
+              ),
+            );
+          }
+        }
+      },
+      child: Container(
+        width: double.infinity,
+        height: 50,
+        decoration: BoxDecoration(
+          color: _textDark,
+          borderRadius: BorderRadius.circular(25),
+        ),
+        child: const Center(
+          child: Text(
+            'Continue course',
+            style: TextStyle(color: _white, fontSize: 16, fontWeight: FontWeight.w600),
+          ),
         ),
       ),
     );
@@ -385,21 +408,36 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
                           final page = pageEntry.value;
                           final isCompleted = false; // You can add completion logic here
                           
-                          return Container(
-                            margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 6),
-                            padding: const EdgeInsets.all(16),
-                            decoration: BoxDecoration(
-                              color: _white,
-                              borderRadius: BorderRadius.circular(10),
-                              border: Border.all(color: _border.withOpacity(0.3)),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.black.withOpacity(0.02),
-                                  blurRadius: 4,
-                                  offset: const Offset(0, 1),
+                          return GestureDetector(
+                            onTap: () {
+                              // Navigate to lesson player
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => LessonPlayerScreen(
+                                    courseId: widget.courseId,
+                                    courseTitle: widget.courseTitle,
+                                    lessonId: page['id'] ?? '',
+                                    lessonTitle: page['title'] ?? 'Lesson ${pageIndex + 1}',
+                                  ),
                                 ),
-                              ],
-                            ),
+                              );
+                            },
+                            child: Container(
+                              margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 6),
+                              padding: const EdgeInsets.all(16),
+                              decoration: BoxDecoration(
+                                color: _white,
+                                borderRadius: BorderRadius.circular(10),
+                                border: Border.all(color: _border.withOpacity(0.3)),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withOpacity(0.02),
+                                    blurRadius: 4,
+                                    offset: const Offset(0, 1),
+                                  ),
+                                ],
+                              ),
                             child: Row(
                               children: [
                                 Container(
@@ -473,6 +511,7 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
                                     ),
                                   ),
                               ],
+                            ),
                             ),
                           );
                         }).toList(),
