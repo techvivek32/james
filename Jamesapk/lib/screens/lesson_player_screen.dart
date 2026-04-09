@@ -4,6 +4,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:webview_flutter/webview_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:flutter_html/flutter_html.dart';
 import '../services/auth_service.dart';
 
 class LessonPlayerScreen extends StatefulWidget {
@@ -285,32 +286,114 @@ class _LessonPlayerScreenState extends State<LessonPlayerScreen> {
       return const SizedBox();
     }
 
-    // Parse HTML content (basic parsing)
-    String content = _lesson!['body'];
-    content = content.replaceAll(RegExp(r'<[^>]*>'), '');
-    content = content.replaceAll('&nbsp;', ' ');
-    content = content.replaceAll('&amp;', '&');
-    content = content.replaceAll('&lt;', '<');
-    content = content.replaceAll('&gt;', '>');
-    content = content.trim();
-
-    if (content.isEmpty) return const SizedBox();
+    String htmlContent = _lesson!['body'];
+    
+    // Check if content is empty after basic cleanup
+    String testContent = htmlContent.replaceAll(RegExp(r'<[^>]*>'), '').trim();
+    if (testContent.isEmpty) return const SizedBox();
 
     return Container(
       width: double.infinity,
       margin: const EdgeInsets.only(bottom: 16),
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
         color: _white,
         borderRadius: BorderRadius.circular(8),
       ),
-      child: Text(
-        content,
-        style: const TextStyle(
-          fontSize: 16,
-          height: 1.5,
-          color: _textMedium,
-        ),
+      child: Html(
+        data: htmlContent,
+        style: {
+          "body": Style(
+            margin: Margins.zero,
+            padding: HtmlPaddings.zero,
+            fontSize: FontSize(16),
+            lineHeight: LineHeight(1.6),
+            color: _textMedium,
+          ),
+          "h1": Style(
+            fontSize: FontSize(24),
+            fontWeight: FontWeight.bold,
+            color: _textDark,
+            margin: Margins.only(top: 16, bottom: 12),
+          ),
+          "h2": Style(
+            fontSize: FontSize(20),
+            fontWeight: FontWeight.bold,
+            color: _textDark,
+            margin: Margins.only(top: 16, bottom: 10),
+          ),
+          "h3": Style(
+            fontSize: FontSize(18),
+            fontWeight: FontWeight.w600,
+            color: _textDark,
+            margin: Margins.only(top: 14, bottom: 8),
+          ),
+          "h4": Style(
+            fontSize: FontSize(16),
+            fontWeight: FontWeight.w600,
+            color: _textDark,
+            margin: Margins.only(top: 12, bottom: 6),
+          ),
+          "p": Style(
+            fontSize: FontSize(16),
+            lineHeight: LineHeight(1.6),
+            color: _textMedium,
+            margin: Margins.only(bottom: 12),
+          ),
+          "ul": Style(
+            margin: Margins.only(left: 8, bottom: 12),
+            padding: HtmlPaddings.only(left: 16),
+          ),
+          "ol": Style(
+            margin: Margins.only(left: 8, bottom: 12),
+            padding: HtmlPaddings.only(left: 16),
+          ),
+          "li": Style(
+            fontSize: FontSize(16),
+            lineHeight: LineHeight(1.6),
+            color: _textMedium,
+            margin: Margins.only(bottom: 8),
+          ),
+          "strong": Style(
+            fontWeight: FontWeight.bold,
+            color: _textDark,
+          ),
+          "b": Style(
+            fontWeight: FontWeight.bold,
+            color: _textDark,
+          ),
+          "em": Style(
+            fontStyle: FontStyle.italic,
+          ),
+          "i": Style(
+            fontStyle: FontStyle.italic,
+          ),
+          "a": Style(
+            color: _primary,
+            textDecoration: TextDecoration.underline,
+          ),
+          "blockquote": Style(
+            margin: Margins.only(left: 16, top: 12, bottom: 12),
+            padding: HtmlPaddings.only(left: 12),
+            border: Border(left: BorderSide(color: _primary, width: 3)),
+            backgroundColor: _bg,
+          ),
+          "code": Style(
+            backgroundColor: _bg,
+            padding: HtmlPaddings.all(4),
+            fontFamily: 'monospace',
+          ),
+          "pre": Style(
+            backgroundColor: _bg,
+            padding: HtmlPaddings.all(12),
+            margin: Margins.only(bottom: 12),
+          ),
+        },
+        onLinkTap: (url, attributes, element) {
+          if (url != null) {
+            _launchUrl(url);
+          }
+        },
       ),
     );
   }
