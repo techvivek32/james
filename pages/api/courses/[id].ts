@@ -60,25 +60,30 @@ export default async function handler(
         progress.totalLessons = course.lessonNames.length;
       }
 
-      // Get real progress from web's existing API
+      // Use web's EXACT API - same as web uses
       if (userId) {
         try {
-          const baseUrl = req.headers.host?.includes('localhost') ? 'http://localhost:6790' : `https://${req.headers.host}`;
-          const progressResponse = await fetch(`${baseUrl}/api/progress?userId=${userId}&courseId=${id}`);
-          if (progressResponse.ok) {
-            const progressData = await progressResponse.json();
+          // Call web's existing progress API (same as web uses)
+          const webApiUrl = `https://millerstorm.tech/api/progress?userId=${userId}&courseId=${id}`;
+          console.log('🌐 Calling web progress API:', webApiUrl);
+          
+          const webResponse = await fetch(webApiUrl);
+          if (webResponse.ok) {
+            const webProgressData = await webResponse.json();
             
-            // Use web's exact calculation
-            progress.completedLessons = progressData.completedPages?.length || 0;
-            progress.totalLessons = course.pages?.length || 0;
-            progress.progressPercent = progress.totalLessons > 0 
-              ? Math.round((progress.completedLessons / progress.totalLessons) * 100)
-              : 0;
+            // Use web's exact calculation logic
+            const completedPages = webProgressData.completedPages?.length || 0;
+            const totalPages = course.pages?.length || 0;
+            const progressPercent = totalPages > 0 ? Math.round((completedPages / totalPages) * 100) : 0;
+            
+            progress.completedLessons = completedPages;
+            progress.totalLessons = totalPages;
+            progress.progressPercent = progressPercent;
               
-            console.log(`✅ Progress: ${progress.completedLessons}/${progress.totalLessons} = ${progress.progressPercent}% (web data)`);
+            console.log(`✅ Web API result: ${completedPages}/${totalPages} = ${progressPercent}%`);
           }
         } catch (error) {
-          console.log('⚠️ Could not fetch progress data:', error);
+          console.log('⚠️ Could not call web API:', error);
         }
       }
 

@@ -80,45 +80,42 @@ export default async function handler(
     
     console.log('📚 Filtered courses count:', filteredCourses.length);
     
-    // Add progress to each course - fetch from web's existing API
+    // Use web's EXACT API - no custom logic
     try {
       const courseIds = filteredCourses.map(c => c.id).join(',');
-      console.log('📊 Fetching progress for courseIds:', courseIds);
+      console.log('🌐 Using web API directly for:', courseIds);
       
-      // Use same API that web uses
-      const baseUrl = req.headers.host?.includes('localhost') ? 'http://localhost:6790' : `https://${req.headers.host}`;
-      const progressUrl = `${baseUrl}/api/course-progress?userId=${userId}&courseIds=${courseIds}`;
-      console.log('📊 Progress URL:', progressUrl);
+      // Call web's existing course-progress API (same as web uses)
+      const webApiUrl = `https://millerstorm.tech/api/course-progress?userId=${userId}&courseIds=${courseIds}`;
+      console.log('🌐 Calling web API:', webApiUrl);
       
-      const progressResponse = await fetch(progressUrl);
-      console.log('📊 Progress response status:', progressResponse.status);
+      const webResponse = await fetch(webApiUrl);
       
-      if (progressResponse.ok) {
-        const progressData = await progressResponse.json();
-        console.log('📊 Progress data loaded:', Object.keys(progressData).length, 'courses');
+      if (webResponse.ok) {
+        const webProgressData = await webResponse.json();
+        console.log('✅ Got web API response');
         
-        const coursesWithProgress = filteredCourses.map((course: any) => {
-          const courseProgress = progressData[course.id];
+        const coursesWithWebProgress = filteredCourses.map((course: any) => {
+          const webProgress = webProgressData[course.id];
           
-          if (courseProgress) {
-            // Use web's exact data - no calculation needed
-            const completedLessons = courseProgress.completedPages?.length || 0;
-            const totalLessons = course.pages?.length || 0;
-            const progressPercent = totalLessons > 0 ? Math.round((completedLessons / totalLessons) * 100) : 0;
+          if (webProgress) {
+            // Use web's exact data structure
+            const completedPages = webProgress.completedPages?.length || 0;
+            const totalPages = course.pages?.length || 0;
+            const progressPercent = totalPages > 0 ? Math.round((completedPages / totalPages) * 100) : 0;
             
-            console.log(`📊 ${course.title}: ${completedLessons}/${totalLessons} = ${progressPercent}%`);
+            console.log(`🌐 ${course.title}: ${progressPercent}% (web API data)`);
             
             return {
               ...course,
               progress: {
-                completedLessons,
-                totalLessons,
-                progressPercent
+                completedLessons: completedPages,
+                totalLessons: totalPages,
+                progressPercent: progressPercent
               }
             };
           } else {
-            console.log(`📊 ${course.title}: No progress data found`);
-            // No progress data
+            console.log(`🌐 ${course.title}: No progress in web API`);
             return {
               ...course,
               progress: {
@@ -130,16 +127,14 @@ export default async function handler(
           }
         });
         
-        console.log('📊 Returning courses with progress');
-        res.status(200).json(coursesWithProgress);
+        console.log('🌐 Returning courses with web API data');
+        res.status(200).json(coursesWithWebProgress);
       } else {
-        console.log('⚠️ Could not fetch progress, status:', progressResponse.status);
-        const errorText = await progressResponse.text();
-        console.log('⚠️ Progress error:', errorText);
+        console.log('⚠️ Web API failed, returning courses without progress');
         res.status(200).json(filteredCourses);
       }
     } catch (error) {
-      console.log('⚠️ Error fetching progress:', error);
+      console.log('⚠️ Error calling web API:', error);
       res.status(200).json(filteredCourses);
     }
     
