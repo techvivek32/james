@@ -5,6 +5,7 @@ import 'package:http/http.dart' as http;
 import 'package:webview_flutter/webview_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:flutter_html/flutter_html.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import '../services/auth_service.dart';
 
 class LessonPlayerScreen extends StatefulWidget {
@@ -83,9 +84,9 @@ class _LessonPlayerScreenState extends State<LessonPlayerScreen> {
         print('✅ Lesson loaded: ${lesson?['title']}');
         print('🎥 Video URL: ${lesson?['videoUrl']}');
         
-        // Initialize WebView for video
+        // Initialize video player
         if (lesson?['videoUrl'] != null) {
-          _initializeWebView(lesson!['videoUrl']);
+          _initializeVideoPlayer(lesson!['videoUrl']);
         }
       } else {
         setState(() {
@@ -100,29 +101,83 @@ class _LessonPlayerScreenState extends State<LessonPlayerScreen> {
     }
   }
 
-  void _initializeWebView(String videoUrl) {
+  void _initializeVideoPlayer(String videoUrl) {
     String embedUrl = _getEmbedUrl(videoUrl);
+    
+    print('🎥 Initializing video player with URL: $embedUrl');
     
     _webViewController = WebViewController()
       ..setJavaScriptMode(JavaScriptMode.unrestricted)
+      ..setBackgroundColor(Colors.black)
+      ..enableZoom(false)
+      ..setUserAgent('Mozilla/5.0 (Linux; Android 10) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.120 Mobile Safari/537.36')
+      ..setNavigationDelegate(
+        NavigationDelegate(
+          onPageStarted: (String url) {
+            print('🔄 Video page started loading: $url');
+          },
+          onPageFinished: (String url) {
+            print('✅ Video page loaded: $url');
+            // Inject JavaScript to prevent auto-pause
+            _webViewController?.runJavaScript('''
+              // Disable media session handlers that cause auto-pause
+              if ('mediaSession' in navigator) {
+                navigator.mediaSession.setActionHandler('pause', null);
+                navigator.mediaSession.setActionHandler('stop', null);
+              }
+              
+              // Find and configure video elements
+              setTimeout(function() {
+                var videos = document.querySelectorAll('video');
+                videos.forEach(function(video) {
+                  video.setAttribute('playsinline', 'true');
+                  video.setAttribute('webkit-playsinline', 'true');
+                  video.removeAttribute('controls');
+                  
+                  // Re-add controls after a delay
+                  setTimeout(function() {
+                    video.setAttribute('controls', 'true');
+                  }, 1000);
+                });
+              }, 2000);
+            ''');
+          },
+          onWebResourceError: (WebResourceError error) {
+            print('❌ Video load error: ${error.description}');
+          },
+        ),
+      )
       ..loadRequest(Uri.parse(embedUrl));
   }
 
   String _getEmbedUrl(String videoUrl) {
+    print('🔗 Original video URL: $videoUrl');
+    
     // Convert various video URL formats to embeddable URLs
     if (videoUrl.contains('vimeo.com')) {
-      final vimeoMatch = RegExp(r'vimeo\.com/(\d+)').firstMatch(videoUrl);
+      // Extract video ID and hash from various Vimeo URL formats
+      final vimeoMatch = RegExp(r'vimeo\.com/(\d+)(?:/([a-zA-Z0-9]+))?').firstMatch(videoUrl);
       if (vimeoMatch != null) {
-        return 'https://player.vimeo.com/video/${vimeoMatch.group(1)}?autoplay=1&title=0&byline=0&portrait=0';
+        final videoId = vimeoMatch.group(1);
+        final hash = vimeoMatch.group(2);
+        // Use Vimeo player with autoplay disabled and playsinline enabled
+        final embedUrl = hash != null 
+          ? 'https://player.vimeo.com/video/$videoId?h=$hash&autoplay=0&playsinline=1&controls=1'
+          : 'https://player.vimeo.com/video/$videoId?autoplay=0&playsinline=1&controls=1';
+        print('✅ Vimeo embed URL: $embedUrl');
+        return embedUrl;
       }
     } else if (videoUrl.contains('youtube.com') || videoUrl.contains('youtu.be')) {
       final youtubeMatch = RegExp(r'(?:youtube\.com/watch\?v=|youtu\.be/)([^&\n?#]+)').firstMatch(videoUrl);
       if (youtubeMatch != null) {
-        return 'https://www.youtube.com/embed/${youtubeMatch.group(1)}?autoplay=1&rel=0&modestbranding=1';
+        final embedUrl = 'https://www.youtube.com/embed/${youtubeMatch.group(1)}?playsinline=1&controls=1';
+        print('✅ YouTube embed URL: $embedUrl');
+        return embedUrl;
       }
     }
     
     // If it's already an embed URL or other format, use as is
+    print('✅ Using original URL');
     return videoUrl;
   }
 
@@ -220,64 +275,12 @@ class _LessonPlayerScreenState extends State<LessonPlayerScreen> {
     return Container(
       height: _isFullscreen ? MediaQuery.of(context).size.height : 220,
       width: double.infinity,
-      child: Stack(
-        children: [
-          // Real WebView video player
-          if (_webViewController != null)
-            WebViewWidget(controller: _webViewController!)
-          else
-            Container(
-              color: Colors.black,
-              child: const Center(
-                child: CircularProgressIndicator(color: Colors.white),
-              ),
+      color: Colors.black,
+      child: _webViewController != null
+          ? WebViewWidget(controller: _webViewController!)
+          : const Center(
+              child: CircularProgressIndicator(color: Colors.white),
             ),
-          
-          // Fullscreen toggle button
-          if (!_isFullscreen)
-            Positioned(
-              top: 8,
-              right: 8,
-              child: GestureDetector(
-                onTap: _toggleFullscreen,
-                child: Container(
-                  padding: const EdgeInsets.all(6),
-                  decoration: BoxDecoration(
-                    color: Colors.black.withOpacity(0.6),
-                    borderRadius: BorderRadius.circular(4),
-                  ),
-                  child: const Icon(
-                    Icons.fullscreen,
-                    color: Colors.white,
-                    size: 18,
-                  ),
-                ),
-              ),
-            ),
-          
-          // Exit fullscreen button
-          if (_isFullscreen)
-            Positioned(
-              top: 8,
-              right: 8,
-              child: GestureDetector(
-                onTap: _toggleFullscreen,
-                child: Container(
-                  padding: const EdgeInsets.all(6),
-                  decoration: BoxDecoration(
-                    color: Colors.black.withOpacity(0.6),
-                    borderRadius: BorderRadius.circular(4),
-                  ),
-                  child: const Icon(
-                    Icons.fullscreen_exit,
-                    color: Colors.white,
-                    size: 18,
-                  ),
-                ),
-              ),
-            ),
-        ],
-      ),
     );
   }
 
@@ -288,14 +291,32 @@ class _LessonPlayerScreenState extends State<LessonPlayerScreen> {
 
     String htmlContent = _lesson!['body'];
     
-    // Check if content is empty after basic cleanup
+    // Remove video containers (video is shown separately at top)
+    htmlContent = htmlContent.replaceAll(RegExp(r'<div[^>]*data-video-type[^>]*>.*?</div>', dotAll: true), '');
+    
+    // Remove delete buttons and their SVG icons, but keep images
+    htmlContent = htmlContent.replaceAll(RegExp(r'<button[^>]*data-image-delete[^>]*>.*?</button>', dotAll: true), '');
+    htmlContent = htmlContent.replaceAll(RegExp(r'<button[^>]*data-video-delete[^>]*>.*?</button>', dotAll: true), '');
+    htmlContent = htmlContent.replaceAll(RegExp(r'<button[^>]*data-video-share[^>]*>.*?</button>', dotAll: true), '');
+    
+    // Remove excessive empty paragraphs and breaks
+    htmlContent = htmlContent.replaceAll(RegExp(r'(<p>\s*<br\s*/?>\s*</p>\s*){2,}'), '<p><br></p>');
+    htmlContent = htmlContent.replaceAll(RegExp(r'(<br\s*/?>\s*){4,}'), '<br><br>');
+    
+    // Fix image URLs to be absolute
+    htmlContent = htmlContent.replaceAll(
+      RegExp(r'<img\s+src="/uploads/'),
+      '<img src="https://millerstorm.tech/uploads/'
+    );
+    
+    // Check if content is empty after cleanup
     String testContent = htmlContent.replaceAll(RegExp(r'<[^>]*>'), '').trim();
     if (testContent.isEmpty) return const SizedBox();
 
     return Container(
       width: double.infinity,
       margin: const EdgeInsets.only(bottom: 16),
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: _white,
         borderRadius: BorderRadius.circular(8),
@@ -306,53 +327,60 @@ class _LessonPlayerScreenState extends State<LessonPlayerScreen> {
           "body": Style(
             margin: Margins.zero,
             padding: HtmlPaddings.zero,
-            fontSize: FontSize(16),
+            fontSize: FontSize(15),
             lineHeight: LineHeight(1.6),
             color: _textMedium,
           ),
           "h1": Style(
-            fontSize: FontSize(24),
+            fontSize: FontSize(22),
             fontWeight: FontWeight.bold,
             color: _textDark,
-            margin: Margins.only(top: 16, bottom: 12),
+            margin: Margins.only(top: 12, bottom: 10),
           ),
           "h2": Style(
-            fontSize: FontSize(20),
+            fontSize: FontSize(18),
             fontWeight: FontWeight.bold,
             color: _textDark,
-            margin: Margins.only(top: 16, bottom: 10),
+            margin: Margins.only(top: 16, bottom: 8),
           ),
           "h3": Style(
-            fontSize: FontSize(18),
+            fontSize: FontSize(16),
             fontWeight: FontWeight.w600,
             color: _textDark,
             margin: Margins.only(top: 14, bottom: 8),
           ),
           "h4": Style(
-            fontSize: FontSize(16),
+            fontSize: FontSize(15),
             fontWeight: FontWeight.w600,
             color: _textDark,
             margin: Margins.only(top: 12, bottom: 6),
           ),
           "p": Style(
-            fontSize: FontSize(16),
+            fontSize: FontSize(15),
             lineHeight: LineHeight(1.6),
             color: _textMedium,
-            margin: Margins.only(bottom: 12),
+            margin: Margins.only(bottom: 10),
+          ),
+          "div": Style(
+            margin: Margins.only(bottom: 8),
+          ),
+          "span": Style(
+            fontSize: FontSize(15),
+            lineHeight: LineHeight(1.6),
           ),
           "ul": Style(
-            margin: Margins.only(left: 8, bottom: 12),
+            margin: Margins.only(left: 8, bottom: 10),
             padding: HtmlPaddings.only(left: 16),
           ),
           "ol": Style(
-            margin: Margins.only(left: 8, bottom: 12),
+            margin: Margins.only(left: 8, bottom: 10),
             padding: HtmlPaddings.only(left: 16),
           ),
           "li": Style(
-            fontSize: FontSize(16),
+            fontSize: FontSize(15),
             lineHeight: LineHeight(1.6),
             color: _textMedium,
-            margin: Margins.only(bottom: 8),
+            margin: Margins.only(bottom: 6),
           ),
           "strong": Style(
             fontWeight: FontWeight.bold,
@@ -372,8 +400,18 @@ class _LessonPlayerScreenState extends State<LessonPlayerScreen> {
             color: _primary,
             textDecoration: TextDecoration.underline,
           ),
+          "img": Style(
+            width: Width(100, Unit.percent),
+            height: Height.auto(),
+            margin: Margins.only(top: 12, bottom: 12),
+            display: Display.block,
+          ),
+          "hr": Style(
+            margin: Margins.only(top: 16, bottom: 16),
+            border: Border(bottom: BorderSide(color: _border, width: 1)),
+          ),
           "blockquote": Style(
-            margin: Margins.only(left: 16, top: 12, bottom: 12),
+            margin: Margins.only(left: 12, top: 10, bottom: 10),
             padding: HtmlPaddings.only(left: 12),
             border: Border(left: BorderSide(color: _primary, width: 3)),
             backgroundColor: _bg,
@@ -386,9 +424,68 @@ class _LessonPlayerScreenState extends State<LessonPlayerScreen> {
           "pre": Style(
             backgroundColor: _bg,
             padding: HtmlPaddings.all(12),
-            margin: Margins.only(bottom: 12),
+            margin: Margins.only(bottom: 10),
           ),
         },
+        extensions: [
+          TagExtension(
+            tagsToExtend: {"img"},
+            builder: (extensionContext) {
+              final src = extensionContext.attributes['src'] ?? '';
+              print('🖼️ Image src: $src');
+              
+              if (src.isEmpty) {
+                print('❌ Empty image src');
+                return const SizedBox();
+              }
+              
+              return Container(
+                margin: const EdgeInsets.symmetric(vertical: 12),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(8),
+                  child: CachedNetworkImage(
+                    imageUrl: src,
+                    fit: BoxFit.cover,
+                    placeholder: (context, url) {
+                      print('⏳ Loading image: $url');
+                      return Container(
+                        height: 200,
+                        color: _bg,
+                        child: const Center(
+                          child: CircularProgressIndicator(color: _primary),
+                        ),
+                      );
+                    },
+                    errorWidget: (context, url, error) {
+                      print('❌ Image load error: $url');
+                      print('❌ Error details: $error');
+                      return Container(
+                        padding: const EdgeInsets.all(16),
+                        color: _bg,
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.image_not_supported, color: _textLight, size: 48),
+                            const SizedBox(height: 8),
+                            Text(
+                              'Image not available',
+                              style: TextStyle(color: _textLight, fontSize: 14),
+                            ),
+                            Text(
+                              url,
+                              style: TextStyle(color: _textLight, fontSize: 10),
+                              textAlign: TextAlign.center,
+                            ),
+                          ],
+                        ),
+                      );
+                    },
+                  ),
+                ),
+              );
+            },
+          ),
+        ],
         onLinkTap: (url, attributes, element) {
           if (url != null) {
             _launchUrl(url);
@@ -402,6 +499,7 @@ class _LessonPlayerScreenState extends State<LessonPlayerScreen> {
     final resourceLinks = _lesson?['resourceLinks'] as List<dynamic>? ?? [];
     final fileUrls = _lesson?['fileUrls'] as List<dynamic>? ?? [];
     
+    // Show Resources section if there are any links or files
     if (resourceLinks.isEmpty && fileUrls.isEmpty) {
       return const SizedBox();
     }
@@ -459,35 +557,41 @@ class _LessonPlayerScreenState extends State<LessonPlayerScreen> {
           )).toList(),
           
           // File downloads
-          ...fileUrls.map((file) => GestureDetector(
-            onTap: () => _launchUrl(file['href'] ?? ''),
-            child: Container(
-              margin: const EdgeInsets.only(bottom: 8),
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: _bg,
-                borderRadius: BorderRadius.circular(6),
-                border: Border.all(color: _border.withOpacity(0.3)),
-              ),
-              child: Row(
-                children: [
-                  Icon(Icons.file_download, color: _primary, size: 18),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Text(
-                      file['label'] ?? 'Download File',
-                      style: const TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w500,
-                        color: _textDark,
+          ...fileUrls.map((file) {
+            final href = file['href'] ?? '';
+            final label = file['label'] ?? 'Download File';
+            final fullUrl = href.startsWith('http') ? href : 'https://millerstorm.tech$href';
+            
+            return GestureDetector(
+              onTap: () => _launchUrl(fullUrl),
+              child: Container(
+                margin: const EdgeInsets.only(bottom: 8),
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: _bg,
+                  borderRadius: BorderRadius.circular(6),
+                  border: Border.all(color: _border.withOpacity(0.3)),
+                ),
+                child: Row(
+                  children: [
+                    Icon(Icons.file_download, color: _primary, size: 18),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        label,
+                        style: const TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w500,
+                          color: _textDark,
+                        ),
                       ),
                     ),
-                  ),
-                  Icon(Icons.download, color: _textLight, size: 14),
-                ],
+                    Icon(Icons.download, color: _textLight, size: 14),
+                  ],
+                ),
               ),
-            ),
-          )).toList(),
+            );
+          }).toList(),
         ],
       ),
     );

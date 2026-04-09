@@ -247,28 +247,35 @@ class _TrainingScreenState extends State<TrainingScreen> {
           ],
         ),
         const SizedBox(height: 12),
-        Builder(
-          builder: (context) => Row(
-            children: [
-              Expanded(child: _buildCoachCard(
+        Row(
+          children: [
+            Expanded(
+              child: _buildCoachCard(
                 icon: Icons.school_outlined,
                 iconBg: Color(0xFFEFF6FF),
                 iconColor: _link,
                 title: 'Training Center',
                 subtitle: 'Courses',
                 onTap: () => Navigator.pushNamed(context, '/courses'),
-              )),
-              const SizedBox(width: 12),
-              Expanded(child: _buildCoachCard(
-                icon: Icons.door_front_door_outlined,
-                iconBg: Color(0xFFFFF7ED),
-                iconColor: Color(0xFFEA580C),
-                title: 'Mock Knocker',
-                subtitle: 'Simulated door-to-door encounters',
-                onTap: null,
-              )),
-            ],
-          ),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: _buildCoachCard(
+                icon: Icons.apps_outlined,
+                iconBg: Color(0xFFF0FDF4),
+                iconColor: Color(0xFF16A34A),
+                title: 'Apps & Tools',
+                subtitle: 'Utilities',
+                onTap: () {
+                  // TODO: Navigate to apps & tools screen
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Apps & Tools coming soon!')),
+                  );
+                },
+              ),
+            ),
+          ],
         ),
       ],
     );

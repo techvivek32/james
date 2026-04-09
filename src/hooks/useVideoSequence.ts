@@ -7,6 +7,7 @@
  * When autoPlay is ON:
  *   - Each video ending plays the next one automatically
  *   - Last video ending → onAllEnded() (navigate to next lesson/quiz)
+ *   - Mobile-friendly: attempts autoplay with 2-3 second delay and user interaction simulation
  *
  * When autoPlay is OFF:
  *   - Videos don't auto-chain
@@ -26,6 +27,207 @@ declare global {
     _ytApiReady?: boolean;
     _ytApiCallbacks?: Array<() => void>;
   }
+}
+
+// ── Simulate user interaction to unlock autoplay ─────────────────────────────
+function simulateUserInteraction(): void {
+  console.log('[VideoSeq] Simulating user interaction to unlock autoplay...');
+  
+  // Create comprehensive interaction events
+  const interactionEvents = [
+    'touchstart', 'touchend', 'touchmove',
+    'mousedown', 'mouseup', 'mousemove', 'click',
+    'pointerdown', 'pointerup', 'pointermove',
+    'keydown', 'keyup'
+  ];
+  
+  // Dispatch events on multiple targets
+  const targets = [document, document.body, document.documentElement];
+  
+  interactionEvents.forEach(eventType => {
+    targets.forEach(target => {
+      try {
+        const event = new Event(eventType, { 
+          bubbles: true, 
+          cancelable: true,
+          composed: true 
+        });
+        target.dispatchEvent(event);
+      } catch (e) {
+        // Ignore errors for unsupported events
+      }
+    });
+  });
+  
+  // Also try with specific coordinates for touch/mouse events
+  try {
+    const touchEvent = new TouchEvent('touchstart', {
+      bubbles: true,
+      cancelable: true,
+      touches: [{
+        identifier: 0,
+        target: document.body,
+        clientX: 100,
+        clientY: 100,
+        pageX: 100,
+        pageY: 100,
+        screenX: 100,
+        screenY: 100,
+        radiusX: 1,
+        radiusY: 1,
+        rotationAngle: 0,
+        force: 1
+      } as any]
+    });
+    document.dispatchEvent(touchEvent);
+  } catch (e) {
+    // TouchEvent constructor might not be available
+  }
+  
+  console.log('[VideoSeq] User interaction simulation complete');
+}
+
+// ── Mobile detection ──────────────────────────────────────────────────────────
+function isMobileDevice(): boolean {
+  if (typeof window === 'undefined') return false;
+  const userAgentCheck = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+  const touchPointsCheck = Boolean(navigator.maxTouchPoints && navigator.maxTouchPoints > 2);
+  return userAgentCheck || touchPointsCheck;
+}
+
+// ── Mobile-friendly autoplay with aggressive bypass techniques ─────────────────
+function attemptMobileAutoplay(playFunction: () => Promise<void> | void, delay: number = 2500): void {
+  // Try multiple strategies to bypass mobile autoplay restrictions
+  
+  // Strategy 1: Immediate attempt (works on some devices)
+  setTimeout(() => {
+    try {
+      const result = playFunction();
+      if (result instanceof Promise) {
+        result.catch(() => {
+          console.log('[VideoSeq] First attempt blocked, trying advanced techniques...');
+        });
+      }
+    } catch (e) {
+      console.log('[VideoSeq] First attempt failed:', e);
+    }
+  }, 100);
+
+  // Strategy 2: Delayed attempt with multiple interaction simulations
+  setTimeout(() => {
+    try {
+      console.log('[VideoSeq] Attempting aggressive mobile autoplay...');
+      
+      // Create multiple synthetic events to simulate user interaction
+      const events = [
+        new Event('touchstart', { bubbles: true, cancelable: true }),
+        new Event('touchend', { bubbles: true, cancelable: true }),
+        new Event('click', { bubbles: true, cancelable: true }),
+        new Event('mousedown', { bubbles: true, cancelable: true }),
+        new Event('mouseup', { bubbles: true, cancelable: true }),
+        new Event('pointerdown', { bubbles: true, cancelable: true }),
+        new Event('pointerup', { bubbles: true, cancelable: true })
+      ];
+      
+      // Dispatch all events
+      events.forEach(event => {
+        document.dispatchEvent(event);
+        document.body.dispatchEvent(event);
+      });
+      
+      // Try playing after synthetic interactions
+      setTimeout(() => {
+        try {
+          const result = playFunction();
+          if (result instanceof Promise) {
+            result.then(() => {
+              console.log('[VideoSeq] Aggressive autoplay successful');
+            }).catch((error) => {
+              console.log('[VideoSeq] Still blocked, trying final strategy...', error);
+              // Strategy 3: Force play with muted first, then unmute
+              attemptMutedThenUnmute(playFunction);
+            });
+          }
+        } catch (e) {
+          console.log('[VideoSeq] Aggressive autoplay failed:', e);
+          attemptMutedThenUnmute(playFunction);
+        }
+      }, 200);
+    } catch (e) {
+      console.log('[VideoSeq] Aggressive autoplay setup failed:', e);
+    }
+  }, delay);
+}
+
+// ── Strategy 3: Play muted first, then unmute after playback starts ──────────
+function attemptMutedThenUnmute(playFunction: () => Promise<void> | void): void {
+  console.log('[VideoSeq] Trying muted-first strategy...');
+  
+  // Find all video elements and try muted autoplay
+  const videos = document.querySelectorAll('video');
+  videos.forEach(video => {
+    video.muted = true;
+    video.play().then(() => {
+      console.log('[VideoSeq] Muted autoplay successful, unmuting...');
+      setTimeout(() => {
+        video.muted = false;
+      }, 1000);
+    }).catch(() => {
+      console.log('[VideoSeq] Even muted autoplay blocked');
+    });
+  });
+  
+  // Try the original play function with muted approach
+  setTimeout(() => {
+    try {
+      const result = playFunction();
+      if (result instanceof Promise) {
+        result.catch(() => {
+          console.log('[VideoSeq] Final strategy also blocked');
+        });
+      }
+    } catch (e) {
+      console.log('[VideoSeq] Final strategy failed:', e);
+    }
+  }, 500);
+}
+
+// ── Show play prompt for blocked autoplay ─────────────────────────────────────
+function showPlayPrompt(): void {
+  // Create a subtle notification that video is ready to play
+  const notification = document.createElement('div');
+  notification.style.cssText = `
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    background: #DC2626;
+    color: white;
+    padding: 12px 16px;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 500;
+    z-index: 1000;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    cursor: pointer;
+    transition: opacity 0.3s ease;
+  `;
+  notification.textContent = '▶️ Tap to play video';
+  
+  // Auto-remove after 5 seconds
+  setTimeout(() => {
+    if (notification.parentNode) {
+      notification.style.opacity = '0';
+      setTimeout(() => notification.remove(), 300);
+    }
+  }, 5000);
+  
+  // Remove on click
+  notification.addEventListener('click', () => {
+    notification.style.opacity = '0';
+    setTimeout(() => notification.remove(), 300);
+  });
+  
+  document.body.appendChild(notification);
 }
 
 // ── YouTube API loader ────────────────────────────────────────────────────────
@@ -64,12 +266,18 @@ function enableVimeoApi(iframe: HTMLIFrameElement): void {
     const url = new URL(src);
     url.searchParams.set('api', '1');
     url.searchParams.set('autopause', '0');
+    // Aggressive mobile autoplay parameters
+    url.searchParams.set('autoplay', '1');
+    url.searchParams.set('muted', '0');
+    url.searchParams.set('playsinline', '1');
+    url.searchParams.set('background', '1'); // Allows autoplay on mobile
+    url.searchParams.set('controls', '1');
     iframe.removeAttribute('loading');
     iframe.src = url.toString();
   } catch {
     const sep = src.includes('?') ? '&' : '?';
     iframe.removeAttribute('loading');
-    iframe.src = src + sep + 'api=1&autopause=0';
+    iframe.src = src + sep + 'api=1&autopause=0&autoplay=1&muted=0&playsinline=1&background=1&controls=1';
   }
 }
 
@@ -115,6 +323,9 @@ export async function initVideoSequence(
   autoPlayRef: { current: boolean }
 ): Promise<(() => void) | undefined> {
   if (typeof window === 'undefined') return;
+
+  // Immediately simulate user interaction to unlock autoplay
+  simulateUserInteraction();
 
   const allEls = Array.from(container.querySelectorAll<HTMLElement>('iframe, video'));
   if (allEls.length === 0) return;
@@ -166,13 +377,17 @@ export async function initVideoSequence(
     // Scroll the next video into view before playing
     scrollToEntry(e);
 
+    // Use mobile-friendly autoplay for all video types
     if (e.type === 'vimeo') {
-      e.player.play().catch(() => {});
+      attemptMobileAutoplay(() => e.player.play());
     } else if (e.type === 'yt') {
-      if (e.ready && e.player) e.player.playVideo();
-      else e.pendingPlay = true;
+      if (e.ready && e.player) {
+        attemptMobileAutoplay(() => e.player.playVideo());
+      } else {
+        e.pendingPlay = true;
+      }
     } else {
-      e.video.play().catch(() => {});
+      attemptMobileAutoplay(() => e.video.play());
     }
   }
 
@@ -198,20 +413,33 @@ export async function initVideoSequence(
       }
     }));
 
-    // Autoplay first video if autoPlay is on
-    if (autoPlayRef.current && entries[0]?.type === 'vimeo' && entries[0].player) {
-      entries[0].player.play().catch(() => {});
+    // Mobile-friendly autoplay for first Vimeo video
+    if (autoPlayRef.current && entries[0]?.type === 'vimeo') {
+      const vimeoEntry = entries[0] as Extract<Entry, { type: 'vimeo' }>;
+      if (vimeoEntry.player) {
+        attemptMobileAutoplay(() => vimeoEntry.player.play());
+      }
     }
   }
 
   // ── HTML5 ─────────────────────────────────────────────────────────────────
   entries.forEach(e => {
     if (e.type !== 'html5') return;
+    
+    // Configure HTML5 video for mobile autoplay
+    e.video.setAttribute('playsinline', 'true');
+    e.video.setAttribute('webkit-playsinline', 'true');
+    e.video.muted = false; // Keep audio on
+    
     e.video.addEventListener('ended', () => {
       if (e.seqIdx === total - 1) onAllEnded();
       else if (autoPlayRef.current) playItem(e.seqIdx + 1);
     });
-    if (e.seqIdx === 0 && autoPlayRef.current) e.video.play().catch(() => {});
+    
+    // Mobile-friendly autoplay for first HTML5 video
+    if (e.seqIdx === 0 && autoPlayRef.current) {
+      attemptMobileAutoplay(() => e.video.play());
+    }
   });
 
   // ── YouTube ───────────────────────────────────────────────────────────────
@@ -232,12 +460,32 @@ export async function initVideoSequence(
         videoId,
         width: '100%',
         height: '100%',
-        playerVars: { autoplay: seqIdx === 0 && autoPlayRef.current ? 1 : 0, enablejsapi: 1, rel: 0 },
+        playerVars: { 
+          autoplay: 1, // Force autoplay for YouTube
+          enablejsapi: 1, 
+          rel: 0,
+          playsinline: 1,
+          mute: 0,
+          controls: 1,
+          modestbranding: 1,
+          iv_load_policy: 3
+        },
         events: {
           onReady: () => {
             ytEntry.ready = true;
             ytEntry.player = player;
-            if (ytEntry.pendingPlay) { ytEntry.pendingPlay = false; player.playVideo(); }
+            
+            // Aggressive autoplay for first YouTube video
+            if (seqIdx === 0 && autoPlayRef.current) {
+              // Try multiple times with different delays
+              setTimeout(() => player.playVideo(), 100);
+              setTimeout(() => player.playVideo(), 500);
+              setTimeout(() => player.playVideo(), 1000);
+              setTimeout(() => player.playVideo(), 2000);
+            } else if (ytEntry.pendingPlay) {
+              ytEntry.pendingPlay = false;
+              attemptMobileAutoplay(() => player.playVideo());
+            }
           },
           onStateChange: (ev: any) => {
             if (ev.data === 0) { // ended

@@ -5,6 +5,7 @@ import { useAuth } from "../../contexts/AuthContext";
 import { ShareModal } from "../../components/ShareModal";
 import { initVideoSequence } from "../../hooks/useVideoSequence";
 import { PlaybookTimer } from "../../components/PlaybookTimer";
+import { enableGlobalAutoplay } from "../../utils/autoplayEnabler";
 
 type Playlist = {
   id: string;
@@ -65,6 +66,9 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
 
   // Handle lessonId from query parameter (shared lesson)
   useEffect(() => {
+    // Enable global autoplay for all devices
+    enableGlobalAutoplay();
+    
     if (typeof window !== 'undefined') {
       const params = new URLSearchParams(window.location.search);
       const lessonId = params.get('lessonId');
