@@ -135,6 +135,23 @@ export default async function handler(
     }
 
     try {
+      // Try to fetch real progress from live API first
+      const liveApiUrl = `https://millerstorm.tech/api/course-progress?userId=${userId}&courseIds=${courseIds}`;
+      console.log('📊 Calling live API:', liveApiUrl);
+      
+      try {
+        const liveResponse = await fetch(liveApiUrl);
+        if (liveResponse.ok) {
+          const liveData = await liveResponse.json();
+          console.log('✅ Got live progress data:', Object.keys(liveData).length, 'courses');
+          res.status(200).json(liveData);
+          return;
+        }
+      } catch (liveError) {
+        console.log('⚠️ Live API failed, using fallback:', liveError instanceof Error ? liveError.message : String(liveError));
+      }
+      
+      // Fallback to mock data
       const courseIdArray = (courseIds as string).split(',');
       const userProgress = mockProgressData[userId as string] || {};
       
@@ -149,7 +166,7 @@ export default async function handler(
         result[courseId] = courseProgress;
       });
 
-      console.log('📊 Batch progress found:', result);
+      console.log('📊 Fallback progress found:', result);
       res.status(200).json(result);
       return;
     } catch (error) {

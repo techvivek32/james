@@ -49,6 +49,18 @@ class _CoursesScreenState extends State<CoursesScreen> {
         final data = jsonDecode(response.body);
         print('✅ Courses loaded: ${data is List ? data.length : 0} courses');
         
+        // Print progress for each course
+        if (data is List) {
+          for (var course in data) {
+            final progress = course['progress'];
+            if (progress != null) {
+              print('📊 ${course['title']}: ${progress['progressPercent']}%');
+            } else {
+              print('📊 ${course['title']}: No progress data');
+            }
+          }
+        }
+        
         // Sort courses by order field (web ni jem)
         List<dynamic> courses = data is List ? data : [];
         courses.sort((a, b) {

@@ -60,37 +60,25 @@ export default async function handler(
         progress.totalLessons = course.lessonNames.length;
       }
 
-      // Get real progress from progress API
+      // Get real progress from web's existing API
       if (userId) {
         try {
-          // Use localhost for API calls since we're running on the same server
           const baseUrl = req.headers.host?.includes('localhost') ? 'http://localhost:6790' : `https://${req.headers.host}`;
           const progressResponse = await fetch(`${baseUrl}/api/progress?userId=${userId}&courseId=${id}`);
           if (progressResponse.ok) {
             const progressData = await progressResponse.json();
+            
+            // Use web's exact calculation
             progress.completedLessons = progressData.completedPages?.length || 0;
-            
-            // Calculate total lessons from course structure or use progress data
-            if (progress.totalLessons === 0 && progressData.totalPages) {
-              progress.totalLessons = progressData.totalPages;
-            }
-            
-            // If still no total, estimate from course structure
-            if (progress.totalLessons === 0) {
-              // Estimate based on course complexity
-              progress.totalLessons = 30; // Default estimate
-            }
-            
+            progress.totalLessons = course.pages?.length || 0;
             progress.progressPercent = progress.totalLessons > 0 
               ? Math.round((progress.completedLessons / progress.totalLessons) * 100)
               : 0;
-            console.log('✅ Progress loaded from API:', progress);
+              
+            console.log(`✅ Progress: ${progress.completedLessons}/${progress.totalLessons} = ${progress.progressPercent}% (web data)`);
           }
         } catch (error) {
           console.log('⚠️ Could not fetch progress data:', error);
-          // Use fallback calculation
-          progress.completedLessons = Math.floor(progress.totalLessons * 0.06);
-          progress.progressPercent = Math.round((progress.completedLessons / progress.totalLessons) * 100);
         }
       }
 
