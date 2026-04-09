@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import '../services/auth_service.dart';
 
 class CoursesScreen extends StatefulWidget {
   const CoursesScreen({super.key});
@@ -27,22 +28,45 @@ class _CoursesScreenState extends State<CoursesScreen> {
 
   Future<void> _fetchCourses() async {
     try {
+      // Get logged in user info
+      final user = await AuthService.getStoredUser();
+      final userId = user?['id'] ?? '';
+      final userRole = user?['role'] ?? '';
+      
+      print('🔵 Fetching courses for user: $userId, role: $userRole');
+      print('🔵 URL: https://millerstorm.tech/api/courses?userId=$userId&userRole=$userRole');
+      
       final response = await http.get(
-        Uri.parse('http://localhost:6790/api/courses'),
+        Uri.parse('https://millerstorm.tech/api/courses?userId=$userId&userRole=$userRole'),
       );
+
+      print('🔵 Courses response status: ${response.statusCode}');
+      print('🔵 Courses response body: ${response.body.substring(0, response.body.length > 200 ? 200 : response.body.length)}...');
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
+        print('✅ Courses loaded: ${data is List ? data.length : 0} courses');
+        
+        // Sort courses by order field (web ni jem)
+        List<dynamic> courses = data is List ? data : [];
+        courses.sort((a, b) {
+          final orderA = a['order'] ?? 999;
+          final orderB = b['order'] ?? 999;
+          return orderA.compareTo(orderB);
+        });
+        
         setState(() {
-          _courses = data is List ? data : [];
+          _courses = courses;
           _isLoading = false;
         });
       } else {
+        print('❌ Failed to load courses: ${response.statusCode}');
         setState(() {
           _isLoading = false;
         });
       }
     } catch (e) {
+      print('❌ Error fetching courses: $e');
       setState(() {
         _isLoading = false;
       });
@@ -80,6 +104,7 @@ class _CoursesScreenState extends State<CoursesScreen> {
                         course['title'] ?? 'Untitled',
                         '0%',
                         _getCourseIcon(course['icon']),
+                        course['coverImageUrl'],
                       ),
                     );
                   },
@@ -93,7 +118,7 @@ class _CoursesScreenState extends State<CoursesScreen> {
     return Icons.school_outlined;
   }
 
-  Widget _buildCourseCard(String title, String progress, IconData icon) {
+  Widget _buildCourseCard(String title, String progress, IconData icon, String? coverImageUrl) {
     return Container(
       decoration: BoxDecoration(
         color: _white,
@@ -112,19 +137,49 @@ class _CoursesScreenState extends State<CoursesScreen> {
           Container(
             height: 160,
             decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [_primary, _primary.withOpacity(0.8)],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
+              gradient: coverImageUrl == null || coverImageUrl.isEmpty
+                  ? LinearGradient(
+                      colors: [_primary, _primary.withOpacity(0.8)],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    )
+                  : null,
               borderRadius: const BorderRadius.only(
                 topLeft: Radius.circular(16),
                 topRight: Radius.circular(16),
               ),
             ),
-            child: Center(
-              child: Icon(icon, size: 64, color: _white),
-            ),
+            child: coverImageUrl != null && coverImageUrl.isNotEmpty
+                ? ClipRRect(
+                    borderRadius: const BorderRadius.only(
+                      topLeft: Radius.circular(16),
+                      topRight: Radius.circular(16),
+                    ),
+                    child: Image.network(
+                      coverImageUrl,
+                      width: double.infinity,
+                      height: 160,
+                      fit: BoxFit.cover,
+                      errorBuilder: (context, error, stackTrace) {
+                        // Agar image load na thay to icon batavo
+                        return Container(
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              colors: [_primary, _primary.withOpacity(0.8)],
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                            ),
+                          ),
+                          child: Center(
+                            child: Icon(icon, size: 64, color: _white),
+                          ),
+                        );
+                      },
+                    ),
+                  )
+                : Center(
+                    child: Icon(icon, size: 64, color: _white),
+                  ),
           ),
           Padding(
             padding: const EdgeInsets.all(16),

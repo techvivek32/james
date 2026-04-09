@@ -6,21 +6,43 @@ const String baseUrl = 'https://millerstorm.tech';
 
 class AuthService {
   static Future<Map<String, dynamic>> login(String email, String password) async {
-    final response = await http.post(
-      Uri.parse('$baseUrl/api/login'),
-      headers: {'Content-Type': 'application/json'},
-      body: jsonEncode({'email': email, 'password': password}),
-    );
+    try {
+      print('🔵 Attempting login to: $baseUrl/api/login');
+      print('🔵 Email: $email');
+      
+      final response = await http.post(
+        Uri.parse('$baseUrl/api/login'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'email': email, 'password': password}),
+      );
 
-    final data = jsonDecode(response.body);
+      print('🔵 Response status: ${response.statusCode}');
+      print('🔵 Response body: ${response.body}');
 
-    if (!response.statusCode.toString().startsWith('2')) {
-      throw Exception(data['error'] ?? 'Login failed');
+      // Check if response is HTML (error page)
+      if (response.body.trim().startsWith('<')) {
+        print('❌ Server returned HTML instead of JSON');
+        throw Exception('Server returned HTML instead of JSON. Please check if backend is running properly.');
+      }
+
+      final data = jsonDecode(response.body);
+
+      if (!response.statusCode.toString().startsWith('2')) {
+        print('❌ Login failed: ${data['error']}');
+        throw Exception(data['error'] ?? 'Login failed');
+      }
+
+      print('✅ Login successful');
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('user', jsonEncode(data));
+      return data;
+    } catch (e) {
+      print('❌ Login error: $e');
+      if (e.toString().contains('SocketException') || e.toString().contains('Failed host lookup')) {
+        throw Exception('Cannot connect to server. Please check your internet connection.');
+      }
+      rethrow;
     }
-
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString('user', jsonEncode(data));
-    return data;
   }
 
   static Future<Map<String, dynamic>?> getStoredUser() async {

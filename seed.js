@@ -221,6 +221,10 @@ const initialCourses = [
     riskScore: 30,
     capitalScore: 10,
     personalityScore: 70,
+    status: "published",
+    accessMode: "open",
+    order: 1,
+    coverImageUrl: "https://i.ibb.co/9ZQZ9ZQ/million-dollar-playbook.jpg",
     quizQuestions: [
       {
         id: "dq1",
@@ -266,6 +270,10 @@ const initialCourses = [
     riskScore: 40,
     capitalScore: 5,
     personalityScore: 80,
+    status: "published",
+    accessMode: "open",
+    order: 2,
+    coverImageUrl: "https://i.ibb.co/9ZQZ9ZQ/objections-masterclass.jpg",
     quizQuestions: [
       {
         id: "oq1",
@@ -319,6 +327,10 @@ const courseSchema = new mongoose.Schema({
   riskScore: Number,
   capitalScore: Number,
   personalityScore: Number,
+  status: String,
+  accessMode: String,
+  order: Number,
+  coverImageUrl: String,
   quizQuestions: [mongoose.Schema.Types.Mixed],
   links: [mongoose.Schema.Types.Mixed]
 }, { timestamps: true });

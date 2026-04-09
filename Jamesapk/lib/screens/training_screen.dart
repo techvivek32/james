@@ -201,24 +201,28 @@ class TrainingScreen extends StatelessWidget {
           ],
         ),
         const SizedBox(height: 12),
-        Row(
-          children: [
-            Expanded(child: _buildCoachCard(
-              icon: Icons.chat_bubble_outline,
-              iconBg: Color(0xFFEFF6FF),
-              iconColor: _link,
-              title: 'Objection Smasher',
-              subtitle: 'Practice real-time objection handling',
-            )),
-            const SizedBox(width: 12),
-            Expanded(child: _buildCoachCard(
-              icon: Icons.door_front_door_outlined,
-              iconBg: Color(0xFFFFF7ED),
-              iconColor: Color(0xFFEA580C),
-              title: 'Mock Knocker',
-              subtitle: 'Simulated door-to-door encounters',
-            )),
-          ],
+        Builder(
+          builder: (context) => Row(
+            children: [
+              Expanded(child: _buildCoachCard(
+                icon: Icons.school_outlined,
+                iconBg: Color(0xFFEFF6FF),
+                iconColor: _link,
+                title: 'Training Center',
+                subtitle: 'Courses',
+                onTap: () => Navigator.pushNamed(context, '/courses'),
+              )),
+              const SizedBox(width: 12),
+              Expanded(child: _buildCoachCard(
+                icon: Icons.door_front_door_outlined,
+                iconBg: Color(0xFFFFF7ED),
+                iconColor: Color(0xFFEA580C),
+                title: 'Mock Knocker',
+                subtitle: 'Simulated door-to-door encounters',
+                onTap: null,
+              )),
+            ],
+          ),
         ),
       ],
     );
@@ -230,28 +234,32 @@ class TrainingScreen extends StatelessWidget {
     required Color iconColor,
     required String title,
     required String subtitle,
+    VoidCallback? onTap,
   }) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: _white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 8)],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            width: 44,
-            height: 44,
-            decoration: BoxDecoration(color: iconBg, shape: BoxShape.circle),
-            child: Icon(icon, color: iconColor, size: 22),
-          ),
-          const SizedBox(height: 12),
-          Text(title, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: _textDark)),
-          const SizedBox(height: 4),
-          Text(subtitle, style: const TextStyle(fontSize: 12, color: _textLight)),
-        ],
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: _white,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 8)],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              width: 44,
+              height: 44,
+              decoration: BoxDecoration(color: iconBg, shape: BoxShape.circle),
+              child: Icon(icon, color: iconColor, size: 22),
+            ),
+            const SizedBox(height: 12),
+            Text(title, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: _textDark)),
+            const SizedBox(height: 4),
+            Text(subtitle, style: const TextStyle(fontSize: 12, color: _textLight)),
+          ],
+        ),
       ),
     );
   }
