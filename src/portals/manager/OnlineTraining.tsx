@@ -331,10 +331,14 @@ export function ManagerOnlineTrainingPage(props: {
             const totalPages = lessonPages.length;
             const completedLessonIds = new Set(lessonPages.map(p => p.id));
             const completedPages = (courseData.completedPages || []).filter((id: string) => completedLessonIds.has(id)).length;
+            
+            // Auto-complete course when all lessons are done OR when explicitly marked complete
+            const isCompleted = courseData.courseCompleted || (totalPages > 0 && completedPages >= totalPages);
+            
             progressMap[course.id] = { 
               completed: completedPages, 
               total: totalPages,
-              isCompleted: courseData.courseCompleted || false
+              isCompleted: isCompleted
             };
           });
           
