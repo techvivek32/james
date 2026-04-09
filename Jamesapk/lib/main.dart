@@ -5,6 +5,7 @@ import 'screens/stormchat_screen.dart';
 import 'screens/rankings_screen.dart';
 import 'screens/planner_screen.dart';
 import 'screens/courses_screen.dart';
+import 'screens/course_detail_screen.dart';
 
 void main() {
   runApp(const MillerStormApp());

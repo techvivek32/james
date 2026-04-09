@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'dart:convert';
+import 'dart:typed_data';
 import 'package:http/http.dart' as http;
 import '../services/auth_service.dart';
+import 'course_detail_screen.dart';
 
 class CoursesScreen extends StatefulWidget {
   const CoursesScreen({super.key});
@@ -100,11 +102,24 @@ class _CoursesScreenState extends State<CoursesScreen> {
                     final course = _courses[index];
                     return Padding(
                       padding: const EdgeInsets.only(bottom: 16),
-                      child: _buildCourseCard(
-                        course['title'] ?? 'Untitled',
-                        '0%',
-                        _getCourseIcon(course['icon']),
-                        course['coverImageUrl'],
+                      child: GestureDetector(
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => CourseDetailScreen(
+                                courseId: course['id'] ?? '',
+                                courseTitle: course['title'] ?? 'Course',
+                              ),
+                            ),
+                          );
+                        },
+                        child: _buildCourseCard(
+                          course['title'] ?? 'Untitled',
+                          '${course['progress']?['progressPercent'] ?? 0}%',
+                          _getCourseIcon(course['icon']),
+                          course['coverImageUrl'],
+                        ),
                       ),
                     );
                   },
@@ -155,27 +170,47 @@ class _CoursesScreenState extends State<CoursesScreen> {
                       topLeft: Radius.circular(16),
                       topRight: Radius.circular(16),
                     ),
-                    child: Image.network(
-                      coverImageUrl,
-                      width: double.infinity,
-                      height: 160,
-                      fit: BoxFit.cover,
-                      errorBuilder: (context, error, stackTrace) {
-                        // Agar image load na thay to icon batavo
-                        return Container(
-                          decoration: BoxDecoration(
-                            gradient: LinearGradient(
-                              colors: [_primary, _primary.withOpacity(0.8)],
-                              begin: Alignment.topLeft,
-                              end: Alignment.bottomRight,
-                            ),
+                    child: coverImageUrl.startsWith('data:image/')
+                        ? Image.memory(
+                            base64Decode(coverImageUrl.split(',')[1]),
+                            width: double.infinity,
+                            height: 160,
+                            fit: BoxFit.cover,
+                            errorBuilder: (context, error, stackTrace) {
+                              return Container(
+                                decoration: BoxDecoration(
+                                  gradient: LinearGradient(
+                                    colors: [_primary, _primary.withOpacity(0.8)],
+                                    begin: Alignment.topLeft,
+                                    end: Alignment.bottomRight,
+                                  ),
+                                ),
+                                child: Center(
+                                  child: Icon(icon, size: 64, color: _white),
+                                ),
+                              );
+                            },
+                          )
+                        : Image.network(
+                            coverImageUrl,
+                            width: double.infinity,
+                            height: 160,
+                            fit: BoxFit.cover,
+                            errorBuilder: (context, error, stackTrace) {
+                              return Container(
+                                decoration: BoxDecoration(
+                                  gradient: LinearGradient(
+                                    colors: [_primary, _primary.withOpacity(0.8)],
+                                    begin: Alignment.topLeft,
+                                    end: Alignment.bottomRight,
+                                  ),
+                                ),
+                                child: Center(
+                                  child: Icon(icon, size: 64, color: _white),
+                                ),
+                              );
+                            },
                           ),
-                          child: Center(
-                            child: Icon(icon, size: 64, color: _white),
-                          ),
-                        );
-                      },
-                    ),
                   )
                 : Center(
                     child: Icon(icon, size: 64, color: _white),

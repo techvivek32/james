@@ -1,18 +1,64 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'dart:convert';
 
-class TrainingScreen extends StatelessWidget {
+class TrainingScreen extends StatefulWidget {
   const TrainingScreen({super.key});
 
-  // Strict Color Codes
+  @override
+  State<TrainingScreen> createState() => _TrainingScreenState();
+}
+
+class _TrainingScreenState extends State<TrainingScreen> {
+  // Miller Storm Red Theme
   static const _bg = Color(0xFFF3F4F6);
   static const _white = Color(0xFFFFFFFF);
-  static const _primary = Color(0xFF1D4ED8);
+  static const _primary = Color(0xFFDC2626); // Miller Storm Red
   static const _textDark = Color(0xFF111827);
   static const _textMedium = Color(0xFF374151);
   static const _textLight = Color(0xFF6B7280);
   static const _textPlaceholder = Color(0xFF9CA3AF);
   static const _border = Color(0xFFD1D5DB);
-  static const _link = Color(0xFF2563EB);
+  static const _link = Color(0xFFDC2626); // Miller Storm Red
+
+  String _greeting = 'Good Morning';
+  String _userName = 'Loading...';
+
+  @override
+  void initState() {
+    super.initState();
+    _loadUserData();
+    _setGreeting();
+  }
+
+  void _setGreeting() {
+    final hour = DateTime.now().hour;
+    if (hour < 12) {
+      _greeting = 'Good Morning';
+    } else if (hour < 17) {
+      _greeting = 'Good Afternoon';
+    } else {
+      _greeting = 'Good Evening';
+    }
+  }
+
+  Future<void> _loadUserData() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final userStr = prefs.getString('user');
+      if (userStr != null) {
+        final user = jsonDecode(userStr);
+        setState(() {
+          _userName = user['name'] ?? 'User';
+        });
+      }
+    } catch (e) {
+      print('Error loading user data: $e');
+      setState(() {
+        _userName = 'User';
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -76,11 +122,11 @@ class TrainingScreen extends StatelessWidget {
               ],
             ),
             const SizedBox(width: 10),
-            const Column(
+            Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('Good Morning,', style: TextStyle(fontSize: 13, color: _textLight)),
-                Text('John Doe', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: _textDark)),
+                Text('$_greeting,', style: const TextStyle(fontSize: 13, color: _textLight)),
+                Text(_userName, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: _textDark)),
               ],
             ),
           ],

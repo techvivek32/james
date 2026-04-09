@@ -1,8 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import { connectMongo } from "../../src/lib/mongodb";
-import { UserModel } from "../../src/lib/models/User";
 
-// Mock progress data for now - you can implement real progress tracking later
+// Mock progress data - same as progress.ts
 const mockProgressData: Record<string, Record<string, any>> = {
   "ishitapatel3456@gmail.com": {
     // Live server course IDs
@@ -71,6 +70,40 @@ const mockProgressData: Record<string, Record<string, any>> = {
       totalPages: 20,
       isCompleted: false
     }
+  },
+  "sales-1": {
+    // Live server course IDs
+    "course-1772692234004": {
+      completedPages: ["page1", "page2", "page3"],
+      totalPages: 33,
+      isCompleted: false
+    },
+    "course-1773328848873": {
+      completedPages: ["page1", "page2"],
+      totalPages: 15,
+      isCompleted: false
+    },
+    "course-1773283521827": {
+      completedPages: ["page1"],
+      totalPages: 20,
+      isCompleted: false
+    },
+    // Local course IDs (fallback)
+    "million-dollar-playbook": {
+      completedPages: ["page1", "page2", "page3"],
+      totalPages: 33,
+      isCompleted: false
+    },
+    "adjuster-appointment": {
+      completedPages: ["page1", "page2"],
+      totalPages: 15,
+      isCompleted: false
+    },
+    "objections-masterclass": {
+      completedPages: ["page1"],
+      totalPages: 20,
+      isCompleted: false
+    }
   }
 };
 
@@ -92,29 +125,35 @@ export default async function handler(
   await connectMongo();
 
   if (req.method === "GET") {
-    const { userId, courseId } = req.query;
+    const { userId, courseIds } = req.query;
     
-    console.log('📊 Progress API called for userId:', userId, 'courseId:', courseId);
+    console.log('📊 Course Progress API called for userId:', userId, 'courseIds:', courseIds);
     
-    if (!userId || !courseId) {
-      res.status(400).json({ error: 'userId and courseId are required' });
+    if (!userId || !courseIds) {
+      res.status(400).json({ error: 'userId and courseIds are required' });
       return;
     }
 
     try {
-      // Get user progress (mock data for now)
+      const courseIdArray = (courseIds as string).split(',');
       const userProgress = mockProgressData[userId as string] || {};
-      const courseProgress = userProgress[courseId as string] || {
-        completedPages: [],
-        totalPages: 0,
-        isCompleted: false
-      };
+      
+      const result: Record<string, any> = {};
+      
+      courseIdArray.forEach(courseId => {
+        const courseProgress = userProgress[courseId] || {
+          completedPages: [],
+          totalPages: 0,
+          isCompleted: false
+        };
+        result[courseId] = courseProgress;
+      });
 
-      console.log('📊 Progress found:', courseProgress);
-      res.status(200).json(courseProgress);
+      console.log('📊 Batch progress found:', result);
+      res.status(200).json(result);
       return;
     } catch (error) {
-      console.error('❌ Error fetching progress:', error);
+      console.error('❌ Error fetching course progress:', error);
       res.status(500).json({ error: 'Internal server error' });
       return;
     }

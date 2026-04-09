@@ -79,7 +79,55 @@ export default async function handler(
     });
     
     console.log('📚 Filtered courses count:', filteredCourses.length);
-    res.status(200).json(filteredCourses);
+    
+    // Add progress to each course
+    try {
+      const courseIds = filteredCourses.map(c => c.id).join(',');
+      // Use localhost for API calls since we're running on the same server
+      const baseUrl = req.headers.host?.includes('localhost') ? 'http://localhost:6790' : `https://${req.headers.host}`;
+      const progressResponse = await fetch(`${baseUrl}/api/course-progress?userId=${userId}&courseIds=${courseIds}`);
+      
+      if (progressResponse.ok) {
+        const progressData = await progressResponse.json();
+        console.log('📊 Progress data loaded for courses');
+        
+        const coursesWithProgress = filteredCourses.map((course: any) => {
+          const courseProgress = progressData[course.id] || { completedPages: [], totalPages: 0 };
+          const completedLessons = courseProgress.completedPages?.length || 0;
+          
+          // Calculate total lessons - use course structure or estimate
+          let totalLessons = course.pages?.length || 0;
+          if (totalLessons === 0 && courseProgress.totalPages) {
+            totalLessons = courseProgress.totalPages;
+          }
+          if (totalLessons === 0) {
+            totalLessons = 30; // Default estimate for courses
+          }
+          
+          const progressPercent = totalLessons > 0 ? Math.round((completedLessons / totalLessons) * 100) : 0;
+          
+          console.log(`📊 Course ${course.title}: ${completedLessons}/${totalLessons} (${progressPercent}%)`);
+          
+          return {
+            ...course,
+            progress: {
+              completedLessons,
+              totalLessons,
+              progressPercent
+            }
+          };
+        });
+        
+        res.status(200).json(coursesWithProgress);
+      } else {
+        console.log('⚠️ Could not fetch progress, returning courses without progress');
+        res.status(200).json(filteredCourses);
+      }
+    } catch (error) {
+      console.log('⚠️ Error fetching progress:', error);
+      res.status(200).json(filteredCourses);
+    }
+    
     return;
   }
 
