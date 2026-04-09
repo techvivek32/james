@@ -99,12 +99,13 @@ export default async function handler(
           const webProgress = webProgressData[course.id];
           
           if (webProgress) {
-            // Use web's exact data structure
+            // Use web's exact calculation - only count lesson pages (not quizzes)
             const completedPages = webProgress.completedPages?.length || 0;
-            const totalPages = course.pages?.length || 0;
+            const lessonPages = course.pages?.filter((p: any) => p.status === 'published' && !p.isQuiz) || [];
+            const totalPages = lessonPages.length;
             const progressPercent = totalPages > 0 ? Math.round((completedPages / totalPages) * 100) : 0;
             
-            console.log(`🌐 ${course.title}: ${progressPercent}% (web API data)`);
+            console.log(`🌐 ${course.title}: ${progressPercent}% (${completedPages}/${totalPages} lessons)`);
             
             return {
               ...course,
@@ -116,11 +117,12 @@ export default async function handler(
             };
           } else {
             console.log(`🌐 ${course.title}: No progress in web API`);
+            const lessonPages = course.pages?.filter((p: any) => p.status === 'published' && !p.isQuiz) || [];
             return {
               ...course,
               progress: {
                 completedLessons: 0,
-                totalLessons: course.pages?.length || 0,
+                totalLessons: lessonPages.length,
                 progressPercent: 0
               }
             };
