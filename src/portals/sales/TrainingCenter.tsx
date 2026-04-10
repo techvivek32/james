@@ -202,15 +202,24 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
 
   // Keep the ref updated on every render with fresh closure values
   onVideoEndedRef.current = () => {
-    if (!selectedCourse) return;
+    console.log('[TrainingCenter] onVideoEndedRef called - video sequence ended');
+    if (!selectedCourse) {
+      console.log('[TrainingCenter] No selected course, returning');
+      return;
+    }
     let currentPages = (selectedCourse.pages ?? []).filter(p => p.status === 'published');
     if (viewingPlaylist) {
       currentPages = currentPages.filter(p => viewingPlaylist.selectedModules.includes(p.id));
     }
     const currentIndex = currentPages.findIndex(p => p.id === activePageId);
-    if (currentIndex === -1) return;
+    console.log(`[TrainingCenter] Current page index: ${currentIndex}, activePageId: ${activePageId}`);
+    if (currentIndex === -1) {
+      console.log('[TrainingCenter] Current page not found, returning');
+      return;
+    }
 
     const currentPage = currentPages[currentIndex];
+    console.log(`[TrainingCenter] Current page: ${currentPage.title}, isQuiz: ${currentPage.isQuiz}`);
     if (!currentPage.isQuiz) {
       const newCompleted = new Set([...completedPages, currentPage.id]);
       setCompletedPages(newCompleted);
@@ -238,7 +247,9 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
     }
 
     if (currentIndex < currentPages.length - 1) {
-      setActivePageId(currentPages[currentIndex + 1].id);
+      const nextPageId = currentPages[currentIndex + 1].id;
+      console.log(`[TrainingCenter] Advancing to next lesson: ${nextPageId}`);
+      setActivePageId(nextPageId);
       const nextPage = currentPages[currentIndex + 1];
       if (nextPage.folderId) {
         setCollapsedFolders(prev => {
@@ -248,6 +259,8 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
         });
       }
       document.querySelector('.course-page-main')?.scrollTo({ top: 0, behavior: 'smooth' });
+    } else {
+      console.log('[TrainingCenter] This was the last lesson in the course');
     }
   };
 

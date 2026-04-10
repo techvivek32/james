@@ -266,18 +266,18 @@ function enableVimeoApi(iframe: HTMLIFrameElement): void {
     const url = new URL(src);
     url.searchParams.set('api', '1');
     url.searchParams.set('autopause', '0');
-    // Aggressive mobile autoplay parameters
+    // Mobile-friendly parameters without background mode (which can interfere with ended events)
     url.searchParams.set('autoplay', '1');
     url.searchParams.set('muted', '0');
     url.searchParams.set('playsinline', '1');
-    url.searchParams.set('background', '1'); // Allows autoplay on mobile
     url.searchParams.set('controls', '1');
+    url.searchParams.set('loop', '0'); // Explicitly disable looping
     iframe.removeAttribute('loading');
     iframe.src = url.toString();
   } catch {
     const sep = src.includes('?') ? '&' : '?';
     iframe.removeAttribute('loading');
-    iframe.src = src + sep + 'api=1&autopause=0&autoplay=1&muted=0&playsinline=1&background=1&controls=1';
+    iframe.src = src + sep + 'api=1&autopause=0&autoplay=1&muted=0&playsinline=1&controls=1&loop=0';
   }
 }
 
@@ -402,10 +402,17 @@ export async function initVideoSequence(
         (entries[seqIdx] as Extract<Entry, { type: 'vimeo' }>).player = vp;
 
         vp.on('ended', () => {
+          console.log(`[VideoSeq] Vimeo video ${seqIdx} ended. Total videos: ${total}`);
           if (seqIdx === total - 1) {
+            console.log('[VideoSeq] Last video ended, calling onAllEnded');
             onAllEnded();
           } else {
-            if (autoPlayRef.current) playItem(seqIdx + 1);
+            if (autoPlayRef.current) {
+              console.log(`[VideoSeq] Auto-advancing to next video: ${seqIdx + 1}`);
+              playItem(seqIdx + 1);
+            } else {
+              console.log('[VideoSeq] AutoPlay is off, not advancing');
+            }
           }
         });
       } catch (err) {
@@ -432,8 +439,16 @@ export async function initVideoSequence(
     e.video.muted = false; // Keep audio on
     
     e.video.addEventListener('ended', () => {
-      if (e.seqIdx === total - 1) onAllEnded();
-      else if (autoPlayRef.current) playItem(e.seqIdx + 1);
+      console.log(`[VideoSeq] HTML5 video ${e.seqIdx} ended. Total videos: ${total}`);
+      if (e.seqIdx === total - 1) {
+        console.log('[VideoSeq] Last HTML5 video ended, calling onAllEnded');
+        onAllEnded();
+      } else if (autoPlayRef.current) {
+        console.log(`[VideoSeq] Auto-advancing to next HTML5 video: ${e.seqIdx + 1}`);
+        playItem(e.seqIdx + 1);
+      } else {
+        console.log('[VideoSeq] AutoPlay is off, not advancing HTML5');
+      }
     });
     
     // Mobile-friendly autoplay for first HTML5 video
@@ -468,7 +483,9 @@ export async function initVideoSequence(
           mute: 0,
           controls: 1,
           modestbranding: 1,
-          iv_load_policy: 3
+          iv_load_policy: 3,
+          loop: 0, // Explicitly disable looping
+          playlist: '' // Clear any playlist that might cause looping
         },
         events: {
           onReady: () => {
@@ -489,8 +506,16 @@ export async function initVideoSequence(
           },
           onStateChange: (ev: any) => {
             if (ev.data === 0) { // ended
-              if (seqIdx === total - 1) onAllEnded();
-              else if (autoPlayRef.current) playItem(seqIdx + 1);
+              console.log(`[VideoSeq] YouTube video ${seqIdx} ended. Total videos: ${total}`);
+              if (seqIdx === total - 1) {
+                console.log('[VideoSeq] Last YouTube video ended, calling onAllEnded');
+                onAllEnded();
+              } else if (autoPlayRef.current) {
+                console.log(`[VideoSeq] Auto-advancing to next YouTube video: ${seqIdx + 1}`);
+                playItem(seqIdx + 1);
+              } else {
+                console.log('[VideoSeq] AutoPlay is off, not advancing YouTube');
+              }
             }
           },
         },
