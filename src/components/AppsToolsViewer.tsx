@@ -1,6 +1,13 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 
+type AppToolCategory = {
+  _id: string;
+  name: string;
+  slug: string;
+  order: number;
+};
+
 type AppToolItem = {
   _id: string;
   title: string;
@@ -12,28 +19,39 @@ type AppToolItem = {
   webLink?: string;
   appStoreLink?: string;
   playStoreLink?: string;
-  category: 'apps' | 'tools' | 'other';
+  category: string; // Dynamic category
 };
 
 export function AppsToolsViewer({ portal = 'sales' }: { portal?: 'sales' | 'manager' | 'marketing' }) {
-  const [apps, setApps] = useState<AppToolItem[]>([]);
-  const [tools, setTools] = useState<AppToolItem[]>([]);
-  const [other, setOther] = useState<AppToolItem[]>([]);
+  const [categories, setCategories] = useState<AppToolCategory[]>([]);
+  const [itemsByCategory, setItemsByCategory] = useState<Record<string, AppToolItem[]>>({});
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetchAppTools();
+    fetchData();
   }, []);
 
-  async function fetchAppTools() {
+  async function fetchData() {
     try {
-      const response = await fetch('/api/apps-tools?published=true');
-      if (response.ok) {
-        const data = await response.json();
-        setApps(data.filter((item: AppToolItem) => item.category === 'apps'));
-        setTools(data.filter((item: AppToolItem) => item.category === 'tools'));
-        setOther(data.filter((item: AppToolItem) => item.category === 'other'));
-      }
+      // Fetch categories
+      const categoriesResponse = await fetch('/api/apps-tools/categories');
+      const categoriesData = await categoriesResponse.json();
+      
+      // Fetch all published items
+      const itemsResponse = await fetch('/api/apps-tools?published=true');
+      const itemsData = await itemsResponse.json();
+      
+      // Group items by category
+      const grouped: Record<string, AppToolItem[]> = {};
+      itemsData.forEach((item: AppToolItem) => {
+        if (!grouped[item.category]) {
+          grouped[item.category] = [];
+        }
+        grouped[item.category].push(item);
+      });
+      
+      setCategories(categoriesData.sort((a: AppToolCategory, b: AppToolCategory) => a.order - b.order));
+      setItemsByCategory(grouped);
     } catch (error) {
       console.error('Error fetching apps/tools:', error);
     } finally {
@@ -41,13 +59,15 @@ export function AppsToolsViewer({ portal = 'sales' }: { portal?: 'sales' | 'mana
     }
   }
 
-  function renderSection(title: string, items: AppToolItem[]) {
+  function renderSection(category: AppToolCategory) {
+    const items = itemsByCategory[category.slug] || [];
+    
     if (items.length === 0) return null;
 
     return (
-      <div className="panel" style={{ marginBottom: 16 }}>
+      <div key={category._id} className="panel" style={{ marginBottom: 16 }}>
         <div className="panel-header">
-          <span>{title}</span>
+          <span>{category.name}</span>
         </div>
         <div className="panel-body">
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: 16 }}>
@@ -85,7 +105,7 @@ export function AppsToolsViewer({ portal = 'sales' }: { portal?: 'sales' | 'mana
     return <div style={{ padding: 24, textAlign: 'center' }}>Loading...</div>;
   }
 
-  if (apps.length === 0 && tools.length === 0 && other.length === 0) {
+  if (categories.length === 0) {
     return (
       <div className="panel">
         <div className="panel-body">
@@ -97,9 +117,7 @@ export function AppsToolsViewer({ portal = 'sales' }: { portal?: 'sales' | 'mana
 
   return (
     <div>
-      {renderSection("Apps", apps)}
-      {renderSection("Tools", tools)}
-      {renderSection("Other", other)}
+      {categories.map(category => renderSection(category))}
     </div>
   );
 }

@@ -11,7 +11,7 @@ export interface IAppTool {
   webLink?: string;
   appStoreLink?: string;
   playStoreLink?: string;
-  category: 'apps' | 'tools' | 'other';
+  category: string; // Changed from enum to string for dynamic categories
   status?: 'draft' | 'published';
   createdAt?: Date;
   updatedAt?: Date;
@@ -28,7 +28,7 @@ const AppToolSchema = new mongoose.Schema<IAppTool>(
     webLink: { type: String, default: '' },
     appStoreLink: { type: String, default: '' },
     playStoreLink: { type: String, default: '' },
-    category: { type: String, enum: ['apps', 'tools', 'other'], required: true },
+    category: { type: String, required: true }, // Removed enum to allow dynamic categories
     status: { type: String, enum: ['draft', 'published'], default: 'draft' }
   },
   { timestamps: true }

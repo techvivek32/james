@@ -12,7 +12,7 @@ type AppToolItem = {
   webLink?: string;
   appStoreLink?: string;
   playStoreLink?: string;
-  category: 'apps' | 'tools' | 'other';
+  category: string; // Dynamic category
 };
 
 const ManagerAppToolDetailPage: NextPage = () => {
