@@ -1,5 +1,12 @@
 import { useRef, useState, useEffect } from "react";
 
+type AppToolCategory = {
+  _id: string;
+  name: string;
+  slug: string;
+  order: number;
+};
+
 type AppToolItem = {
   _id: string;
   title: string;
@@ -11,14 +18,17 @@ type AppToolItem = {
   webLink?: string;
   appStoreLink?: string;
   playStoreLink?: string;
-  category: 'apps' | 'tools' | 'other';
+  category: string;
 };
 
 export function AppsToolManagement() {
-  const [apps, setApps] = useState<AppToolItem[]>([]);
-  const [tools, setTools] = useState<AppToolItem[]>([]);
-  const [other, setOther] = useState<AppToolItem[]>([]);
-  const [isCreating, setIsCreating] = useState<"apps" | "tools" | "other" | null>(null);
+  const [categories, setCategories] = useState<AppToolCategory[]>([]);
+  const [itemsByCategory, setItemsByCategory] = useState<Record<string, AppToolItem[]>>({});
+  const [isCreatingCategory, setIsCreatingCategory] = useState(false);
+  const [isEditingCategory, setIsEditingCategory] = useState<string | null>(null);
+  const [newCategoryName, setNewCategoryName] = useState("");
+  const [editingCategoryName, setEditingCategoryName] = useState("");
+  const [isCreating, setIsCreating] = useState<string | null>(null);
   const [isEditing, setIsEditing] = useState<string | null>(null);
   const [editingItem, setEditingItem] = useState<AppToolItem | null>(null);
   const [newTitle, setNewTitle] = useState("");
@@ -38,6 +48,7 @@ export function AppsToolManagement() {
   const [resizeStart, setResizeStart] = useState({ x: 0, y: 0, width: 0, height: 0 });
 
   useEffect(() => {
+    fetchCategories();
     fetchAppTools();
   }, []);
 
@@ -75,19 +86,108 @@ export function AppsToolManagement() {
     };
   }, [isResizing, resizeStart]);
 
+  async function fetchCategories() {
+    try {
+      const response = await fetch('/api/apps-tools/categories');
+      if (response.ok) {
+        const data = await response.json();
+        setCategories(data.sort((a: AppToolCategory, b: AppToolCategory) => a.order - b.order));
+      }
+    } catch (error) {
+      console.error('Error fetching categories:', error);
+    }
+  }
+
   async function fetchAppTools() {
     try {
       const response = await fetch('/api/apps-tools');
       if (response.ok) {
         const data = await response.json();
-        setApps(data.filter((item: AppToolItem) => item.category === 'apps'));
-        setTools(data.filter((item: AppToolItem) => item.category === 'tools'));
-        setOther(data.filter((item: AppToolItem) => item.category === 'other'));
+        const grouped: Record<string, AppToolItem[]> = {};
+        data.forEach((item: AppToolItem) => {
+          if (!grouped[item.category]) {
+            grouped[item.category] = [];
+          }
+          grouped[item.category].push(item);
+        });
+        setItemsByCategory(grouped);
       }
     } catch (error) {
       console.error('Error fetching apps/tools:', error);
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function createCategory() {
+    if (!newCategoryName.trim()) return;
+    
+    try {
+      const response = await fetch('/api/apps-tools/categories', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: newCategoryName,
+          order: categories.length
+        })
+      });
+
+      if (response.ok) {
+        const newCategory = await response.json();
+        setCategories([...categories, newCategory]);
+        setIsCreatingCategory(false);
+        setNewCategoryName("");
+      }
+    } catch (error) {
+      console.error('Error creating category:', error);
+      alert('Failed to create category');
+    }
+  }
+
+  async function updateCategory(id: string) {
+    if (!editingCategoryName.trim()) return;
+    
+    try {
+      const response = await fetch(`/api/apps-tools/categories/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: editingCategoryName
+        })
+      });
+
+      if (response.ok) {
+        const updatedCategory = await response.json();
+        setCategories(categories.map(cat => cat._id === id ? updatedCategory : cat));
+        setIsEditingCategory(null);
+        setEditingCategoryName("");
+      }
+    } catch (error) {
+      console.error('Error updating category:', error);
+      alert('Failed to update category');
+    }
+  }
+
+  async function deleteCategory(id: string, slug: string) {
+    const itemsInCategory = itemsByCategory[slug] || [];
+    if (itemsInCategory.length > 0) {
+      alert(`Cannot delete category with ${itemsInCategory.length} items. Please delete or move the items first.`);
+      return;
+    }
+
+    if (!confirm('Are you sure you want to delete this category?')) return;
+
+    try {
+      const response = await fetch(`/api/apps-tools/categories/${id}`, {
+        method: 'DELETE'
+      });
+
+      if (response.ok) {
+        setCategories(categories.filter(cat => cat._id !== id));
+      }
+    } catch (error) {
+      console.error('Error deleting category:', error);
+      alert('Failed to delete category');
     }
   }
 
@@ -120,7 +220,7 @@ export function AppsToolManagement() {
     }
   }
 
-  async function createItem(type: "apps" | "tools" | "other") {
+  async function createItem(categorySlug: string) {
     if (!newTitle.trim()) return;
     
     try {
@@ -137,15 +237,16 @@ export function AppsToolManagement() {
           webLink: newWebLink,
           appStoreLink: newAppStoreLink,
           playStoreLink: newPlayStoreLink,
-          category: type
+          category: categorySlug
         })
       });
 
       if (response.ok) {
         const newItem = await response.json();
-        if (type === "apps") setApps([...apps, newItem]);
-        if (type === "tools") setTools([...tools, newItem]);
-        if (type === "other") setOther([...other, newItem]);
+        setItemsByCategory(prev => ({
+          ...prev,
+          [categorySlug]: [...(prev[categorySlug] || []), newItem]
+        }));
         setIsCreating(null);
         setNewTitle("");
         setNewImageUrl("");
@@ -163,7 +264,7 @@ export function AppsToolManagement() {
     }
   }
 
-  async function updateItem(type: "apps" | "tools" | "other", id: string) {
+  async function updateItem(categorySlug: string, id: string) {
     if (!editingItem || !editingItem.title.trim()) return;
     
     try {
@@ -186,9 +287,10 @@ export function AppsToolManagement() {
 
       if (response.ok) {
         const updatedItem = await response.json();
-        if (type === "apps") setApps(apps.map(item => item._id === id ? updatedItem : item));
-        if (type === "tools") setTools(tools.map(item => item._id === id ? updatedItem : item));
-        if (type === "other") setOther(other.map(item => item._id === id ? updatedItem : item));
+        setItemsByCategory(prev => ({
+          ...prev,
+          [categorySlug]: (prev[categorySlug] || []).map(item => item._id === id ? updatedItem : item)
+        }));
         setIsEditing(null);
         setEditingItem(null);
         setPreviewWidth(400);
@@ -212,7 +314,7 @@ export function AppsToolManagement() {
     setEditingItem(null);
   }
 
-  async function deleteItem(type: "apps" | "tools" | "other", id: string) {
+  async function deleteItem(categorySlug: string, id: string) {
     if (!confirm('Are you sure you want to delete this item?')) return;
 
     try {
@@ -221,9 +323,10 @@ export function AppsToolManagement() {
       });
 
       if (response.ok) {
-        if (type === "apps") setApps(apps.filter(item => item._id !== id));
-        if (type === "tools") setTools(tools.filter(item => item._id !== id));
-        if (type === "other") setOther(other.filter(item => item._id !== id));
+        setItemsByCategory(prev => ({
+          ...prev,
+          [categorySlug]: (prev[categorySlug] || []).filter(item => item._id !== id)
+        }));
       }
     } catch (error) {
       console.error('Error deleting app/tool:', error);
@@ -231,19 +334,55 @@ export function AppsToolManagement() {
     }
   }
 
-  function renderSection(title: string, items: AppToolItem[], type: "apps" | "tools" | "other") {
+  function renderSection(category: AppToolCategory) {
+    const items = itemsByCategory[category.slug] || [];
+    
     return (
-      <div className="panel" style={{ marginBottom: 16 }}>
+      <div key={category._id} className="panel" style={{ marginBottom: 16 }}>
         <div className="panel-header">
           <div className="panel-header-row">
-            <span>{title}</span>
-            <button type="button" className="btn-primary btn-success btn-small" onClick={() => setIsCreating(type)}>
-              + Create {title.slice(0, -1)}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+              {isEditingCategory === category._id ? (
+                <>
+                  <input 
+                    className="field-input" 
+                    value={editingCategoryName} 
+                    onChange={(e) => setEditingCategoryName(e.target.value)}
+                    style={{ width: 200 }}
+                    placeholder="Category name"
+                  />
+                  <button type="button" className="btn-primary btn-small" onClick={() => updateCategory(category._id)}>
+                    Save
+                  </button>
+                  <button type="button" className="btn-secondary btn-small" onClick={() => {
+                    setIsEditingCategory(null);
+                    setEditingCategoryName("");
+                  }}>
+                    Cancel
+                  </button>
+                </>
+              ) : (
+                <>
+                  <span>{category.name}</span>
+                  <button type="button" className="btn-ghost btn-small" onClick={() => {
+                    setIsEditingCategory(category._id);
+                    setEditingCategoryName(category.name);
+                  }}>
+                    ✏️ Edit
+                  </button>
+                  <button type="button" className="btn-ghost btn-danger btn-small" onClick={() => deleteCategory(category._id, category.slug)}>
+                    🗑️ Delete
+                  </button>
+                </>
+              )}
+            </div>
+            <button type="button" className="btn-primary btn-success btn-small" onClick={() => setIsCreating(category.slug)}>
+              + Create {category.name.endsWith('s') ? category.name.slice(0, -1) : category.name}
             </button>
           </div>
         </div>
         <div className="panel-body">
-          {isCreating === type && (
+          {isCreating === category.slug && (
             <div style={{ borderBottom: "1px solid #e5e7eb", marginBottom: 16, paddingBottom: 16 }}>
               <div className="form-grid">
                 <label className="field">
@@ -315,30 +454,20 @@ export function AppsToolManagement() {
                 <span className="field-label">Description</span>
                 <textarea className="field-input" rows={3} value={newDescription} onChange={(e) => setNewDescription(e.target.value)} placeholder="Enter description" />
               </label>
-              {type !== "apps" && (
-                <label className="field" style={{ marginTop: 16 }}>
-                  <span className="field-label">Web Link</span>
-                  <input className="field-input" value={newLink} onChange={(e) => setNewLink(e.target.value)} placeholder="https://" />
-                </label>
-              )}
-              {type === "apps" && (
-                <>
-                  <label className="field" style={{ marginTop: 16 }}>
-                    <span className="field-label">Web Link</span>
-                    <input className="field-input" value={newWebLink} onChange={(e) => setNewWebLink(e.target.value)} placeholder="https://" />
-                  </label>
-                  <label className="field" style={{ marginTop: 16 }}>
-                    <span className="field-label">App Store Link (iOS)</span>
-                    <input className="field-input" value={newAppStoreLink} onChange={(e) => setNewAppStoreLink(e.target.value)} placeholder="https://apps.apple.com/..." />
-                  </label>
-                  <label className="field" style={{ marginTop: 16 }}>
-                    <span className="field-label">Play Store Link (Android)</span>
-                    <input className="field-input" value={newPlayStoreLink} onChange={(e) => setNewPlayStoreLink(e.target.value)} placeholder="https://play.google.com/..." />
-                  </label>
-                </>
-              )}
+              <label className="field" style={{ marginTop: 16 }}>
+                <span className="field-label">Web Link</span>
+                <input className="field-input" value={newWebLink} onChange={(e) => setNewWebLink(e.target.value)} placeholder="https://" />
+              </label>
+              <label className="field" style={{ marginTop: 16 }}>
+                <span className="field-label">App Store Link (iOS)</span>
+                <input className="field-input" value={newAppStoreLink} onChange={(e) => setNewAppStoreLink(e.target.value)} placeholder="https://apps.apple.com/..." />
+              </label>
+              <label className="field" style={{ marginTop: 16 }}>
+                <span className="field-label">Play Store Link (Android)</span>
+                <input className="field-input" value={newPlayStoreLink} onChange={(e) => setNewPlayStoreLink(e.target.value)} placeholder="https://play.google.com/..." />
+              </label>
               <div style={{ marginTop: 16, display: "flex", gap: 12 }}>
-                <button type="button" className="btn-primary btn-success" onClick={() => createItem(type)}>Create</button>
+                <button type="button" className="btn-primary btn-success" onClick={() => createItem(category.slug)}>Create</button>
                 <button type="button" className="btn-secondary" style={{ color: "#dc2626" }} onClick={() => {
                   setIsCreating(null);
                   setNewTitle("");
@@ -354,7 +483,7 @@ export function AppsToolManagement() {
           )}
           {isEditing && items.some(item => item._id === isEditing) && (
             <div style={{ borderBottom: "1px solid #e5e7eb", marginBottom: 16, paddingBottom: 16 }}>
-              <h4 style={{ marginBottom: 16, color: "#374151" }}>Edit {title.slice(0, -1)}</h4>
+              <h4 style={{ marginBottom: 16, color: "#374151" }}>Edit {category.name.endsWith('s') ? category.name.slice(0, -1) : category.name}</h4>
               <div className="form-grid">
                 <label className="field">
                   <span className="field-label">Title</span>
@@ -425,39 +554,29 @@ export function AppsToolManagement() {
                 <span className="field-label">Description</span>
                 <textarea className="field-input" rows={3} value={editingItem?.description || ''} onChange={(e) => setEditingItem(prev => prev ? {...prev, description: e.target.value} : null)} placeholder="Enter description" />
               </label>
-              {type !== "apps" && (
-                <label className="field" style={{ marginTop: 16 }}>
-                  <span className="field-label">Web Link</span>
-                  <input className="field-input" value={editingItem?.link || ''} onChange={(e) => setEditingItem(prev => prev ? {...prev, link: e.target.value} : null)} placeholder="https://" />
-                </label>
-              )}
-              {type === "apps" && (
-                <>
-                  <label className="field" style={{ marginTop: 16 }}>
-                    <span className="field-label">Web Link</span>
-                    <input className="field-input" value={editingItem?.webLink || ''} onChange={(e) => setEditingItem(prev => prev ? {...prev, webLink: e.target.value} : null)} placeholder="https://" />
-                  </label>
-                  <label className="field" style={{ marginTop: 16 }}>
-                    <span className="field-label">App Store Link (iOS)</span>
-                    <input className="field-input" value={editingItem?.appStoreLink || ''} onChange={(e) => setEditingItem(prev => prev ? {...prev, appStoreLink: e.target.value} : null)} placeholder="https://apps.apple.com/..." />
-                  </label>
-                  <label className="field" style={{ marginTop: 16 }}>
-                    <span className="field-label">Play Store Link (Android)</span>
-                    <input className="field-input" value={editingItem?.playStoreLink || ''} onChange={(e) => setEditingItem(prev => prev ? {...prev, playStoreLink: e.target.value} : null)} placeholder="https://play.google.com/..." />
-                  </label>
-                </>
-              )}
+              <label className="field" style={{ marginTop: 16 }}>
+                <span className="field-label">Web Link</span>
+                <input className="field-input" value={editingItem?.webLink || ''} onChange={(e) => setEditingItem(prev => prev ? {...prev, webLink: e.target.value} : null)} placeholder="https://" />
+              </label>
+              <label className="field" style={{ marginTop: 16 }}>
+                <span className="field-label">App Store Link (iOS)</span>
+                <input className="field-input" value={editingItem?.appStoreLink || ''} onChange={(e) => setEditingItem(prev => prev ? {...prev, appStoreLink: e.target.value} : null)} placeholder="https://apps.apple.com/..." />
+              </label>
+              <label className="field" style={{ marginTop: 16 }}>
+                <span className="field-label">Play Store Link (Android)</span>
+                <input className="field-input" value={editingItem?.playStoreLink || ''} onChange={(e) => setEditingItem(prev => prev ? {...prev, playStoreLink: e.target.value} : null)} placeholder="https://play.google.com/..." />
+              </label>
               <div style={{ marginTop: 16, display: "flex", gap: 12 }}>
                 <button type="button" className="btn-primary btn-success" onClick={() => {
                   const editingItemInThisSection = items.find(item => item._id === isEditing);
-                  if (editingItemInThisSection) updateItem(type, editingItemInThisSection._id);
+                  if (editingItemInThisSection) updateItem(category.slug, editingItemInThisSection._id);
                 }}>Save</button>
                 <button type="button" className="btn-secondary" onClick={cancelEdit}>Cancel</button>
               </div>
             </div>
           )}
           {items.length === 0 ? (
-            <div className="panel-empty">No {title.toLowerCase()} yet.</div>
+            <div className="panel-empty">No {category.name.toLowerCase()} yet.</div>
           ) : (
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(350px, 1fr))", gap: 20 }}>
               {items.map((item) => (
@@ -483,22 +602,17 @@ export function AppsToolManagement() {
                       {item.description.length > 50 ? `${item.description.substring(0, 50)}...` : item.description}
                     </div>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginBottom: 12 }}>
-                      {type !== "apps" && item.link && (
-                        <a href={item.link} target="_blank" rel="noopener noreferrer" style={{ fontSize: 12, color: "#2563eb", textDecoration: "none", padding: "4px 8px", border: "1px solid #2563eb", borderRadius: "4px", display: "inline-block", width: "fit-content" }}>
-                          Web Link
-                        </a>
-                      )}
-                      {type === "apps" && item.webLink && (
+                      {item.webLink && (
                         <a href={item.webLink} target="_blank" rel="noopener noreferrer" style={{ fontSize: 12, color: "#2563eb", textDecoration: "none", padding: "4px 8px", border: "1px solid #2563eb", borderRadius: "4px", display: "inline-block", width: "fit-content" }}>
                           Web Link
                         </a>
                       )}
-                      {type === "apps" && item.appStoreLink && (
+                      {item.appStoreLink && (
                         <a href={item.appStoreLink} target="_blank" rel="noopener noreferrer" style={{ fontSize: 12, color: "#2563eb", textDecoration: "none", padding: "4px 8px", border: "1px solid #2563eb", borderRadius: "4px", display: "inline-block", width: "fit-content" }}>
                           App Store (iOS)
                         </a>
                       )}
-                      {type === "apps" && item.playStoreLink && (
+                      {item.playStoreLink && (
                         <a href={item.playStoreLink} target="_blank" rel="noopener noreferrer" style={{ fontSize: 12, color: "#2563eb", textDecoration: "none", padding: "4px 8px", border: "1px solid #2563eb", borderRadius: "4px", display: "inline-block", width: "fit-content" }}>
                           Play Store (Android)
                         </a>
@@ -506,7 +620,7 @@ export function AppsToolManagement() {
                     </div>
                     <div style={{ marginTop: 12, display: "flex", gap: 8 }}>
                       <button type="button" className="btn-secondary btn-small" onClick={() => startEdit(item)}>Edit</button>
-                      <button type="button" className="btn-ghost btn-danger btn-small" onClick={() => deleteItem(type, item._id)}>Delete</button>
+                      <button type="button" className="btn-ghost btn-danger btn-small" onClick={() => deleteItem(category.slug, item._id)}>Delete</button>
                     </div>
                   </div>
                 </div>
@@ -524,9 +638,52 @@ export function AppsToolManagement() {
 
   return (
     <div>
-      {renderSection("Apps", apps, "apps")}
-      {renderSection("Tools", tools, "tools")}
-      {renderSection("Other", other, "other")}
+      {/* Category Management Section */}
+      <div className="panel" style={{ marginBottom: 24, background: '#f9fafb' }}>
+        <div className="panel-header">
+          <div className="panel-header-row">
+            <span style={{ fontWeight: 600, fontSize: 16 }}>📁 Category Management</span>
+            <button type="button" className="btn-primary btn-success" onClick={() => setIsCreatingCategory(true)}>
+              + Create Category
+            </button>
+          </div>
+        </div>
+        {isCreatingCategory && (
+          <div className="panel-body">
+            <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+              <input 
+                className="field-input" 
+                value={newCategoryName} 
+                onChange={(e) => setNewCategoryName(e.target.value)}
+                placeholder="Enter category name (e.g., Apps, Tools, Resources)"
+                style={{ flex: 1 }}
+              />
+              <button type="button" className="btn-primary btn-success" onClick={createCategory}>
+                Create
+              </button>
+              <button type="button" className="btn-secondary" onClick={() => {
+                setIsCreatingCategory(false);
+                setNewCategoryName("");
+              }}>
+                Cancel
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Render all category sections */}
+      {categories.length === 0 ? (
+        <div className="panel">
+          <div className="panel-body">
+            <div className="panel-empty">
+              No categories yet. Create your first category to get started!
+            </div>
+          </div>
+        </div>
+      ) : (
+        categories.map(category => renderSection(category))
+      )}
     </div>
   );
 }
