@@ -54,6 +54,8 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
   // Refs for video sequencing (must live at top level, not inside CourseView)
   const videoCleanupRef = useRef<(() => void) | undefined>(undefined);
   const videoCallbackRef = useRef<(() => void) | undefined>(undefined);
+  // True when the page change was triggered by a video ending (so next lesson's video should auto-start)
+  const autoTriggeredRef = useRef(false);
   const [autoPlay, setAutoPlay] = useState<boolean>(() => {
     if (typeof window !== 'undefined') {
       return localStorage.getItem('sales-autoplay') !== 'false';
@@ -247,9 +249,8 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
     }
 
     if (currentIndex < currentPages.length - 1) {
-      const nextPageId = currentPages[currentIndex + 1].id;
-      console.log(`[TrainingCenter] Advancing to next lesson: ${nextPageId}`);
-      setActivePageId(nextPageId);
+      autoTriggeredRef.current = true; // mark that this navigation came from video ending
+      setActivePageId(currentPages[currentIndex + 1].id);
       const nextPage = currentPages[currentIndex + 1];
       if (nextPage.folderId) {
         setCollapsedFolders(prev => {
@@ -284,10 +285,13 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
         console.log('[VideoSeq] container .course-page-body-input not found');
         return;
       }
+      const shouldAutoStart = autoTriggeredRef.current;
+      autoTriggeredRef.current = false; // reset after reading
       const cleanup = await initVideoSequence(
         container,
         () => onVideoEndedRef.current(),
-        autoPlayRef
+        autoPlayRef,
+        shouldAutoStart
       );
       videoCleanupRef.current = cleanup;
     }, 1200);

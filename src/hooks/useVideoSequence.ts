@@ -313,14 +313,16 @@ function scrollToEntry(entry: Entry) {
 }
 
 /**
- * @param container   - The DOM element containing the lesson body
- * @param onAllEnded  - Called when the last video ends (navigate to next lesson)
- * @param autoPlayRef - A React ref to the live autoPlay boolean value
+ * @param container            - The DOM element containing the lesson body
+ * @param onAllEnded           - Called when the last video ends (navigate to next lesson)
+ * @param autoPlayRef          - A React ref to the live autoPlay boolean value
+ * @param shouldAutoStartFirst - If true, immediately play the first video (used when navigating via autoplay)
  */
 export async function initVideoSequence(
   container: HTMLElement,
   onAllEnded: () => void,
-  autoPlayRef: { current: boolean }
+  autoPlayRef: { current: boolean },
+  shouldAutoStartFirst = false
 ): Promise<(() => void) | undefined> {
   if (typeof window === 'undefined') return;
 
@@ -391,6 +393,9 @@ export async function initVideoSequence(
     }
   }
 
+  // Whether to auto-start the first video on this page
+  const startFirst = shouldAutoStartFirst && autoPlayRef.current;
+
   // ── Vimeo: enable API, wait for reload, attach SDK ────────────────────────
   if (vimeoRaw.length > 0) {
     await Promise.all(vimeoRaw.map(async ({ iframe, seqIdx }) => {
@@ -420,8 +425,8 @@ export async function initVideoSequence(
       }
     }));
 
-    // Mobile-friendly autoplay for first Vimeo video
-    if (autoPlayRef.current && entries[0]?.type === 'vimeo') {
+    // Auto-start first Vimeo video when navigating via autoplay
+    if (startFirst && entries[0]?.type === 'vimeo') {
       const vimeoEntry = entries[0] as Extract<Entry, { type: 'vimeo' }>;
       if (vimeoEntry.player) {
         attemptMobileAutoplay(() => vimeoEntry.player.play());
@@ -450,9 +455,8 @@ export async function initVideoSequence(
         console.log('[VideoSeq] AutoPlay is off, not advancing HTML5');
       }
     });
-    
-    // Mobile-friendly autoplay for first HTML5 video
-    if (e.seqIdx === 0 && autoPlayRef.current) {
+    if (e.seqIdx === 0 && startFirst) {
+      e.video.muted = true;
       attemptMobileAutoplay(() => e.video.play());
     }
   });
@@ -475,17 +479,14 @@ export async function initVideoSequence(
         videoId,
         width: '100%',
         height: '100%',
-        playerVars: { 
-          autoplay: 1, // Force autoplay for YouTube
-          enablejsapi: 1, 
+        playerVars: {
+          autoplay: seqIdx === 0 && startFirst ? 1 : 0,
+          mute: seqIdx === 0 && startFirst ? 1 : 0,
+          enablejsapi: 1,
           rel: 0,
           playsinline: 1,
-          mute: 0,
           controls: 1,
-          modestbranding: 1,
-          iv_load_policy: 3,
-          loop: 0, // Explicitly disable looping
-          playlist: '' // Clear any playlist that might cause looping
+          loop: 0,
         },
         events: {
           onReady: () => {
