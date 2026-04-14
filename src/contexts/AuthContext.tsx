@@ -2,6 +2,7 @@ import { createContext, useContext, useState, useEffect, ReactNode } from "react
 import { useRouter } from "next/router";
 
 type User = {
+  _id?: string; // MongoDB ID
   id: string;
   name: string;
   email: string;
