@@ -82,7 +82,7 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
   Future<void> _fetchMessages({bool silent = false}) async {
     try {
       final response = await http.get(
-        Uri.parse('http://localhost:6790/api/storm-chat/messages/${widget.group['_id']}?userId=${widget.userId}&userRole=${widget.userRole}'),
+        Uri.parse('https://millerstorm.tech/api/storm-chat/messages/${widget.group['_id']}?userId=${widget.userId}&userRole=${widget.userRole}'),
       );
 
       if (response.statusCode == 200) {
@@ -138,7 +138,7 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
 
     try {
       final response = await http.post(
-        Uri.parse('http://localhost:6790/api/storm-chat/messages/${widget.group['_id']}'),
+        Uri.parse('https://millerstorm.tech/api/storm-chat/messages/${widget.group['_id']}'),
         headers: {'Content-Type': 'application/json'},
         body: json.encode({
           'senderId': widget.userId,
@@ -220,7 +220,7 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
     try {
       var request = http.MultipartRequest(
         'POST',
-        Uri.parse('http://localhost:6790/api/upload-image'),
+        Uri.parse('https://millerstorm.tech/api/upload-image'),
       );
       request.files.add(await http.MultipartFile.fromPath('file', file.path));
 
@@ -233,7 +233,7 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
 
         // Send message with media
         await http.post(
-          Uri.parse('http://localhost:6790/api/storm-chat/messages/${widget.group['_id']}'),
+          Uri.parse('https://millerstorm.tech/api/storm-chat/messages/${widget.group['_id']}'),
           headers: {'Content-Type': 'application/json'},
           body: json.encode({
             'senderId': widget.userId,
@@ -322,7 +322,7 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
                   borderRadius: BorderRadius.circular(8),
                   image: widget.group['imageUrl'] != null && widget.group['imageUrl'].isNotEmpty
                       ? DecorationImage(
-                          image: NetworkImage('http://localhost:6790${widget.group['imageUrl']}'),
+                          image: NetworkImage('https://millerstorm.tech${widget.group['imageUrl']}'),
                           fit: BoxFit.cover,
                         )
                       : null,
@@ -598,7 +598,7 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
         child: ClipRRect(
           borderRadius: BorderRadius.circular(8),
           child: Image.network(
-            'http://localhost:6790${message['mediaUrl']}',
+            'https://millerstorm.tech${message['mediaUrl']}',
             width: 200,
             fit: BoxFit.cover,
             errorBuilder: (context, error, stackTrace) {

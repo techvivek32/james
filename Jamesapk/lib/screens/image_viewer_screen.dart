@@ -53,7 +53,7 @@ class ImageViewerScreen extends StatelessWidget {
           minScale: 0.5,
           maxScale: 4.0,
           child: Image.network(
-            imageUrl.startsWith('http') ? imageUrl : 'http://localhost:6790$imageUrl',
+            imageUrl.startsWith('http') ? imageUrl : 'https://millerstorm.tech$imageUrl',
             fit: BoxFit.contain,
             loadingBuilder: (context, child, loadingProgress) {
               if (loadingProgress == null) return child;
@@ -113,7 +113,7 @@ class ImageViewerScreen extends StatelessWidget {
         }
       }
 
-      final url = imageUrl.startsWith('http') ? imageUrl : 'http://localhost:6790$imageUrl';
+      final url = imageUrl.startsWith('http') ? imageUrl : 'https://millerstorm.tech$imageUrl';
       final response = await http.get(Uri.parse(url));
       
       if (response.statusCode == 200) {
@@ -161,7 +161,7 @@ class ImageViewerScreen extends StatelessWidget {
 
   void _shareImage(BuildContext context) async {
     try {
-      final url = imageUrl.startsWith('http') ? imageUrl : 'http://localhost:6790$imageUrl';
+      final url = imageUrl.startsWith('http') ? imageUrl : 'https://millerstorm.tech$imageUrl';
       
       // Show share options
       showModalBottomSheet(

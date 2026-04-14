@@ -51,7 +51,7 @@ class StormChatGroupInfoScreen extends StatelessWidget {
                       border: Border.all(color: Colors.white, width: 3),
                       image: group['imageUrl'] != null && group['imageUrl'].isNotEmpty
                           ? DecorationImage(
-                              image: NetworkImage('http://localhost:6790${group['imageUrl']}'),
+                              image: NetworkImage('https://millerstorm.tech${group['imageUrl']}'),
                               fit: BoxFit.cover,
                             )
                           : null,

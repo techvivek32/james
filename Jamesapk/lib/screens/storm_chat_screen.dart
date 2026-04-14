@@ -40,7 +40,7 @@ class _StormChatScreenState extends State<StormChatScreen> {
     try {
       print('🔵 Fetching groups for user: $userId');
       final response = await http.get(
-        Uri.parse('http://localhost:6790/api/storm-chat/groups'),
+        Uri.parse('https://millerstorm.tech/api/storm-chat/groups'),
       );
 
       print('🔵 Groups API response status: ${response.statusCode}');
@@ -213,7 +213,7 @@ class _StormChatScreenState extends State<StormChatScreen> {
                     borderRadius: BorderRadius.circular(10),
                     image: imageUrl.isNotEmpty
                         ? DecorationImage(
-                            image: NetworkImage('http://localhost:6790$imageUrl'),
+                            image: NetworkImage('https://millerstorm.tech$imageUrl'),
                             fit: BoxFit.cover,
                           )
                         : null,
