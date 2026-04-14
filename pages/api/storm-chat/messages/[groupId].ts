@@ -11,6 +11,23 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   if (req.method === 'GET') {
     // Get messages for a group
     try {
+      const { userId, userRole } = req.query;
+      
+      // Check if group exists
+      const group = await ChatGroup.findById(groupId);
+      if (!group) {
+        return res.status(404).json({ error: 'Group not found' });
+      }
+
+      // Allow access if user is admin, group admin, or member
+      const isAdmin = userRole === 'admin';
+      const isGroupAdmin = group.admins.includes(userId as string);
+      const isMember = group.members.includes(userId as string);
+      
+      if (!isAdmin && !isGroupAdmin && !isMember) {
+        return res.status(403).json({ error: 'You are not a member of this group' });
+      }
+
       const messages = await ChatMessage.find({ groupId })
         .sort({ createdAt: 1 })
         .limit(500); // Last 500 messages
@@ -35,9 +52,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         return res.status(404).json({ error: 'Group not found' });
       }
 
-      // Check if user is a member
+      // Check if user is a member or admin
       if (!group.members.includes(senderId)) {
-        return res.status(403).json({ error: 'You are not a member of this group' });
+        // Allow if user is admin
+        if (senderRole !== 'admin') {
+          return res.status(403).json({ error: 'You are not a member of this group' });
+        }
       }
 
       // Check if only admin can chat

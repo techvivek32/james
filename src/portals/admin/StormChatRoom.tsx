@@ -61,10 +61,15 @@ export function StormChatRoom({ group, onBack }: Props) {
 
   async function fetchMessages() {
     try {
-      const response = await fetch(`/api/storm-chat/messages/${group._id}`);
+      const userId = user?._id || user?.id;
+      const userRole = user?.role;
+      const response = await fetch(`/api/storm-chat/messages/${group._id}?userId=${userId}&userRole=${userRole}`);
       if (response.ok) {
         const data = await response.json();
         setMessages(data);
+      } else {
+        const error = await response.json();
+        alert(error.error || 'Failed to fetch messages');
       }
     } catch (error) {
       console.error('Error fetching messages:', error);

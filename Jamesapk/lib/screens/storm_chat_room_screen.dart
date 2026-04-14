@@ -80,7 +80,7 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
   Future<void> _fetchMessages({bool silent = false}) async {
     try {
       final response = await http.get(
-        Uri.parse('https://millerstorm.tech/api/storm-chat/messages/${widget.group['_id']}'),
+        Uri.parse('https://millerstorm.tech/api/storm-chat/messages/${widget.group['_id']}?userId=${widget.userId}&userRole=${widget.userRole}'),
       );
 
       if (response.statusCode == 200) {
@@ -92,6 +92,14 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
         
         if (!silent) {
           _scrollToBottom();
+        }
+      } else if (response.statusCode == 403) {
+        final error = json.decode(response.body);
+        _showError(error['error'] ?? 'Access denied');
+        if (!silent) {
+          setState(() {
+            isLoading = false;
+          });
         }
       }
     } catch (e) {
