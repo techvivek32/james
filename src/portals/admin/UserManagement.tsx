@@ -100,6 +100,7 @@ export function UserManagement(props: UserEditorProps) {
     userManagement: "User Management",
     courseManagement: "Course Builder",
     appsTools: "Apps & Tool Builder",
+    stormChat: "StormChat",
     aiBots: "Master Bot Builder",
     courseAiBots: "Course Bots Builder",
     messaging: "SMS Config",

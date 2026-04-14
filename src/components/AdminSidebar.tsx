@@ -10,6 +10,7 @@ const allSidebarItems = [
   { id: "userManagement", label: "User Management", toggleKey: "userManagement" },
   { id: "courseManagement", label: "Course Builder", toggleKey: "courseManagement" },
   { id: "appsTools", label: "Apps & Tool Builder", toggleKey: "appsTools" },
+  { id: "stormChat", label: "StormChat", toggleKey: "stormChat" },
   { id: "courseAiBots", label: "Course Bots Builder", toggleKey: "courseAiBots" },
   { id: "aiBots", label: "Master Bot Builder", toggleKey: "aiBots" },
   { id: "messaging", label: "SMS Config", toggleKey: "messaging" },

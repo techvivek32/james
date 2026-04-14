@@ -23,6 +23,7 @@ export function AdminPageWrapper({ children, currentView }: AdminPageWrapperProp
     userManagement: "userManagement",
     courseManagement: "courseManagement",
     appsTools: "appsTools",
+    stormChat: "stormChat",
     courseAiBots: "courseAiBots",
     aiBots: "aiBots",
     messaging: "messaging",

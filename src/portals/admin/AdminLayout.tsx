@@ -18,6 +18,7 @@ type AdminViewId =
   | "aiBots"
   | "webTemplates"
   | "appsTools"
+  | "stormChat"
   | "socialMediaMetrics"
   | "webText"
   | "trainingExecutive"

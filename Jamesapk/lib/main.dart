@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'screens/login_screen.dart';
 import 'screens/training_screen.dart';
-import 'screens/stormchat_screen.dart';
+import 'screens/storm_chat_screen.dart';
+import 'screens/storm_chat_room_screen.dart';
 import 'screens/rankings_screen.dart';
 import 'screens/planner_screen.dart';
 import 'screens/courses_screen.dart';
