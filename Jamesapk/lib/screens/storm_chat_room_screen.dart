@@ -34,10 +34,15 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
 
   bool get canSendMessage {
     final onlyAdminCanChat = widget.group['onlyAdminCanChat'] ?? false;
-    if (!onlyAdminCanChat) return true;
-    
+    final members = List<String>.from(widget.group['members'] ?? []);
     final admins = List<String>.from(widget.group['admins'] ?? []);
-    return widget.userRole == 'admin' || admins.contains(widget.userId);
+    
+    final isAdmin = widget.userRole == 'admin';
+    final isGroupAdmin = admins.contains(widget.userId);
+    final isGroupMember = members.contains(widget.userId);
+    
+    // Admins can always send, or group admins, or members if not restricted
+    return isAdmin || isGroupAdmin || (onlyAdminCanChat ? false : isGroupMember);
   }
 
   @override
@@ -62,6 +67,7 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
       setState(() {
         userName = user['name'];
       });
+      print('🔵 User loaded - Name: $userName');
     }
   }
 
@@ -293,7 +299,7 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
                 borderRadius: BorderRadius.circular(8),
                 image: widget.group['imageUrl'] != null && widget.group['imageUrl'].isNotEmpty
                     ? DecorationImage(
-                        image: NetworkImage(widget.group['imageUrl']),
+                        image: NetworkImage('https://millerstorm.tech${widget.group['imageUrl']}'),
                         fit: BoxFit.cover,
                       )
                     : null,

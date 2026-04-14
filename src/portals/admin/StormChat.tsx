@@ -148,7 +148,7 @@ export function StormChatManagement() {
           members: selectedMembers,
           admins: selectedAdmins,
           onlyAdminCanChat,
-          createdBy: user?.id
+          createdBy: user?._id || user?.id
         })
       });
 

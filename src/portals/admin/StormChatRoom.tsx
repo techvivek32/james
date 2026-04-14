@@ -38,9 +38,12 @@ export function StormChatRoom({ group, onBack }: Props) {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const canSendMessage = group.onlyAdminCanChat 
-    ? (user?.role === 'admin' || group.admins.includes(user?.id || ''))
-    : group.members.includes(user?.id || '');
+  // Check if user can send messages
+  const isGroupMember = group.members.includes(user?._id || user?.id || '');
+  const isAdmin = user?.role === 'admin';
+  const isGroupAdmin = group.admins.includes(user?._id || user?.id || '');
+  
+  const canSendMessage = isAdmin || isGroupAdmin || (group.onlyAdminCanChat ? false : isGroupMember);
 
   useEffect(() => {
     fetchMessages();
@@ -79,7 +82,7 @@ export function StormChatRoom({ group, onBack }: Props) {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          senderId: user?.id,
+          senderId: user?._id || user?.id,
           senderName: user?.name,
           senderRole: user?.role,
           message: newMessage,
@@ -131,7 +134,7 @@ export function StormChatRoom({ group, onBack }: Props) {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          senderId: user?.id,
+          senderId: user?._id || user?.id,
           senderName: user?.name,
           senderRole: user?.role,
           message: file.name,
@@ -174,7 +177,7 @@ export function StormChatRoom({ group, onBack }: Props) {
   }
 
   function renderMessage(msg: ChatMessage, index: number) {
-    const isMyMessage = msg.senderId === user?.id;
+    const isMyMessage = msg.senderId === (user?._id || user?.id);
     const showDate = index === 0 || 
       new Date(messages[index - 1].createdAt).toDateString() !== new Date(msg.createdAt).toDateString();
 

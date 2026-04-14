@@ -27,9 +27,11 @@ class _StormChatScreenState extends State<StormChatScreen> {
     final user = await AuthService.getStoredUser();
     if (user != null) {
       setState(() {
-        userId = user['id'];
+        // Use _id for matching with group members
+        userId = user['_id'] ?? user['id'];
         userRole = user['role'];
       });
+      print('🔵 User loaded - ID: $userId, Role: $userRole');
       await _fetchGroups();
     }
   }
@@ -211,7 +213,7 @@ class _StormChatScreenState extends State<StormChatScreen> {
                     borderRadius: BorderRadius.circular(10),
                     image: imageUrl.isNotEmpty
                         ? DecorationImage(
-                            image: NetworkImage(imageUrl),
+                            image: NetworkImage('https://millerstorm.tech$imageUrl'),
                             fit: BoxFit.cover,
                           )
                         : null,
