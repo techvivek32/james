@@ -241,77 +241,76 @@ export function StormChatRoom({ group, onBack }: Props) {
             )}
             
             {msg.messageType === 'text' && (
-                <div style={{ 
-                  backgroundColor: isMyMessage ? '#DC2626' : '#f3f4f6',
-                  color: isMyMessage ? '#fff' : '#111827',
-                  padding: '10px 14px',
-                  borderRadius: 16,
-                  borderTopRightRadius: isMyMessage ? 4 : 16,
-                  borderTopLeftRadius: isMyMessage ? 16 : 4,
-                  wordBreak: 'break-word'
-                }}>
-                  <div style={{ fontSize: 14 }}>{msg.message}</div>
-                </div>
-              )}
-              
-              {msg.messageType === 'image' && msg.mediaUrl && (
-                <div 
-                  onClick={() => window.open(msg.mediaUrl, '_blank')}
-                  style={{ cursor: 'pointer' }}
+              <div style={{ 
+                backgroundColor: isMyMessage ? '#DC2626' : '#f3f4f6',
+                color: isMyMessage ? '#fff' : '#111827',
+                padding: '10px 14px',
+                borderRadius: 16,
+                borderTopRightRadius: isMyMessage ? 4 : 16,
+                borderTopLeftRadius: isMyMessage ? 16 : 4,
+                wordBreak: 'break-word'
+              }}>
+                <div style={{ fontSize: 14 }}>{msg.message}</div>
+              </div>
+            )}
+            
+            {msg.messageType === 'image' && msg.mediaUrl && (
+              <div 
+                onClick={() => window.open(msg.mediaUrl, '_blank')}
+                style={{ cursor: 'pointer' }}
+              >
+                <img 
+                  src={msg.mediaUrl} 
+                  alt="Image"
+                  style={{ 
+                    maxWidth: 300,
+                    maxHeight: 300,
+                    borderRadius: 8,
+                    display: 'block'
+                  }}
+                />
+              </div>
+            )}
+            
+            {msg.messageType === 'video' && msg.mediaUrl && (
+              <div>
+                <video 
+                  src={msg.mediaUrl}
+                  controls
+                  style={{ 
+                    maxWidth: 300,
+                    maxHeight: 300,
+                    borderRadius: 8,
+                    display: 'block'
+                  }}
+                />
+              </div>
+            )}
+            
+            {msg.messageType === 'file' && msg.mediaUrl && (
+              <div style={{ 
+                backgroundColor: isMyMessage ? '#DC2626' : '#f3f4f6',
+                color: isMyMessage ? '#fff' : '#111827',
+                padding: '10px 14px',
+                borderRadius: 16,
+                borderTopRightRadius: isMyMessage ? 4 : 16,
+                borderTopLeftRadius: isMyMessage ? 16 : 4,
+                wordBreak: 'break-word'
+              }}>
+                <a 
+                  href={msg.mediaUrl} 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  style={{ 
+                    color: isMyMessage ? '#fff' : '#DC2626',
+                    textDecoration: 'underline',
+                    fontSize: 14
+                  }}
                 >
-                  <img 
-                    src={msg.mediaUrl} 
-                    alt="Image"
-                    style={{ 
-                      maxWidth: 300,
-                      maxHeight: 300,
-                      borderRadius: 8,
-                      display: 'block'
-                    }}
-                  />
-                </div>
-              )}
-              
-              {msg.messageType === 'video' && msg.mediaUrl && (
-                <div>
-                  <video 
-                    src={msg.mediaUrl}
-                    controls
-                    style={{ 
-                      maxWidth: 300,
-                      maxHeight: 300,
-                      borderRadius: 8,
-                      display: 'block'
-                    }}
-                  />
-                </div>
-              )}
-              
-              {msg.messageType === 'file' && msg.mediaUrl && (
-                <div style={{ 
-                  backgroundColor: isMyMessage ? '#DC2626' : '#f3f4f6',
-                  color: isMyMessage ? '#fff' : '#111827',
-                  padding: '10px 14px',
-                  borderRadius: 16,
-                  borderTopRightRadius: isMyMessage ? 4 : 16,
-                  borderTopLeftRadius: isMyMessage ? 16 : 4,
-                  wordBreak: 'break-word'
-                }}>
-                  <a 
-                    href={msg.mediaUrl} 
-                    target="_blank" 
-                    rel="noopener noreferrer"
-                    style={{ 
-                      color: isMyMessage ? '#fff' : '#DC2626',
-                      textDecoration: 'underline',
-                      fontSize: 14
-                    }}
-                  >
-                    📎 {msg.message}
-                  </a>
-                </div>
-              )}
-            </div>
+                  📎 {msg.message}
+                </a>
+              </div>
+            )}
             
             <div style={{ 
               fontSize: 10, 
