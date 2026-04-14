@@ -228,23 +228,44 @@ export function StormChatRoom({ group, onBack }: Props) {
             )}
             
             <div style={{ 
-              backgroundColor: isMyMessage ? '#DC2626' : '#f3f4f6',
-              color: isMyMessage ? '#fff' : '#111827',
-              padding: '10px 14px',
-              borderRadius: 16,
-              borderTopRightRadius: isMyMessage ? 4 : 16,
-              borderTopLeftRadius: isMyMessage ? 16 : 4,
-              wordBreak: 'break-word'
+              maxWidth: '70%',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: isMyMessage ? 'flex-end' : 'flex-start'
             }}>
+              {!isMyMessage && (
+                <div style={{ 
+                  fontSize: 11, 
+                  color: '#6b7280',
+                  marginBottom: 4,
+                  marginLeft: 8
+                }}>
+                  {msg.senderName}
+                </div>
+              )}
+              
               {msg.messageType === 'text' && (
-                <div style={{ fontSize: 14 }}>{msg.message}</div>
+                <div style={{ 
+                  backgroundColor: isMyMessage ? '#DC2626' : '#f3f4f6',
+                  color: isMyMessage ? '#fff' : '#111827',
+                  padding: '10px 14px',
+                  borderRadius: 16,
+                  borderTopRightRadius: isMyMessage ? 4 : 16,
+                  borderTopLeftRadius: isMyMessage ? 16 : 4,
+                  wordBreak: 'break-word'
+                }}>
+                  <div style={{ fontSize: 14 }}>{msg.message}</div>
+                </div>
               )}
               
               {msg.messageType === 'image' && msg.mediaUrl && (
-                <div>
+                <div 
+                  onClick={() => window.open(msg.mediaUrl, '_blank')}
+                  style={{ cursor: 'pointer' }}
+                >
                   <img 
                     src={msg.mediaUrl} 
-                    alt={msg.message}
+                    alt="Image"
                     style={{ 
                       maxWidth: 300,
                       maxHeight: 300,
@@ -252,11 +273,6 @@ export function StormChatRoom({ group, onBack }: Props) {
                       display: 'block'
                     }}
                   />
-                  {msg.message && (
-                    <div style={{ fontSize: 12, marginTop: 8, opacity: 0.9 }}>
-                      {msg.message}
-                    </div>
-                  )}
                 </div>
               )}
               
@@ -272,27 +288,32 @@ export function StormChatRoom({ group, onBack }: Props) {
                       display: 'block'
                     }}
                   />
-                  {msg.message && (
-                    <div style={{ fontSize: 12, marginTop: 8, opacity: 0.9 }}>
-                      {msg.message}
-                    </div>
-                  )}
                 </div>
               )}
               
               {msg.messageType === 'file' && msg.mediaUrl && (
-                <a 
-                  href={msg.mediaUrl} 
-                  target="_blank" 
-                  rel="noopener noreferrer"
-                  style={{ 
-                    color: isMyMessage ? '#fff' : '#DC2626',
-                    textDecoration: 'underline',
-                    fontSize: 14
-                  }}
-                >
-                  📎 {msg.message}
-                </a>
+                <div style={{ 
+                  backgroundColor: isMyMessage ? '#DC2626' : '#f3f4f6',
+                  color: isMyMessage ? '#fff' : '#111827',
+                  padding: '10px 14px',
+                  borderRadius: 16,
+                  borderTopRightRadius: isMyMessage ? 4 : 16,
+                  borderTopLeftRadius: isMyMessage ? 16 : 4,
+                  wordBreak: 'break-word'
+                }}>
+                  <a 
+                    href={msg.mediaUrl} 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    style={{ 
+                      color: isMyMessage ? '#fff' : '#DC2626',
+                      textDecoration: 'underline',
+                      fontSize: 14
+                    }}
+                  >
+                    📎 {msg.message}
+                  </a>
+                </div>
               )}
             </div>
             

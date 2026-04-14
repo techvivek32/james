@@ -5,6 +5,8 @@ import 'dart:async';
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
 import '../services/auth_service.dart';
+import 'storm_chat_group_info_screen.dart';
+import 'image_viewer_screen.dart';
 
 class StormChatRoomScreen extends StatefulWidget {
   final dynamic group;
@@ -297,51 +299,65 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
           icon: const Icon(Icons.arrow_back, color: Colors.white),
           onPressed: () => Navigator.pop(context),
         ),
-        title: Row(
-          children: [
-            Container(
-              width: 36,
-              height: 36,
-              decoration: BoxDecoration(
-                color: Colors.black,
-                borderRadius: BorderRadius.circular(8),
-                image: widget.group['imageUrl'] != null && widget.group['imageUrl'].isNotEmpty
-                    ? DecorationImage(
-                        image: NetworkImage('https://millerstorm.tech${widget.group['imageUrl']}'),
-                        fit: BoxFit.cover,
+        title: InkWell(
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => StormChatGroupInfoScreen(
+                  group: widget.group,
+                  userId: widget.userId,
+                  userRole: widget.userRole,
+                ),
+              ),
+            );
+          },
+          child: Row(
+            children: [
+              Container(
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(
+                  color: Colors.black,
+                  borderRadius: BorderRadius.circular(8),
+                  image: widget.group['imageUrl'] != null && widget.group['imageUrl'].isNotEmpty
+                      ? DecorationImage(
+                          image: NetworkImage('https://millerstorm.tech${widget.group['imageUrl']}'),
+                          fit: BoxFit.cover,
+                        )
+                      : null,
+                ),
+                child: widget.group['imageUrl'] == null || widget.group['imageUrl'].isEmpty
+                    ? const Center(
+                        child: Text('👥', style: TextStyle(fontSize: 18)),
                       )
                     : null,
               ),
-              child: widget.group['imageUrl'] == null || widget.group['imageUrl'].isEmpty
-                  ? const Center(
-                      child: Text('👥', style: TextStyle(fontSize: 18)),
-                    )
-                  : null,
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    widget.group['name'] ?? 'Group',
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      widget.group['name'] ?? 'Group',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
-                  ),
-                  Text(
-                    '${(widget.group['members'] as List?)?.length ?? 0} members',
-                    style: const TextStyle(
-                      color: Colors.white70,
-                      fontSize: 12,
+                    Text(
+                      '${(widget.group['members'] as List?)?.length ?? 0} members',
+                      style: const TextStyle(
+                        color: Colors.white70,
+                        fontSize: 12,
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
       body: Column(
@@ -515,19 +531,24 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
                       ),
                     ),
                   ),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                  decoration: BoxDecoration(
-                    color: isMyMessage ? const Color(0xFFDC2626) : const Color(0xFFF3F4F6),
-                    borderRadius: BorderRadius.only(
-                      topLeft: const Radius.circular(16),
-                      topRight: const Radius.circular(16),
-                      bottomLeft: Radius.circular(isMyMessage ? 16 : 4),
-                      bottomRight: Radius.circular(isMyMessage ? 4 : 16),
+                // Different styling for different message types
+                if (message['messageType'] == 'text')
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                    decoration: BoxDecoration(
+                      color: isMyMessage ? const Color(0xFFDC2626) : const Color(0xFFF3F4F6),
+                      borderRadius: BorderRadius.only(
+                        topLeft: const Radius.circular(16),
+                        topRight: const Radius.circular(16),
+                        bottomLeft: Radius.circular(isMyMessage ? 16 : 4),
+                        bottomRight: Radius.circular(isMyMessage ? 4 : 16),
+                      ),
                     ),
-                  ),
-                  child: _buildMessageContent(message, isMyMessage),
-                ),
+                    child: _buildMessageContent(message, isMyMessage),
+                  )
+                else
+                  // No background for images/videos
+                  _buildMessageContent(message, isMyMessage),
                 Padding(
                   padding: EdgeInsets.only(
                     left: isMyMessage ? 0 : 8,
@@ -563,51 +584,57 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
         ),
       );
     } else if (messageType == 'image' && message['mediaUrl'] != null) {
-      return Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          ClipRRect(
-            borderRadius: BorderRadius.circular(8),
-            child: Image.network(
-              message['mediaUrl'],
-              width: 200,
-              fit: BoxFit.cover,
-            ),
-          ),
-          if (message['message'] != null && message['message'].isNotEmpty)
-            Padding(
-              padding: const EdgeInsets.only(top: 8),
-              child: Text(
-                message['message'],
-                style: TextStyle(fontSize: 12, color: textColor.withOpacity(0.9)),
+      return GestureDetector(
+        onTap: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => ImageViewerScreen(
+                imageUrl: message['mediaUrl'],
+                fileName: message['message'],
               ),
             ),
-        ],
+          );
+        },
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(8),
+          child: Image.network(
+            'https://millerstorm.tech${message['mediaUrl']}',
+            width: 200,
+            fit: BoxFit.cover,
+            errorBuilder: (context, error, stackTrace) {
+              return Container(
+                width: 200,
+                height: 150,
+                color: Colors.grey[300],
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.broken_image, size: 48, color: Colors.grey[600]),
+                    const SizedBox(height: 8),
+                    Text(
+                      'Image failed to load',
+                      style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                      textAlign: TextAlign.center,
+                    ),
+                  ],
+                ),
+              );
+            },
+          ),
+        ),
       );
     } else if (messageType == 'video' && message['mediaUrl'] != null) {
-      return Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            width: 200,
-            height: 150,
-            decoration: BoxDecoration(
-              color: Colors.black,
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: const Center(
-              child: Icon(Icons.play_circle_outline, size: 48, color: Colors.white),
-            ),
-          ),
-          if (message['message'] != null && message['message'].isNotEmpty)
-            Padding(
-              padding: const EdgeInsets.only(top: 8),
-              child: Text(
-                message['message'],
-                style: TextStyle(fontSize: 12, color: textColor.withOpacity(0.9)),
-              ),
-            ),
-        ],
+      return Container(
+        width: 200,
+        height: 150,
+        decoration: BoxDecoration(
+          color: Colors.black,
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: const Center(
+          child: Icon(Icons.play_circle_outline, size: 48, color: Colors.white),
+        ),
       );
     }
 
