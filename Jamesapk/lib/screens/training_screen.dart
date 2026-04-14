@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
+import 'package:http/http.dart' as http;
 
 class TrainingScreen extends StatefulWidget {
   const TrainingScreen({super.key});
@@ -23,12 +24,15 @@ class _TrainingScreenState extends State<TrainingScreen> {
 
   String _greeting = 'Good Morning';
   String _userName = 'Loading...';
+  int _stormChatGroupCount = 0;
+  String? _userId;
 
   @override
   void initState() {
     super.initState();
     _loadUserData();
     _setGreeting();
+    _fetchStormChatGroups();
   }
 
   void _setGreeting() {
@@ -50,13 +54,42 @@ class _TrainingScreenState extends State<TrainingScreen> {
         final user = jsonDecode(userStr);
         setState(() {
           _userName = user['name'] ?? 'User';
+          _userId = user['_id'] ?? user['id'];
         });
+        // Fetch groups after user data is loaded
+        _fetchStormChatGroups();
       }
     } catch (e) {
       print('Error loading user data: $e');
       setState(() {
         _userName = 'User';
       });
+    }
+  }
+
+  Future<void> _fetchStormChatGroups() async {
+    if (_userId == null) return;
+    
+    try {
+      final response = await http.get(
+        Uri.parse('https://millerstorm.tech/api/storm-chat/groups'),
+      );
+
+      if (response.statusCode == 200) {
+        final allGroups = json.decode(response.body) as List;
+        
+        // Filter groups where user is a member
+        final userGroups = allGroups.where((group) {
+          final members = List<String>.from(group['members'] ?? []);
+          return members.contains(_userId);
+        }).toList();
+
+        setState(() {
+          _stormChatGroupCount = userGroups.length;
+        });
+      }
+    } catch (e) {
+      print('Error fetching StormChat groups: $e');
     }
   }
 
@@ -406,7 +439,7 @@ class _TrainingScreenState extends State<TrainingScreen> {
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
               _navItem(Icons.school_outlined, 'Training', true, null, context),
-              _navItemWithBadge(Icons.chat_bubble_outline, 'StormChat', 3, context),
+              _navItemWithBadge(Icons.chat_bubble_outline, 'StormChat', _stormChatGroupCount, context),
               _navItem(Icons.emoji_events_outlined, 'Rankings', false, '/rankings', context),
               _navItem(Icons.work_outline, 'Planner', false, '/planner', context),
             ],
@@ -440,18 +473,19 @@ class _TrainingScreenState extends State<TrainingScreen> {
             clipBehavior: Clip.none,
             children: [
               Icon(icon, color: _textPlaceholder, size: 24),
-              Positioned(
-                top: -4,
-                right: -6,
-                child: Container(
-                  width: 16,
-                  height: 16,
-                  decoration: const BoxDecoration(color: Color(0xFFDC2626), shape: BoxShape.circle),
-                  child: Center(
-                    child: Text('$badge', style: const TextStyle(color: _white, fontSize: 9, fontWeight: FontWeight.w700)),
+              if (badge > 0)
+                Positioned(
+                  top: -4,
+                  right: -6,
+                  child: Container(
+                    width: 16,
+                    height: 16,
+                    decoration: const BoxDecoration(color: Color(0xFFDC2626), shape: BoxShape.circle),
+                    child: Center(
+                      child: Text('$badge', style: const TextStyle(color: _white, fontSize: 9, fontWeight: FontWeight.w700)),
+                    ),
                   ),
                 ),
-              ),
             ],
           ),
           const SizedBox(height: 4),

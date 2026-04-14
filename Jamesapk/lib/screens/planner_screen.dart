@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'dart:convert';
+import 'package:http/http.dart' as http;
 
 class PlannerScreen extends StatefulWidget {
   const PlannerScreen({super.key});
@@ -19,8 +22,56 @@ class _PlannerScreenState extends State<PlannerScreen> {
   bool _isDaily = true;
   double _inspections = 5;
   double _claims = 3;
+  int _stormChatGroupCount = 0;
+  String? _userId;
 
   double get _projectedEarnings => (_inspections * 354) + (_claims * 236);
+
+  @override
+  void initState() {
+    super.initState();
+    _loadUserAndFetchGroups();
+  }
+
+  Future<void> _loadUserAndFetchGroups() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final userStr = prefs.getString('user');
+      if (userStr != null) {
+        final user = jsonDecode(userStr);
+        _userId = user['_id'] ?? user['id'];
+        await _fetchStormChatGroups();
+      }
+    } catch (e) {
+      print('Error loading user data: $e');
+    }
+  }
+
+  Future<void> _fetchStormChatGroups() async {
+    if (_userId == null) return;
+    
+    try {
+      final response = await http.get(
+        Uri.parse('https://millerstorm.tech/api/storm-chat/groups'),
+      );
+
+      if (response.statusCode == 200) {
+        final allGroups = json.decode(response.body) as List;
+        
+        // Filter groups where user is a member
+        final userGroups = allGroups.where((group) {
+          final members = List<String>.from(group['members'] ?? []);
+          return members.contains(_userId);
+        }).toList();
+
+        setState(() {
+          _stormChatGroupCount = userGroups.length;
+        });
+      }
+    } catch (e) {
+      print('Error fetching StormChat groups: $e');
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -384,7 +435,7 @@ class _PlannerScreenState extends State<PlannerScreen> {
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
               _navItem(Icons.school_outlined, 'Training', false, '/training'),
-              _navItemWithBadge(Icons.chat_bubble_outline, 'StormChat', 3, '/stormchat'),
+              _navItemWithBadge(Icons.chat_bubble_outline, 'StormChat', _stormChatGroupCount, '/stormchat'),
               _navItem(Icons.emoji_events_outlined, 'Rankings', false, '/rankings'),
               _navItemActive(),
             ],
@@ -422,18 +473,19 @@ class _PlannerScreenState extends State<PlannerScreen> {
               Text(label, style: const TextStyle(fontSize: 11, color: _textPlaceholder)),
             ],
           ),
-          Positioned(
-            top: -4,
-            right: -6,
-            child: Container(
-              width: 16,
-              height: 16,
-              decoration: const BoxDecoration(color: Color(0xFFDC2626), shape: BoxShape.circle),
-              child: Center(
-                child: Text('$badge', style: const TextStyle(color: _white, fontSize: 9, fontWeight: FontWeight.w700)),
+          if (badge > 0)
+            Positioned(
+              top: -4,
+              right: -6,
+              child: Container(
+                width: 16,
+                height: 16,
+                decoration: const BoxDecoration(color: Color(0xFFDC2626), shape: BoxShape.circle),
+                child: Center(
+                  child: Text('$badge', style: const TextStyle(color: _white, fontSize: 9, fontWeight: FontWeight.w700)),
+                ),
               ),
             ),
-          ),
         ],
       ),
     );

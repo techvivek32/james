@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/gestures.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'dart:async';
@@ -7,6 +8,7 @@ import 'dart:io';
 import '../services/auth_service.dart';
 import 'storm_chat_group_info_screen.dart';
 import 'image_viewer_screen.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class StormChatRoomScreen extends StatefulWidget {
   final dynamic group;
@@ -576,13 +578,7 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
     final textColor = isMyMessage ? Colors.white : const Color(0xFF111827);
 
     if (messageType == 'text') {
-      return Text(
-        message['message'] ?? '',
-        style: TextStyle(
-          fontSize: 14,
-          color: textColor,
-        ),
-      );
+      return _buildTextWithLinks(message['message'] ?? '', textColor);
     } else if (messageType == 'image' && message['mediaUrl'] != null) {
       return GestureDetector(
         onTap: () {
@@ -640,6 +636,62 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
     return Text(
       message['message'] ?? '',
       style: TextStyle(fontSize: 14, color: textColor),
+    );
+  }
+
+  Widget _buildTextWithLinks(String text, Color textColor) {
+    final RegExp urlRegExp = RegExp(
+      r'https?://[^\s]+',
+      caseSensitive: false,
+    );
+
+    final List<TextSpan> spans = [];
+    int start = 0;
+
+    for (final Match match in urlRegExp.allMatches(text)) {
+      // Add text before the URL
+      if (match.start > start) {
+        spans.add(TextSpan(
+          text: text.substring(start, match.start),
+          style: TextStyle(fontSize: 14, color: textColor),
+        ));
+      }
+
+      // Add the clickable URL
+      final String url = match.group(0)!;
+      spans.add(TextSpan(
+        text: url,
+        style: TextStyle(
+          fontSize: 14,
+          color: textColor == Colors.white ? Colors.lightBlueAccent : Colors.blue,
+          decoration: TextDecoration.underline,
+        ),
+        recognizer: TapGestureRecognizer()
+          ..onTap = () async {
+            final Uri uri = Uri.parse(url);
+            if (await canLaunchUrl(uri)) {
+              await launchUrl(uri, mode: LaunchMode.externalApplication);
+            } else {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text('Could not launch $url')),
+              );
+            }
+          },
+      ));
+
+      start = match.end;
+    }
+
+    // Add remaining text after the last URL
+    if (start < text.length) {
+      spans.add(TextSpan(
+        text: text.substring(start),
+        style: TextStyle(fontSize: 14, color: textColor),
+      ));
+    }
+
+    return RichText(
+      text: TextSpan(children: spans),
     );
   }
 }

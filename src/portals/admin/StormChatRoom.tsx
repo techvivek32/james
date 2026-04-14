@@ -194,6 +194,33 @@ export function StormChatRoom({ group, onBack }: Props) {
     return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
   }
 
+  function renderTextWithLinks(text: string, textColor: string) {
+    const urlRegex = /(https?:\/\/[^\s]+)/g;
+    const parts = text.split(urlRegex);
+    
+    return parts.map((part, index) => {
+      if (urlRegex.test(part)) {
+        return (
+          <a
+            key={index}
+            href={part}
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{
+              color: textColor === '#fff' ? '#93c5fd' : '#2563eb',
+              textDecoration: 'underline',
+              cursor: 'pointer'
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {part}
+          </a>
+        );
+      }
+      return part;
+    });
+  }
+
   function renderMessage(msg: ChatMessage, index: number) {
     const isMyMessage = msg.senderId === (user?._id || user?.id);
     const showDate = index === 0 || 
@@ -250,7 +277,9 @@ export function StormChatRoom({ group, onBack }: Props) {
                 borderTopLeftRadius: isMyMessage ? 16 : 4,
                 wordBreak: 'break-word'
               }}>
-                <div style={{ fontSize: 14 }}>{msg.message}</div>
+                <div style={{ fontSize: 14 }}>
+                  {renderTextWithLinks(msg.message, isMyMessage ? '#fff' : '#111827')}
+                </div>
               </div>
             )}
             

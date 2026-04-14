@@ -1,8 +1,16 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'dart:convert';
+import 'package:http/http.dart' as http;
 
-class RankingsScreen extends StatelessWidget {
+class RankingsScreen extends StatefulWidget {
   const RankingsScreen({super.key});
 
+  @override
+  State<RankingsScreen> createState() => _RankingsScreenState();
+}
+
+class _RankingsScreenState extends State<RankingsScreen> {
   static const _bg = Color(0xFFF3F4F6);
   static const _white = Color(0xFFFFFFFF);
   static const _primary = Color(0xFFDC2626);
@@ -11,6 +19,55 @@ class RankingsScreen extends StatelessWidget {
   static const _textPlaceholder = Color(0xFF9CA3AF);
   static const _border = Color(0xFFD1D5DB);
   static const _link = Color(0xFFDC2626);
+
+  int _stormChatGroupCount = 0;
+  String? _userId;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadUserAndFetchGroups();
+  }
+
+  Future<void> _loadUserAndFetchGroups() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final userStr = prefs.getString('user');
+      if (userStr != null) {
+        final user = jsonDecode(userStr);
+        _userId = user['_id'] ?? user['id'];
+        await _fetchStormChatGroups();
+      }
+    } catch (e) {
+      print('Error loading user data: $e');
+    }
+  }
+
+  Future<void> _fetchStormChatGroups() async {
+    if (_userId == null) return;
+    
+    try {
+      final response = await http.get(
+        Uri.parse('https://millerstorm.tech/api/storm-chat/groups'),
+      );
+
+      if (response.statusCode == 200) {
+        final allGroups = json.decode(response.body) as List;
+        
+        // Filter groups where user is a member
+        final userGroups = allGroups.where((group) {
+          final members = List<String>.from(group['members'] ?? []);
+          return members.contains(_userId);
+        }).toList();
+
+        setState(() {
+          _stormChatGroupCount = userGroups.length;
+        });
+      }
+    } catch (e) {
+      print('Error fetching StormChat groups: $e');
+    }
+  }
 
   static const _avatarColors = [
     Color(0xFF3B82F6),
@@ -314,7 +371,7 @@ class RankingsScreen extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
               _navItem(context, Icons.school_outlined, 'Training', false, '/training'),
-              _navItemWithBadge(context, Icons.chat_bubble_outline, 'StormChat', 3, '/stormchat'),
+              _navItemWithBadge(context, Icons.chat_bubble_outline, 'StormChat', _stormChatGroupCount, '/stormchat'),
               _navItem(context, Icons.emoji_events_outlined, 'Rankings', true, null),
               _navItem(context, Icons.work_outline, 'Planner', false, '/planner'),
             ],
@@ -352,18 +409,19 @@ class RankingsScreen extends StatelessWidget {
               Text(label, style: const TextStyle(fontSize: 11, color: _textPlaceholder)),
             ],
           ),
-          Positioned(
-            top: -4,
-            right: -6,
-            child: Container(
-              width: 16,
-              height: 16,
-              decoration: const BoxDecoration(color: Color(0xFFDC2626), shape: BoxShape.circle),
-              child: Center(
-                child: Text('$badge', style: const TextStyle(color: _white, fontSize: 9, fontWeight: FontWeight.w700)),
+          if (badge > 0)
+            Positioned(
+              top: -4,
+              right: -6,
+              child: Container(
+                width: 16,
+                height: 16,
+                decoration: const BoxDecoration(color: Color(0xFFDC2626), shape: BoxShape.circle),
+                child: Center(
+                  child: Text('$badge', style: const TextStyle(color: _white, fontSize: 9, fontWeight: FontWeight.w700)),
+                ),
               ),
             ),
-          ),
         ],
       ),
     );
