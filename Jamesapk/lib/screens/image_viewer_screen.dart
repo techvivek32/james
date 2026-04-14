@@ -3,6 +3,8 @@ import 'package:flutter/services.dart';
 import 'dart:io';
 import 'package:http/http.dart' as http;
 import 'package:path_provider/path_provider.dart';
+import 'package:share_plus/share_plus.dart';
+import 'package:permission_handler/permission_handler.dart';
 
 class ImageViewerScreen extends StatelessWidget {
   final String imageUrl;
@@ -51,7 +53,7 @@ class ImageViewerScreen extends StatelessWidget {
           minScale: 0.5,
           maxScale: 4.0,
           child: Image.network(
-            imageUrl.startsWith('http') ? imageUrl : 'https://millerstorm.tech$imageUrl',
+            imageUrl.startsWith('http') ? imageUrl : 'http://localhost:6790$imageUrl',
             fit: BoxFit.contain,
             loadingBuilder: (context, child, loadingProgress) {
               if (loadingProgress == null) return child;
@@ -94,44 +96,149 @@ class ImageViewerScreen extends StatelessWidget {
         ),
       );
 
-      final url = imageUrl.startsWith('http') ? imageUrl : 'https://millerstorm.tech$imageUrl';
+      // Request storage permission
+      if (Platform.isAndroid) {
+        var status = await Permission.storage.status;
+        if (!status.isGranted) {
+          status = await Permission.storage.request();
+          if (!status.isGranted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Storage permission required to download'),
+                backgroundColor: Colors.red,
+              ),
+            );
+            return;
+          }
+        }
+      }
+
+      final url = imageUrl.startsWith('http') ? imageUrl : 'http://localhost:6790$imageUrl';
       final response = await http.get(Uri.parse(url));
       
       if (response.statusCode == 200) {
-        final directory = await getApplicationDocumentsDirectory();
-        final fileName = 'image_${DateTime.now().millisecondsSinceEpoch}.jpg';
-        final file = File('${directory.path}/$fileName');
+        Directory? directory;
+        
+        if (Platform.isAndroid) {
+          // Save to Downloads folder on Android
+          directory = Directory('/storage/emulated/0/Download');
+          if (!await directory.exists()) {
+            directory = await getExternalStorageDirectory();
+          }
+        } else {
+          // Save to Documents on iOS
+          directory = await getApplicationDocumentsDirectory();
+        }
+        
+        final fileName = 'StormChat_${DateTime.now().millisecondsSinceEpoch}.jpg';
+        final file = File('${directory!.path}/$fileName');
         
         await file.writeAsBytes(response.bodyBytes);
         
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Image saved to ${file.path}'),
+            content: Text('Image saved to Downloads folder'),
             backgroundColor: Colors.green,
+            action: SnackBarAction(
+              label: 'View',
+              textColor: Colors.white,
+              onPressed: () {
+                // Could open file manager here
+              },
+            ),
           ),
         );
       }
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Failed to download image'),
+        SnackBar(
+          content: Text('Failed to download image: $e'),
           backgroundColor: Colors.red,
         ),
       );
     }
   }
 
-  void _shareImage(BuildContext context) {
-    // For now, just copy URL to clipboard
-    final url = imageUrl.startsWith('http') ? imageUrl : 'https://millerstorm.tech$imageUrl';
-    Clipboard.setData(ClipboardData(text: url));
-    
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Image URL copied to clipboard'),
-        backgroundColor: Colors.green,
-      ),
-    );
+  void _shareImage(BuildContext context) async {
+    try {
+      final url = imageUrl.startsWith('http') ? imageUrl : 'http://localhost:6790$imageUrl';
+      
+      // Show share options
+      showModalBottomSheet(
+        context: context,
+        backgroundColor: Colors.grey[900],
+        builder: (context) => SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Padding(
+                padding: EdgeInsets.all(16),
+                child: Text(
+                  'Share Image',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+              ListTile(
+                leading: const Icon(Icons.share, color: Colors.white),
+                title: const Text('Share via Apps', style: TextStyle(color: Colors.white)),
+                subtitle: const Text('WhatsApp, Telegram, etc.', style: TextStyle(color: Colors.white70)),
+                onTap: () async {
+                  Navigator.pop(context);
+                  try {
+                    // Download image temporarily for sharing
+                    final response = await http.get(Uri.parse(url));
+                    if (response.statusCode == 200) {
+                      final tempDir = await getTemporaryDirectory();
+                      final fileName = 'share_image_${DateTime.now().millisecondsSinceEpoch}.jpg';
+                      final file = File('${tempDir.path}/$fileName');
+                      await file.writeAsBytes(response.bodyBytes);
+                      
+                      await Share.shareXFiles(
+                        [XFile(file.path)],
+                        text: 'Shared from StormChat',
+                      );
+                    }
+                  } catch (e) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Failed to share image'),
+                        backgroundColor: Colors.red,
+                      ),
+                    );
+                  }
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.link, color: Colors.white),
+                title: const Text('Copy Link', style: TextStyle(color: Colors.white)),
+                subtitle: const Text('Copy image URL', style: TextStyle(color: Colors.white70)),
+                onTap: () {
+                  Navigator.pop(context);
+                  Clipboard.setData(ClipboardData(text: url));
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Image URL copied to clipboard'),
+                      backgroundColor: Colors.green,
+                    ),
+                  );
+                },
+              ),
+            ],
+          ),
+        ),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Failed to share image'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
   }
 
   void _showMoreOptions(BuildContext context) {

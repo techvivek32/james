@@ -35,7 +35,9 @@ export function StormChatRoom({ group, onBack }: Props) {
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [shouldAutoScroll, setShouldAutoScroll] = useState(true);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const messagesContainerRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Check if user can send messages
@@ -52,11 +54,21 @@ export function StormChatRoom({ group, onBack }: Props) {
   }, [group._id]);
 
   useEffect(() => {
-    scrollToBottom();
-  }, [messages]);
+    if (shouldAutoScroll) {
+      scrollToBottom();
+    }
+  }, [messages, shouldAutoScroll]);
 
   function scrollToBottom() {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }
+
+  function handleScroll() {
+    if (messagesContainerRef.current) {
+      const { scrollTop, scrollHeight, clientHeight } = messagesContainerRef.current;
+      const isAtBottom = scrollHeight - scrollTop - clientHeight < 50;
+      setShouldAutoScroll(isAtBottom);
+    }
   }
 
   async function fetchMessages() {
@@ -99,6 +111,7 @@ export function StormChatRoom({ group, onBack }: Props) {
         const message = await response.json();
         setMessages([...messages, message]);
         setNewMessage("");
+        setShouldAutoScroll(true); // Auto-scroll for new messages
       } else {
         const error = await response.json();
         alert(error.error || 'Failed to send message');
@@ -227,24 +240,7 @@ export function StormChatRoom({ group, onBack }: Props) {
               </div>
             )}
             
-            <div style={{ 
-              maxWidth: '70%',
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: isMyMessage ? 'flex-end' : 'flex-start'
-            }}>
-              {!isMyMessage && (
-                <div style={{ 
-                  fontSize: 11, 
-                  color: '#6b7280',
-                  marginBottom: 4,
-                  marginLeft: 8
-                }}>
-                  {msg.senderName}
-                </div>
-              )}
-              
-              {msg.messageType === 'text' && (
+            {msg.messageType === 'text' && (
                 <div style={{ 
                   backgroundColor: isMyMessage ? '#DC2626' : '#f3f4f6',
                   color: isMyMessage ? '#fff' : '#111827',
@@ -393,12 +389,16 @@ export function StormChatRoom({ group, onBack }: Props) {
       </div>
 
       {/* Messages */}
-      <div style={{ 
-        flex: 1,
-        overflowY: 'auto',
-        padding: 16,
-        backgroundColor: '#fafafa'
-      }}>
+      <div 
+        ref={messagesContainerRef}
+        onScroll={handleScroll}
+        style={{ 
+          flex: 1,
+          overflowY: 'auto',
+          padding: 16,
+          backgroundColor: '#fafafa'
+        }}
+      >
         {loading ? (
           <div style={{ textAlign: 'center', padding: 40, color: '#9ca3af' }}>
             Loading messages...
@@ -462,7 +462,7 @@ export function StormChatRoom({ group, onBack }: Props) {
             <textarea
               value={newMessage}
               onChange={(e) => setNewMessage(e.target.value)}
-              onKeyPress={(e) => {
+              onKeyDown={(e) => {
                 if (e.key === 'Enter' && !e.shiftKey) {
                   e.preventDefault();
                   sendMessage();
