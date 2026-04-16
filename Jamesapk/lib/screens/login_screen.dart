@@ -38,8 +38,10 @@ class _LoginScreenState extends State<LoginScreen> {
       final role = user['role'] as String?;
       String route = '/training'; // default
       
-      if (role == 'admin' || role == 'manager') {
-        route = '/training'; // Admin and Manager see training
+      if (role == 'admin') {
+        route = '/training'; // Admin sees training
+      } else if (role == 'manager') {
+        route = '/manager-dashboard'; // Manager sees dashboard
       } else if (role == 'sales') {
         route = '/training'; // Sales rep sees training
       } else if (role == 'marketing') {

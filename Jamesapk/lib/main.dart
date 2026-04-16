@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'screens/login_screen.dart';
 import 'screens/training_screen.dart';
+import 'screens/manager_dashboard_screen.dart';
 import 'screens/storm_chat_screen.dart';
 import 'screens/storm_chat_room_screen.dart';
 import 'screens/rankings_screen.dart';
@@ -32,6 +33,8 @@ class MillerStormApp extends StatelessWidget {
             return MaterialPageRoute(builder: (_) => const LoginScreen());
           case '/training':
             return MaterialPageRoute(builder: (_) => const TrainingScreen());
+          case '/manager-dashboard':
+            return MaterialPageRoute(builder: (_) => const ManagerDashboardScreen());
           case '/stormchat':
             return MaterialPageRoute(builder: (_) => const StormChatScreen());
           case '/rankings':
