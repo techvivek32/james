@@ -8,6 +8,11 @@ import 'screens/rankings_screen.dart';
 import 'screens/planner_screen.dart';
 import 'screens/courses_screen.dart';
 import 'screens/course_detail_screen.dart';
+import 'screens/manager_storm_chat_screen.dart';
+import 'screens/manager_rankings_screen.dart';
+import 'screens/manager_planner_screen.dart';
+import 'screens/manager_courses_screen.dart';
+import 'screens/manager_training_screen.dart';
 
 void main() {
   runApp(const MillerStormApp());
@@ -43,6 +48,16 @@ class MillerStormApp extends StatelessWidget {
             return MaterialPageRoute(builder: (_) => const PlannerScreen());
           case '/courses':
             return MaterialPageRoute(builder: (_) => CoursesScreen());
+          case '/manager-stormchat':
+            return MaterialPageRoute(builder: (_) => const ManagerStormChatScreen());
+          case '/manager-rankings':
+            return MaterialPageRoute(builder: (_) => const ManagerRankingsScreen());
+          case '/manager-planner':
+            return MaterialPageRoute(builder: (_) => const ManagerPlannerScreen());
+          case '/manager-courses':
+            return MaterialPageRoute(builder: (_) => const ManagerCoursesScreen());
+          case '/manager-training':
+            return MaterialPageRoute(builder: (_) => const ManagerTrainingScreen());
           default:
             return MaterialPageRoute(builder: (_) => const LoginScreen());
         }

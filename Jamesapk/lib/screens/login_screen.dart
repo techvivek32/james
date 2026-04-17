@@ -34,21 +34,23 @@ class _LoginScreenState extends State<LoginScreen> {
       );
       if (!mounted) return;
       
-      // Navigate based on role
+      // Check role and navigate accordingly
       final role = user['role'] as String?;
-      String route = '/training'; // default
       
-      if (role == 'admin') {
-        route = '/training'; // Admin sees training
+      // Only allow sales and manager roles
+      if (role == 'sales') {
+        // Sales users go to training screen
+        Navigator.pushReplacementNamed(context, '/training');
       } else if (role == 'manager') {
-        route = '/manager-dashboard'; // Manager sees dashboard
-      } else if (role == 'sales') {
-        route = '/training'; // Sales rep sees training
-      } else if (role == 'marketing') {
-        route = '/training'; // Marketing sees training
+        // Manager users go to manager dashboard
+        Navigator.pushReplacementNamed(context, '/manager-dashboard');
+      } else {
+        // Block admin, marketing, and other roles
+        setState(() { 
+          _error = 'Access denied. This app is only available for Sales and Manager roles.';
+        });
+        await AuthService.logout();
       }
-      
-      Navigator.pushReplacementNamed(context, route);
     } catch (e) {
       setState(() { _error = e.toString().replaceFirst('Exception: ', ''); });
     } finally {
