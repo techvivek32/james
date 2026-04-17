@@ -96,20 +96,42 @@ class ImageViewerScreen extends StatelessWidget {
         ),
       );
 
-      // Request storage permission
+      // Request storage permission based on Android version
       if (Platform.isAndroid) {
-        var status = await Permission.storage.status;
+        // For Android 13+ (API 33+), we need photos permission
+        // For Android 10-12, we need storage permission
+        PermissionStatus status;
+        
+        // Try photos permission first (Android 13+)
+        status = await Permission.photos.status;
         if (!status.isGranted) {
-          status = await Permission.storage.request();
+          status = await Permission.photos.request();
+        }
+        
+        // If photos permission not available, try storage (Android 10-12)
+        if (!status.isGranted) {
+          status = await Permission.storage.status;
           if (!status.isGranted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('Storage permission required to download'),
-                backgroundColor: Colors.red,
-              ),
-            );
-            return;
+            status = await Permission.storage.request();
           }
+        }
+        
+        // If still not granted, try manageExternalStorage for Android 11+
+        if (!status.isGranted) {
+          status = await Permission.manageExternalStorage.status;
+          if (!status.isGranted) {
+            status = await Permission.manageExternalStorage.request();
+          }
+        }
+        
+        if (!status.isGranted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Storage permission required to download'),
+              backgroundColor: Colors.red,
+            ),
+          );
+          return;
         }
       }
 
@@ -120,9 +142,24 @@ class ImageViewerScreen extends StatelessWidget {
         Directory? directory;
         
         if (Platform.isAndroid) {
-          // Save to Downloads folder on Android
-          directory = Directory('/storage/emulated/0/Download');
-          if (!await directory.exists()) {
+          // Try multiple paths for Android
+          final paths = [
+            '/storage/emulated/0/Download',
+            '/storage/emulated/0/Downloads',
+            '/sdcard/Download',
+            '/sdcard/Downloads',
+          ];
+          
+          for (final path in paths) {
+            final dir = Directory(path);
+            if (await dir.exists()) {
+              directory = dir;
+              break;
+            }
+          }
+          
+          // Fallback to external storage directory
+          if (directory == null) {
             directory = await getExternalStorageDirectory();
           }
         } else {
@@ -137,23 +174,24 @@ class ImageViewerScreen extends StatelessWidget {
         
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Image saved to Downloads folder'),
+            content: Text('Image saved to ${Platform.isAndroid ? "Downloads" : "Documents"} folder'),
             backgroundColor: Colors.green,
+            duration: const Duration(seconds: 3),
             action: SnackBarAction(
-              label: 'View',
+              label: 'OK',
               textColor: Colors.white,
-              onPressed: () {
-                // Could open file manager here
-              },
+              onPressed: () {},
             ),
           ),
         );
       }
     } catch (e) {
+      print('Download error: $e');
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Failed to download image: $e'),
+          content: Text('Failed to download: ${e.toString()}'),
           backgroundColor: Colors.red,
+          duration: const Duration(seconds: 3),
         ),
       );
     }
