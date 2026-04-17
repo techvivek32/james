@@ -104,17 +104,12 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
       if (response.statusCode == 200) {
         final data = json.decode(response.body) as List;
         
-        // Log messages to check reply data
-        if (!silent) {
-          print('🔵 Fetched ${data.length} messages');
-          for (var msg in data) {
-            if (msg['replyTo'] != null) {
-              print('🔵 Message with reply: ${msg['message']}');
-              print('🔵   replyTo: ${msg['replyTo']}');
-              print('🔵   replyToMessage: ${msg['replyToMessage']}');
-              print('🔵   replyToSender: ${msg['replyToSender']}');
-            }
-          }
+        // Check if user is at bottom before updating
+        bool wasAtBottom = false;
+        if (_scrollController.hasClients) {
+          final maxScroll = _scrollController.position.maxScrollExtent;
+          final currentScroll = _scrollController.position.pixels;
+          wasAtBottom = (maxScroll - currentScroll) < 100;
         }
         
         setState(() {
@@ -122,8 +117,14 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
           if (!silent) isLoading = false;
         });
         
-        // Always scroll to bottom after fetching messages
-        _scrollToBottom();
+        // Only scroll to bottom on initial load or if user was already at bottom
+        if (!silent || wasAtBottom) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (_scrollController.hasClients) {
+              _scrollController.jumpTo(_scrollController.position.maxScrollExtent);
+            }
+          });
+        }
       } else if (response.statusCode == 403) {
         final error = json.decode(response.body);
         _showError(error['error'] ?? 'Access denied');
