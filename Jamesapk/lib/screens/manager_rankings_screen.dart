@@ -94,19 +94,27 @@ class _ManagerRankingsScreenState extends State<ManagerRankingsScreen> {
           children: [
             Expanded(
               child: SingleChildScrollView(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const SizedBox(height: 16),
-                    _buildHeader(),
-                    const SizedBox(height: 16),
-                    _buildFilterRow(),
-                    const SizedBox(height: 16),
-                    _buildStatusCard(),
-                    const SizedBox(height: 24),
-                    _buildLeaderboard(),
-                    const SizedBox(height: 16),
+                    Padding(
+                      padding: const EdgeInsets.all(20),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          _buildHeader(),
+                          const SizedBox(height: 20),
+                          _buildFilterTabs(),
+                          const SizedBox(height: 16),
+                          _buildMetricsRow(),
+                        ],
+                      ),
+                    ),
+                    _buildTopThree(),
+                    Padding(
+                      padding: const EdgeInsets.all(20),
+                      child: _buildLeaderboard(),
+                    ),
                   ],
                 ),
               ),
@@ -119,238 +127,297 @@ class _ManagerRankingsScreenState extends State<ManagerRankingsScreen> {
   }
 
   Widget _buildHeader() {
+    return const Text(
+      'Leaderboards',
+      style: TextStyle(
+        fontSize: 32,
+        fontWeight: FontWeight.bold,
+        color: _textDark,
+      ),
+    );
+  }
+
+  Widget _buildFilterTabs() {
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: Row(
+        children: [
+          _buildTab('Global Team', true),
+          const SizedBox(width: 12),
+          _buildTab('My Branch', false),
+          const SizedBox(width: 12),
+          _buildTab('New Hires', false),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTab(String label, bool isActive) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      decoration: BoxDecoration(
+        color: isActive ? Colors.black : Color(0xFFF0F0F0),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(
+          fontSize: 12,
+          fontWeight: FontWeight.w600,
+          color: isActive ? _white : _textLight,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildMetricsRow() {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        const Text('Rankings', style: TextStyle(fontSize: 28, fontWeight: FontWeight.w800, color: _textDark)),
-        Container(
-          width: 40,
-          height: 40,
-          decoration: BoxDecoration(
-            color: _white,
-            shape: BoxShape.circle,
-            boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.06), blurRadius: 8)],
+        Text(
+          'METRICS: REVENUE',
+          style: TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.w600,
+            color: _textLight,
+            letterSpacing: 1.2,
           ),
-          child: const Icon(Icons.tune, color: _textLight, size: 20),
+        ),
+        Row(
+          children: [
+            Text(
+              'Monthly',
+              style: TextStyle(
+                fontSize: 15,
+                fontWeight: FontWeight.w600,
+                color: _primary,
+              ),
+            ),
+            const SizedBox(width: 4),
+            Icon(Icons.keyboard_arrow_down, color: _primary, size: 20),
+          ],
         ),
       ],
     );
   }
 
-  Widget _buildFilterRow() {
-    return Row(
-      children: [
-        _chip('All Reps', filled: true),
-        const SizedBox(width: 8),
-        _chip('Dallas Branch'),
-        const SizedBox(width: 8),
-        _chipDropdown('This Month'),
-      ],
-    );
-  }
-
-  Widget _chip(String label, {bool filled = false}) {
+  Widget _buildTopThree() {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-      decoration: BoxDecoration(
-        color: filled ? _textDark : _white,
-        borderRadius: BorderRadius.circular(24),
-        border: filled ? null : Border.all(color: _border),
-      ),
-      child: Text(label, style: TextStyle(color: filled ? _white : _textDark, fontSize: 13, fontWeight: FontWeight.w600)),
-    );
-  }
-
-  Widget _chipDropdown(String label) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      decoration: BoxDecoration(
-        color: _white,
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: _border),
-      ),
+      color: Colors.black,
+      padding: const EdgeInsets.symmetric(vertical: 30, horizontal: 20),
       child: Row(
-        mainAxisSize: MainAxisSize.min,
+        mainAxisAlignment: MainAxisAlignment.center,
+        crossAxisAlignment: CrossAxisAlignment.end,
         children: [
-          Text(label, style: const TextStyle(color: _textDark, fontSize: 13, fontWeight: FontWeight.w500)),
-          const SizedBox(width: 2),
-          const Icon(Icons.keyboard_arrow_down, size: 16, color: _textDark),
+          _buildPodiumPerson(2, 'E. Davis', '\$192k', Colors.grey[400]!),
+          const SizedBox(width: 16),
+          _buildPodiumPerson(1, 'M. Roberts', '\$245k', _primary, isWinner: true),
+          const SizedBox(width: 16),
+          _buildPodiumPerson(3, 'S. Jenkins', '\$185k', Color(0xFFCD7F32)),
         ],
       ),
     );
   }
 
-  Widget _buildStatusCard() {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [Color(0xFFDC2626), Color(0xFFB91C1C)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Stack(
-        children: [
-          Positioned(
-            right: -10,
-            top: -10,
-            child: Icon(Icons.rocket_launch_outlined, size: 100, color: Colors.white.withOpacity(0.1)),
-          ),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text('YOUR STATUS', style: TextStyle(color: Color(0xAAFFFFFF), fontSize: 12, fontWeight: FontWeight.w700, letterSpacing: 1)),
-              const SizedBox(height: 6),
-              const Text("You're 2 Inspections behind #3",
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(color: _white, fontSize: 15, fontWeight: FontWeight.w800),
+  Widget _buildPodiumPerson(int rank, String name, String amount, Color badgeColor, {bool isWinner = false}) {
+    return Column(
+      children: [
+        if (isWinner)
+          Icon(Icons.emoji_events, color: _primary, size: 32),
+        if (isWinner)
+          const SizedBox(height: 6),
+        Stack(
+          children: [
+            Container(
+              width: isWinner ? 75 : 60,
+              height: isWinner ? 75 : 60,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                border: Border.all(
+                  color: isWinner ? _primary : badgeColor,
+                  width: 3,
+                ),
               ),
-              const SizedBox(height: 6),
-              const Text("Push hard! Just one solid neighborhood away from Bronze.",
-                style: TextStyle(color: Color(0xCCFFFFFF), fontSize: 13),
+              child: CircleAvatar(
+                backgroundColor: Colors.grey[700],
+                child: Icon(Icons.person, color: _white, size: isWinner ? 32 : 26),
               ),
-              const SizedBox(height: 16),
-              Row(
-                children: [
-                  Expanded(
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(10),
-                      child: LinearProgressIndicator(
-                        value: 0.75,
-                        minHeight: 8,
-                        backgroundColor: Colors.white.withOpacity(0.2),
-                        valueColor: const AlwaysStoppedAnimation<Color>(_white),
-                      ),
+            ),
+            Positioned(
+              bottom: 0,
+              right: 0,
+              child: Container(
+                width: 24,
+                height: 24,
+                decoration: BoxDecoration(
+                  color: badgeColor,
+                  shape: BoxShape.circle,
+                  border: Border.all(color: Colors.black, width: 2),
+                ),
+                child: Center(
+                  child: Text(
+                    '$rank',
+                    style: TextStyle(
+                      color: _white,
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
                     ),
                   ),
-                  const SizedBox(width: 12),
-                  const Text('2 to go', style: TextStyle(color: _white, fontSize: 13, fontWeight: FontWeight.w600)),
-                ],
+                ),
               ),
-            ],
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        Text(
+          name,
+          style: TextStyle(
+            color: _white,
+            fontSize: 13,
+            fontWeight: FontWeight.w600,
           ),
-        ],
-      ),
+        ),
+        const SizedBox(height: 2),
+        Text(
+          amount,
+          style: TextStyle(
+            color: isWinner ? _primary : _white,
+            fontSize: isWinner ? 20 : 16,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+      ],
     );
   }
 
   Widget _buildLeaderboard() {
+    final leaderboard = [
+      {'rank': 4, 'name': 'Marcus Chen', 'branch': 'West Coast Branch', 'amount': '\$170k', 'change': '↑ 2 spots', 'changeColor': Colors.green},
+      {'rank': 5, 'name': 'Amanda Jones', 'branch': 'Southern Branch', 'amount': '\$162k', 'change': null},
+      {'rank': 6, 'name': 'Jessica Liu', 'branch': 'East Coast Branch', 'amount': '\$158k', 'change': '↓ 1 spot', 'changeColor': Colors.red},
+      {'rank': 7, 'name': 'Alex Manager', 'branch': '\$4k to next rank', 'amount': '\$154k', 'isYou': true},
+    ];
+
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: const [
-            Text('TOP INSPECTORS', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: _textDark, letterSpacing: 0.5)),
-            Text('Sorted by: Inspections', style: TextStyle(fontSize: 12, color: _textLight)),
-          ],
-        ),
-        const SizedBox(height: 10),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 4),
-          child: Row(
-            children: const [
-              SizedBox(width: 36, child: Text('RNK', style: TextStyle(fontSize: 11, color: _textPlaceholder, fontWeight: FontWeight.w600))),
-              SizedBox(width: 12),
-              Expanded(child: Text('REP NAME', style: TextStyle(fontSize: 11, color: _textPlaceholder, fontWeight: FontWeight.w600))),
-              SizedBox(width: 60, child: Text('INSP', textAlign: TextAlign.center, style: TextStyle(fontSize: 11, color: _textPlaceholder, fontWeight: FontWeight.w600))),
-              SizedBox(width: 48, child: Text('CLAIM', textAlign: TextAlign.center, style: TextStyle(fontSize: 11, color: _textPlaceholder, fontWeight: FontWeight.w600))),
-              SizedBox(width: 60, child: Text('REV', textAlign: TextAlign.right, style: TextStyle(fontSize: 11, color: _textPlaceholder, fontWeight: FontWeight.w600))),
-            ],
-          ),
-        ),
-        const SizedBox(height: 8),
-        ..._reps.map((rep) => _buildRepRow(rep)).toList(),
-      ],
+      children: leaderboard.map((person) => _buildLeaderboardRow(person)).toList(),
     );
   }
 
-  Widget _buildRepRow(Map<String, dynamic> rep) {
-    final int rank = rep['rank'] as int;
-    final bool isYou = rep['isYou'] as bool;
-    final int trend = rep['trend'] as int;
-
-    Color leftBorderColor = Colors.transparent;
-    Widget rankWidget;
-
-    if (rank == 1) {
-      leftBorderColor = const Color(0xFFF59E0B);
-      rankWidget = const Icon(Icons.workspace_premium, color: Color(0xFFF59E0B), size: 26);
-    } else if (rank == 2) {
-      leftBorderColor = const Color(0xFF9CA3AF);
-      rankWidget = const Icon(Icons.workspace_premium, color: Color(0xFF9CA3AF), size: 26);
-    } else if (rank == 3) {
-      leftBorderColor = const Color(0xFFCD7F32);
-      rankWidget = const Icon(Icons.workspace_premium, color: Color(0xFFCD7F32), size: 26);
-    } else {
-      leftBorderColor = isYou ? _primary : Colors.transparent;
-      rankWidget = Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text('#$rank', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: isYou ? _primary : _textDark)),
-          if (trend != 0)
-            Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(trend > 0 ? Icons.arrow_upward : Icons.arrow_downward, size: 10, color: trend > 0 ? Colors.green : Colors.red),
-                Text('1', style: TextStyle(fontSize: 9, color: trend > 0 ? Colors.green : Colors.red)),
-              ],
-            ),
-        ],
-      );
-    }
-
+  Widget _buildLeaderboardRow(Map<String, dynamic> person) {
+    final isYou = person['isYou'] ?? false;
+    
     return Container(
-      margin: const EdgeInsets.only(bottom: 8),
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: isYou ? const Color(0xFFEFF6FF) : _white,
-        borderRadius: BorderRadius.circular(14),
-        border: isYou ? Border.all(color: _primary, width: 1.5) : Border.all(color: Colors.transparent),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 6)],
+        color: _white,
+        borderRadius: BorderRadius.circular(16),
+        border: isYou ? Border.all(color: _primary, width: 2) : null,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(14),
-        child: IntrinsicHeight(
-          child: Row(
-            children: [
-              Container(width: 4, color: leftBorderColor),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 14),
-                child: SizedBox(width: 32, child: Center(child: rankWidget)),
-              ),
-              CircleAvatar(
-                radius: 22,
-                backgroundColor: _avatarColors[rank - 1],
-                child: Text(
-                  _avatarInitials[rank - 1],
-                  style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w700),
-                ),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisAlignment: MainAxisAlignment.center,
+      child: Row(
+        children: [
+          Text(
+            '${person['rank']}',
+            style: TextStyle(
+              fontSize: 24,
+              fontWeight: FontWeight.bold,
+              color: _textLight,
+            ),
+          ),
+          const SizedBox(width: 16),
+          CircleAvatar(
+            radius: 28,
+            backgroundColor: _border,
+            child: person['rank'] == 5
+                ? Text(
+                    'AJ',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: _textLight,
+                    ),
+                  )
+                : Icon(Icons.person, color: _textLight, size: 28),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
                   children: [
-                    Text(rep['name'] as String, style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: isYou ? _primary : _textDark)),
-                    Text(rep['location'] as String, style: const TextStyle(fontSize: 12, color: _textLight)),
+                    Text(
+                      person['name'],
+                      style: TextStyle(
+                        fontSize: 17,
+                        fontWeight: FontWeight.bold,
+                        color: _textDark,
+                      ),
+                    ),
+                    if (isYou)
+                      const SizedBox(width: 8),
+                    if (isYou)
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: _primary,
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        child: Text(
+                          'YOU',
+                          style: TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold,
+                            color: _white,
+                          ),
+                        ),
+                      ),
                   ],
                 ),
+                const SizedBox(height: 4),
+                Text(
+                  person['branch'],
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: isYou ? _primary : _textLight,
+                    fontWeight: isYou ? FontWeight.w600 : FontWeight.normal,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Text(
+                person['amount'],
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: isYou ? _primary : _textDark,
+                ),
               ),
-              SizedBox(width: 60, child: Text('${rep['insp']}', textAlign: TextAlign.center, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: _textDark))),
-              SizedBox(width: 48, child: Text('${rep['claim']}', textAlign: TextAlign.center, style: const TextStyle(fontSize: 15, color: _textLight))),
-              SizedBox(width: 60, child: Padding(
-                padding: const EdgeInsets.only(right: 12),
-                child: Text(rep['rev'] as String, textAlign: TextAlign.right, maxLines: 1,
-                  style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: _textDark)),
-              )),
+              if (person['change'] != null)
+                const SizedBox(height: 4),
+              if (person['change'] != null)
+                Text(
+                  person['change'],
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: person['changeColor'],
+                  ),
+                ),
             ],
           ),
-        ),
+        ],
       ),
     );
   }

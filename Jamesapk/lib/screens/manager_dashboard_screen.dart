@@ -86,20 +86,42 @@ class _ManagerDashboardScreenState extends State<ManagerDashboardScreen> {
           children: [
             Expanded(
               child: SingleChildScrollView(
-                padding: const EdgeInsets.all(16),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    _buildHeader(),
-                    const SizedBox(height: 24),
-                    _buildStatsCards(),
-                    const SizedBox(height: 24),
-                    _buildAttentionRequired(),
-                    const SizedBox(height: 24),
-                    _buildTopPerformers(),
-                    const SizedBox(height: 24),
-                    _buildRecentActivity(),
-                    const SizedBox(height: 16),
+                    Container(
+                      decoration: BoxDecoration(
+                        color: Colors.black,
+                        borderRadius: BorderRadius.only(
+                          bottomLeft: Radius.circular(30),
+                          bottomRight: Radius.circular(30),
+                        ),
+                      ),
+                      child: Padding(
+                        padding: const EdgeInsets.all(20),
+                        child: Column(
+                          children: [
+                            _buildHeader(),
+                            const SizedBox(height: 24),
+                            _buildStatsCards(),
+                          ],
+                        ),
+                      ),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.all(20),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          _buildAttentionRequired(),
+                          const SizedBox(height: 24),
+                          _buildTopPerformers(),
+                          const SizedBox(height: 24),
+                          _buildRecentActivity(),
+                          const SizedBox(height: 16),
+                        ],
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -112,77 +134,55 @@ class _ManagerDashboardScreenState extends State<ManagerDashboardScreen> {
   }
 
   Widget _buildHeader() {
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: _textDark,
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'OVERVIEW',
-                    style: TextStyle(
-                      color: _textLight,
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                      letterSpacing: 1.2,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  const Text(
-                    'Dashboard',
-                    style: TextStyle(
-                      color: _white,
-                      fontSize: 28,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ],
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'OVERVIEW',
+              style: TextStyle(
+                color: Colors.grey[500],
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                letterSpacing: 1.5,
               ),
-              Container(
-                width: 48,
-                height: 48,
+            ),
+            const SizedBox(height: 4),
+            const Text(
+              'Dashboard',
+              style: TextStyle(
+                color: _white,
+                fontSize: 32,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ],
+        ),
+        Stack(
+          children: [
+            CircleAvatar(
+              radius: 24,
+              backgroundColor: Colors.grey[700],
+              child: Icon(Icons.person, color: _white, size: 28),
+            ),
+            Positioned(
+              top: 0,
+              right: 0,
+              child: Container(
+                width: 12,
+                height: 12,
                 decoration: BoxDecoration(
-                  color: _textLight,
+                  color: _primary,
                   shape: BoxShape.circle,
-                ),
-                child: Stack(
-                  children: [
-                    const Center(
-                      child: Icon(
-                        Icons.person,
-                        color: _white,
-                        size: 24,
-                      ),
-                    ),
-                    Positioned(
-                      top: 8,
-                      right: 8,
-                      child: Container(
-                        width: 12,
-                        height: 12,
-                        decoration: BoxDecoration(
-                          color: _primary,
-                          shape: BoxShape.circle,
-                          border: Border.all(color: _white, width: 2),
-                        ),
-                      ),
-                    ),
-                  ],
+                  border: Border.all(color: Colors.black, width: 2),
                 ),
               ),
-            ],
-          ),
-        ],
-      ),
+            ),
+          ],
+        ),
+      ],
     );
   }
 
@@ -193,8 +193,8 @@ class _ManagerDashboardScreenState extends State<ManagerDashboardScreen> {
           child: Container(
             padding: const EdgeInsets.all(20),
             decoration: BoxDecoration(
-              color: _textDark,
-              borderRadius: BorderRadius.circular(16),
+              color: Color(0xFF2D2D2D),
+              borderRadius: BorderRadius.circular(20),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -202,21 +202,21 @@ class _ManagerDashboardScreenState extends State<ManagerDashboardScreen> {
                 Text(
                   'Team Revenue',
                   style: TextStyle(
-                    color: _textLight,
+                    color: Colors.grey[400],
                     fontSize: 14,
                     fontWeight: FontWeight.w500,
                   ),
                 ),
-                const SizedBox(height: 8),
+                const SizedBox(height: 12),
                 const Text(
                   '\$4.2M',
                   style: TextStyle(
                     color: _white,
-                    fontSize: 28,
+                    fontSize: 32,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
-                const SizedBox(height: 8),
+                const SizedBox(height: 12),
                 Row(
                   children: [
                     Icon(
@@ -229,7 +229,7 @@ class _ManagerDashboardScreenState extends State<ManagerDashboardScreen> {
                       '+12% vs last mo',
                       style: TextStyle(
                         color: _success,
-                        fontSize: 12,
+                        fontSize: 13,
                         fontWeight: FontWeight.w600,
                       ),
                     ),
@@ -239,13 +239,13 @@ class _ManagerDashboardScreenState extends State<ManagerDashboardScreen> {
             ),
           ),
         ),
-        const SizedBox(width: 12),
+        const SizedBox(width: 16),
         Expanded(
           child: Container(
             padding: const EdgeInsets.all(20),
             decoration: BoxDecoration(
               color: _primary,
-              borderRadius: BorderRadius.circular(16),
+              borderRadius: BorderRadius.circular(20),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -258,16 +258,16 @@ class _ManagerDashboardScreenState extends State<ManagerDashboardScreen> {
                     fontWeight: FontWeight.w500,
                   ),
                 ),
-                const SizedBox(height: 8),
+                const SizedBox(height: 12),
                 const Text(
                   '68%',
                   style: TextStyle(
                     color: _white,
-                    fontSize: 28,
+                    fontSize: 32,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
-                const SizedBox(height: 8),
+                const SizedBox(height: 12),
                 Row(
                   children: [
                     const Icon(
@@ -280,7 +280,7 @@ class _ManagerDashboardScreenState extends State<ManagerDashboardScreen> {
                       'Top Quartile',
                       style: TextStyle(
                         color: _white,
-                        fontSize: 12,
+                        fontSize: 13,
                         fontWeight: FontWeight.w600,
                       ),
                     ),
@@ -295,161 +295,140 @@ class _ManagerDashboardScreenState extends State<ManagerDashboardScreen> {
   }
 
   Widget _buildAttentionRequired() {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: _white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Attention Required',
+          style: TextStyle(
+            fontSize: 20,
+            fontWeight: FontWeight.bold,
+            color: _textDark,
           ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            'Attention Required',
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-              color: _textDark,
-            ),
+        ),
+        const SizedBox(height: 16),
+        Container(
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            color: Color(0xFFFFE5E5),
+            borderRadius: BorderRadius.circular(16),
           ),
-          const SizedBox(height: 16),
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: const Color(0xFFFEF2F2),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Row(
-              children: [
-                Container(
-                  width: 40,
-                  height: 40,
-                  decoration: BoxDecoration(
-                    color: _primary.withOpacity(0.1),
-                    shape: BoxShape.circle,
-                  ),
-                  child: Icon(
-                    Icons.warning,
-                    color: _primary,
-                    size: 20,
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        'Low Activity Alert',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                          color: _textDark,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        'The East Coast team has seen a 15% drop in outbound calls over the last 48 hours. Review team planner.',
-                        style: TextStyle(
-                          fontSize: 13,
-                          color: _textLight,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildTopPerformers() {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: _white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Column(
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text(
-                'Top Performers',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: _textDark,
+              Container(
+                width: 48,
+                height: 48,
+                decoration: BoxDecoration(
+                  color: Colors.red[100],
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  Icons.warning_amber_rounded,
+                  color: _primary,
+                  size: 28,
                 ),
               ),
-              Text(
-                'View All',
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                  color: _primary,
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Low Activity Alert',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.black,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'The East Coast team has seen a 15% drop in outbound calls over the last 48 hours. Review team planner.',
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: Colors.grey[800],
+                        height: 1.4,
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 16),
-          _buildPerformerRow(1, 'Sarah Jenkins', '24 Deals', '\$124k', Colors.blue),
-          const SizedBox(height: 12),
-          _buildPerformerRow(2, 'Marcus Chen', '19 Deals', '\$98k', Colors.green),
-        ],
-      ),
+        ),
+      ],
     );
   }
 
-  Widget _buildPerformerRow(int rank, String name, String deals, String revenue, Color avatarColor) {
+  Widget _buildTopPerformers() {
+    return Column(
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            const Text(
+              'Top Performers',
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+                color: _textDark,
+              ),
+            ),
+            Text(
+              'View All',
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+                color: _primary,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 16),
+        Container(
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            color: _white,
+            borderRadius: BorderRadius.circular(16),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.05),
+                blurRadius: 8,
+                offset: const Offset(0, 2),
+              ),
+            ],
+          ),
+          child: Column(
+            children: [
+              _buildPerformerRow(1, 'Sarah Jenkins', '24 Deals', '\$124k'),
+              const SizedBox(height: 20),
+              _buildPerformerRow(2, 'Marcus Chen', '19 Deals', '\$98k'),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildPerformerRow(int rank, String name, String deals, String revenue) {
     return Row(
       children: [
         Text(
           '$rank',
           style: TextStyle(
-            fontSize: 16,
+            fontSize: 20,
             fontWeight: FontWeight.bold,
             color: _textLight,
           ),
         ),
         const SizedBox(width: 16),
-        Container(
-          width: 40,
-          height: 40,
-          decoration: BoxDecoration(
-            color: avatarColor,
-            shape: BoxShape.circle,
-          ),
-          child: Center(
-            child: Text(
-              name.split(' ').map((e) => e[0]).join(''),
-              style: const TextStyle(
-                color: _white,
-                fontSize: 14,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ),
+        CircleAvatar(
+          radius: 24,
+          backgroundColor: _border,
+          child: Icon(Icons.person, color: _textLight, size: 24),
         ),
-        const SizedBox(width: 12),
+        const SizedBox(width: 16),
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -458,14 +437,15 @@ class _ManagerDashboardScreenState extends State<ManagerDashboardScreen> {
                 name,
                 style: const TextStyle(
                   fontSize: 16,
-                  fontWeight: FontWeight.w600,
+                  fontWeight: FontWeight.bold,
                   color: _textDark,
                 ),
               ),
+              const SizedBox(height: 2),
               Text(
                 deals,
                 style: TextStyle(
-                  fontSize: 13,
+                  fontSize: 14,
                   color: _textLight,
                 ),
               ),
@@ -475,9 +455,9 @@ class _ManagerDashboardScreenState extends State<ManagerDashboardScreen> {
         Text(
           revenue,
           style: const TextStyle(
-            fontSize: 16,
+            fontSize: 18,
             fontWeight: FontWeight.bold,
-            color: _textDark,
+            color: _primary,
           ),
         ),
       ],
@@ -485,63 +465,53 @@ class _ManagerDashboardScreenState extends State<ManagerDashboardScreen> {
   }
 
   Widget _buildRecentActivity() {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: _white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Recent Activity',
+          style: TextStyle(
+            fontSize: 20,
+            fontWeight: FontWeight.bold,
+            color: _textDark,
           ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            'Recent Activity',
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-              color: _textDark,
-            ),
-          ),
-          const SizedBox(height: 16),
-          _buildActivityItem(
-            '10 mins ago',
-            'David L. just closed a deal worth \$12,500.',
-            'Enterprise',
-            _primary,
-          ),
-          const SizedBox(height: 16),
-          _buildActivityItem(
-            '2 hours ago',
-            'System generated new weekly reports for all team leads.',
-            null,
-            _textLight,
-          ),
-        ],
-      ),
+        ),
+        const SizedBox(height: 16),
+        _buildActivityItem(
+          '10 mins ago',
+          'David L.',
+          ' just closed a deal worth ',
+          '\$12,500.',
+          'Enterprise',
+          _primary,
+        ),
+        const SizedBox(height: 20),
+        _buildActivityItem(
+          '2 hours ago',
+          'System',
+          ' generated new weekly reports for all team leads.',
+          '',
+          null,
+          _textLight,
+        ),
+      ],
     );
   }
 
-  Widget _buildActivityItem(String time, String description, String? tag, Color dotColor) {
+  Widget _buildActivityItem(String time, String boldText, String normalText, String amount, String? tag, Color dotColor) {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Container(
-          width: 8,
-          height: 8,
+          width: 10,
+          height: 10,
           margin: const EdgeInsets.only(top: 6),
           decoration: BoxDecoration(
             color: dotColor,
             shape: BoxShape.circle,
           ),
         ),
-        const SizedBox(width: 12),
+        const SizedBox(width: 16),
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -549,26 +519,46 @@ class _ManagerDashboardScreenState extends State<ManagerDashboardScreen> {
               Text(
                 time,
                 style: TextStyle(
-                  fontSize: 12,
+                  fontSize: 13,
                   color: _textLight,
                 ),
               ),
-              const SizedBox(height: 4),
+              const SizedBox(height: 6),
               Row(
                 children: [
                   Expanded(
-                    child: Text(
-                      description,
-                      style: const TextStyle(
-                        fontSize: 14,
-                        color: _textDark,
+                    child: RichText(
+                      text: TextSpan(
+                        style: TextStyle(
+                          fontSize: 15,
+                          color: _textMedium,
+                          height: 1.4,
+                        ),
+                        children: [
+                          TextSpan(
+                            text: boldText,
+                            style: const TextStyle(
+                              fontWeight: FontWeight.bold,
+                              color: _textDark,
+                            ),
+                          ),
+                          TextSpan(text: normalText),
+                          if (amount.isNotEmpty)
+                            TextSpan(
+                              text: amount,
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                                color: _textDark,
+                              ),
+                            ),
+                        ],
                       ),
                     ),
                   ),
-                  if (tag != null) ...[
-                    const SizedBox(width: 8),
+                  if (tag != null)
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      margin: const EdgeInsets.only(left: 8),
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                       decoration: BoxDecoration(
                         color: _textLight.withOpacity(0.1),
                         borderRadius: BorderRadius.circular(4),
@@ -576,13 +566,12 @@ class _ManagerDashboardScreenState extends State<ManagerDashboardScreen> {
                       child: Text(
                         tag,
                         style: TextStyle(
-                          fontSize: 10,
+                          fontSize: 11,
                           fontWeight: FontWeight.w600,
                           color: _textLight,
                         ),
                       ),
                     ),
-                  ],
                 ],
               ),
             ],
