@@ -10,6 +10,9 @@ type ChatMessage = {
   message: string;
   messageType: 'text' | 'image' | 'video' | 'file';
   mediaUrl?: string;
+  replyTo?: string;
+  replyToMessage?: string;
+  replyToSender?: string;
   createdAt: Date;
 };
 
@@ -39,6 +42,8 @@ export function StormChatRoom({ group, onBack }: Props) {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [blinkingMessageId, setBlinkingMessageId] = useState<string | null>(null);
+  const messageRefs = useRef<{ [key: string]: HTMLDivElement | null }>({});
 
   // Check if user can send messages
   const isGroupMember = group.members.includes(user?._id || user?.id || '');
@@ -61,6 +66,21 @@ export function StormChatRoom({ group, onBack }: Props) {
 
   function scrollToBottom() {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }
+
+  function scrollToMessage(messageId: string) {
+    const messageElement = messageRefs.current[messageId];
+    if (messageElement) {
+      messageElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      
+      // Start blinking
+      setBlinkingMessageId(messageId);
+      
+      // Stop blinking after 1 second (2 blinks)
+      setTimeout(() => {
+        setBlinkingMessageId(null);
+      }, 1000);
+    }
   }
 
   function handleScroll() {
@@ -225,9 +245,10 @@ export function StormChatRoom({ group, onBack }: Props) {
     const isMyMessage = msg.senderId === (user?._id || user?.id);
     const showDate = index === 0 || 
       new Date(messages[index - 1].createdAt).toDateString() !== new Date(msg.createdAt).toDateString();
+    const isBlinking = blinkingMessageId === msg._id;
 
     return (
-      <div key={msg._id}>
+      <div key={msg._id} ref={(el) => { messageRefs.current[msg._id] = el; }}>
         {showDate && (
           <div style={{ 
             textAlign: 'center', 
@@ -248,7 +269,11 @@ export function StormChatRoom({ group, onBack }: Props) {
         <div style={{ 
           display: 'flex', 
           justifyContent: isMyMessage ? 'flex-end' : 'flex-start',
-          marginBottom: 8
+          marginBottom: 8,
+          transition: 'background-color 0.25s',
+          backgroundColor: isBlinking ? 'rgba(250, 204, 21, 0.3)' : 'transparent',
+          borderRadius: 16,
+          padding: isBlinking ? 4 : 0
         }}>
           <div style={{ 
             maxWidth: '70%',
@@ -277,6 +302,38 @@ export function StormChatRoom({ group, onBack }: Props) {
                 borderTopLeftRadius: isMyMessage ? 16 : 4,
                 wordBreak: 'break-word'
               }}>
+                {/* Reply preview */}
+                {msg.replyTo && msg.replyToMessage && (
+                  <div 
+                    onClick={() => scrollToMessage(msg.replyTo!)}
+                    style={{
+                      marginBottom: 6,
+                      padding: 8,
+                      backgroundColor: isMyMessage ? 'rgba(255, 255, 255, 0.2)' : '#fff',
+                      borderRadius: 8,
+                      borderLeft: `3px solid ${isMyMessage ? '#fff' : '#DC2626'}`,
+                      cursor: 'pointer'
+                    }}
+                  >
+                    <div style={{
+                      fontSize: 11,
+                      fontWeight: 600,
+                      color: isMyMessage ? '#fff' : '#DC2626',
+                      marginBottom: 2
+                    }}>
+                      {msg.replyToSender || 'Unknown'}
+                    </div>
+                    <div style={{
+                      fontSize: 12,
+                      color: isMyMessage ? 'rgba(255, 255, 255, 0.8)' : '#6b7280',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                      whiteSpace: 'nowrap'
+                    }}>
+                      {msg.replyToMessage}
+                    </div>
+                  </div>
+                )}
                 <div style={{ fontSize: 14 }}>
                   {renderTextWithLinks(msg.message, isMyMessage ? '#fff' : '#111827')}
                 </div>
