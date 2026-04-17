@@ -15,53 +15,32 @@ class _ManagerTrainingScreenState extends State<ManagerTrainingScreen> {
   static const _white = Color(0xFFFFFFFF);
   static const _primary = Color(0xFFDC2626);
   static const _textDark = Color(0xFF111827);
-  static const _textMedium = Color(0xFF374151);
   static const _textLight = Color(0xFF6B7280);
   static const _textPlaceholder = Color(0xFF9CA3AF);
   static const _border = Color(0xFFD1D5DB);
   static const _link = Color(0xFFDC2626);
 
-  String _greeting = 'Good Morning';
-  String _userName = 'Loading...';
   int _stormChatGroupCount = 0;
   String? _userId;
+  bool _showMyModules = true;
 
   @override
   void initState() {
     super.initState();
-    _loadUserData();
-    _setGreeting();
-    _fetchStormChatGroups();
+    _loadUserAndFetchGroups();
   }
 
-  void _setGreeting() {
-    final hour = DateTime.now().hour;
-    if (hour < 12) {
-      _greeting = 'Good Morning';
-    } else if (hour < 17) {
-      _greeting = 'Good Afternoon';
-    } else {
-      _greeting = 'Good Evening';
-    }
-  }
-
-  Future<void> _loadUserData() async {
+  Future<void> _loadUserAndFetchGroups() async {
     try {
       final prefs = await SharedPreferences.getInstance();
       final userStr = prefs.getString('user');
       if (userStr != null) {
         final user = jsonDecode(userStr);
-        setState(() {
-          _userName = user['name'] ?? 'User';
-          _userId = user['_id'] ?? user['id'];
-        });
-        _fetchStormChatGroups();
+        _userId = user['_id'] ?? user['id'];
+        await _fetchStormChatGroups();
       }
     } catch (e) {
       print('Error loading user data: $e');
-      setState(() {
-        _userName = 'User';
-      });
     }
   }
 
@@ -99,20 +78,59 @@ class _ManagerTrainingScreenState extends State<ManagerTrainingScreen> {
           children: [
             Expanded(
               child: SingleChildScrollView(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const SizedBox(height: 16),
-                    _buildHeader(),
-                    const SizedBox(height: 20),
-                    _buildBootcampCard(),
-                    const SizedBox(height: 24),
-                    _buildAICoaches(),
-                    const SizedBox(height: 24),
-                    _buildPlaybooks(),
-                    const SizedBox(height: 16),
-                  ],
+                child: Padding(
+                  padding: const EdgeInsets.all(20),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Training Center',
+                        style: TextStyle(
+                          fontSize: 28,
+                          fontWeight: FontWeight.bold,
+                          color: _textDark,
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      _buildTabs(),
+                      const SizedBox(height: 20),
+                      _buildProgressCard(),
+                      const SizedBox(height: 24),
+                      const Text(
+                        'Required Next',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: _textDark,
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      _buildRequiredModule(),
+                      const SizedBox(height: 24),
+                      const Text(
+                        'Library',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: _textDark,
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      _buildLibraryItem(
+                        'Cold Outreach Templates',
+                        '5 Lessons • Updated recently',
+                        Icons.description_outlined,
+                        false,
+                      ),
+                      const SizedBox(height: 12),
+                      _buildLibraryItem(
+                        'Product Knowledge Core',
+                        'Completed Sep 12',
+                        Icons.check,
+                        true,
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),
@@ -123,300 +141,302 @@ class _ManagerTrainingScreenState extends State<ManagerTrainingScreen> {
     );
   }
 
-  Widget _buildHeader() {
+  Widget _buildTabs() {
     return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Row(
-          children: [
-            Stack(
-              children: [
-                CircleAvatar(
-                  radius: 26,
-                  backgroundColor: _border,
-                  child: const Icon(Icons.person, size: 28, color: _textLight),
-                ),
-                Positioned(
-                  bottom: 2,
-                  right: 2,
-                  child: Container(
-                    width: 10,
-                    height: 10,
-                    decoration: BoxDecoration(
-                      color: Colors.green,
-                      shape: BoxShape.circle,
-                      border: Border.all(color: _white, width: 1.5),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(width: 10),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('$_greeting,', style: const TextStyle(fontSize: 13, color: _textLight)),
-                Text(_userName, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: _textDark)),
-              ],
-            ),
-          ],
-        ),
-        Stack(
-          children: [
-            Container(
-              width: 42,
-              height: 42,
+        Expanded(
+          child: GestureDetector(
+            onTap: () => setState(() => _showMyModules = true),
+            child: Container(
+              padding: const EdgeInsets.symmetric(vertical: 10),
               decoration: BoxDecoration(
-                color: _white,
-                shape: BoxShape.circle,
-                boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.06), blurRadius: 8)],
+                color: _showMyModules ? _white : Colors.transparent,
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(
+                  color: _showMyModules ? _border : Colors.transparent,
+                ),
               ),
-              child: const Icon(Icons.notifications_outlined, color: _textMedium, size: 22),
-            ),
-            Positioned(
-              top: 6,
-              right: 6,
-              child: Container(
-                width: 9,
-                height: 9,
-                decoration: const BoxDecoration(color: Color(0xFFDC2626), shape: BoxShape.circle),
+              child: Text(
+                'My Modules',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: _showMyModules ? _textDark : _textLight,
+                ),
               ),
             ),
-          ],
+          ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: GestureDetector(
+            onTap: () => setState(() => _showMyModules = false),
+            child: Container(
+              padding: const EdgeInsets.symmetric(vertical: 10),
+              decoration: BoxDecoration(
+                color: !_showMyModules ? _white : Colors.transparent,
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(
+                  color: !_showMyModules ? _border : Colors.transparent,
+                ),
+              ),
+              child: Text(
+                'Team Progress',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: !_showMyModules ? _textDark : _textLight,
+                ),
+              ),
+            ),
+          ),
         ),
       ],
     );
   }
 
-  Widget _buildBootcampCard() {
+  Widget _buildProgressCard() {
     return Container(
-      width: double.infinity,
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: _primary,
-        borderRadius: BorderRadius.circular(20),
+        color: Color(0xFF1F1F1F),
+        borderRadius: BorderRadius.circular(16),
       ),
-      child: Stack(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Positioned(
-            right: -10,
-            top: -10,
-            child: Icon(Icons.bolt, size: 120, color: _white.withOpacity(0.08)),
+          Text(
+            'Your Progress',
+            style: TextStyle(
+              fontSize: 14,
+              color: Colors.grey[400],
+            ),
           ),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+          const SizedBox(height: 10),
+          Row(
             children: [
+              const Text(
+                '65%',
+                style: TextStyle(
+                  fontSize: 40,
+                  fontWeight: FontWeight.bold,
+                  color: _white,
+                ),
+              ),
+              const SizedBox(width: 12),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                 decoration: BoxDecoration(
-                  color: _white.withOpacity(0.2),
-                  borderRadius: BorderRadius.circular(20),
+                  color: _primary,
+                  borderRadius: BorderRadius.circular(5),
                 ),
                 child: const Text(
-                  'ACTION REQUIRED',
-                  style: TextStyle(color: _white, fontSize: 11, fontWeight: FontWeight.w700, letterSpacing: 0.5),
-                ),
-              ),
-              const SizedBox(height: 8),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text('7-Day Bootcamp', style: TextStyle(color: _white, fontSize: 24, fontWeight: FontWeight.w800)),
-                      SizedBox(height: 4),
-                      Text('Day 3: Mastering the Pitch', style: TextStyle(color: Color(0xCCFFFFFF), fontSize: 13)),
-                    ],
-                  ),
-                  const Text('42%', style: TextStyle(color: _white, fontSize: 28, fontWeight: FontWeight.w800)),
-                ],
-              ),
-              const SizedBox(height: 16),
-              ClipRRect(
-                borderRadius: BorderRadius.circular(10),
-                child: LinearProgressIndicator(
-                  value: 0.42,
-                  minHeight: 8,
-                  backgroundColor: _white.withOpacity(0.2),
-                  valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFF4ADE80)),
-                ),
-              ),
-              const SizedBox(height: 16),
-              Container(
-                width: double.infinity,
-                height: 48,
-                decoration: BoxDecoration(
-                  color: _white,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: const Center(
-                  child: Text(
-                    'Resume Training',
-                    style: TextStyle(color: _link, fontSize: 15, fontWeight: FontWeight.w700),
+                  'On Track',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                    color: _white,
                   ),
                 ),
               ),
             ],
+          ),
+          const SizedBox(height: 12),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(6),
+            child: LinearProgressIndicator(
+              value: 0.65,
+              backgroundColor: Colors.grey[700],
+              valueColor: const AlwaysStoppedAnimation<Color>(_primary),
+              minHeight: 6,
+            ),
+          ),
+          const SizedBox(height: 10),
+          Text(
+            'Complete 2 more modules to hit weekly goal.',
+            style: TextStyle(
+              fontSize: 13,
+              color: Colors.grey[400],
+            ),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildAICoaches() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            const Icon(Icons.smart_toy_outlined, color: _link, size: 22),
-            const SizedBox(width: 8),
-            const Text('AI Coach & Tools', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: _textDark)),
-          ],
-        ),
-        const SizedBox(height: 12),
-        Row(
-          children: [
-            Expanded(
-              child: _buildCoachCard(
-                icon: Icons.school_outlined,
-                iconBg: Color(0xFFEFF6FF),
-                iconColor: _link,
-                title: 'Training Center',
-                subtitle: 'Courses',
-                onTap: () => Navigator.pushNamed(context, '/manager-courses'),
+  Widget _buildRequiredModule() {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: _white,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: _primary, width: 2),
+      ),
+      child: Column(
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 52,
+                height: 52,
+                decoration: BoxDecoration(
+                  color: Color(0xFFFEE2E2),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Icon(
+                  Icons.handshake_outlined,
+                  color: _primary,
+                  size: 28,
+                ),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          'OBJECTION HANDLING',
+                          style: TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold,
+                            color: _primary,
+                            letterSpacing: 0.5,
+                          ),
+                        ),
+                        Text(
+                          '15 Min',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: _textLight,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 4),
+                    const Text(
+                      "Mastering the 'Too Expensive' Pivot",
+                      style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.bold,
+                        color: _textDark,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(4),
+                            child: LinearProgressIndicator(
+                              value: 0.30,
+                              backgroundColor: _border,
+                              valueColor: const AlwaysStoppedAnimation<Color>(_primary),
+                              minHeight: 5,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        const Text(
+                          '30%',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: _textLight,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton(
+              onPressed: () {},
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.black,
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
+              ),
+              child: const Text(
+                'Continue Module',
+                style: TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w600,
+                  color: _white,
+                ),
               ),
             ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: _buildCoachCard(
-                icon: Icons.apps_outlined,
-                iconBg: Color(0xFFF0FDF4),
-                iconColor: Color(0xFF16A34A),
-                title: 'Apps & Tools',
-                subtitle: 'Utilities',
-                onTap: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Apps & Tools coming soon!')),
-                  );
-                },
-              ),
-            ),
-          ],
-        ),
-      ],
-    );
-  }
-
-  Widget _buildCoachCard({
-    required IconData icon,
-    required Color iconBg,
-    required Color iconColor,
-    required String title,
-    required String subtitle,
-    VoidCallback? onTap,
-  }) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: _white,
-          borderRadius: BorderRadius.circular(16),
-          boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 8)],
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Container(
-              width: 44,
-              height: 44,
-              decoration: BoxDecoration(color: iconBg, shape: BoxShape.circle),
-              child: Icon(icon, color: iconColor, size: 22),
-            ),
-            const SizedBox(height: 12),
-            Text(title, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: _textDark)),
-            const SizedBox(height: 4),
-            Text(subtitle, style: const TextStyle(fontSize: 12, color: _textLight)),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
 
-  Widget _buildPlaybooks() {
-    final playbooks = [
-      {'title': 'AccuLynx Workflows', 'subtitle': 'Updated 2 days ago', 'icon': Icons.description_outlined},
-      {'title': 'Post-Storm Inspection Guide', 'subtitle': 'Updated last week', 'icon': Icons.camera_outlined},
-      {'title': 'Closing the Adjuster', 'subtitle': 'Updated 1 month ago', 'icon': Icons.handshake_outlined},
-    ];
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Row(
+  Widget _buildLibraryItem(String title, String subtitle, IconData icon, bool isCompleted) {
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: _white,
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 50,
+            height: 50,
+            decoration: BoxDecoration(
+              color: isCompleted ? Color(0xFFD1FAE5) : Color(0xFFF3F4F6),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Icon(
+              icon,
+              color: isCompleted ? Color(0xFF10B981) : _textLight,
+              size: 24,
+            ),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Icon(Icons.menu_book_outlined, color: _textDark, size: 22),
-                const SizedBox(width: 8),
-                const Text('Standard Playbooks', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: _textDark)),
+                Text(
+                  title,
+                  style: TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w600,
+                    color: _textDark,
+                  ),
+                ),
+                const SizedBox(height: 3),
+                Text(
+                  subtitle,
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: _textLight,
+                  ),
+                ),
               ],
             ),
-            const Text('View All', style: TextStyle(fontSize: 13, color: _link, fontWeight: FontWeight.w600)),
-          ],
-        ),
-        const SizedBox(height: 12),
-        Container(
-          decoration: BoxDecoration(
-            color: _white,
-            borderRadius: BorderRadius.circular(16),
-            boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 8)],
           ),
-          child: Column(
-            children: playbooks.asMap().entries.map((entry) {
-              final i = entry.key;
-              final p = entry.value;
-              return Column(
-                children: [
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                    child: Row(
-                      children: [
-                        Container(
-                          width: 40,
-                          height: 40,
-                          decoration: BoxDecoration(
-                            color: _bg,
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                          child: Icon(p['icon'] as IconData, size: 20, color: _textLight),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(p['title'] as String, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: _textDark)),
-                              Text(p['subtitle'] as String, style: const TextStyle(fontSize: 12, color: _textLight)),
-                            ],
-                          ),
-                        ),
-                        const Icon(Icons.chevron_right, color: _textPlaceholder, size: 20),
-                      ],
-                    ),
-                  ),
-                  if (i < playbooks.length - 1)
-                    const Divider(height: 1, indent: 68, color: _bg),
-                ],
-              );
-            }).toList(),
-          ),
-        ),
-      ],
+          if (!isCompleted)
+            Icon(
+              Icons.play_circle_outline,
+              color: _textDark,
+              size: 28,
+            ),
+        ],
+      ),
     );
   }
 
@@ -434,10 +454,10 @@ class _ManagerTrainingScreenState extends State<ManagerTrainingScreen> {
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
-              _navItem(Icons.home, 'Home', false, '/manager-dashboard', context),
-              _navItem(Icons.chat_bubble_outline, 'StormChat', false, '/manager-stormchat', context),
-              _navItem(Icons.bar_chart, 'Rank', false, '/manager-rankings', context),
-              _navItem(Icons.calendar_today, 'Planner', false, '/manager-planner', context),
+              _navItem(context, Icons.home, 'Home', false, '/manager-dashboard'),
+              _navItem(context, Icons.chat_bubble_outline, 'StormChat', false, '/manager-stormchat'),
+              _navItem(context, Icons.bar_chart, 'Rank', false, '/manager-rankings'),
+              _navItem(context, Icons.calendar_today, 'Planner', false, '/manager-planner'),
               _navItemActive(Icons.school_outlined, 'Training'),
             ],
           ),
@@ -446,7 +466,7 @@ class _ManagerTrainingScreenState extends State<ManagerTrainingScreen> {
     );
   }
 
-  Widget _navItem(IconData icon, String label, bool active, String? route, BuildContext context) {
+  Widget _navItem(BuildContext context, IconData icon, String label, bool active, String? route) {
     return GestureDetector(
       onTap: route != null ? () => Navigator.pushReplacementNamed(context, route) : null,
       child: Column(
