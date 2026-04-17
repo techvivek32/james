@@ -347,27 +347,29 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
   }
 
   String _formatTime(String dateStr) {
-    // Parse UTC time and convert to CST (UTC-6:00)
-    final utcDate = DateTime.parse(dateStr).toUtc();
-    final cstDate = utcDate.subtract(const Duration(hours: 6));
-    final hour = cstDate.hour.toString().padLeft(2, '0');
-    final minute = cstDate.minute.toString().padLeft(2, '0');
+    // Parse the date string and convert to CT (UTC-5:00 for CDT)
+    final date = DateTime.parse(dateStr);
+    // Convert to UTC first, then subtract 5 hours for CDT (Central Daylight Time)
+    final ctDate = date.toUtc().subtract(const Duration(hours: 5));
+    final hour = ctDate.hour.toString().padLeft(2, '0');
+    final minute = ctDate.minute.toString().padLeft(2, '0');
     return '$hour:$minute';
   }
 
   String _formatDate(String dateStr) {
-    // Parse UTC time and convert to CST (UTC-6:00)
-    final utcDate = DateTime.parse(dateStr).toUtc();
-    final date = utcDate.subtract(const Duration(hours: 6));
+    // Parse the date string and convert to CT (UTC-5:00 for CDT)
+    final date = DateTime.parse(dateStr);
+    // Convert to UTC first, then subtract 5 hours for CDT (Central Daylight Time)
+    final ctDate = date.toUtc().subtract(const Duration(hours: 5));
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
     final yesterday = today.subtract(const Duration(days: 1));
-    final messageDate = DateTime(date.year, date.month, date.day);
+    final messageDate = DateTime(ctDate.year, ctDate.month, ctDate.day);
 
     if (messageDate == today) return 'Today';
     if (messageDate == yesterday) return 'Yesterday';
     
-    return '${date.day}/${date.month}/${date.year}';
+    return '${ctDate.day}/${ctDate.month}/${ctDate.year}';
   }
 
   @override
