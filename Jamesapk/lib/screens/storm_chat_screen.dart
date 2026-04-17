@@ -220,8 +220,8 @@ class _StormChatScreenState extends State<StormChatScreen> {
         color: Colors.transparent,
         child: InkWell(
           borderRadius: BorderRadius.circular(12),
-          onTap: () {
-            Navigator.push(
+          onTap: () async {
+            await Navigator.push(
               context,
               MaterialPageRoute(
                 builder: (context) => StormChatRoomScreen(
@@ -231,6 +231,8 @@ class _StormChatScreenState extends State<StormChatScreen> {
                 ),
               ),
             );
+            // Refresh unread counts after returning from chat
+            _fetchUnreadCounts();
           },
           child: Padding(
             padding: const EdgeInsets.all(12),

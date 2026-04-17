@@ -68,6 +68,7 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
     _loadUserName();
     _fetchMessages();
     _startPolling();
+    _markAsRead();
   }
 
   @override
@@ -76,6 +77,7 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
     _blinkTimer?.cancel();
     _messageController.dispose();
     _scrollController.dispose();
+    _markAsRead(); // Mark as read when leaving chat
     super.dispose();
   }
 
@@ -93,6 +95,21 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
     _pollTimer = Timer.periodic(const Duration(seconds: 3), (timer) {
       _fetchMessages(silent: true);
     });
+  }
+
+  Future<void> _markAsRead() async {
+    try {
+      await http.post(
+        Uri.parse('https://millerstorm.tech/api/storm-chat/mark-read'),
+        headers: {'Content-Type': 'application/json'},
+        body: json.encode({
+          'userId': widget.userId,
+          'groupId': widget.group['_id'],
+        }),
+      );
+    } catch (e) {
+      print('❌ Error marking as read: $e');
+    }
   }
 
   Future<void> _fetchMessages({bool silent = false}) async {

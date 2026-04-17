@@ -1,6 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { connectMongo } from '../../../src/lib/mongodb';
 import ChatMessage from '../../../src/lib/models/ChatMessage';
+import GroupReadReceipt from '../../../src/lib/models/GroupReadReceipt';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'GET') {
@@ -22,15 +23,25 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const unreadCounts: { [key: string]: number } = {};
     
     for (const groupId of groupIdArray) {
-      // Count messages where user hasn't read them yet
-      // For now, we'll count all messages as a simple implementation
-      // In a full implementation, you'd track read receipts per user
-      const count = await ChatMessage.countDocuments({
-        groupId,
-        senderId: { $ne: userId } // Don't count user's own messages
-      });
+      // Get user's last read timestamp for this group
+      const readReceipt = await GroupReadReceipt.findOne({ userId, groupId });
       
-      unreadCounts[groupId] = count;
+      if (!readReceipt) {
+        // If no read receipt, count all messages not sent by user
+        const count = await ChatMessage.countDocuments({
+          groupId,
+          senderId: { $ne: userId }
+        });
+        unreadCounts[groupId] = count;
+      } else {
+        // Count messages after last read time, not sent by user
+        const count = await ChatMessage.countDocuments({
+          groupId,
+          senderId: { $ne: userId },
+          createdAt: { $gt: readReceipt.lastReadAt }
+        });
+        unreadCounts[groupId] = count;
+      }
     }
 
     res.status(200).json(unreadCounts);
