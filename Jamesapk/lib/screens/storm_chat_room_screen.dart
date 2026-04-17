@@ -122,9 +122,8 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
           if (!silent) isLoading = false;
         });
         
-        if (!silent) {
-          _scrollToBottom();
-        }
+        // Always scroll to bottom after fetching messages
+        _scrollToBottom();
       } else if (response.statusCode == 403) {
         final error = json.decode(response.body);
         _showError(error['error'] ?? 'Access denied');
@@ -348,18 +347,18 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
   }
 
   String _formatTime(String dateStr) {
-    // Parse UTC time and convert to IST (UTC+5:30)
+    // Parse UTC time and convert to CST (UTC-6:00)
     final utcDate = DateTime.parse(dateStr).toUtc();
-    final istDate = utcDate.add(const Duration(hours: 5, minutes: 30));
-    final hour = istDate.hour.toString().padLeft(2, '0');
-    final minute = istDate.minute.toString().padLeft(2, '0');
+    final cstDate = utcDate.subtract(const Duration(hours: 6));
+    final hour = cstDate.hour.toString().padLeft(2, '0');
+    final minute = cstDate.minute.toString().padLeft(2, '0');
     return '$hour:$minute';
   }
 
   String _formatDate(String dateStr) {
-    // Parse UTC time and convert to IST (UTC+5:30)
+    // Parse UTC time and convert to CST (UTC-6:00)
     final utcDate = DateTime.parse(dateStr).toUtc();
-    final date = utcDate.add(const Duration(hours: 5, minutes: 30));
+    final date = utcDate.subtract(const Duration(hours: 6));
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
     final yesterday = today.subtract(const Duration(days: 1));

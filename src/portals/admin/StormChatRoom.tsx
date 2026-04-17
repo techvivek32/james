@@ -209,22 +209,28 @@ export function StormChatRoom({ group, onBack }: Props) {
   }
 
   function formatTime(date: Date) {
+    // Convert UTC to CST (UTC-6:00)
     const d = new Date(date);
-    const hours = d.getHours().toString().padStart(2, '0');
-    const minutes = d.getMinutes().toString().padStart(2, '0');
+    const utcTime = d.getTime();
+    const cstTime = new Date(utcTime - (6 * 60 * 60 * 1000));
+    const hours = cstTime.getHours().toString().padStart(2, '0');
+    const minutes = cstTime.getMinutes().toString().padStart(2, '0');
     return `${hours}:${minutes}`;
   }
 
   function formatDate(date: Date) {
+    // Convert UTC to CST (UTC-6:00)
     const d = new Date(date);
+    const utcTime = d.getTime();
+    const cstDate = new Date(utcTime - (6 * 60 * 60 * 1000));
     const today = new Date();
     const yesterday = new Date(today);
     yesterday.setDate(yesterday.getDate() - 1);
 
-    if (d.toDateString() === today.toDateString()) return 'Today';
-    if (d.toDateString() === yesterday.toDateString()) return 'Yesterday';
+    if (cstDate.toDateString() === today.toDateString()) return 'Today';
+    if (cstDate.toDateString() === yesterday.toDateString()) return 'Yesterday';
     
-    return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+    return cstDate.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
   }
 
   function renderTextWithLinks(text: string, textColor: string) {
