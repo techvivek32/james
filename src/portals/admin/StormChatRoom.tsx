@@ -44,6 +44,9 @@ export function StormChatRoom({ group, onBack }: Props) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [blinkingMessageId, setBlinkingMessageId] = useState<string | null>(null);
   const messageRefs = useRef<{ [key: string]: HTMLDivElement | null }>({});
+  const [hoveredMessageId, setHoveredMessageId] = useState<string | null>(null);
+  const [menuMessageId, setMenuMessageId] = useState<string | null>(null);
+  const [replyingTo, setReplyingTo] = useState<ChatMessage | null>(null);
 
   // Check if user can send messages
   const isGroupMember = group.members.includes(user?._id || user?.id || '');
@@ -115,23 +118,33 @@ export function StormChatRoom({ group, onBack }: Props) {
 
     setSending(true);
     try {
+      const messageBody: any = {
+        senderId: user?._id || user?.id,
+        senderName: user?.name,
+        senderRole: user?.role,
+        message: newMessage,
+        messageType: 'text'
+      };
+
+      // Add reply data if replying
+      if (replyingTo) {
+        messageBody.replyTo = replyingTo._id;
+        messageBody.replyToMessage = replyingTo.message;
+        messageBody.replyToSender = replyingTo.senderName;
+      }
+
       const response = await fetch(`/api/storm-chat/messages/${group._id}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          senderId: user?._id || user?.id,
-          senderName: user?.name,
-          senderRole: user?.role,
-          message: newMessage,
-          messageType: 'text'
-        })
+        body: JSON.stringify(messageBody)
       });
 
       if (response.ok) {
         const message = await response.json();
         setMessages([...messages, message]);
         setNewMessage("");
-        setShouldAutoScroll(true); // Auto-scroll for new messages
+        setReplyingTo(null);
+        setShouldAutoScroll(true);
       } else {
         const error = await response.json();
         alert(error.error || 'Failed to send message');
@@ -246,6 +259,8 @@ export function StormChatRoom({ group, onBack }: Props) {
     const showDate = index === 0 || 
       new Date(messages[index - 1].createdAt).toDateString() !== new Date(msg.createdAt).toDateString();
     const isBlinking = blinkingMessageId === msg._id;
+    const isHovered = hoveredMessageId === msg._id;
+    const showMenu = menuMessageId === msg._id;
 
     return (
       <div key={msg._id} ref={(el) => { messageRefs.current[msg._id] = el; }}>
@@ -266,20 +281,28 @@ export function StormChatRoom({ group, onBack }: Props) {
           </div>
         )}
         
-        <div style={{ 
-          display: 'flex', 
-          justifyContent: isMyMessage ? 'flex-end' : 'flex-start',
-          marginBottom: 8,
-          transition: 'background-color 0.25s',
-          backgroundColor: isBlinking ? 'rgba(250, 204, 21, 0.3)' : 'transparent',
-          borderRadius: 16,
-          padding: isBlinking ? 4 : 0
-        }}>
+        <div 
+          onMouseEnter={() => setHoveredMessageId(msg._id)}
+          onMouseLeave={() => {
+            setHoveredMessageId(null);
+            if (!showMenu) setMenuMessageId(null);
+          }}
+          style={{ 
+            display: 'flex', 
+            justifyContent: isMyMessage ? 'flex-end' : 'flex-start',
+            marginBottom: 8,
+            transition: 'background-color 0.25s',
+            backgroundColor: isBlinking ? 'rgba(250, 204, 21, 0.3)' : 'transparent',
+            borderRadius: 16,
+            padding: isBlinking ? 4 : 0,
+            position: 'relative'
+          }}>
           <div style={{ 
             maxWidth: '70%',
             display: 'flex',
             flexDirection: 'column',
-            alignItems: isMyMessage ? 'flex-end' : 'flex-start'
+            alignItems: isMyMessage ? 'flex-end' : 'flex-start',
+            position: 'relative'
           }}>
             {!isMyMessage && (
               <div style={{ 
@@ -300,8 +323,98 @@ export function StormChatRoom({ group, onBack }: Props) {
                 borderRadius: 16,
                 borderTopRightRadius: isMyMessage ? 4 : 16,
                 borderTopLeftRadius: isMyMessage ? 16 : 4,
-                wordBreak: 'break-word'
+                wordBreak: 'break-word',
+                position: 'relative'
               }}>
+                {/* Menu button on hover */}
+                {isHovered && (
+                  <button
+                    onClick={() => setMenuMessageId(showMenu ? null : msg._id)}
+                    style={{
+                      position: 'absolute',
+                      top: 4,
+                      right: 4,
+                      background: 'rgba(0, 0, 0, 0.5)',
+                      border: 'none',
+                      borderRadius: 4,
+                      color: '#fff',
+                      cursor: 'pointer',
+                      padding: '4px 8px',
+                      fontSize: 12,
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 4
+                    }}
+                  >
+                    ▼
+                  </button>
+                )}
+                
+                {/* Popup menu */}
+                {showMenu && (
+                  <div
+                    style={{
+                      position: 'absolute',
+                      top: 30,
+                      right: 4,
+                      backgroundColor: '#1f2937',
+                      borderRadius: 8,
+                      boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)',
+                      zIndex: 1000,
+                      minWidth: 150,
+                      overflow: 'hidden'
+                    }}
+                  >
+                    <button
+                      onClick={() => {
+                        setReplyingTo(msg);
+                        setMenuMessageId(null);
+                      }}
+                      style={{
+                        width: '100%',
+                        padding: '10px 16px',
+                        background: 'none',
+                        border: 'none',
+                        color: '#fff',
+                        cursor: 'pointer',
+                        textAlign: 'left',
+                        fontSize: 14,
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 12
+                      }}
+                      onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#374151'}
+                      onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                    >
+                      ↩ Reply
+                    </button>
+                    <button
+                      onClick={() => {
+                        navigator.clipboard.writeText(msg.message);
+                        setMenuMessageId(null);
+                        alert('Message copied!');
+                      }}
+                      style={{
+                        width: '100%',
+                        padding: '10px 16px',
+                        background: 'none',
+                        border: 'none',
+                        color: '#fff',
+                        cursor: 'pointer',
+                        textAlign: 'left',
+                        fontSize: 14,
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 12
+                      }}
+                      onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#374151'}
+                      onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                    >
+                      📋 Copy
+                    </button>
+                  </div>
+                )}
+                
                 {/* Reply preview */}
                 {msg.replyTo && msg.replyToMessage && (
                   <div 
@@ -517,7 +630,43 @@ export function StormChatRoom({ group, onBack }: Props) {
             🔒 Only admins can send messages in this group
           </div>
         ) : (
-          <div style={{ display: 'flex', gap: 8, alignItems: 'flex-end' }}>
+          <div>
+            {/* Reply preview */}
+            {replyingTo && (
+              <div style={{
+                marginBottom: 8,
+                padding: 8,
+                backgroundColor: '#f3f4f6',
+                borderRadius: 8,
+                borderLeft: '3px solid #DC2626',
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center'
+              }}>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: 12, fontWeight: 600, color: '#DC2626' }}>
+                    {replyingTo.senderName}
+                  </div>
+                  <div style={{ fontSize: 13, color: '#6b7280', marginTop: 2 }}>
+                    {replyingTo.message}
+                  </div>
+                </div>
+                <button
+                  onClick={() => setReplyingTo(null)}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    cursor: 'pointer',
+                    fontSize: 18,
+                    color: '#6b7280',
+                    padding: 4
+                  }}
+                >
+                  ✕
+                </button>
+              </div>
+            )}
+            <div style={{ display: 'flex', gap: 8, alignItems: 'flex-end' }}>
             <button
               type="button"
               onClick={() => fileInputRef.current?.click()}
@@ -586,6 +735,7 @@ export function StormChatRoom({ group, onBack }: Props) {
             >
               {sending ? '⏳' : '➤'}
             </button>
+          </div>
           </div>
         )}
       </div>
