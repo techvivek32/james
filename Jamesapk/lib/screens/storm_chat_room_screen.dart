@@ -36,6 +36,8 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
   Timer? _pollTimer;
   String? userName;
   dynamic replyingTo; // Store the message being replied to
+  String? _blinkingMessageId; // Track which message is blinking
+  Timer? _blinkTimer;
 
   bool get canSendMessage {
     final onlyAdminCanChat = widget.group['onlyAdminCanChat'] ?? false;
@@ -61,6 +63,7 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
   @override
   void dispose() {
     _pollTimer?.cancel();
+    _blinkTimer?.cancel();
     _messageController.dispose();
     _scrollController.dispose();
     super.dispose();
@@ -143,14 +146,46 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
     }
   }
 
+  void _scrollToMessage(String messageId) {
+    // Find the index of the message
+    final index = messages.indexWhere((msg) => msg['_id'] == messageId);
+    if (index == -1) return;
+
+    // Calculate approximate position
+    // Each message is roughly 80-100px, use 90 as average
+    final position = index * 90.0;
+    
+    // Scroll to the message
+    _scrollController.animateTo(
+      position,
+      duration: const Duration(milliseconds: 500),
+      curve: Curves.easeInOut,
+    ).then((_) {
+      // Start blinking animation
+      setState(() {
+        _blinkingMessageId = messageId;
+      });
+      
+      // Stop blinking after 2 blinks (1 second)
+      _blinkTimer?.cancel();
+      _blinkTimer = Timer(const Duration(milliseconds: 1000), () {
+        setState(() {
+          _blinkingMessageId = null;
+        });
+      });
+    });
+  }
+
   Future<void> _sendMessage() async {
     if (_messageController.text.trim().isEmpty || isSending) return;
 
     final message = _messageController.text.trim();
+    final replyData = replyingTo; // Store reply data before clearing
     _messageController.clear();
 
     setState(() {
       isSending = true;
+      replyingTo = null; // Clear reply preview immediately
     });
 
     try {
@@ -163,13 +198,13 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
       };
 
       // Add reply information if replying to a message
-      if (replyingTo != null) {
-        body['replyTo'] = replyingTo['_id'];
-        body['replyToMessage'] = replyingTo['message'];
-        body['replyToSender'] = replyingTo['senderName'];
-        print('🔵 Sending reply to: ${replyingTo['_id']}');
-        print('🔵 Reply to message: ${replyingTo['message']}');
-        print('🔵 Reply to sender: ${replyingTo['senderName']}');
+      if (replyData != null) {
+        body['replyTo'] = replyData['_id'];
+        body['replyToMessage'] = replyData['message'];
+        body['replyToSender'] = replyData['senderName'];
+        print('🔵 Sending reply to: ${replyData['_id']}');
+        print('🔵 Reply to message: ${replyData['message']}');
+        print('🔵 Reply to sender: ${replyData['senderName']}');
       }
 
       print('🔵 Sending message body: ${json.encode(body)}');
@@ -184,9 +219,6 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
       print('🔵 Send message response body: ${response.body}');
 
       if (response.statusCode == 201) {
-        setState(() {
-          replyingTo = null; // Clear reply after sending
-        });
         await _fetchMessages();
       } else {
         final error = json.decode(response.body);
@@ -587,6 +619,7 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
     final isMyMessage = message['senderId'] == widget.userId;
     final showDate = index == 0 ||
         _formatDate(messages[index - 1]['createdAt']) != _formatDate(message['createdAt']);
+    final isBlinking = _blinkingMessageId == message['_id'];
 
     return Column(
       children: [
@@ -615,106 +648,123 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
               replyingTo = message;
             });
           },
-          child: Align(
-            alignment: isMyMessage ? Alignment.centerRight : Alignment.centerLeft,
-            child: Container(
-              constraints: BoxConstraints(
-                maxWidth: MediaQuery.of(context).size.width * 0.7,
-              ),
-              margin: const EdgeInsets.only(bottom: 8),
-              child: Column(
-                crossAxisAlignment: isMyMessage ? CrossAxisAlignment.end : CrossAxisAlignment.start,
-                children: [
-                  if (!isMyMessage)
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 250),
+            decoration: BoxDecoration(
+              color: isBlinking ? Colors.yellow.withOpacity(0.3) : Colors.transparent,
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: Align(
+              alignment: isMyMessage ? Alignment.centerRight : Alignment.centerLeft,
+              child: Container(
+                constraints: BoxConstraints(
+                  maxWidth: MediaQuery.of(context).size.width * 0.7,
+                ),
+                margin: const EdgeInsets.only(bottom: 8),
+                child: Column(
+                  crossAxisAlignment: isMyMessage ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+                  children: [
+                    if (!isMyMessage)
+                      Padding(
+                        padding: const EdgeInsets.only(left: 8, bottom: 4),
+                        child: Text(
+                          message['senderName'] ?? 'Unknown',
+                          style: const TextStyle(
+                            fontSize: 11,
+                            color: Color(0xFF6B7280),
+                          ),
+                        ),
+                      ),
+                    // Different styling for different message types
+                    if (message['messageType'] == 'text')
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                        decoration: BoxDecoration(
+                          color: isMyMessage ? const Color(0xFFDC2626) : const Color(0xFFF3F4F6),
+                          borderRadius: BorderRadius.only(
+                            topLeft: const Radius.circular(16),
+                            topRight: const Radius.circular(16),
+                            bottomLeft: Radius.circular(isMyMessage ? 16 : 4),
+                            bottomRight: Radius.circular(isMyMessage ? 4 : 16),
+                          ),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            // Show reply preview inside the bubble
+                            if (message['replyTo'] != null && 
+                                message['replyTo'].toString().isNotEmpty &&
+                                message['replyToMessage'] != null &&
+                                message['replyToMessage'].toString().isNotEmpty)
+                              GestureDetector(
+                                onTap: () {
+                                  _scrollToMessage(message['replyTo']);
+                                },
+                                child: Container(
+                                  margin: const EdgeInsets.only(bottom: 6),
+                                  padding: const EdgeInsets.all(8),
+                                  decoration: BoxDecoration(
+                                    color: isMyMessage
+                                        ? Colors.white.withOpacity(0.2)
+                                        : Colors.white,
+                                    borderRadius: BorderRadius.circular(8),
+                                    border: Border(
+                                      left: BorderSide(
+                                        color: isMyMessage ? Colors.white : const Color(0xFFDC2626),
+                                        width: 3,
+                                      ),
+                                    ),
+                                  ),
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        message['replyToSender'] ?? 'Unknown',
+                                        style: TextStyle(
+                                          fontSize: 11,
+                                          fontWeight: FontWeight.w600,
+                                          color: isMyMessage ? Colors.white : const Color(0xFFDC2626),
+                                        ),
+                                      ),
+                                      const SizedBox(height: 2),
+                                      Text(
+                                        message['replyToMessage'] ?? '',
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          color: isMyMessage
+                                              ? Colors.white.withOpacity(0.8)
+                                              : const Color(0xFF6B7280),
+                                        ),
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            _buildMessageContent(message, isMyMessage),
+                          ],
+                        ),
+                      )
+                    else
+                      // No background for images/videos
+                      _buildMessageContent(message, isMyMessage),
                     Padding(
-                      padding: const EdgeInsets.only(left: 8, bottom: 4),
+                      padding: EdgeInsets.only(
+                        left: isMyMessage ? 0 : 8,
+                        right: isMyMessage ? 8 : 0,
+                        top: 4,
+                      ),
                       child: Text(
-                        message['senderName'] ?? 'Unknown',
+                        _formatTime(message['createdAt']),
                         style: const TextStyle(
-                          fontSize: 11,
-                          color: Color(0xFF6B7280),
+                          fontSize: 10,
+                          color: Color(0xFF9CA3AF),
                         ),
                       ),
                     ),
-                  // Show reply preview if this message is a reply
-                  if (message['replyTo'] != null && 
-                      message['replyTo'].toString().isNotEmpty &&
-                      message['replyToMessage'] != null &&
-                      message['replyToMessage'].toString().isNotEmpty)
-                    Container(
-                      margin: const EdgeInsets.only(bottom: 4, left: 8, right: 8),
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: isMyMessage
-                            ? Colors.white.withOpacity(0.2)
-                            : const Color(0xFFE5E7EB),
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border(
-                          left: BorderSide(
-                            color: isMyMessage ? Colors.white : const Color(0xFFDC2626),
-                            width: 2,
-                          ),
-                        ),
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            message['replyToSender'] ?? 'Unknown',
-                            style: TextStyle(
-                              fontSize: 11,
-                              fontWeight: FontWeight.w600,
-                              color: isMyMessage ? Colors.white : const Color(0xFFDC2626),
-                            ),
-                          ),
-                          const SizedBox(height: 2),
-                          Text(
-                            message['replyToMessage'] ?? '',
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: isMyMessage
-                                  ? Colors.white.withOpacity(0.8)
-                                  : const Color(0xFF6B7280),
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ],
-                      ),
-                    ),
-                  // Different styling for different message types
-                  if (message['messageType'] == 'text')
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                      decoration: BoxDecoration(
-                        color: isMyMessage ? const Color(0xFFDC2626) : const Color(0xFFF3F4F6),
-                        borderRadius: BorderRadius.only(
-                          topLeft: const Radius.circular(16),
-                          topRight: const Radius.circular(16),
-                          bottomLeft: Radius.circular(isMyMessage ? 16 : 4),
-                          bottomRight: Radius.circular(isMyMessage ? 4 : 16),
-                        ),
-                      ),
-                      child: _buildMessageContent(message, isMyMessage),
-                    )
-                  else
-                    // No background for images/videos
-                    _buildMessageContent(message, isMyMessage),
-                  Padding(
-                    padding: EdgeInsets.only(
-                      left: isMyMessage ? 0 : 8,
-                      right: isMyMessage ? 8 : 0,
-                      top: 4,
-                    ),
-                    child: Text(
-                      _formatTime(message['createdAt']),
-                      style: const TextStyle(
-                        fontSize: 10,
-                        color: Color(0xFF9CA3AF),
-                      ),
-                    ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
           ),
