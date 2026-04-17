@@ -447,8 +447,18 @@ export function StormChatRoom({ group, onBack }: Props) {
                     </div>
                   </div>
                 )}
-                <div style={{ fontSize: 14 }}>
-                  {renderTextWithLinks(msg.message, isMyMessage ? '#fff' : '#111827')}
+                <div style={{ display: 'flex', alignItems: 'flex-end', gap: 8 }}>
+                  <div style={{ fontSize: 14, flex: 1 }}>
+                    {renderTextWithLinks(msg.message, isMyMessage ? '#fff' : '#111827')}
+                  </div>
+                  <div style={{ 
+                    fontSize: 10, 
+                    color: isMyMessage ? 'rgba(255, 255, 255, 0.7)' : '#9ca3af',
+                    whiteSpace: 'nowrap',
+                    alignSelf: 'flex-end'
+                  }}>
+                    {formatTime(msg.createdAt)}
+                  </div>
                 </div>
               </div>
             )}
@@ -510,16 +520,6 @@ export function StormChatRoom({ group, onBack }: Props) {
                 </a>
               </div>
             )}
-            
-            <div style={{ 
-              fontSize: 10, 
-              color: '#9ca3af',
-              marginTop: 4,
-              marginLeft: isMyMessage ? 0 : 8,
-              marginRight: isMyMessage ? 8 : 0
-            }}>
-              {formatTime(msg.createdAt)}
-            </div>
           </div>
         </div>
       </div>
