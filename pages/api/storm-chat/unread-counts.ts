@@ -1,5 +1,5 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
-import dbConnect from '../../../src/lib/mongodb';
+import { connectMongo } from '../../../src/lib/mongodb';
 import ChatMessage from '../../../src/lib/models/ChatMessage';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -8,7 +8,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   try {
-    await dbConnect();
+    await connectMongo();
 
     const { userId, groupIds } = req.query;
 
