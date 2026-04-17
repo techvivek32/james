@@ -132,27 +132,30 @@ class _TrainingScreenState extends State<TrainingScreen> {
       children: [
         Row(
           children: [
-            Stack(
-              children: [
-                CircleAvatar(
-                  radius: 26,
-                  backgroundColor: _border,
-                  child: const Icon(Icons.person, size: 28, color: _textLight),
-                ),
-                Positioned(
-                  bottom: 2,
-                  right: 2,
-                  child: Container(
-                    width: 10,
-                    height: 10,
-                    decoration: BoxDecoration(
-                      color: Colors.green,
-                      shape: BoxShape.circle,
-                      border: Border.all(color: _white, width: 1.5),
+            GestureDetector(
+              onTap: () => Navigator.pushNamed(context, '/profile'),
+              child: Stack(
+                children: [
+                  CircleAvatar(
+                    radius: 26,
+                    backgroundColor: _border,
+                    child: const Icon(Icons.person, size: 28, color: _textLight),
+                  ),
+                  Positioned(
+                    bottom: 2,
+                    right: 2,
+                    child: Container(
+                      width: 10,
+                      height: 10,
+                      decoration: BoxDecoration(
+                        color: Colors.green,
+                        shape: BoxShape.circle,
+                        border: Border.all(color: _white, width: 1.5),
+                      ),
                     ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
             const SizedBox(width: 10),
             Column(

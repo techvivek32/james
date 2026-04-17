@@ -160,27 +160,30 @@ class _ManagerDashboardScreenState extends State<ManagerDashboardScreen> {
             ),
           ],
         ),
-        Stack(
-          children: [
-            CircleAvatar(
-              radius: 24,
-              backgroundColor: Colors.grey[700],
-              child: Icon(Icons.person, color: _white, size: 28),
-            ),
-            Positioned(
-              top: 0,
-              right: 0,
-              child: Container(
-                width: 12,
-                height: 12,
-                decoration: BoxDecoration(
-                  color: _primary,
-                  shape: BoxShape.circle,
-                  border: Border.all(color: Colors.black, width: 2),
+        GestureDetector(
+          onTap: () => Navigator.pushNamed(context, '/manager-profile'),
+          child: Stack(
+            children: [
+              CircleAvatar(
+                radius: 24,
+                backgroundColor: Colors.grey[700],
+                child: Icon(Icons.person, color: _white, size: 28),
+              ),
+              Positioned(
+                top: 0,
+                right: 0,
+                child: Container(
+                  width: 12,
+                  height: 12,
+                  decoration: BoxDecoration(
+                    color: _primary,
+                    shape: BoxShape.circle,
+                    border: Border.all(color: Colors.black, width: 2),
+                  ),
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ],
     );
