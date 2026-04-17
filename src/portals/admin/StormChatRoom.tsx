@@ -210,31 +210,27 @@ export function StormChatRoom({ group, onBack }: Props) {
 
   function formatTime(date: Date) {
     // Convert UTC to CT (UTC-5:00 for CDT - Central Daylight Time)
-    const dateStr = typeof date === 'string' ? date : date.toISOString();
-    const utcDate = new Date(dateStr);
-    const ctTime = new Date(utcDate.getTime() - (5 * 60 * 60 * 1000));
-    const hours = ctTime.getUTCHours().toString().padStart(2, '0');
-    const minutes = ctTime.getUTCMinutes().toString().padStart(2, '0');
+    const d = new Date(date);
+    const utcTime = d.getTime();
+    const ctTime = new Date(utcTime - (5 * 60 * 60 * 1000));
+    const hours = ctTime.getHours().toString().padStart(2, '0');
+    const minutes = ctTime.getMinutes().toString().padStart(2, '0');
     return `${hours}:${minutes}`;
   }
 
   function formatDate(date: Date) {
     // Convert UTC to CT (UTC-5:00 for CDT - Central Daylight Time)
-    const dateStr = typeof date === 'string' ? date : date.toISOString();
-    const utcDate = new Date(dateStr);
-    const ctTime = new Date(utcDate.getTime() - (5 * 60 * 60 * 1000));
+    const d = new Date(date);
+    const utcTime = d.getTime();
+    const ctDate = new Date(utcTime - (5 * 60 * 60 * 1000));
     const today = new Date();
     const yesterday = new Date(today);
     yesterday.setDate(yesterday.getDate() - 1);
 
-    const ctDateStr = ctTime.toISOString().split('T')[0];
-    const todayStr = today.toISOString().split('T')[0];
-    const yesterdayStr = yesterday.toISOString().split('T')[0];
-
-    if (ctDateStr === todayStr) return 'Today';
-    if (ctDateStr === yesterdayStr) return 'Yesterday';
+    if (ctDate.toDateString() === today.toDateString()) return 'Today';
+    if (ctDate.toDateString() === yesterday.toDateString()) return 'Yesterday';
     
-    return ctTime.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', timeZone: 'UTC' });
+    return ctDate.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
   }
 
   function renderTextWithLinks(text: string, textColor: string) {
