@@ -48,8 +48,18 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
     final isGroupAdmin = admins.contains(widget.userId);
     final isGroupMember = members.contains(widget.userId);
     
-    // Admins can always send, or group admins, or members if not restricted
-    return isAdmin || isGroupAdmin || (onlyAdminCanChat ? false : isGroupMember);
+    // If "Only admins can send messages" is checked, only system admins can send
+    if (onlyAdminCanChat) {
+      return isAdmin;
+    }
+    
+    // If group admins are assigned, only group admins can send
+    if (admins.isNotEmpty) {
+      return isAdmin || isGroupAdmin;
+    }
+    
+    // If no restrictions, all members can send
+    return isAdmin || isGroupMember;
   }
 
   @override
@@ -545,9 +555,13 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
                           color: const Color(0xFFFEF2F2),
                           borderRadius: BorderRadius.circular(8),
                         ),
-                        child: const Text(
-                          '🔒 Only admins can send messages in this group',
-                          style: TextStyle(
+                        child: Text(
+                          widget.group['onlyAdminCanChat'] == true
+                              ? '🔒 Only admins can send messages\nMembers can only read messages'
+                              : (widget.group['admins'] as List?)?.isNotEmpty == true
+                                  ? '🔒 Only group admins can send messages\nMembers can only read messages'
+                                  : '🔒 You cannot send messages in this group',
+                          style: const TextStyle(
                             color: Color(0xFFDC2626),
                             fontSize: 14,
                           ),
