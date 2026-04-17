@@ -40,7 +40,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   } else if (req.method === 'POST') {
     // Send a message
     try {
-      const { senderId, senderName, senderRole, message, messageType, mediaUrl } = req.body;
+      const { senderId, senderName, senderRole, message, messageType, mediaUrl, replyTo, replyToMessage, replyToSender } = req.body;
 
       if (!senderId || !senderName) {
         return res.status(400).json({ error: 'Sender information is required' });
@@ -71,8 +71,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         }
       }
 
-      // Create message
-      const newMessage = await ChatMessage.create({
+      // Create message with reply fields if provided
+      const messageData: any = {
         groupId,
         senderId,
         senderName,
@@ -80,7 +80,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         message: message || '',
         messageType: messageType || 'text',
         mediaUrl: mediaUrl || ''
-      });
+      };
+
+      // Add reply fields if they exist
+      if (replyTo) {
+        messageData.replyTo = replyTo;
+        messageData.replyToMessage = replyToMessage || '';
+        messageData.replyToSender = replyToSender || '';
+      }
+
+      const newMessage = await ChatMessage.create(messageData);
 
       res.status(201).json(newMessage);
     } catch (error) {

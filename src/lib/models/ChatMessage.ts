@@ -8,6 +8,9 @@ export interface IChatMessage extends Document {
   message: string;
   messageType: 'text' | 'image' | 'video' | 'file';
   mediaUrl?: string;
+  replyTo?: string;
+  replyToMessage?: string;
+  replyToSender?: string;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -41,6 +44,18 @@ const ChatMessageSchema = new Schema<IChatMessage>(
       default: 'text'
     },
     mediaUrl: {
+      type: String,
+      default: ''
+    },
+    replyTo: {
+      type: String,
+      default: ''
+    },
+    replyToMessage: {
+      type: String,
+      default: ''
+    },
+    replyToSender: {
       type: String,
       default: ''
     }

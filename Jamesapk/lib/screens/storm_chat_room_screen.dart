@@ -35,6 +35,7 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
   bool isUploading = false;
   Timer? _pollTimer;
   String? userName;
+  dynamic replyingTo; // Store the message being replied to
 
   bool get canSendMessage {
     final onlyAdminCanChat = widget.group['onlyAdminCanChat'] ?? false;
@@ -89,6 +90,20 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body) as List;
+        
+        // Log messages to check reply data
+        if (!silent) {
+          print('🔵 Fetched ${data.length} messages');
+          for (var msg in data) {
+            if (msg['replyTo'] != null) {
+              print('🔵 Message with reply: ${msg['message']}');
+              print('🔵   replyTo: ${msg['replyTo']}');
+              print('🔵   replyToMessage: ${msg['replyToMessage']}');
+              print('🔵   replyToSender: ${msg['replyToSender']}');
+            }
+          }
+        }
+        
         setState(() {
           messages = data;
           if (!silent) isLoading = false;
@@ -107,7 +122,7 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
         }
       }
     } catch (e) {
-      print('Error fetching messages: $e');
+      print('❌ Error fetching messages: $e');
       if (!silent) {
         setState(() {
           isLoading = false;
@@ -139,26 +154,46 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
     });
 
     try {
+      final body = {
+        'senderId': widget.userId,
+        'senderName': userName,
+        'senderRole': widget.userRole,
+        'message': message,
+        'messageType': 'text',
+      };
+
+      // Add reply information if replying to a message
+      if (replyingTo != null) {
+        body['replyTo'] = replyingTo['_id'];
+        body['replyToMessage'] = replyingTo['message'];
+        body['replyToSender'] = replyingTo['senderName'];
+        print('🔵 Sending reply to: ${replyingTo['_id']}');
+        print('🔵 Reply to message: ${replyingTo['message']}');
+        print('🔵 Reply to sender: ${replyingTo['senderName']}');
+      }
+
+      print('🔵 Sending message body: ${json.encode(body)}');
+
       final response = await http.post(
         Uri.parse('https://millerstorm.tech/api/storm-chat/messages/${widget.group['_id']}'),
         headers: {'Content-Type': 'application/json'},
-        body: json.encode({
-          'senderId': widget.userId,
-          'senderName': userName,
-          'senderRole': widget.userRole,
-          'message': message,
-          'messageType': 'text',
-        }),
+        body: json.encode(body),
       );
 
+      print('🔵 Send message response: ${response.statusCode}');
+      print('🔵 Send message response body: ${response.body}');
+
       if (response.statusCode == 201) {
+        setState(() {
+          replyingTo = null; // Clear reply after sending
+        });
         await _fetchMessages();
       } else {
         final error = json.decode(response.body);
         _showError(error['error'] ?? 'Failed to send message');
       }
     } catch (e) {
-      print('Error sending message: $e');
+      print('❌ Error sending message: $e');
       _showError('Failed to send message');
     } finally {
       setState(() {
@@ -271,14 +306,18 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
   }
 
   String _formatTime(String dateStr) {
-    final date = DateTime.parse(dateStr);
-    final hour = date.hour.toString().padLeft(2, '0');
-    final minute = date.minute.toString().padLeft(2, '0');
+    // Parse UTC time and convert to IST (UTC+5:30)
+    final utcDate = DateTime.parse(dateStr).toUtc();
+    final istDate = utcDate.add(const Duration(hours: 5, minutes: 30));
+    final hour = istDate.hour.toString().padLeft(2, '0');
+    final minute = istDate.minute.toString().padLeft(2, '0');
     return '$hour:$minute';
   }
 
   String _formatDate(String dateStr) {
-    final date = DateTime.parse(dateStr);
+    // Parse UTC time and convert to IST (UTC+5:30)
+    final utcDate = DateTime.parse(dateStr).toUtc();
+    final date = utcDate.add(const Duration(hours: 5, minutes: 30));
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
     final yesterday = today.subtract(const Duration(days: 1));
@@ -412,75 +451,132 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
                 ),
               ],
             ),
-            child: !canSendMessage
-                ? Container(
-                    padding: const EdgeInsets.all(12),
+            child: Column(
+              children: [
+                // Reply preview
+                if (replyingTo != null)
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    margin: const EdgeInsets.only(bottom: 8),
                     decoration: BoxDecoration(
-                      color: const Color(0xFFFEF2F2),
+                      color: const Color(0xFFF3F4F6),
                       borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: const Text(
-                      '🔒 Only admins can send messages in this group',
-                      style: TextStyle(
-                        color: Color(0xFFDC2626),
-                        fontSize: 14,
-                      ),
-                      textAlign: TextAlign.center,
-                    ),
-                  )
-                : Row(
-                    children: [
-                      IconButton(
-                        icon: Icon(
-                          isUploading ? Icons.hourglass_empty : Icons.attach_file,
+                      border: Border(
+                        left: BorderSide(
                           color: const Color(0xFFDC2626),
+                          width: 3,
                         ),
-                        onPressed: isUploading ? null : _pickAndUploadMedia,
                       ),
-                      Expanded(
-                        child: TextField(
-                          controller: _messageController,
-                          decoration: InputDecoration(
-                            hintText: 'Type a message...',
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(24),
-                              borderSide: const BorderSide(color: Color(0xFFE5E7EB)),
-                            ),
-                            enabledBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(24),
-                              borderSide: const BorderSide(color: Color(0xFFE5E7EB)),
-                            ),
-                            focusedBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(24),
-                              borderSide: const BorderSide(color: Color(0xFFDC2626)),
-                            ),
-                            contentPadding: const EdgeInsets.symmetric(
-                              horizontal: 16,
-                              vertical: 10,
-                            ),
+                    ),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                replyingTo['senderName'] ?? 'Unknown',
+                                style: const TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                  color: Color(0xFFDC2626),
+                                ),
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                replyingTo['message'] ?? '',
+                                style: const TextStyle(
+                                  fontSize: 13,
+                                  color: Color(0xFF6B7280),
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ],
                           ),
-                          maxLines: null,
-                          textInputAction: TextInputAction.send,
-                          onSubmitted: (_) => _sendMessage(),
                         ),
-                      ),
-                      const SizedBox(width: 8),
-                      Container(
-                        decoration: const BoxDecoration(
-                          color: Color(0xFFDC2626),
-                          shape: BoxShape.circle,
+                        IconButton(
+                          icon: const Icon(Icons.close, size: 20),
+                          onPressed: () {
+                            setState(() {
+                              replyingTo = null;
+                            });
+                          },
                         ),
-                        child: IconButton(
-                          icon: Icon(
-                            isSending ? Icons.hourglass_empty : Icons.send,
-                            color: Colors.white,
-                            size: 20,
-                          ),
-                          onPressed: isSending ? null : _sendMessage,
-                        ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
+                !canSendMessage
+                    ? Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFFEF2F2),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: const Text(
+                          '🔒 Only admins can send messages in this group',
+                          style: TextStyle(
+                            color: Color(0xFFDC2626),
+                            fontSize: 14,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                      )
+                    : Row(
+                        children: [
+                          IconButton(
+                            icon: Icon(
+                              isUploading ? Icons.hourglass_empty : Icons.attach_file,
+                              color: const Color(0xFFDC2626),
+                            ),
+                            onPressed: isUploading ? null : _pickAndUploadMedia,
+                          ),
+                          Expanded(
+                            child: TextField(
+                              controller: _messageController,
+                              decoration: InputDecoration(
+                                hintText: 'Type a message...',
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(24),
+                                  borderSide: const BorderSide(color: Color(0xFFE5E7EB)),
+                                ),
+                                enabledBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(24),
+                                  borderSide: const BorderSide(color: Color(0xFFE5E7EB)),
+                                ),
+                                focusedBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(24),
+                                  borderSide: const BorderSide(color: Color(0xFFDC2626)),
+                                ),
+                                contentPadding: const EdgeInsets.symmetric(
+                                  horizontal: 16,
+                                  vertical: 10,
+                                ),
+                              ),
+                              maxLines: null,
+                              textInputAction: TextInputAction.send,
+                              onSubmitted: (_) => _sendMessage(),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Container(
+                            decoration: const BoxDecoration(
+                              color: Color(0xFFDC2626),
+                              shape: BoxShape.circle,
+                            ),
+                            child: IconButton(
+                              icon: Icon(
+                                isSending ? Icons.hourglass_empty : Icons.send,
+                                color: Colors.white,
+                                size: 20,
+                              ),
+                              onPressed: isSending ? null : _sendMessage,
+                            ),
+                          ),
+                        ],
+                      ),
+              ],
+            ),
           ),
         ],
       ),
@@ -512,60 +608,111 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
               ),
             ),
           ),
-        Align(
-          alignment: isMyMessage ? Alignment.centerRight : Alignment.centerLeft,
-          child: Container(
-            constraints: BoxConstraints(
-              maxWidth: MediaQuery.of(context).size.width * 0.7,
-            ),
-            margin: const EdgeInsets.only(bottom: 8),
-            child: Column(
-              crossAxisAlignment: isMyMessage ? CrossAxisAlignment.end : CrossAxisAlignment.start,
-              children: [
-                if (!isMyMessage)
+        // Swipeable message with animation
+        _SwipeableMessage(
+          onSwipeRight: () {
+            setState(() {
+              replyingTo = message;
+            });
+          },
+          child: Align(
+            alignment: isMyMessage ? Alignment.centerRight : Alignment.centerLeft,
+            child: Container(
+              constraints: BoxConstraints(
+                maxWidth: MediaQuery.of(context).size.width * 0.7,
+              ),
+              margin: const EdgeInsets.only(bottom: 8),
+              child: Column(
+                crossAxisAlignment: isMyMessage ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+                children: [
+                  if (!isMyMessage)
+                    Padding(
+                      padding: const EdgeInsets.only(left: 8, bottom: 4),
+                      child: Text(
+                        message['senderName'] ?? 'Unknown',
+                        style: const TextStyle(
+                          fontSize: 11,
+                          color: Color(0xFF6B7280),
+                        ),
+                      ),
+                    ),
+                  // Show reply preview if this message is a reply
+                  if (message['replyTo'] != null && message['replyToMessage'] != null)
+                    Container(
+                      margin: const EdgeInsets.only(bottom: 4, left: 8, right: 8),
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: isMyMessage
+                            ? Colors.white.withOpacity(0.2)
+                            : const Color(0xFFE5E7EB),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border(
+                          left: BorderSide(
+                            color: isMyMessage ? Colors.white : const Color(0xFFDC2626),
+                            width: 2,
+                          ),
+                        ),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            message['replyToSender'] ?? 'Unknown',
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w600,
+                              color: isMyMessage ? Colors.white : const Color(0xFFDC2626),
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            message['replyToMessage'] ?? '',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: isMyMessage
+                                  ? Colors.white.withOpacity(0.8)
+                                  : const Color(0xFF6B7280),
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ],
+                      ),
+                    ),
+                  // Different styling for different message types
+                  if (message['messageType'] == 'text')
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                      decoration: BoxDecoration(
+                        color: isMyMessage ? const Color(0xFFDC2626) : const Color(0xFFF3F4F6),
+                        borderRadius: BorderRadius.only(
+                          topLeft: const Radius.circular(16),
+                          topRight: const Radius.circular(16),
+                          bottomLeft: Radius.circular(isMyMessage ? 16 : 4),
+                          bottomRight: Radius.circular(isMyMessage ? 4 : 16),
+                        ),
+                      ),
+                      child: _buildMessageContent(message, isMyMessage),
+                    )
+                  else
+                    // No background for images/videos
+                    _buildMessageContent(message, isMyMessage),
                   Padding(
-                    padding: const EdgeInsets.only(left: 8, bottom: 4),
+                    padding: EdgeInsets.only(
+                      left: isMyMessage ? 0 : 8,
+                      right: isMyMessage ? 8 : 0,
+                      top: 4,
+                    ),
                     child: Text(
-                      message['senderName'] ?? 'Unknown',
+                      _formatTime(message['createdAt']),
                       style: const TextStyle(
-                        fontSize: 11,
-                        color: Color(0xFF6B7280),
+                        fontSize: 10,
+                        color: Color(0xFF9CA3AF),
                       ),
                     ),
                   ),
-                // Different styling for different message types
-                if (message['messageType'] == 'text')
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                    decoration: BoxDecoration(
-                      color: isMyMessage ? const Color(0xFFDC2626) : const Color(0xFFF3F4F6),
-                      borderRadius: BorderRadius.only(
-                        topLeft: const Radius.circular(16),
-                        topRight: const Radius.circular(16),
-                        bottomLeft: Radius.circular(isMyMessage ? 16 : 4),
-                        bottomRight: Radius.circular(isMyMessage ? 4 : 16),
-                      ),
-                    ),
-                    child: _buildMessageContent(message, isMyMessage),
-                  )
-                else
-                  // No background for images/videos
-                  _buildMessageContent(message, isMyMessage),
-                Padding(
-                  padding: EdgeInsets.only(
-                    left: isMyMessage ? 0 : 8,
-                    right: isMyMessage ? 8 : 0,
-                    top: 4,
-                  ),
-                  child: Text(
-                    _formatTime(message['createdAt']),
-                    style: const TextStyle(
-                      fontSize: 10,
-                      color: Color(0xFF9CA3AF),
-                    ),
-                  ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         ),
@@ -668,13 +815,48 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
         ),
         recognizer: TapGestureRecognizer()
           ..onTap = () async {
-            final Uri uri = Uri.parse(url);
-            if (await canLaunchUrl(uri)) {
-              await launchUrl(uri, mode: LaunchMode.externalApplication);
-            } else {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text('Could not launch $url')),
-              );
+            try {
+              final Uri uri = Uri.parse(url);
+              // Try to launch with external application first
+              bool launched = false;
+              
+              // Try external application mode
+              if (await canLaunchUrl(uri)) {
+                launched = await launchUrl(
+                  uri,
+                  mode: LaunchMode.externalApplication,
+                );
+              }
+              
+              // If external app fails, try platform default
+              if (!launched && await canLaunchUrl(uri)) {
+                launched = await launchUrl(
+                  uri,
+                  mode: LaunchMode.platformDefault,
+                );
+              }
+              
+              // If still not launched, show error
+              if (!launched) {
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Could not launch $url'),
+                      backgroundColor: Colors.red,
+                    ),
+                  );
+                }
+              }
+            } catch (e) {
+              print('Error launching URL: $e');
+              if (context.mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('Error: ${e.toString()}'),
+                    backgroundColor: Colors.red,
+                  ),
+                );
+              }
             }
           },
       ));
@@ -692,6 +874,119 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
 
     return RichText(
       text: TextSpan(children: spans),
+    );
+  }
+}
+
+// Swipeable Message Widget with smooth animation
+class _SwipeableMessage extends StatefulWidget {
+  final Widget child;
+  final VoidCallback onSwipeRight;
+
+  const _SwipeableMessage({
+    required this.child,
+    required this.onSwipeRight,
+  });
+
+  @override
+  State<_SwipeableMessage> createState() => _SwipeableMessageState();
+}
+
+class _SwipeableMessageState extends State<_SwipeableMessage>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<Offset> _animation;
+  double _dragExtent = 0;
+  bool _dragUnderway = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      duration: const Duration(milliseconds: 200),
+      vsync: this,
+    );
+    _animation = Tween<Offset>(
+      begin: Offset.zero,
+      end: Offset.zero,
+    ).animate(_controller);
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  void _handleDragStart(DragStartDetails details) {
+    _dragUnderway = true;
+    _controller.stop();
+  }
+
+  void _handleDragUpdate(DragUpdateDetails details) {
+    if (!_dragUnderway) return;
+
+    final delta = details.primaryDelta!;
+    _dragExtent += delta;
+
+    // Only allow swipe to right and limit to 80px
+    if (_dragExtent > 0) {
+      setState(() {
+        _dragExtent = _dragExtent.clamp(0.0, 80.0);
+      });
+    } else {
+      _dragExtent = 0;
+    }
+  }
+
+  void _handleDragEnd(DragEndDetails details) {
+    if (!_dragUnderway) return;
+    _dragUnderway = false;
+
+    // If swiped more than 60px, trigger reply
+    if (_dragExtent > 60) {
+      widget.onSwipeRight();
+    }
+
+    // Animate back to original position
+    _controller.reset();
+    setState(() {
+      _dragExtent = 0;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onHorizontalDragStart: _handleDragStart,
+      onHorizontalDragUpdate: _handleDragUpdate,
+      onHorizontalDragEnd: _handleDragEnd,
+      child: Stack(
+        children: [
+          // Reply icon that appears when swiping
+          if (_dragExtent > 0)
+            Positioned(
+              left: 10,
+              top: 0,
+              bottom: 0,
+              child: Center(
+                child: Opacity(
+                  opacity: (_dragExtent / 80).clamp(0.0, 1.0),
+                  child: Icon(
+                    Icons.reply,
+                    color: Colors.grey[600],
+                    size: 24,
+                  ),
+                ),
+              ),
+            ),
+          // Message that moves
+          Transform.translate(
+            offset: Offset(_dragExtent, 0),
+            child: widget.child,
+          ),
+        ],
+      ),
     );
   }
 }
