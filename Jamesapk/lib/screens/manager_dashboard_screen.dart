@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
@@ -79,11 +80,16 @@ class _ManagerDashboardScreenState extends State<ManagerDashboardScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: _bg,
-      body: SafeArea(
-        child: Column(
-          children: [
+    return WillPopScope(
+      onWillPop: () async {
+        SystemNavigator.pop();
+        return false;
+      },
+      child: Scaffold(
+        backgroundColor: _bg,
+        body: SafeArea(
+          child: Column(
+            children: [
             Expanded(
               child: SingleChildScrollView(
                 child: Column(
@@ -130,6 +136,7 @@ class _ManagerDashboardScreenState extends State<ManagerDashboardScreen> {
           ],
         ),
       ),
+      ),
     );
   }
 
@@ -144,9 +151,9 @@ class _ManagerDashboardScreenState extends State<ManagerDashboardScreen> {
               'OVERVIEW',
               style: TextStyle(
                 color: Colors.grey[500],
-                fontSize: 12,
+                fontSize: 10,
                 fontWeight: FontWeight.w600,
-                letterSpacing: 1.5,
+                letterSpacing: 1.2,
               ),
             ),
             const SizedBox(height: 4),
@@ -154,7 +161,7 @@ class _ManagerDashboardScreenState extends State<ManagerDashboardScreen> {
               'Dashboard',
               style: TextStyle(
                 color: _white,
-                fontSize: 32,
+                fontSize: 26,
                 fontWeight: FontWeight.bold,
               ),
             ),
@@ -165,16 +172,16 @@ class _ManagerDashboardScreenState extends State<ManagerDashboardScreen> {
           child: Stack(
             children: [
               CircleAvatar(
-                radius: 24,
+                radius: 22,
                 backgroundColor: Colors.grey[700],
-                child: Icon(Icons.person, color: _white, size: 28),
+                child: Icon(Icons.person, color: _white, size: 24),
               ),
               Positioned(
                 top: 0,
                 right: 0,
                 child: Container(
-                  width: 12,
-                  height: 12,
+                  width: 10,
+                  height: 10,
                   decoration: BoxDecoration(
                     color: _primary,
                     shape: BoxShape.circle,
@@ -194,10 +201,10 @@ class _ManagerDashboardScreenState extends State<ManagerDashboardScreen> {
       children: [
         Expanded(
           child: Container(
-            padding: const EdgeInsets.all(20),
+            padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
               color: Color(0xFF2D2D2D),
-              borderRadius: BorderRadius.circular(20),
+              borderRadius: BorderRadius.circular(16),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -206,33 +213,33 @@ class _ManagerDashboardScreenState extends State<ManagerDashboardScreen> {
                   'Team Revenue',
                   style: TextStyle(
                     color: Colors.grey[400],
-                    fontSize: 14,
+                    fontSize: 13,
                     fontWeight: FontWeight.w500,
                   ),
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: 10),
                 const Text(
                   '\$4.2M',
                   style: TextStyle(
                     color: _white,
-                    fontSize: 32,
+                    fontSize: 28,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: 10),
                 Row(
                   children: [
                     Icon(
                       Icons.trending_up,
                       color: _success,
-                      size: 16,
+                      size: 14,
                     ),
                     const SizedBox(width: 4),
                     Text(
                       '+12% vs last mo',
                       style: TextStyle(
                         color: _success,
-                        fontSize: 13,
+                        fontSize: 12,
                         fontWeight: FontWeight.w600,
                       ),
                     ),
@@ -242,13 +249,13 @@ class _ManagerDashboardScreenState extends State<ManagerDashboardScreen> {
             ),
           ),
         ),
-        const SizedBox(width: 16),
+        const SizedBox(width: 12),
         Expanded(
           child: Container(
-            padding: const EdgeInsets.all(20),
+            padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
               color: _primary,
-              borderRadius: BorderRadius.circular(20),
+              borderRadius: BorderRadius.circular(16),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -257,33 +264,33 @@ class _ManagerDashboardScreenState extends State<ManagerDashboardScreen> {
                   'Win Rate',
                   style: TextStyle(
                     color: _white,
-                    fontSize: 14,
+                    fontSize: 13,
                     fontWeight: FontWeight.w500,
                   ),
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: 10),
                 const Text(
                   '68%',
                   style: TextStyle(
                     color: _white,
-                    fontSize: 32,
+                    fontSize: 28,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: 10),
                 Row(
                   children: [
                     const Icon(
                       Icons.flash_on,
                       color: _white,
-                      size: 16,
+                      size: 14,
                     ),
                     const SizedBox(width: 4),
                     const Text(
                       'Top Quartile',
                       style: TextStyle(
                         color: _white,
-                        fontSize: 13,
+                        fontSize: 12,
                         fontWeight: FontWeight.w600,
                       ),
                     ),
@@ -304,24 +311,24 @@ class _ManagerDashboardScreenState extends State<ManagerDashboardScreen> {
         const Text(
           'Attention Required',
           style: TextStyle(
-            fontSize: 20,
+            fontSize: 18,
             fontWeight: FontWeight.bold,
             color: _textDark,
           ),
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: 12),
         Container(
-          padding: const EdgeInsets.all(20),
+          padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
             color: Color(0xFFFFE5E5),
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: BorderRadius.circular(12),
           ),
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Container(
-                width: 48,
-                height: 48,
+                width: 40,
+                height: 40,
                 decoration: BoxDecoration(
                   color: Colors.red[100],
                   shape: BoxShape.circle,
@@ -329,10 +336,10 @@ class _ManagerDashboardScreenState extends State<ManagerDashboardScreen> {
                 child: Icon(
                   Icons.warning_amber_rounded,
                   color: _primary,
-                  size: 28,
+                  size: 22,
                 ),
               ),
-              const SizedBox(width: 16),
+              const SizedBox(width: 12),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -340,18 +347,18 @@ class _ManagerDashboardScreenState extends State<ManagerDashboardScreen> {
                     const Text(
                       'Low Activity Alert',
                       style: TextStyle(
-                        fontSize: 18,
+                        fontSize: 16,
                         fontWeight: FontWeight.bold,
                         color: Colors.black,
                       ),
                     ),
-                    const SizedBox(height: 8),
+                    const SizedBox(height: 6),
                     Text(
                       'The East Coast team has seen a 15% drop in outbound calls over the last 48 hours. Review team planner.',
                       style: TextStyle(
-                        fontSize: 14,
+                        fontSize: 13,
                         color: Colors.grey[800],
-                        height: 1.4,
+                        height: 1.3,
                       ),
                     ),
                   ],
@@ -373,7 +380,7 @@ class _ManagerDashboardScreenState extends State<ManagerDashboardScreen> {
             const Text(
               'Top Performers',
               style: TextStyle(
-                fontSize: 20,
+                fontSize: 18,
                 fontWeight: FontWeight.bold,
                 color: _textDark,
               ),
@@ -381,19 +388,19 @@ class _ManagerDashboardScreenState extends State<ManagerDashboardScreen> {
             Text(
               'View All',
               style: TextStyle(
-                fontSize: 14,
+                fontSize: 13,
                 fontWeight: FontWeight.w600,
                 color: _primary,
               ),
             ),
           ],
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: 12),
         Container(
-          padding: const EdgeInsets.all(20),
+          padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
             color: _white,
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: BorderRadius.circular(12),
             boxShadow: [
               BoxShadow(
                 color: Colors.black.withOpacity(0.05),
@@ -405,7 +412,7 @@ class _ManagerDashboardScreenState extends State<ManagerDashboardScreen> {
           child: Column(
             children: [
               _buildPerformerRow(1, 'Sarah Jenkins', '24 Deals', '\$124k'),
-              const SizedBox(height: 20),
+              const SizedBox(height: 16),
               _buildPerformerRow(2, 'Marcus Chen', '19 Deals', '\$98k'),
             ],
           ),
@@ -420,18 +427,18 @@ class _ManagerDashboardScreenState extends State<ManagerDashboardScreen> {
         Text(
           '$rank',
           style: TextStyle(
-            fontSize: 20,
+            fontSize: 18,
             fontWeight: FontWeight.bold,
             color: _textLight,
           ),
         ),
-        const SizedBox(width: 16),
+        const SizedBox(width: 12),
         CircleAvatar(
-          radius: 24,
+          radius: 20,
           backgroundColor: _border,
-          child: Icon(Icons.person, color: _textLight, size: 24),
+          child: Icon(Icons.person, color: _textLight, size: 20),
         ),
-        const SizedBox(width: 16),
+        const SizedBox(width: 12),
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -439,7 +446,7 @@ class _ManagerDashboardScreenState extends State<ManagerDashboardScreen> {
               Text(
                 name,
                 style: const TextStyle(
-                  fontSize: 16,
+                  fontSize: 15,
                   fontWeight: FontWeight.bold,
                   color: _textDark,
                 ),
@@ -448,7 +455,7 @@ class _ManagerDashboardScreenState extends State<ManagerDashboardScreen> {
               Text(
                 deals,
                 style: TextStyle(
-                  fontSize: 14,
+                  fontSize: 13,
                   color: _textLight,
                 ),
               ),
@@ -458,7 +465,7 @@ class _ManagerDashboardScreenState extends State<ManagerDashboardScreen> {
         Text(
           revenue,
           style: const TextStyle(
-            fontSize: 18,
+            fontSize: 16,
             fontWeight: FontWeight.bold,
             color: _primary,
           ),
@@ -474,12 +481,12 @@ class _ManagerDashboardScreenState extends State<ManagerDashboardScreen> {
         const Text(
           'Recent Activity',
           style: TextStyle(
-            fontSize: 20,
+            fontSize: 18,
             fontWeight: FontWeight.bold,
             color: _textDark,
           ),
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: 12),
         _buildActivityItem(
           '10 mins ago',
           'David L.',
@@ -488,7 +495,7 @@ class _ManagerDashboardScreenState extends State<ManagerDashboardScreen> {
           'Enterprise',
           _primary,
         ),
-        const SizedBox(height: 20),
+        const SizedBox(height: 16),
         _buildActivityItem(
           '2 hours ago',
           'System',
@@ -506,15 +513,15 @@ class _ManagerDashboardScreenState extends State<ManagerDashboardScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Container(
-          width: 10,
-          height: 10,
-          margin: const EdgeInsets.only(top: 6),
+          width: 8,
+          height: 8,
+          margin: const EdgeInsets.only(top: 5),
           decoration: BoxDecoration(
             color: dotColor,
             shape: BoxShape.circle,
           ),
         ),
-        const SizedBox(width: 16),
+        const SizedBox(width: 12),
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -522,20 +529,20 @@ class _ManagerDashboardScreenState extends State<ManagerDashboardScreen> {
               Text(
                 time,
                 style: TextStyle(
-                  fontSize: 13,
+                  fontSize: 12,
                   color: _textLight,
                 ),
               ),
-              const SizedBox(height: 6),
+              const SizedBox(height: 4),
               Row(
                 children: [
                   Expanded(
                     child: RichText(
                       text: TextSpan(
                         style: TextStyle(
-                          fontSize: 15,
+                          fontSize: 14,
                           color: _textMedium,
-                          height: 1.4,
+                          height: 1.3,
                         ),
                         children: [
                           TextSpan(
@@ -561,7 +568,7 @@ class _ManagerDashboardScreenState extends State<ManagerDashboardScreen> {
                   if (tag != null)
                     Container(
                       margin: const EdgeInsets.only(left: 8),
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                       decoration: BoxDecoration(
                         color: _textLight.withOpacity(0.1),
                         borderRadius: BorderRadius.circular(4),
@@ -569,7 +576,7 @@ class _ManagerDashboardScreenState extends State<ManagerDashboardScreen> {
                       child: Text(
                         tag,
                         style: TextStyle(
-                          fontSize: 11,
+                          fontSize: 10,
                           fontWeight: FontWeight.w600,
                           color: _textLight,
                         ),

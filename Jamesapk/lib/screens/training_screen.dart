@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
@@ -95,11 +96,16 @@ class _TrainingScreenState extends State<TrainingScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: _bg,
-      body: SafeArea(
-        child: Column(
-          children: [
+    return WillPopScope(
+      onWillPop: () async {
+        SystemNavigator.pop();
+        return false;
+      },
+      child: Scaffold(
+        backgroundColor: _bg,
+        body: SafeArea(
+          child: Column(
+            children: [
             Expanded(
               child: SingleChildScrollView(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -122,6 +128,7 @@ class _TrainingScreenState extends State<TrainingScreen> {
             _buildBottomNav(context),
           ],
         ),
+      ),
       ),
     );
   }

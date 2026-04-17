@@ -78,40 +78,46 @@ class _StormChatScreenState extends State<StormChatScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFFF5F5F5),
-      body: SafeArea(
-        child: Column(
-          children: [
-            // Header
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: const [
-                  Text(
-                    'StormChat',
-                    style: TextStyle(
-                      fontSize: 28,
-                      fontWeight: FontWeight.w800,
-                      color: Color(0xFF111827),
+    return WillPopScope(
+      onWillPop: () async {
+        Navigator.pushReplacementNamed(context, '/training');
+        return false;
+      },
+      child: Scaffold(
+        backgroundColor: const Color(0xFFF5F5F5),
+        body: SafeArea(
+          child: Column(
+            children: [
+              // Header
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: const [
+                    Text(
+                      'StormChat',
+                      style: TextStyle(
+                        fontSize: 28,
+                        fontWeight: FontWeight.w800,
+                        color: Color(0xFF111827),
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
-            ),
-            const SizedBox(height: 12),
-            // Content
-            Expanded(
-              child: isLoading
-                  ? const Center(child: CircularProgressIndicator(color: Color(0xFFDC2626)))
-                  : groups.isEmpty
-                      ? _buildEmptyState()
-                      : _buildGroupsList(),
-            ),
-            // Bottom Navigation
-            _buildBottomNav(context),
-          ],
+              const SizedBox(height: 12),
+              // Content
+              Expanded(
+                child: isLoading
+                    ? const Center(child: CircularProgressIndicator(color: Color(0xFFDC2626)))
+                    : groups.isEmpty
+                        ? _buildEmptyState()
+                        : _buildGroupsList(),
+              ),
+              // Bottom Navigation
+              _buildBottomNav(context),
+            ],
+          ),
         ),
       ),
     );
@@ -267,26 +273,6 @@ class _StormChatScreenState extends State<StormChatScreen> {
                               ),
                             ),
                         ],
-                      ),
-                      if (description.isNotEmpty) ...[
-                        const SizedBox(height: 4),
-                        Text(
-                          description,
-                          style: const TextStyle(
-                            fontSize: 13,
-                            color: Colors.grey,
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ],
-                      const SizedBox(height: 6),
-                      Text(
-                        '$memberCount members',
-                        style: const TextStyle(
-                          fontSize: 12,
-                          color: Colors.grey,
-                        ),
                       ),
                     ],
                   ),

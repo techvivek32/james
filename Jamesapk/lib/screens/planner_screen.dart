@@ -75,32 +75,38 @@ class _PlannerScreenState extends State<PlannerScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: _bg,
-      body: SafeArea(
-        child: Column(
-          children: [
-            Expanded(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const SizedBox(height: 16),
-                    _buildHeader(),
-                    const SizedBox(height: 20),
-                    _buildStatCards(),
-                    const SizedBox(height: 12),
-                    _buildRevenueCard(),
-                    const SizedBox(height: 24),
-                    _buildCommissionSection(),
-                    const SizedBox(height: 16),
-                  ],
+    return WillPopScope(
+      onWillPop: () async {
+        Navigator.pushReplacementNamed(context, '/training');
+        return false;
+      },
+      child: Scaffold(
+        backgroundColor: _bg,
+        body: SafeArea(
+          child: Column(
+            children: [
+              Expanded(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const SizedBox(height: 16),
+                      _buildHeader(),
+                      const SizedBox(height: 20),
+                      _buildStatCards(),
+                      const SizedBox(height: 12),
+                      _buildRevenueCard(),
+                      const SizedBox(height: 24),
+                      _buildCommissionSection(),
+                      const SizedBox(height: 16),
+                    ],
+                  ),
                 ),
               ),
-            ),
-            _buildBottomNav(),
-          ],
+              _buildBottomNav(),
+            ],
+          ),
         ),
       ),
     );

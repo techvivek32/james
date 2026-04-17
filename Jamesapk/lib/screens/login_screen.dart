@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import '../services/auth_service.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'dart:convert';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -15,6 +17,11 @@ class _LoginScreenState extends State<LoginScreen> {
   bool _showPassword = false;
   bool _isLoading = false;
   String _error = '';
+
+  @override
+  void initState() {
+    super.initState();
+  }
 
   @override
   void dispose() {

@@ -71,9 +71,14 @@ class _ManagerTrainingScreenState extends State<ManagerTrainingScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: _bg,
-      body: SafeArea(
+    return WillPopScope(
+      onWillPop: () async {
+        Navigator.pushReplacementNamed(context, '/manager-dashboard');
+        return false;
+      },
+      child: Scaffold(
+        backgroundColor: _bg,
+        body: SafeArea(
         child: Column(
           children: [
             Expanded(
@@ -86,12 +91,12 @@ class _ManagerTrainingScreenState extends State<ManagerTrainingScreen> {
                       const Text(
                         'Training Center',
                         style: TextStyle(
-                          fontSize: 28,
+                          fontSize: 24,
                           fontWeight: FontWeight.bold,
                           color: _textDark,
                         ),
                       ),
-                      const SizedBox(height: 16),
+                      const SizedBox(height: 14),
                       _buildTabs(),
                       const SizedBox(height: 20),
                       _buildProgressCard(),
@@ -99,7 +104,7 @@ class _ManagerTrainingScreenState extends State<ManagerTrainingScreen> {
                       const Text(
                         'Required Next',
                         style: TextStyle(
-                          fontSize: 18,
+                          fontSize: 16,
                           fontWeight: FontWeight.bold,
                           color: _textDark,
                         ),
@@ -110,7 +115,7 @@ class _ManagerTrainingScreenState extends State<ManagerTrainingScreen> {
                       const Text(
                         'Library',
                         style: TextStyle(
-                          fontSize: 18,
+                          fontSize: 16,
                           fontWeight: FontWeight.bold,
                           color: _textDark,
                         ),
@@ -137,6 +142,7 @@ class _ManagerTrainingScreenState extends State<ManagerTrainingScreen> {
             _buildBottomNav(context),
           ],
         ),
+      ),
       ),
     );
   }
@@ -199,10 +205,10 @@ class _ManagerTrainingScreenState extends State<ManagerTrainingScreen> {
 
   Widget _buildProgressCard() {
     return Container(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
         color: Color(0xFF1F1F1F),
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(14),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -210,32 +216,32 @@ class _ManagerTrainingScreenState extends State<ManagerTrainingScreen> {
           Text(
             'Your Progress',
             style: TextStyle(
-              fontSize: 14,
+              fontSize: 13,
               color: Colors.grey[400],
             ),
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: 8),
           Row(
             children: [
               const Text(
                 '65%',
                 style: TextStyle(
-                  fontSize: 40,
+                  fontSize: 36,
                   fontWeight: FontWeight.bold,
                   color: _white,
                 ),
               ),
-              const SizedBox(width: 12),
+              const SizedBox(width: 10),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 decoration: BoxDecoration(
                   color: _primary,
-                  borderRadius: BorderRadius.circular(5),
+                  borderRadius: BorderRadius.circular(4),
                 ),
                 child: const Text(
                   'On Track',
                   style: TextStyle(
-                    fontSize: 12,
+                    fontSize: 11,
                     fontWeight: FontWeight.bold,
                     color: _white,
                   ),
@@ -243,21 +249,21 @@ class _ManagerTrainingScreenState extends State<ManagerTrainingScreen> {
               ),
             ],
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 10),
           ClipRRect(
-            borderRadius: BorderRadius.circular(6),
+            borderRadius: BorderRadius.circular(5),
             child: LinearProgressIndicator(
               value: 0.65,
               backgroundColor: Colors.grey[700],
               valueColor: const AlwaysStoppedAnimation<Color>(_primary),
-              minHeight: 6,
+              minHeight: 5,
             ),
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: 8),
           Text(
             'Complete 2 more modules to hit weekly goal.',
             style: TextStyle(
-              fontSize: 13,
+              fontSize: 12,
               color: Colors.grey[400],
             ),
           ),
@@ -268,10 +274,10 @@ class _ManagerTrainingScreenState extends State<ManagerTrainingScreen> {
 
   Widget _buildRequiredModule() {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: _white,
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(12),
         border: Border.all(color: _primary, width: 2),
       ),
       child: Column(
@@ -279,8 +285,8 @@ class _ManagerTrainingScreenState extends State<ManagerTrainingScreen> {
           Row(
             children: [
               Container(
-                width: 52,
-                height: 52,
+                width: 48,
+                height: 48,
                 decoration: BoxDecoration(
                   color: Color(0xFFFEE2E2),
                   borderRadius: BorderRadius.circular(10),
@@ -288,10 +294,10 @@ class _ManagerTrainingScreenState extends State<ManagerTrainingScreen> {
                 child: Icon(
                   Icons.handshake_outlined,
                   color: _primary,
-                  size: 28,
+                  size: 26,
                 ),
               ),
-              const SizedBox(width: 14),
+              const SizedBox(width: 12),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -311,40 +317,40 @@ class _ManagerTrainingScreenState extends State<ManagerTrainingScreen> {
                         Text(
                           '15 Min',
                           style: TextStyle(
-                            fontSize: 12,
+                            fontSize: 11,
                             color: _textLight,
                           ),
                         ),
                       ],
                     ),
-                    const SizedBox(height: 4),
+                    const SizedBox(height: 3),
                     const Text(
                       "Mastering the 'Too Expensive' Pivot",
                       style: TextStyle(
-                        fontSize: 15,
+                        fontSize: 14,
                         fontWeight: FontWeight.bold,
                         color: _textDark,
                       ),
                     ),
-                    const SizedBox(height: 8),
+                    const SizedBox(height: 6),
                     Row(
                       children: [
                         Expanded(
                           child: ClipRRect(
-                            borderRadius: BorderRadius.circular(4),
+                            borderRadius: BorderRadius.circular(3),
                             child: LinearProgressIndicator(
                               value: 0.30,
                               backgroundColor: _border,
                               valueColor: const AlwaysStoppedAnimation<Color>(_primary),
-                              minHeight: 5,
+                              minHeight: 4,
                             ),
                           ),
                         ),
-                        const SizedBox(width: 10),
+                        const SizedBox(width: 8),
                         const Text(
                           '30%',
                           style: TextStyle(
-                            fontSize: 12,
+                            fontSize: 11,
                             fontWeight: FontWeight.w600,
                             color: _textLight,
                           ),
@@ -356,14 +362,14 @@ class _ManagerTrainingScreenState extends State<ManagerTrainingScreen> {
               ),
             ],
           ),
-          const SizedBox(height: 14),
+          const SizedBox(height: 12),
           SizedBox(
             width: double.infinity,
             child: ElevatedButton(
               onPressed: () {},
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.black,
-                padding: const EdgeInsets.symmetric(vertical: 14),
+                padding: const EdgeInsets.symmetric(vertical: 12),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(10),
                 ),
@@ -371,7 +377,7 @@ class _ManagerTrainingScreenState extends State<ManagerTrainingScreen> {
               child: const Text(
                 'Continue Module',
                 style: TextStyle(
-                  fontSize: 15,
+                  fontSize: 14,
                   fontWeight: FontWeight.w600,
                   color: _white,
                 ),
@@ -385,16 +391,16 @@ class _ManagerTrainingScreenState extends State<ManagerTrainingScreen> {
 
   Widget _buildLibraryItem(String title, String subtitle, IconData icon, bool isCompleted) {
     return Container(
-      padding: const EdgeInsets.all(14),
+      padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: _white,
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(12),
       ),
       child: Row(
         children: [
           Container(
-            width: 50,
-            height: 50,
+            width: 46,
+            height: 46,
             decoration: BoxDecoration(
               color: isCompleted ? Color(0xFFD1FAE5) : Color(0xFFF3F4F6),
               borderRadius: BorderRadius.circular(10),
@@ -402,10 +408,10 @@ class _ManagerTrainingScreenState extends State<ManagerTrainingScreen> {
             child: Icon(
               icon,
               color: isCompleted ? Color(0xFF10B981) : _textLight,
-              size: 24,
+              size: 22,
             ),
           ),
-          const SizedBox(width: 14),
+          const SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -413,12 +419,12 @@ class _ManagerTrainingScreenState extends State<ManagerTrainingScreen> {
                 Text(
                   title,
                   style: TextStyle(
-                    fontSize: 15,
+                    fontSize: 14,
                     fontWeight: FontWeight.w600,
                     color: _textDark,
                   ),
                 ),
-                const SizedBox(height: 3),
+                const SizedBox(height: 2),
                 Text(
                   subtitle,
                   style: TextStyle(
@@ -433,7 +439,7 @@ class _ManagerTrainingScreenState extends State<ManagerTrainingScreen> {
             Icon(
               Icons.play_circle_outline,
               color: _textDark,
-              size: 28,
+              size: 26,
             ),
         ],
       ),

@@ -198,12 +198,6 @@ class _ManagerStormChatScreenState extends State<ManagerStormChatScreen> {
                             ),
                         ],
                       ),
-                      if (description.isNotEmpty) ...[
-                        const SizedBox(height: 4),
-                        Text(description, style: const TextStyle(fontSize: 13, color: Colors.grey), maxLines: 1, overflow: TextOverflow.ellipsis),
-                      ],
-                      const SizedBox(height: 6),
-                      Text('$memberCount members', style: const TextStyle(fontSize: 12, color: Colors.grey)),
                     ],
                   ),
                 ),

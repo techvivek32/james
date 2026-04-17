@@ -88,32 +88,38 @@ class _RankingsScreenState extends State<RankingsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: _bg,
-      body: SafeArea(
-        child: Column(
-          children: [
-            Expanded(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const SizedBox(height: 16),
-                    _buildHeader(),
-                    const SizedBox(height: 16),
-                    _buildFilterRow(),
-                    const SizedBox(height: 16),
-                    _buildStatusCard(),
-                    const SizedBox(height: 24),
-                    _buildLeaderboard(),
-                    const SizedBox(height: 16),
-                  ],
+    return WillPopScope(
+      onWillPop: () async {
+        Navigator.pushReplacementNamed(context, '/training');
+        return false;
+      },
+      child: Scaffold(
+        backgroundColor: _bg,
+        body: SafeArea(
+          child: Column(
+            children: [
+              Expanded(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const SizedBox(height: 16),
+                      _buildHeader(),
+                      const SizedBox(height: 16),
+                      _buildFilterRow(),
+                      const SizedBox(height: 16),
+                      _buildStatusCard(),
+                      const SizedBox(height: 24),
+                      _buildLeaderboard(),
+                      const SizedBox(height: 16),
+                    ],
+                  ),
                 ),
               ),
-            ),
-            _buildBottomNav(context),
-          ],
+              _buildBottomNav(context),
+            ],
+          ),
         ),
       ),
     );

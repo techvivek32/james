@@ -71,9 +71,14 @@ class _ManagerPlannerScreenState extends State<ManagerPlannerScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: _bg,
-      body: SafeArea(
+    return WillPopScope(
+      onWillPop: () async {
+        Navigator.pushReplacementNamed(context, '/manager-dashboard');
+        return false;
+      },
+      child: Scaffold(
+        backgroundColor: _bg,
+        body: SafeArea(
         child: Column(
           children: [
             Expanded(
@@ -89,7 +94,7 @@ class _ManagerPlannerScreenState extends State<ManagerPlannerScreen> {
                           const Text(
                             'Team Business Plans',
                             style: TextStyle(
-                              fontSize: 26,
+                              fontSize: 22,
                               fontWeight: FontWeight.bold,
                               color: _textDark,
                             ),
@@ -168,6 +173,7 @@ class _ManagerPlannerScreenState extends State<ManagerPlannerScreen> {
           ],
         ),
       ),
+      ),
     );
   }
 
@@ -193,7 +199,7 @@ class _ManagerPlannerScreenState extends State<ManagerPlannerScreen> {
           const Text(
             '\$1,450,000',
             style: TextStyle(
-              fontSize: 36,
+              fontSize: 30,
               fontWeight: FontWeight.bold,
               color: _textDark,
             ),
@@ -226,7 +232,7 @@ class _ManagerPlannerScreenState extends State<ManagerPlannerScreen> {
                         const Text(
                           '25%',
                           style: TextStyle(
-                            fontSize: 32,
+                            fontSize: 28,
                             fontWeight: FontWeight.bold,
                             color: _textDark,
                           ),
@@ -268,7 +274,7 @@ class _ManagerPlannerScreenState extends State<ManagerPlannerScreen> {
                         const Text(
                           '30%',
                           style: TextStyle(
-                            fontSize: 32,
+                            fontSize: 28,
                             fontWeight: FontWeight.bold,
                             color: _textDark,
                           ),

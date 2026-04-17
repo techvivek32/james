@@ -87,9 +87,14 @@ class _ManagerRankingsScreenState extends State<ManagerRankingsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: _bg,
-      body: SafeArea(
+    return WillPopScope(
+      onWillPop: () async {
+        Navigator.pushReplacementNamed(context, '/manager-dashboard');
+        return false;
+      },
+      child: Scaffold(
+        backgroundColor: _bg,
+        body: SafeArea(
         child: Column(
           children: [
             Expanded(
@@ -123,6 +128,7 @@ class _ManagerRankingsScreenState extends State<ManagerRankingsScreen> {
           ],
         ),
       ),
+      ),
     );
   }
 
@@ -130,7 +136,7 @@ class _ManagerRankingsScreenState extends State<ManagerRankingsScreen> {
     return const Text(
       'Leaderboards',
       style: TextStyle(
-        fontSize: 32,
+        fontSize: 26,
         fontWeight: FontWeight.bold,
         color: _textDark,
       ),
@@ -204,15 +210,15 @@ class _ManagerRankingsScreenState extends State<ManagerRankingsScreen> {
   Widget _buildTopThree() {
     return Container(
       color: Colors.black,
-      padding: const EdgeInsets.symmetric(vertical: 30, horizontal: 20),
+      padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 20),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
         crossAxisAlignment: CrossAxisAlignment.end,
         children: [
           _buildPodiumPerson(2, 'E. Davis', '\$192k', Colors.grey[400]!),
-          const SizedBox(width: 16),
+          const SizedBox(width: 14),
           _buildPodiumPerson(1, 'M. Roberts', '\$245k', _primary, isWinner: true),
-          const SizedBox(width: 16),
+          const SizedBox(width: 14),
           _buildPodiumPerson(3, 'S. Jenkins', '\$185k', Color(0xFFCD7F32)),
         ],
       ),
@@ -223,32 +229,32 @@ class _ManagerRankingsScreenState extends State<ManagerRankingsScreen> {
     return Column(
       children: [
         if (isWinner)
-          Icon(Icons.emoji_events, color: _primary, size: 32),
+          Icon(Icons.emoji_events, color: _primary, size: 28),
         if (isWinner)
-          const SizedBox(height: 6),
+          const SizedBox(height: 4),
         Stack(
           children: [
             Container(
-              width: isWinner ? 75 : 60,
-              height: isWinner ? 75 : 60,
+              width: isWinner ? 65 : 52,
+              height: isWinner ? 65 : 52,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 border: Border.all(
                   color: isWinner ? _primary : badgeColor,
-                  width: 3,
+                  width: 2.5,
                 ),
               ),
               child: CircleAvatar(
                 backgroundColor: Colors.grey[700],
-                child: Icon(Icons.person, color: _white, size: isWinner ? 32 : 26),
+                child: Icon(Icons.person, color: _white, size: isWinner ? 28 : 22),
               ),
             ),
             Positioned(
               bottom: 0,
               right: 0,
               child: Container(
-                width: 24,
-                height: 24,
+                width: 20,
+                height: 20,
                 decoration: BoxDecoration(
                   color: badgeColor,
                   shape: BoxShape.circle,
@@ -259,7 +265,7 @@ class _ManagerRankingsScreenState extends State<ManagerRankingsScreen> {
                     '$rank',
                     style: TextStyle(
                       color: _white,
-                      fontSize: 12,
+                      fontSize: 11,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
@@ -268,12 +274,12 @@ class _ManagerRankingsScreenState extends State<ManagerRankingsScreen> {
             ),
           ],
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: 6),
         Text(
           name,
           style: TextStyle(
             color: _white,
-            fontSize: 13,
+            fontSize: 12,
             fontWeight: FontWeight.w600,
           ),
         ),
@@ -282,7 +288,7 @@ class _ManagerRankingsScreenState extends State<ManagerRankingsScreen> {
           amount,
           style: TextStyle(
             color: isWinner ? _primary : _white,
-            fontSize: isWinner ? 20 : 16,
+            fontSize: isWinner ? 18 : 14,
             fontWeight: FontWeight.bold,
           ),
         ),
@@ -307,11 +313,11 @@ class _ManagerRankingsScreenState extends State<ManagerRankingsScreen> {
     final isYou = person['isYou'] ?? false;
     
     return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(16),
+      margin: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: _white,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(14),
         border: isYou ? Border.all(color: _primary, width: 2) : null,
         boxShadow: [
           BoxShadow(
@@ -326,27 +332,27 @@ class _ManagerRankingsScreenState extends State<ManagerRankingsScreen> {
           Text(
             '${person['rank']}',
             style: TextStyle(
-              fontSize: 24,
+              fontSize: 22,
               fontWeight: FontWeight.bold,
               color: _textLight,
             ),
           ),
-          const SizedBox(width: 16),
+          const SizedBox(width: 14),
           CircleAvatar(
-            radius: 28,
+            radius: 24,
             backgroundColor: _border,
             child: person['rank'] == 5
                 ? Text(
                     'AJ',
                     style: TextStyle(
-                      fontSize: 18,
+                      fontSize: 16,
                       fontWeight: FontWeight.bold,
                       color: _textLight,
                     ),
                   )
-                : Icon(Icons.person, color: _textLight, size: 28),
+                : Icon(Icons.person, color: _textLight, size: 24),
           ),
-          const SizedBox(width: 16),
+          const SizedBox(width: 14),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -356,16 +362,16 @@ class _ManagerRankingsScreenState extends State<ManagerRankingsScreen> {
                     Text(
                       person['name'],
                       style: TextStyle(
-                        fontSize: 17,
+                        fontSize: 15,
                         fontWeight: FontWeight.bold,
                         color: _textDark,
                       ),
                     ),
                     if (isYou)
-                      const SizedBox(width: 8),
+                      const SizedBox(width: 6),
                     if (isYou)
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                         decoration: BoxDecoration(
                           color: _primary,
                           borderRadius: BorderRadius.circular(4),
@@ -373,7 +379,7 @@ class _ManagerRankingsScreenState extends State<ManagerRankingsScreen> {
                         child: Text(
                           'YOU',
                           style: TextStyle(
-                            fontSize: 10,
+                            fontSize: 9,
                             fontWeight: FontWeight.bold,
                             color: _white,
                           ),
@@ -381,11 +387,11 @@ class _ManagerRankingsScreenState extends State<ManagerRankingsScreen> {
                       ),
                   ],
                 ),
-                const SizedBox(height: 4),
+                const SizedBox(height: 3),
                 Text(
                   person['branch'],
                   style: TextStyle(
-                    fontSize: 14,
+                    fontSize: 13,
                     color: isYou ? _primary : _textLight,
                     fontWeight: isYou ? FontWeight.w600 : FontWeight.normal,
                   ),
@@ -399,18 +405,18 @@ class _ManagerRankingsScreenState extends State<ManagerRankingsScreen> {
               Text(
                 person['amount'],
                 style: TextStyle(
-                  fontSize: 20,
+                  fontSize: 18,
                   fontWeight: FontWeight.bold,
                   color: isYou ? _primary : _textDark,
                 ),
               ),
               if (person['change'] != null)
-                const SizedBox(height: 4),
+                const SizedBox(height: 3),
               if (person['change'] != null)
                 Text(
                   person['change'],
                   style: TextStyle(
-                    fontSize: 13,
+                    fontSize: 12,
                     fontWeight: FontWeight.w600,
                     color: person['changeColor'],
                   ),

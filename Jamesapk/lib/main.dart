@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'screens/splash_screen.dart';
 import 'screens/login_screen.dart';
 import 'screens/training_screen.dart';
 import 'screens/manager_dashboard_screen.dart';
@@ -33,9 +34,11 @@ class MillerStormApp extends StatelessWidget {
         fontFamily: 'sans-serif',
         useMaterial3: true,
       ),
-      initialRoute: '/login',
+      initialRoute: '/',
       onGenerateRoute: (settings) {
         switch (settings.name) {
+          case '/':
+            return MaterialPageRoute(builder: (_) => const SplashScreen());
           case '/login':
             return MaterialPageRoute(builder: (_) => const LoginScreen());
           case '/training':
@@ -65,7 +68,7 @@ class MillerStormApp extends StatelessWidget {
           case '/profile':
             return MaterialPageRoute(builder: (_) => const ProfileScreen());
           default:
-            return MaterialPageRoute(builder: (_) => const LoginScreen());
+            return MaterialPageRoute(builder: (_) => const SplashScreen());
         }
       },
     );
