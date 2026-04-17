@@ -13,6 +13,7 @@ class StormChatScreen extends StatefulWidget {
 
 class _StormChatScreenState extends State<StormChatScreen> {
   List<dynamic> groups = [];
+  Map<String, int> unreadCounts = {};
   bool isLoading = true;
   String? userId;
   String? userRole;
@@ -62,6 +63,9 @@ class _StormChatScreenState extends State<StormChatScreen> {
           groups = userGroups;
           isLoading = false;
         });
+        
+        // Fetch unread counts
+        await _fetchUnreadCounts();
       } else {
         print('❌ Failed to fetch groups: ${response.statusCode}');
         setState(() {
@@ -73,6 +77,26 @@ class _StormChatScreenState extends State<StormChatScreen> {
       setState(() {
         isLoading = false;
       });
+    }
+  }
+
+  Future<void> _fetchUnreadCounts() async {
+    if (groups.isEmpty) return;
+    
+    try {
+      final groupIds = groups.map((g) => g['_id']).join(',');
+      final response = await http.get(
+        Uri.parse('https://millerstorm.tech/api/storm-chat/unread-counts?userId=$userId&groupIds=$groupIds'),
+      );
+
+      if (response.statusCode == 200) {
+        final counts = json.decode(response.body) as Map<String, dynamic>;
+        setState(() {
+          unreadCounts = counts.map((key, value) => MapEntry(key, value as int));
+        });
+      }
+    } catch (e) {
+      print('❌ Error fetching unread counts: $e');
     }
   }
 
@@ -176,6 +200,8 @@ class _StormChatScreenState extends State<StormChatScreen> {
     final imageUrl = group['imageUrl'] ?? '';
     final memberCount = (group['members'] as List?)?.length ?? 0;
     final onlyAdminCanChat = group['onlyAdminCanChat'] ?? false;
+    final groupId = group['_id'];
+    final unreadCount = unreadCounts[groupId] ?? 0;
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
@@ -277,6 +303,23 @@ class _StormChatScreenState extends State<StormChatScreen> {
                     ],
                   ),
                 ),
+                if (unreadCount > 0)
+                  Container(
+                    margin: const EdgeInsets.only(right: 8),
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFDC2626),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Text(
+                      unreadCount > 99 ? '99+' : unreadCount.toString(),
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
                 const Icon(
                   Icons.chevron_right,
                   color: Colors.grey,
