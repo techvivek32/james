@@ -334,19 +334,16 @@ export function StormChatRoom({ group, onBack }: Props) {
                       position: 'absolute',
                       top: 4,
                       right: 4,
-                      background: 'rgba(0, 0, 0, 0.5)',
+                      background: 'none',
                       border: 'none',
-                      borderRadius: 4,
-                      color: '#fff',
+                      color: isMyMessage ? '#fff' : '#6b7280',
                       cursor: 'pointer',
-                      padding: '4px 8px',
-                      fontSize: 12,
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: 4
+                      padding: 4,
+                      fontSize: 16,
+                      lineHeight: 1
                     }}
                   >
-                    ▼
+                    ⌄
                   </button>
                 )}
                 
@@ -355,8 +352,8 @@ export function StormChatRoom({ group, onBack }: Props) {
                   <div
                     style={{
                       position: 'absolute',
-                      top: 30,
-                      right: 4,
+                      top: 28,
+                      right: 0,
                       backgroundColor: '#1f2937',
                       borderRadius: 8,
                       boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)',
