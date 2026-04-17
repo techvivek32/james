@@ -282,11 +282,6 @@ export function StormChatRoom({ group, onBack }: Props) {
         )}
         
         <div 
-          onMouseEnter={() => setHoveredMessageId(msg._id)}
-          onMouseLeave={() => {
-            setHoveredMessageId(null);
-            if (!showMenu) setMenuMessageId(null);
-          }}
           style={{ 
             display: 'flex', 
             justifyContent: isMyMessage ? 'flex-end' : 'flex-start',
@@ -316,16 +311,22 @@ export function StormChatRoom({ group, onBack }: Props) {
             )}
             
             {msg.messageType === 'text' && (
-              <div style={{ 
-                backgroundColor: isMyMessage ? '#DC2626' : '#f3f4f6',
-                color: isMyMessage ? '#fff' : '#111827',
-                padding: '10px 14px',
-                borderRadius: 16,
-                borderTopRightRadius: isMyMessage ? 4 : 16,
-                borderTopLeftRadius: isMyMessage ? 16 : 4,
-                wordBreak: 'break-word',
-                position: 'relative'
-              }}>
+              <div 
+                onMouseEnter={() => setHoveredMessageId(msg._id)}
+                onMouseLeave={() => {
+                  setHoveredMessageId(null);
+                  if (!showMenu) setMenuMessageId(null);
+                }}
+                style={{ 
+                  backgroundColor: isMyMessage ? '#DC2626' : '#f3f4f6',
+                  color: isMyMessage ? '#fff' : '#111827',
+                  padding: '10px 14px',
+                  borderRadius: 16,
+                  borderTopRightRadius: isMyMessage ? 4 : 16,
+                  borderTopLeftRadius: isMyMessage ? 16 : 4,
+                  wordBreak: 'break-word',
+                  position: 'relative'
+                }}>
                 {/* Menu button on hover */}
                 {isHovered && (
                   <button
@@ -339,11 +340,13 @@ export function StormChatRoom({ group, onBack }: Props) {
                       color: isMyMessage ? '#fff' : '#6b7280',
                       cursor: 'pointer',
                       padding: 4,
-                      fontSize: 16,
-                      lineHeight: 1
+                      fontSize: 18,
+                      lineHeight: 1,
+                      fontWeight: 'bold',
+                      letterSpacing: '2px'
                     }}
                   >
-                    ▼
+                    ⋯
                   </button>
                 )}
                 
