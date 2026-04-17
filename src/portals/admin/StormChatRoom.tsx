@@ -353,8 +353,7 @@ export function StormChatRoom({ group, onBack }: Props) {
                     style={{
                       position: 'absolute',
                       top: 28,
-                      left: '100%',
-                      marginLeft: 8,
+                      ...(isMyMessage ? { right: '100%', marginRight: 8 } : { left: '100%', marginLeft: 8 }),
                       backgroundColor: '#1f2937',
                       borderRadius: 8,
                       boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)',
