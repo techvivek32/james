@@ -637,7 +637,10 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
                       ),
                     ),
                   // Show reply preview if this message is a reply
-                  if (message['replyTo'] != null && message['replyToMessage'] != null)
+                  if (message['replyTo'] != null && 
+                      message['replyTo'].toString().isNotEmpty &&
+                      message['replyToMessage'] != null &&
+                      message['replyToMessage'].toString().isNotEmpty)
                     Container(
                       margin: const EdgeInsets.only(bottom: 4, left: 8, right: 8),
                       padding: const EdgeInsets.all(8),

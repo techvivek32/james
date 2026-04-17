@@ -48,16 +48,13 @@ const ChatMessageSchema = new Schema<IChatMessage>(
       default: ''
     },
     replyTo: {
-      type: String,
-      default: ''
+      type: String
     },
     replyToMessage: {
-      type: String,
-      default: ''
+      type: String
     },
     replyToSender: {
-      type: String,
-      default: ''
+      type: String
     }
   },
   {
