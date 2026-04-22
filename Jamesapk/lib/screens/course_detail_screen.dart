@@ -99,7 +99,7 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
       body: _isLoading
           ? const Center(child: CircularProgressIndicator(color: _primary))
           : SingleChildScrollView(
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -463,9 +463,10 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
                                           decoration: isCompleted ? TextDecoration.lineThrough : null,
                                         ),
                                       ),
-                                      if (page['videoUrl'] != null)
+                                      // Only show "Video lesson" if page has videoUrl and is not a quiz
+                                      if (page['isQuiz'] != true && page['videoUrl'] != null && page['videoUrl'].toString().isNotEmpty)
                                         const SizedBox(height: 2),
-                                      if (page['videoUrl'] != null)
+                                      if (page['isQuiz'] != true && page['videoUrl'] != null && page['videoUrl'].toString().isNotEmpty)
                                         Row(
                                           children: [
                                             Icon(

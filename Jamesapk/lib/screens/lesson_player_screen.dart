@@ -42,6 +42,12 @@ class _LessonPlayerScreenState extends State<LessonPlayerScreen> {
   bool _isLoading = true;
   bool _isFullscreen = false;
   WebViewController? _webViewController;
+  
+  // Quiz state
+  Map<String, int> _selectedAnswers = {};
+  bool _quizSubmitted = false;
+  Map<String, dynamic>? _quizScore;
+  List<dynamic> _savedQuizResults = [];
 
   @override
   void initState() {
@@ -65,27 +71,61 @@ class _LessonPlayerScreenState extends State<LessonPlayerScreen> {
         final courseData = jsonDecode(response.body);
         final pages = courseData['pages'] as List<dynamic>? ?? [];
         
-        // Filter only published lesson pages (not quizzes)
+        // Filter only published pages (including quizzes)
         final lessons = pages.where((page) => 
-          page['status'] == 'published' && page['isQuiz'] != true
+          page['status'] == 'published'
         ).toList();
         
         final currentIndex = lessons.indexWhere((page) => page['id'] == widget.lessonId);
         final lesson = currentIndex >= 0 ? lessons[currentIndex] : null;
+
+        // Load saved progress (including quiz results)
+        List<dynamic> savedQuizResults = [];
+        if (userId.isNotEmpty) {
+          try {
+            final progressResponse = await http.get(
+              Uri.parse('https://millerstorm.tech/api/progress?userId=$userId&courseId=${widget.courseId}'),
+            );
+            if (progressResponse.statusCode == 200) {
+              final progressData = jsonDecode(progressResponse.body);
+              savedQuizResults = progressData['quizResults'] ?? [];
+              print('📊 Loaded ${savedQuizResults.length} saved quiz results');
+            }
+          } catch (e) {
+            print('⚠️ Could not load progress: $e');
+          }
+        }
 
         setState(() {
           _course = courseData;
           _lesson = lesson;
           _allLessons = lessons;
           _currentLessonIndex = currentIndex >= 0 ? currentIndex : 0;
+          _savedQuizResults = savedQuizResults;
           _isLoading = false;
+          
+          // If this is a quiz, check if user already completed it
+          if (lesson?['isQuiz'] == true) {
+            final savedResult = savedQuizResults.firstWhere(
+              (r) => r['pageId'] == lesson!['id'],
+              orElse: () => null,
+            );
+            
+            if (savedResult != null) {
+              print('✅ Found saved quiz result');
+              _selectedAnswers = Map<String, int>.from(savedResult['answers'] ?? {});
+              _quizScore = savedResult['score'];
+              _quizSubmitted = true;
+            }
+          }
         });
         
         print('✅ Lesson loaded: ${lesson?['title']}');
         print('🎥 Video URL: ${lesson?['videoUrl']}');
+        print('📝 Is Quiz: ${lesson?['isQuiz']}');
         
-        // Initialize video player
-        if (lesson?['videoUrl'] != null) {
+        // Initialize video player only if not a quiz and has video
+        if (lesson?['isQuiz'] != true && lesson?['videoUrl'] != null) {
           _initializeVideoPlayer(lesson!['videoUrl']);
         }
       } else {
@@ -198,6 +238,64 @@ class _LessonPlayerScreenState extends State<LessonPlayerScreen> {
     }
   }
 
+  Future<void> _submitQuiz() async {
+    if (_lesson == null || _lesson!['quizQuestions'] == null) return;
+    
+    final questions = _lesson!['quizQuestions'] as List<dynamic>;
+    int correct = 0;
+    
+    for (var q in questions) {
+      final questionId = q['id'];
+      final correctIndex = q['correctIndex'];
+      if (_selectedAnswers[questionId] == correctIndex) {
+        correct++;
+      }
+    }
+    
+    final score = {
+      'correct': correct,
+      'total': questions.length,
+    };
+    
+    setState(() {
+      _quizSubmitted = true;
+      _quizScore = score;
+    });
+    
+    // Save quiz result to database
+    try {
+      final user = await AuthService.getStoredUser();
+      final userId = user?['id'] ?? '';
+      
+      if (userId.isNotEmpty) {
+        final quizResult = {
+          'pageId': _lesson!['id'],
+          'answers': _selectedAnswers,
+          'score': score,
+          'submittedAt': DateTime.now().toIso8601String(),
+        };
+        
+        await http.post(
+          Uri.parse('https://millerstorm.tech/api/progress/save'),
+          headers: {'Content-Type': 'application/json'},
+          body: jsonEncode({
+            'userId': userId,
+            'courseId': widget.courseId,
+            'quizResult': quizResult,
+          }),
+        );
+        
+        print('💾 Quiz result saved to database');
+      }
+    } catch (e) {
+      print('❌ Error saving quiz result: $e');
+    }
+    
+    // Auto-advance after 2 seconds
+    await Future.delayed(const Duration(seconds: 2));
+    _markCompleteAndNext();
+  }
+  
   Future<void> _markCompleteAndNext() async {
     if (_lesson == null) return;
     
@@ -205,18 +303,20 @@ class _LessonPlayerScreenState extends State<LessonPlayerScreen> {
       final user = await AuthService.getStoredUser();
       final userId = user?['id'] ?? '';
       
-      // Mark current lesson as complete
-      await http.post(
-        Uri.parse('https://millerstorm.tech/api/progress/save'),
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({
-          'userId': userId,
-          'courseId': widget.courseId,
-          'pageId': _lesson!['id'],
-        }),
-      );
-      
-      print('✅ Lesson marked as complete: ${_lesson!['title']}');
+      // Only mark lesson pages as complete (not quizzes)
+      if (_lesson!['isQuiz'] != true) {
+        await http.post(
+          Uri.parse('https://millerstorm.tech/api/progress/save'),
+          headers: {'Content-Type': 'application/json'},
+          body: jsonEncode({
+            'userId': userId,
+            'courseId': widget.courseId,
+            'pageId': _lesson!['id'],
+          }),
+        );
+        
+        print('✅ Lesson marked as complete: ${_lesson!['title']}');
+      }
       
       // Navigate to next lesson if available
       if (_currentLessonIndex < _allLessons.length - 1) {
@@ -259,17 +359,9 @@ class _LessonPlayerScreenState extends State<LessonPlayerScreen> {
   }
 
   Widget _buildVideoPlayer() {
+    // Don't show video section if no video URL
     if (_lesson?['videoUrl'] == null) {
-      return Container(
-        height: 220,
-        color: Colors.black,
-        child: const Center(
-          child: Text(
-            'No video available',
-            style: TextStyle(color: Colors.white, fontSize: 16),
-          ),
-        ),
-      );
+      return const SizedBox.shrink();
     }
 
     return Container(
@@ -281,6 +373,183 @@ class _LessonPlayerScreenState extends State<LessonPlayerScreen> {
           : const Center(
               child: CircularProgressIndicator(color: Colors.white),
             ),
+    );
+  }
+
+  Widget _buildQuizContent() {
+    if (_lesson?['quizQuestions'] == null) {
+      return const SizedBox();
+    }
+
+    final questions = _lesson!['quizQuestions'] as List<dynamic>;
+    
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.only(bottom: 16),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: _white,
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Score display (if submitted)
+          if (_quizSubmitted && _quizScore != null)
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(16),
+              margin: const EdgeInsets.only(bottom: 16),
+              decoration: BoxDecoration(
+                color: _quizScore!['correct'] == _quizScore!['total']
+                    ? const Color(0xFFD1FAE5)
+                    : const Color(0xFFFEF3C7),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Column(
+                children: [
+                  Text(
+                    'Score: ${_quizScore!['correct']}/${_quizScore!['total']}',
+                    style: const TextStyle(
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                      color: _textDark,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    _quizScore!['correct'] == _quizScore!['total']
+                        ? 'Perfect! 🎉'
+                        : 'You got ${((_quizScore!['correct'] / _quizScore!['total']) * 100).round()}%',
+                    style: const TextStyle(
+                      fontSize: 14,
+                      color: Color(0xFF666666),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          
+          // Questions
+          ...questions.asMap().entries.map((entry) {
+            final qIdx = entry.key;
+            final q = entry.value;
+            final questionId = q['id'];
+            final options = q['options'] as List<dynamic>? ?? [];
+            final correctIndex = q['correctIndex'];
+            
+            return Container(
+              margin: const EdgeInsets.only(bottom: 32),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Question ${qIdx + 1}: ${q['prompt']}',
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      color: _textDark,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  
+                  // Options
+                  ...options.asMap().entries.map((optEntry) {
+                    final optIdx = optEntry.key;
+                    final option = optEntry.value;
+                    final isSelected = _selectedAnswers[questionId] == optIdx;
+                    final isCorrect = correctIndex == optIdx;
+                    final showResult = _quizSubmitted;
+                    
+                    Color borderColor;
+                    Color bgColor;
+                    
+                    if (showResult) {
+                      if (isCorrect) {
+                        borderColor = const Color(0xFF10B981);
+                        bgColor = const Color(0xFFD1FAE5);
+                      } else if (isSelected) {
+                        borderColor = const Color(0xFFEF4444);
+                        bgColor = const Color(0xFFFEE2E2);
+                      } else {
+                        borderColor = _border;
+                        bgColor = _white;
+                      }
+                    } else {
+                      borderColor = isSelected ? _primary : _border;
+                      bgColor = isSelected ? const Color(0xFFEFF6FF) : _white;
+                    }
+                    
+                    return GestureDetector(
+                      onTap: _quizSubmitted ? null : () {
+                        setState(() {
+                          _selectedAnswers[questionId] = optIdx;
+                        });
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.all(12),
+                        margin: const EdgeInsets.only(bottom: 12),
+                        decoration: BoxDecoration(
+                          color: bgColor,
+                          border: Border.all(color: borderColor, width: 2),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Row(
+                          children: [
+                            Container(
+                              width: 20,
+                              height: 20,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                border: Border.all(
+                                  color: showResult
+                                      ? (isCorrect ? const Color(0xFF10B981) : isSelected ? const Color(0xFFEF4444) : _border)
+                                      : (isSelected ? _primary : _border),
+                                  width: 2,
+                                ),
+                                color: isSelected
+                                    ? (showResult
+                                        ? (isCorrect ? const Color(0xFF10B981) : const Color(0xFFEF4444))
+                                        : _primary)
+                                    : _white,
+                              ),
+                              child: isSelected
+                                  ? const Center(
+                                      child: Icon(
+                                        Icons.circle,
+                                        size: 8,
+                                        color: _white,
+                                      ),
+                                    )
+                                  : null,
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Text(
+                                option.toString(),
+                                style: const TextStyle(
+                                  fontSize: 14,
+                                  color: _textDark,
+                                ),
+                              ),
+                            ),
+                            if (showResult && isCorrect)
+                              const Icon(
+                                Icons.check,
+                                color: Color(0xFF10B981),
+                                size: 20,
+                              ),
+                          ],
+                        ),
+                      ),
+                    );
+                  }).toList(),
+                ],
+              ),
+            );
+          }).toList(),
+        ],
+      ),
     );
   }
 
@@ -648,8 +917,9 @@ class _LessonPlayerScreenState extends State<LessonPlayerScreen> {
           ? const Center(child: CircularProgressIndicator(color: _primary))
           : Column(
               children: [
-                // Video Player (full width, no padding)
-                _buildVideoPlayer(),
+                // Video Player (only if not quiz and has video)
+                if (_lesson?['isQuiz'] != true && _lesson?['videoUrl'] != null)
+                  _buildVideoPlayer(),
                 
                 // Content below video
                 Expanded(
@@ -657,11 +927,15 @@ class _LessonPlayerScreenState extends State<LessonPlayerScreen> {
                     padding: const EdgeInsets.fromLTRB(16, 16, 16, 80),
                     child: Column(
                       children: [
-                        // Lesson content
-                        _buildLessonContent(),
+                        // Quiz or Lesson content
+                        if (_lesson?['isQuiz'] == true)
+                          _buildQuizContent()
+                        else
+                          _buildLessonContent(),
                         
-                        // Resources
-                        _buildResourceLinks(),
+                        // Resources (only for lessons)
+                        if (_lesson?['isQuiz'] != true)
+                          _buildResourceLinks(),
                       ],
                     ),
                   ),
@@ -709,38 +983,65 @@ class _LessonPlayerScreenState extends State<LessonPlayerScreen> {
                       
                       const SizedBox(width: 16),
                       
-                      // Next button
-                      GestureDetector(
-                        onTap: _markCompleteAndNext,
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                          decoration: BoxDecoration(
-                            color: _primary,
-                            borderRadius: BorderRadius.circular(20),
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Text(
-                                _currentLessonIndex < _allLessons.length - 1 ? 'Next' : 'Complete',
-                                style: const TextStyle(
-                                  color: _white,
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                              const SizedBox(width: 4),
-                              Icon(
-                                _currentLessonIndex < _allLessons.length - 1 
-                                    ? Icons.arrow_forward 
-                                    : Icons.check,
+                      // Quiz submit or Next button
+                      if (_lesson?['isQuiz'] == true && !_quizSubmitted)
+                        GestureDetector(
+                          onTap: () {
+                            final questions = _lesson!['quizQuestions'] as List<dynamic>? ?? [];
+                            if (_selectedAnswers.length == questions.length) {
+                              _submitQuiz();
+                            }
+                          },
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                            decoration: BoxDecoration(
+                              color: _selectedAnswers.length == (_lesson!['quizQuestions'] as List<dynamic>? ?? []).length
+                                  ? _primary
+                                  : _border,
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            child: const Text(
+                              'Submit Quiz',
+                              style: TextStyle(
                                 color: _white,
-                                size: 16,
+                                fontSize: 14,
+                                fontWeight: FontWeight.w600,
                               ),
-                            ],
+                            ),
+                          ),
+                        )
+                      else if (_lesson?['isQuiz'] != true || _quizSubmitted)
+                        GestureDetector(
+                          onTap: _markCompleteAndNext,
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                            decoration: BoxDecoration(
+                              color: _primary,
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text(
+                                  _currentLessonIndex < _allLessons.length - 1 ? 'Next' : 'Complete',
+                                  style: const TextStyle(
+                                    color: _white,
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                                const SizedBox(width: 4),
+                                Icon(
+                                  _currentLessonIndex < _allLessons.length - 1 
+                                      ? Icons.arrow_forward 
+                                      : Icons.check,
+                                  color: _white,
+                                  size: 16,
+                                ),
+                              ],
+                            ),
                           ),
                         ),
-                      ),
                     ],
                   ),
                 ),
