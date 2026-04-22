@@ -654,7 +654,7 @@ class _LessonPlayerScreenState extends State<LessonPlayerScreen> {
                 // Content below video
                 Expanded(
                   child: SingleChildScrollView(
-                    padding: const EdgeInsets.all(16),
+                    padding: const EdgeInsets.fromLTRB(16, 16, 16, 80),
                     child: Column(
                       children: [
                         // Lesson content
@@ -662,8 +662,6 @@ class _LessonPlayerScreenState extends State<LessonPlayerScreen> {
                         
                         // Resources
                         _buildResourceLinks(),
-                        
-                        const SizedBox(height: 16),
                       ],
                     ),
                   ),
