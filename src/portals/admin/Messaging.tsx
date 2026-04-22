@@ -7,13 +7,14 @@ type Template = {
   status: "draft" | "published";
 };
 
-const VARIABLES = ["{user_name}", "{manager_name}", "{course_name}", "{training_duration}", "{time_remaining}"];
+const VARIABLES = ["{user_name}", "{admin_name}", "{manager_name}", "{course_name}", "{training_duration}", "{time_remaining}"];
 
 const ICONS: Record<string, string> = {
   start: "🚀",
   midpoint: "⏳",
   final: "⚠️",
   complete: "🏁",
+  userAccountUpdate: "👤",
 };
 
 const TRIGGER_LABELS: Record<string, string> = {
@@ -21,6 +22,7 @@ const TRIGGER_LABELS: Record<string, string> = {
   midpoint: "Sent at 50% of selected duration",
   final: "Sent 30 minutes before timer ends",
   complete: "Sent when the timer reaches zero",
+  userAccountUpdate: "Sent when admin updates user account",
 };
 
 const ACCENTS: Record<string, { bg: string; border: string; badge: string; text: string }> = {
@@ -28,6 +30,7 @@ const ACCENTS: Record<string, { bg: string; border: string; badge: string; text:
   midpoint: { bg: "#fefce8", border: "#fde68a", badge: "#fef9c3", text: "#854d0e" },
   final:    { bg: "#fff7ed", border: "#fed7aa", badge: "#ffedd5", text: "#c2410c" },
   complete: { bg: "#f0fdf4", border: "#bbf7d0", badge: "#dcfce7", text: "#15803d" },
+  userAccountUpdate: { bg: "#faf5ff", border: "#e9d5ff", badge: "#f3e8ff", text: "#7c3aed" },
 };
 
 export function Messaging() {
@@ -108,7 +111,7 @@ export function Messaging() {
         <div>
           <div style={{ fontSize: 19, fontWeight: 700, marginBottom: 4 }}>SMS Configuration</div>
           <div style={{ fontSize: 13, opacity: 0.88, lineHeight: 1.5 }}>
-            Customize the 4 automated SMS alerts sent to reps and managers during training timer sessions.
+            Customize the 5 automated SMS alerts: 4 for training timer sessions and 1 for user account updates.
           </div>
         </div>
       </div>
@@ -210,7 +213,7 @@ export function Messaging() {
                       fontSize: 11, fontWeight: 700, padding: "3px 10px",
                       borderRadius: 20, whiteSpace: "nowrap",
                     }}>
-                      {i + 1} of 4
+                      {i + 1} of 5
                     </span>
                   </div>
                 </div>
