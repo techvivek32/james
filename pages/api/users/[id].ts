@@ -3,6 +3,7 @@ import bcrypt from "bcryptjs";
 import { connectMongo } from "../../../src/lib/mongodb";
 import { UserModel } from "../../../src/lib/models/User";
 import { sendUserAccountUpdatedEmail, sendAdminConfirmationEmail } from "../../../src/lib/email";
+import { sendUserAccountUpdateSMS } from "../../../src/lib/telnyx";
 
 export default async function handler(
   req: NextApiRequest,
@@ -43,7 +44,7 @@ export default async function handler(
 
   if (req.method === "PUT") {
     const payload = req.body || {};
-    const { password, passwordHash: _ph, sendNotification, adminName, adminEmail, managerName, id: _id, createdAt: _ca, updatedAt: _ua, __v: _v, _id: _mid, ...rest } = payload;
+    const { password, passwordHash: _ph, sendNotification, sendSMSNotification, adminName, adminEmail, managerName, id: _id, createdAt: _ca, updatedAt: _ua, __v: _v, _id: _mid, ...rest } = payload;
     const plainPassword = typeof password === "string" && password.trim().length > 0 ? password.trim() : null;
 
     // Fetch existing user to get current passwordHash
@@ -104,6 +105,23 @@ export default async function handler(
       }
     } else {
       console.log("[Email] Skipped - sendNotification:", sendNotification, "email:", safeUser.email);
+    }
+
+    // Send SMS if admin checked the SMS notify checkbox
+    if (sendSMSNotification && safeUser.phone) {
+      try {
+        console.log("[SMS] Sending userAccountUpdate SMS to:", safeUser.phone);
+        await sendUserAccountUpdateSMS({
+          userName: safeUser.name as string,
+          adminName: adminName || "Admin",
+          userPhone: safeUser.phone as string,
+        });
+        console.log("[SMS] userAccountUpdate SMS sent OK");
+      } catch (smsErr: any) {
+        console.error("[SMS] Failed to send update SMS:", smsErr?.message || smsErr);
+      }
+    } else {
+      console.log("[SMS] Skipped - sendSMSNotification:", sendSMSNotification, "phone:", safeUser.phone);
     }
 
     res.status(200).json(safeUser);

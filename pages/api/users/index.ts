@@ -3,6 +3,7 @@ import bcrypt from "bcryptjs";
 import { connectMongo } from "../../../src/lib/mongodb";
 import { UserModel } from "../../../src/lib/models/User";
 import { sendQuickStartUserEmail, sendQuickStartManagerEmail } from "../../../src/lib/email";
+import { sendUserAccountUpdateSMS } from "../../../src/lib/telnyx";
 
 export default async function handler(
   req: NextApiRequest,
@@ -28,7 +29,7 @@ export default async function handler(
 
   if (req.method === "POST") {
     const payload = req.body || {};
-    const { password, passwordHash, _id, sendNotification, adminName, adminEmail, managerName, ...rest } = payload;
+    const { password, passwordHash, _id, sendNotification, sendSMSNotification, adminName, adminEmail, managerName, ...rest } = payload;
     const id = rest.email ? rest.email.trim().toLowerCase() : (payload.id || `user-${Date.now()}`);
     const hashedPassword =
       typeof password === "string" && password.trim().length > 0
@@ -94,6 +95,21 @@ export default async function handler(
         console.log("Notification email sent to:", safeUser.email);
       } catch (emailErr) {
         console.error("Failed to send notification email:", emailErr);
+      }
+    }
+
+    // Send SMS notification if requested
+    if (sendSMSNotification && safeUser.phone) {
+      try {
+        console.log("[SMS] Sending userAccountUpdate SMS to:", safeUser.phone);
+        await sendUserAccountUpdateSMS({
+          userName: safeUser.name as string,
+          adminName: adminName || "Admin",
+          userPhone: safeUser.phone as string,
+        });
+        console.log("[SMS] userAccountUpdate SMS sent OK");
+      } catch (smsErr: any) {
+        console.error("[SMS] Failed to send SMS:", smsErr?.message || smsErr);
       }
     }
 
