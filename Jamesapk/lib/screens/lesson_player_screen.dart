@@ -72,9 +72,44 @@ class _LessonPlayerScreenState extends State<LessonPlayerScreen> {
         final pages = courseData['pages'] as List<dynamic>? ?? [];
         
         // Filter only published pages (including quizzes)
-        final lessons = pages.where((page) => 
+        var lessons = pages.where((page) => 
           page['status'] == 'published'
         ).toList();
+        
+        // Sort pages by folder order to ensure quizzes appear in correct sequence
+        final folders = courseData['folders'] as List<dynamic>? ?? [];
+        if (folders.isNotEmpty) {
+          // Create a map of folderId to folder index for sorting
+          final folderIndexMap = <String, int>{};
+          for (var i = 0; i < folders.length; i++) {
+            folderIndexMap[folders[i]['id']] = i;
+          }
+          
+          // Sort pages: first by folder order, then pages without folders at the end
+          lessons.sort((a, b) {
+            final aFolderId = a['folderId'];
+            final bFolderId = b['folderId'];
+            
+            // If both have folders, sort by folder index
+            if (aFolderId != null && bFolderId != null) {
+              final aIndex = folderIndexMap[aFolderId] ?? 999;
+              final bIndex = folderIndexMap[bFolderId] ?? 999;
+              return aIndex.compareTo(bIndex);
+            }
+            
+            // Pages with folders come before pages without folders
+            if (aFolderId != null && bFolderId == null) return -1;
+            if (aFolderId == null && bFolderId != null) return 1;
+            
+            // Both without folders, maintain original order
+            return 0;
+          });
+        }
+        
+        print('📚 Total pages loaded: ${lessons.length}');
+        for (var i = 0; i < lessons.length; i++) {
+          print('  [$i] ${lessons[i]['title']} - isQuiz: ${lessons[i]['isQuiz']} - folderId: ${lessons[i]['folderId']}');
+        }
         
         final currentIndex = lessons.indexWhere((page) => page['id'] == widget.lessonId);
         final lesson = currentIndex >= 0 ? lessons[currentIndex] : null;
@@ -123,6 +158,10 @@ class _LessonPlayerScreenState extends State<LessonPlayerScreen> {
         print('✅ Lesson loaded: ${lesson?['title']}');
         print('🎥 Video URL: ${lesson?['videoUrl']}');
         print('📝 Is Quiz: ${lesson?['isQuiz']}');
+        print('📍 Current index: $currentIndex of ${lessons.length}');
+        if (currentIndex < lessons.length - 1) {
+          print('➡️ Next will be: ${lessons[currentIndex + 1]['title']} (isQuiz: ${lessons[currentIndex + 1]['isQuiz']})');
+        }
         
         // Initialize video player only if not a quiz and has video
         if (lesson?['isQuiz'] != true && lesson?['videoUrl'] != null) {
@@ -321,6 +360,7 @@ class _LessonPlayerScreenState extends State<LessonPlayerScreen> {
       // Navigate to next lesson if available
       if (_currentLessonIndex < _allLessons.length - 1) {
         final nextLesson = _allLessons[_currentLessonIndex + 1];
+        print('🔄 Navigating to next: ${nextLesson['title']} (isQuiz: ${nextLesson['isQuiz']})');
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(
