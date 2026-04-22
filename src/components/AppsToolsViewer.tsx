@@ -6,6 +6,7 @@ type AppToolCategory = {
   name: string;
   slug: string;
   order: number;
+  status: 'draft' | 'published';
 };
 
 type AppToolItem = {
@@ -37,6 +38,9 @@ export function AppsToolsViewer({ portal = 'sales' }: { portal?: 'sales' | 'mana
       const categoriesResponse = await fetch('/api/apps-tools/categories');
       const categoriesData = await categoriesResponse.json();
       
+      // Filter only published categories
+      const publishedCategories = categoriesData.filter((cat: AppToolCategory) => cat.status === 'published');
+      
       // Fetch all published items
       const itemsResponse = await fetch('/api/apps-tools?published=true');
       const itemsData = await itemsResponse.json();
@@ -50,7 +54,7 @@ export function AppsToolsViewer({ portal = 'sales' }: { portal?: 'sales' | 'mana
         grouped[item.category].push(item);
       });
       
-      setCategories(categoriesData.sort((a: AppToolCategory, b: AppToolCategory) => a.order - b.order));
+      setCategories(publishedCategories.sort((a: AppToolCategory, b: AppToolCategory) => a.order - b.order));
       setItemsByCategory(grouped);
     } catch (error) {
       console.error('Error fetching apps/tools:', error);
