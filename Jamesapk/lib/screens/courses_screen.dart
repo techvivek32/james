@@ -146,6 +146,21 @@ class _CoursesScreenState extends State<CoursesScreen> {
   }
 
   Widget _buildCourseCard(String title, String progress, IconData icon, String? coverImageUrl) {
+    final progressValue = int.parse(progress.replaceAll('%', ''));
+    String statusText = '';
+    Color statusColor = _primary;
+    
+    if (progressValue == 100) {
+      statusText = 'COMPLETED';
+      statusColor = const Color(0xFF16A34A); // Green
+    } else if (progressValue == 0) {
+      statusText = 'NOT STARTED';
+      statusColor = const Color(0xFF6B7280); // Gray
+    } else {
+      statusText = 'IN PROGRESS';
+      statusColor = _primary; // Red
+    }
+    
     return Container(
       decoration: BoxDecoration(
         color: _white,
@@ -161,112 +176,106 @@ class _CoursesScreenState extends State<CoursesScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Container(
-            height: 160,
-            decoration: BoxDecoration(
-              gradient: coverImageUrl == null || coverImageUrl.isEmpty
-                  ? LinearGradient(
-                      colors: [_primary, _primary.withOpacity(0.8)],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                    )
-                  : null,
-              borderRadius: const BorderRadius.only(
-                topLeft: Radius.circular(16),
-                topRight: Radius.circular(16),
-              ),
-            ),
-            child: coverImageUrl != null && coverImageUrl.isNotEmpty
-                ? ClipRRect(
-                    borderRadius: const BorderRadius.only(
-                      topLeft: Radius.circular(16),
-                      topRight: Radius.circular(16),
-                    ),
-                    child: coverImageUrl.startsWith('data:image/')
-                        ? Image.memory(
-                            base64Decode(coverImageUrl.split(',')[1]),
-                            width: double.infinity,
-                            height: 160,
-                            fit: BoxFit.cover,
-                            errorBuilder: (context, error, stackTrace) {
-                              return Container(
-                                decoration: BoxDecoration(
-                                  gradient: LinearGradient(
-                                    colors: [_primary, _primary.withOpacity(0.8)],
-                                    begin: Alignment.topLeft,
-                                    end: Alignment.bottomRight,
-                                  ),
-                                ),
-                                child: Center(
-                                  child: Icon(icon, size: 64, color: _white),
-                                ),
-                              );
-                            },
-                          )
-                        : Image.network(
-                            coverImageUrl,
-                            width: double.infinity,
-                            height: 160,
-                            fit: BoxFit.cover,
-                            errorBuilder: (context, error, stackTrace) {
-                              return Container(
-                                decoration: BoxDecoration(
-                                  gradient: LinearGradient(
-                                    colors: [_primary, _primary.withOpacity(0.8)],
-                                    begin: Alignment.topLeft,
-                                    end: Alignment.bottomRight,
-                                  ),
-                                ),
-                                child: Center(
-                                  child: Icon(icon, size: 64, color: _white),
-                                ),
-                              );
-                            },
-                          ),
-                  )
-                : Center(
-                    child: Icon(icon, size: 64, color: _white),
+          Stack(
+            children: [
+              Container(
+                height: 160,
+                decoration: BoxDecoration(
+                  gradient: coverImageUrl == null || coverImageUrl.isEmpty
+                      ? LinearGradient(
+                          colors: [_primary, _primary.withOpacity(0.8)],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        )
+                      : null,
+                  borderRadius: const BorderRadius.only(
+                    topLeft: Radius.circular(16),
+                    topRight: Radius.circular(16),
                   ),
+                ),
+                child: coverImageUrl != null && coverImageUrl.isNotEmpty
+                    ? ClipRRect(
+                        borderRadius: const BorderRadius.only(
+                          topLeft: Radius.circular(16),
+                          topRight: Radius.circular(16),
+                        ),
+                        child: coverImageUrl.startsWith('data:image/')
+                            ? Image.memory(
+                                base64Decode(coverImageUrl.split(',')[1]),
+                                width: double.infinity,
+                                height: 160,
+                                fit: BoxFit.cover,
+                                errorBuilder: (context, error, stackTrace) {
+                                  return Container(
+                                    decoration: BoxDecoration(
+                                      gradient: LinearGradient(
+                                        colors: [_primary, _primary.withOpacity(0.8)],
+                                        begin: Alignment.topLeft,
+                                        end: Alignment.bottomRight,
+                                      ),
+                                    ),
+                                    child: Center(
+                                      child: Icon(icon, size: 64, color: _white),
+                                    ),
+                                  );
+                                },
+                              )
+                            : Image.network(
+                                coverImageUrl,
+                                width: double.infinity,
+                                height: 160,
+                                fit: BoxFit.cover,
+                                errorBuilder: (context, error, stackTrace) {
+                                  return Container(
+                                    decoration: BoxDecoration(
+                                      gradient: LinearGradient(
+                                        colors: [_primary, _primary.withOpacity(0.8)],
+                                        begin: Alignment.topLeft,
+                                        end: Alignment.bottomRight,
+                                      ),
+                                    ),
+                                    child: Center(
+                                      child: Icon(icon, size: 64, color: _white),
+                                    ),
+                                  );
+                                },
+                              ),
+                      )
+                    : Center(
+                        child: Icon(icon, size: 64, color: _white),
+                      ),
+              ),
+              Positioned(
+                top: 12,
+                left: 12,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: statusColor,
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  child: Text(
+                    statusText,
+                    style: const TextStyle(
+                      color: _white,
+                      fontSize: 9,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 0.3,
+                    ),
+                  ),
+                ),
+              ),
+            ],
           ),
           Padding(
             padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: const TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w700,
-                    color: _textDark,
-                  ),
-                ),
-                const SizedBox(height: 12),
-                Row(
-                  children: [
-                    Expanded(
-                      child: ClipRRect(
-                        borderRadius: BorderRadius.circular(4),
-                        child: LinearProgressIndicator(
-                          value: int.parse(progress.replaceAll('%', '')) / 100,
-                          minHeight: 6,
-                          backgroundColor: const Color(0xFFD1D5DB),
-                          valueColor: const AlwaysStoppedAnimation<Color>(_primary),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Text(
-                      progress,
-                      style: const TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w600,
-                        color: _textLight,
-                      ),
-                    ),
-                  ],
-                ),
-              ],
+            child: Text(
+              title,
+              style: const TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w700,
+                color: _textDark,
+              ),
             ),
           ),
         ],
