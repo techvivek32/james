@@ -118,8 +118,6 @@ class _TrainingScreenState extends State<TrainingScreen> {
                     _buildBootcampCard(),
                     const SizedBox(height: 24),
                     _buildAICoaches(),
-                    const SizedBox(height: 24),
-                    _buildPlaybooks(),
                     const SizedBox(height: 16),
                   ],
                 ),
@@ -267,41 +265,40 @@ class _TrainingScreenState extends State<TrainingScreen> {
       children: [
         Row(
           children: [
-            const Icon(Icons.smart_toy_outlined, color: _link, size: 22),
+            const Icon(Icons.school_outlined, color: _link, size: 22),
             const SizedBox(width: 8),
-            const Text('AI Coach & Tools', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: _textDark)),
+            const Text('Courses', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: _textDark)),
           ],
         ),
         const SizedBox(height: 12),
+        _buildCoachCard(
+          icon: Icons.school_outlined,
+          iconBg: Color(0xFFEFF6FF),
+          iconColor: _link,
+          title: 'Training Center',
+          subtitle: 'Courses',
+          onTap: () => Navigator.pushNamed(context, '/courses'),
+        ),
+        const SizedBox(height: 20),
         Row(
           children: [
-            Expanded(
-              child: _buildCoachCard(
-                icon: Icons.school_outlined,
-                iconBg: Color(0xFFEFF6FF),
-                iconColor: _link,
-                title: 'Training Center',
-                subtitle: 'Courses',
-                onTap: () => Navigator.pushNamed(context, '/courses'),
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: _buildCoachCard(
-                icon: Icons.apps_outlined,
-                iconBg: Color(0xFFF0FDF4),
-                iconColor: Color(0xFF16A34A),
-                title: 'Apps & Tools',
-                subtitle: 'Utilities',
-                onTap: () {
-                  // TODO: Navigate to apps & tools screen
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Apps & Tools coming soon!')),
-                  );
-                },
-              ),
-            ),
+            const Icon(Icons.apps_outlined, color: _link, size: 22),
+            const SizedBox(width: 8),
+            const Text('Apps & Tools', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: _textDark)),
           ],
+        ),
+        const SizedBox(height: 12),
+        _buildCoachCard(
+          icon: Icons.apps_outlined,
+          iconBg: Color(0xFFF0FDF4),
+          iconColor: Color(0xFF16A34A),
+          title: 'Apps & Tools',
+          subtitle: 'Utilities',
+          onTap: () {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Apps & Tools coming soon!')),
+            );
+          },
         ),
       ],
     );
@@ -318,25 +315,33 @@ class _TrainingScreenState extends State<TrainingScreen> {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        padding: const EdgeInsets.all(16),
+        width: double.infinity,
+        padding: const EdgeInsets.all(20),
         decoration: BoxDecoration(
           color: _white,
           borderRadius: BorderRadius.circular(16),
           boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 8)],
         ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+        child: Row(
           children: [
             Container(
-              width: 44,
-              height: 44,
-              decoration: BoxDecoration(color: iconBg, shape: BoxShape.circle),
-              child: Icon(icon, color: iconColor, size: 22),
+              width: 56,
+              height: 56,
+              decoration: BoxDecoration(color: iconBg, borderRadius: BorderRadius.circular(12)),
+              child: Icon(icon, color: iconColor, size: 28),
             ),
-            const SizedBox(height: 12),
-            Text(title, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: _textDark)),
-            const SizedBox(height: 4),
-            Text(subtitle, style: const TextStyle(fontSize: 12, color: _textLight)),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: _textDark)),
+                  const SizedBox(height: 4),
+                  Text(subtitle, style: const TextStyle(fontSize: 14, color: _textLight)),
+                ],
+              ),
+            ),
+            const Icon(Icons.chevron_right, color: _textPlaceholder, size: 24),
           ],
         ),
       ),
