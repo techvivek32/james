@@ -404,7 +404,9 @@ function BotDetailView({ bot, activeView, setActiveView, onSave, saving, onBack,
               ? <img src={bot.botAvatarUrl} alt="avatar" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
               : "🤖"}
           </div>
-          <div style={{ fontWeight: 700, fontSize: "16px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", color: "#1f2937" }}>{bot.botTitle || bot.name}</div>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <EditableBotName bot={bot} onSave={onSave} />
+          </div>
         </div>
         {/* Published/Draft Toggle */}
         <div style={{ display: "flex", alignItems: "center", gap: "12px", marginTop: "8px" }}>
@@ -2278,15 +2280,6 @@ function AppearancePanel({ bot, onSave, saving }: { bot: AiBot; onSave: (u: Part
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ display: "flex", flexDirection: "column", gap: "1px", background: "#e5e7eb", borderRadius: "12px", overflow: "hidden", border: "1px solid #e5e7eb" }}>
 
-        {/* Title */}
-        <div style={{ background: "#fff", padding: "18px 20px" }}>
-          <div style={rowStyle}>
-            <div><div style={sectionLabel}>Title</div><div style={sectionSub}>To be shown in the chat window</div></div>
-            <Toggle value={true} onChange={() => {}} />
-          </div>
-          <input value={botTitle} onChange={e => setBotTitle(e.target.value)} style={{ ...inputStyle, marginTop: "10px" }} placeholder="e.g. Support Bot" />
-        </div>
-
         {/* Display Message */}
         <div style={{ background: "#fff", padding: "18px 20px" }}>
           <div style={rowStyle}>
@@ -2885,4 +2878,41 @@ function useSaved() {
 
 function SavedBadge({ visible }: { visible: boolean }) {
   return visible ? <span style={{ fontSize: 12, color: "#10b981", fontWeight: 600, marginLeft: 10 }}>✓ Saved!</span> : null;
+}
+
+function EditableBotName({ bot, onSave }: { bot: AiBot; onSave: (u: Partial<AiBot>) => void }) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(bot.botTitle || bot.name);
+
+  function handleSave() {
+    if (draft.trim()) {
+      onSave({ botTitle: draft.trim(), name: draft.trim() });
+    }
+    setEditing(false);
+  }
+
+  if (editing) {
+    return (
+      <div style={{ marginBottom: "12px" }}>
+        <input
+          autoFocus
+          value={draft}
+          onChange={e => setDraft(e.target.value)}
+          onKeyDown={e => { if (e.key === "Enter") handleSave(); if (e.key === "Escape") setEditing(false); }}
+          style={{ width: "100%", padding: "4px 8px", fontSize: "14px", fontWeight: 700, border: "1px solid #d1d5db", borderRadius: 6, outline: "none", boxSizing: "border-box", marginBottom: 6 }}
+        />
+        <div style={{ display: "flex", gap: 6 }}>
+          <button onClick={handleSave} style={{ ...btnPrimary, padding: "4px 10px", fontSize: 12, flex: 1 }}>Save</button>
+          <button onClick={() => setEditing(false)} style={{ ...btnSecondary, padding: "4px 10px", fontSize: 12, flex: 1 }}>Cancel</button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: "12px" }}>
+      <div style={{ fontWeight: 700, fontSize: "16px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", color: "#1f2937", flex: 1 }}>{bot.botTitle || bot.name}</div>
+      <button onClick={() => { setDraft(bot.botTitle || bot.name); setEditing(true); }} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 14, color: "#6b7280" }} title="Edit name">✏️</button>
+    </div>
+  );
 }
