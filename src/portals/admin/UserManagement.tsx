@@ -36,6 +36,7 @@ export function UserManagement(props: UserEditorProps) {
   const [showRolesDropdown, setShowRolesDropdown] = useState(false);
   const [managerDraftId, setManagerDraftId] = useState<string>(props.users.find((u) => u.id === selectedUserId)?.managerId ?? "");
   const [emailError, setEmailError] = useState("");
+  const [phoneError, setPhoneError] = useState("");
   const [managerError, setManagerError] = useState("");
   const emailInputRef = useRef<HTMLInputElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -953,18 +954,28 @@ export function UserManagement(props: UserEditorProps) {
                       <input
                         type="checkbox"
                         checked={!!notifyUsersBySMS[selectedUserId]}
-                        onChange={e => setNotifyUsersBySMS(prev => ({ ...prev, [selectedUserId]: e.target.checked }))}
+                        onChange={e => {
+                          setNotifyUsersBySMS(prev => ({ ...prev, [selectedUserId]: e.target.checked }));
+                          if (!e.target.checked) {
+                            setPhoneError("");
+                          }
+                        }}
                         style={{ width: 15, height: 15, cursor: "pointer" }}
                       />
                       Notify user by SMS
                     </label>
                   </div>
-                  <button type="button" className="btn-primary btn-small" disabled={!isDirty || !!emailError || isSaving} onClick={async () => {
+                  <button type="button" className="btn-primary btn-small" disabled={!isDirty || !!emailError || !!phoneError || isSaving} onClick={async () => {
                     if (emailError) {
                       emailInputRef.current?.focus();
                       emailInputRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
                       return;
                     }
+                    if (notifyUsersBySMS[selectedUserId] && !selectedUser.phone) {
+                      setPhoneError("Phone number is required when SMS notification is enabled");
+                      return;
+                    }
+                    setPhoneError("");
                     const isNewUser = selectedUser.id.startsWith("user-");
                     const selectedRoles = (selectedUser.roles || [selectedUser.role]).filter(Boolean);
                     if (isNewUser && selectedRoles.length === 0) {
@@ -1005,6 +1016,7 @@ export function UserManagement(props: UserEditorProps) {
                               ...userToSave,
                               _id: undefined,
                               sendNotification: !!notifyUsers[selectedUserId],
+                              sendSMSNotification: !!notifyUsersBySMS[selectedUserId],
                               adminName: adminData?.name || "Admin",
                               adminEmail: adminData?.email || "",
                               managerName: managerUser?.name || null
@@ -1032,6 +1044,7 @@ export function UserManagement(props: UserEditorProps) {
                             body: JSON.stringify({
                               ...userToSave,
                               sendNotification: !!notifyUsers[selectedUserId],
+                              sendSMSNotification: !!notifyUsersBySMS[selectedUserId],
                               adminName: adminData?.name || "Admin",
                               adminEmail: adminData?.email || "",
                               managerName: managerUser?.name || null
@@ -1053,6 +1066,7 @@ export function UserManagement(props: UserEditorProps) {
                         }
                         setIsDirty(false);
                         setNotifyUsers(prev => ({ ...prev, [selectedUserId]: false }));
+                        setNotifyUsersBySMS(prev => ({ ...prev, [selectedUserId]: false }));
                         setSaveNotice("Changes saved successfully");
                         if (saveNoticeTimeout.current) clearTimeout(saveNoticeTimeout.current);
                         saveNoticeTimeout.current = setTimeout(() => setSaveNotice(""), 2000);
@@ -1131,6 +1145,24 @@ export function UserManagement(props: UserEditorProps) {
                     )}
                   </button>
                 </div>
+              </label>
+              <label className="field">
+                <span className="field-label">Phone{notifyUsersBySMS[selectedUserId] && <span style={{ color: "#dc2626" }}> *</span>}</span>
+                <input 
+                  className="field-input" 
+                  value={selectedUser.phone ?? ""} 
+                  onChange={(e) => {
+                    updateUser({ ...selectedUser, phone: e.target.value });
+                    setPhoneError("");
+                  }}
+                  placeholder="Enter phone number"
+                  style={phoneError ? { borderColor: "#dc2626", animation: "shake 0.3s" } : {}}
+                />
+                {phoneError && (
+                  <div style={{ fontSize: 12, color: "#dc2626", marginTop: 4, animation: "fadeIn 0.3s" }}>
+                    {phoneError}
+                  </div>
+                )}
               </label>
               <label className="field">
                 <span className="field-label">Roles (Multiple Selection)</span>
