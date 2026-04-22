@@ -23,22 +23,33 @@ export async function sendSms(to: string, text: string): Promise<void> {
     return;
   }
 
-  const res = await fetch("https://api.telnyx.com/v2/messages", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${apiKey}`,
-    },
-    body: JSON.stringify({
-      from,
-      to: normalized,
-      text,
-    }),
-  });
+  try {
+    const res = await fetch("https://api.telnyx.com/v2/messages", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({
+        from,
+        to: normalized,
+        text,
+      }),
+    });
 
-  if (!res.ok) {
-    const body = await res.text();
-    throw new Error(`Telnyx SMS failed (${res.status}): ${body}`);
+    if (!res.ok) {
+      const body = await res.text();
+      const errorMsg = `Telnyx SMS failed (${res.status}): ${body}`;
+      console.error("[Telnyx]", errorMsg);
+      throw new Error(errorMsg);
+    }
+    
+    const responseData = await res.json();
+    const messageSid = responseData?.data?.id || null;
+    console.log("[Telnyx] SMS sent successfully to", normalized, "- Message ID:", messageSid);
+  } catch (error: any) {
+    console.error("[Telnyx] Error sending SMS:", error.message);
+    throw error;
   }
 }
 
