@@ -114,16 +114,16 @@ class _LoginScreenState extends State<LoginScreen> {
                               color: Color(0xFF111827),
                             ),
                           ),
-                          const SizedBox(height: 6),
+                          //const SizedBox(height: 6),
                           // Subtitle
-                          const Text(
-                            'powered by Genesis, everything- it starts here',
-                            textAlign: TextAlign.center,
-                            style: TextStyle(
-                              fontSize: 13,
-                              color: Color(0xFF6B7280),
-                            ),
-                          ),
+                          //const Text(
+                           // 'powered by Genesis, everything- it starts here',
+                           // textAlign: TextAlign.center,
+                           // style: TextStyle(
+                            //  fontSize: 13,
+                           //   color: Color(0xFF6B7280),
+                           // ),
+                         // ),
                           const SizedBox(height: 24),
                           // Error
                           if (_error.isNotEmpty) ...[

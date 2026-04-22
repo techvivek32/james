@@ -226,48 +226,31 @@ class _TrainingScreenState extends State<TrainingScreen> {
                   borderRadius: BorderRadius.circular(20),
                 ),
                 child: const Text(
-                  'ACTION REQUIRED',
+                  'COMING SOON',
                   style: TextStyle(color: _white, fontSize: 11, fontWeight: FontWeight.w700, letterSpacing: 0.5),
                 ),
               ),
               const SizedBox(height: 8),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              const Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text('7-Day Bootcamp', style: TextStyle(color: _white, fontSize: 24, fontWeight: FontWeight.w800)),
-                      SizedBox(height: 4),
-                      Text('Day 3: Mastering the Pitch', style: TextStyle(color: Color(0xCCFFFFFF), fontSize: 13)),
-                    ],
-                  ),
-                  const Text('42%', style: TextStyle(color: _white, fontSize: 28, fontWeight: FontWeight.w800)),
+                  Text('7-Day Bootcamp', style: TextStyle(color: _white, fontSize: 24, fontWeight: FontWeight.w800)),
+                  SizedBox(height: 4),
+                  Text('Intensive training program launching soon', style: TextStyle(color: Color(0xCCFFFFFF), fontSize: 13)),
                 ],
-              ),
-              const SizedBox(height: 16),
-              ClipRRect(
-                borderRadius: BorderRadius.circular(10),
-                child: LinearProgressIndicator(
-                  value: 0.42,
-                  minHeight: 8,
-                  backgroundColor: _white.withOpacity(0.2),
-                  valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFF4ADE80)),
-                ),
               ),
               const SizedBox(height: 16),
               Container(
                 width: double.infinity,
                 height: 48,
                 decoration: BoxDecoration(
-                  color: _white,
+                  color: _white.withOpacity(0.3),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: const Center(
                   child: Text(
-                    'Resume Training',
-                    style: TextStyle(color: _link, fontSize: 15, fontWeight: FontWeight.w700),
+                    'Coming Soon',
+                    style: TextStyle(color: _white, fontSize: 15, fontWeight: FontWeight.w700),
                   ),
                 ),
               ),

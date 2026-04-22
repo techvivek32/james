@@ -205,66 +205,55 @@ class _ManagerTrainingScreenState extends State<ManagerTrainingScreen> {
 
   Widget _buildProgressCard() {
     return Container(
-      padding: const EdgeInsets.all(18),
+      padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: Color(0xFF1F1F1F),
+        color: _primary,
         borderRadius: BorderRadius.circular(14),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+            decoration: BoxDecoration(
+              color: _white.withOpacity(0.2),
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: const Text(
+              'COMING SOON',
+              style: TextStyle(color: _white, fontSize: 11, fontWeight: FontWeight.w700, letterSpacing: 0.5),
+            ),
+          ),
+          const SizedBox(height: 12),
+          const Text(
+            'Training Modules',
+            style: TextStyle(
+              fontSize: 24,
+              fontWeight: FontWeight.bold,
+              color: _white,
+            ),
+          ),
+          const SizedBox(height: 4),
           Text(
-            'Your Progress',
+            'Track your progress and team performance',
             style: TextStyle(
               fontSize: 13,
-              color: Colors.grey[400],
+              color: _white.withOpacity(0.8),
             ),
           ),
-          const SizedBox(height: 8),
-          Row(
-            children: [
-              const Text(
-                '65%',
-                style: TextStyle(
-                  fontSize: 36,
-                  fontWeight: FontWeight.bold,
-                  color: _white,
-                ),
-              ),
-              const SizedBox(width: 10),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: _primary,
-                  borderRadius: BorderRadius.circular(4),
-                ),
-                child: const Text(
-                  'On Track',
-                  style: TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.bold,
-                    color: _white,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 10),
-          ClipRRect(
-            borderRadius: BorderRadius.circular(5),
-            child: LinearProgressIndicator(
-              value: 0.65,
-              backgroundColor: Colors.grey[700],
-              valueColor: const AlwaysStoppedAnimation<Color>(_primary),
-              minHeight: 5,
+          const SizedBox(height: 16),
+          Container(
+            width: double.infinity,
+            height: 48,
+            decoration: BoxDecoration(
+              color: _white.withOpacity(0.3),
+              borderRadius: BorderRadius.circular(12),
             ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'Complete 2 more modules to hit weekly goal.',
-            style: TextStyle(
-              fontSize: 12,
-              color: Colors.grey[400],
+            child: const Center(
+              child: Text(
+                'Coming Soon',
+                style: TextStyle(color: _white, fontSize: 15, fontWeight: FontWeight.w700),
+              ),
             ),
           ),
         ],
