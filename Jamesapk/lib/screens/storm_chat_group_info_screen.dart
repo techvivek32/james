@@ -17,7 +17,7 @@ class StormChatGroupInfoScreen extends StatelessWidget {
     return Scaffold(
       backgroundColor: const Color(0xFFF5F5F5),
       appBar: AppBar(
-        backgroundColor: const Color(0xFFDC2626),
+        backgroundColor: const Color(0xFFCB0002),
         elevation: 0,
         title: const Text(
           'Group Info',
@@ -38,7 +38,7 @@ class StormChatGroupInfoScreen extends StatelessWidget {
             // Group Header
             Container(
               width: double.infinity,
-              color: const Color(0xFFDC2626),
+              color: const Color(0xFFCB0002),
               padding: const EdgeInsets.only(bottom: 32),
               child: Column(
                 children: [
@@ -115,7 +115,7 @@ class StormChatGroupInfoScreen extends StatelessWidget {
                         style: const TextStyle(
                           fontSize: 20,
                           fontWeight: FontWeight.bold,
-                          color: Color(0xFFDC2626),
+                          color: Color(0xFFCB0002),
                         ),
                       ),
                       const Text(
@@ -139,7 +139,7 @@ class StormChatGroupInfoScreen extends StatelessWidget {
                         style: const TextStyle(
                           fontSize: 20,
                           fontWeight: FontWeight.bold,
-                          color: Color(0xFFDC2626),
+                          color: Color(0xFFCB0002),
                         ),
                       ),
                       const Text(
@@ -161,7 +161,7 @@ class StormChatGroupInfoScreen extends StatelessWidget {
                       Icon(
                         group['onlyAdminCanChat'] == true ? Icons.lock : Icons.lock_open,
                         size: 20,
-                        color: const Color(0xFFDC2626),
+                        color: const Color(0xFFCB0002),
                       ),
                       Text(
                         group['onlyAdminCanChat'] == true ? 'Admin Only' : 'Open Chat',
@@ -195,7 +195,7 @@ class StormChatGroupInfoScreen extends StatelessWidget {
               child: Column(
                 children: [
                   ListTile(
-                    leading: const Icon(Icons.photo_library, color: Color(0xFFDC2626)),
+                    leading: const Icon(Icons.photo_library, color: Color(0xFFCB0002)),
                     title: const Text('Media, links, and docs'),
                     subtitle: const Text('Coming soon'),
                     trailing: const Icon(Icons.chevron_right, color: Colors.grey),
@@ -207,7 +207,7 @@ class StormChatGroupInfoScreen extends StatelessWidget {
                   ),
                   const Divider(height: 1),
                   ListTile(
-                    leading: const Icon(Icons.people, color: Color(0xFFDC2626)),
+                    leading: const Icon(Icons.people, color: Color(0xFFCB0002)),
                     title: const Text('View members'),
                     subtitle: Text('${(group['members'] as List?)?.length ?? 0} members'),
                     trailing: const Icon(Icons.chevron_right, color: Colors.grey),
@@ -220,7 +220,7 @@ class StormChatGroupInfoScreen extends StatelessWidget {
                   if (userRole == 'admin') ...[
                     const Divider(height: 1),
                     ListTile(
-                      leading: const Icon(Icons.settings, color: Color(0xFFDC2626)),
+                      leading: const Icon(Icons.settings, color: Color(0xFFCB0002)),
                       title: const Text('Group settings'),
                       subtitle: const Text('Admin only'),
                       trailing: const Icon(Icons.chevron_right, color: Colors.grey),

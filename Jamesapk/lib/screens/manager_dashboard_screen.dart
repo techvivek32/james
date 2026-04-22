@@ -15,7 +15,7 @@ class _ManagerDashboardScreenState extends State<ManagerDashboardScreen> {
   // Miller Storm Red Theme
   static const _bg = Color(0xFFF5F5F5);
   static const _white = Color(0xFFFFFFFF);
-  static const _primary = Color(0xFFDC2626); // Miller Storm Red
+  static const _primary = Color(0xFFCB0002); // Miller Storm Red
   static const _textDark = Color(0xFF111827);
   static const _textMedium = Color(0xFF374151);
   static const _textLight = Color(0xFF6B7280);

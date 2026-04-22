@@ -136,7 +136,7 @@ class _LoginScreenState extends State<LoginScreen> {
                               ),
                               child: Text(
                                 _error,
-                                style: const TextStyle(color: Color(0xFFDC2626), fontSize: 13),
+                                style: const TextStyle(color: Color(0xFFCB0002), fontSize: 13),
                               ),
                             ),
                             const SizedBox(height: 16),
@@ -187,7 +187,7 @@ class _LoginScreenState extends State<LoginScreen> {
                             child: TextButton(
                               onPressed: () => Navigator.pushNamed(context, '/forgot-password'),
                               style: TextButton.styleFrom(padding: EdgeInsets.zero, minimumSize: Size.zero),
-                              child: const Text('Forgot Password', style: TextStyle(fontSize: 13, color: Color(0xFFDC2626))),
+                              child: const Text('Forgot Password', style: TextStyle(fontSize: 13, color: Color(0xFFCB0002))),
                             ),
                           ),
                           const SizedBox(height: 20),
@@ -198,7 +198,7 @@ class _LoginScreenState extends State<LoginScreen> {
                             child: ElevatedButton(
                               onPressed: _isLoading ? null : _handleLogin,
                               style: ElevatedButton.styleFrom(
-                                backgroundColor: const Color(0xFFDC2626),
+                                backgroundColor: const Color(0xFFCB0002),
                                 foregroundColor: Colors.white,
                                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                               ),
@@ -210,7 +210,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           const SizedBox(height: 12),
                           TextButton(
                             onPressed: () => Navigator.pushNamed(context, '/register'),
-                            child: const Text('Register', style: TextStyle(fontSize: 13, color: Color(0xFFDC2626))),
+                            child: const Text('Register', style: TextStyle(fontSize: 13, color: Color(0xFFCB0002))),
                           ),
                         ],
                       ),
@@ -248,7 +248,7 @@ class _LoginScreenState extends State<LoginScreen> {
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(8),
-        borderSide: const BorderSide(color: Color(0xFFDC2626), width: 1.5),
+        borderSide: const BorderSide(color: Color(0xFFCB0002), width: 1.5),
       ),
     );
   }

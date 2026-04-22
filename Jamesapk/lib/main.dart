@@ -30,7 +30,7 @@ class MillerStormApp extends StatelessWidget {
       title: 'Miller Storm',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFFDC2626)),
+        colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFFCB0002)),
         fontFamily: 'sans-serif',
         useMaterial3: true,
       ),

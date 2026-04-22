@@ -15,13 +15,13 @@ class _TrainingScreenState extends State<TrainingScreen> {
   // Miller Storm Red Theme
   static const _bg = Color(0xFFF3F4F6);
   static const _white = Color(0xFFFFFFFF);
-  static const _primary = Color(0xFFDC2626); // Miller Storm Red
+  static const _primary = Color(0xFFCB0002); // Miller Storm Red
   static const _textDark = Color(0xFF111827);
   static const _textMedium = Color(0xFF374151);
   static const _textLight = Color(0xFF6B7280);
   static const _textPlaceholder = Color(0xFF9CA3AF);
   static const _border = Color(0xFFD1D5DB);
-  static const _link = Color(0xFFDC2626); // Miller Storm Red
+  static const _link = Color(0xFFCB0002); // Miller Storm Red
 
   String _greeting = 'Good Morning';
   String _userName = 'Loading...';
@@ -192,7 +192,7 @@ class _TrainingScreenState extends State<TrainingScreen> {
               child: Container(
                 width: 9,
                 height: 9,
-                decoration: const BoxDecoration(color: Color(0xFFDC2626), shape: BoxShape.circle),
+                decoration: const BoxDecoration(color: Color(0xFFCB0002), shape: BoxShape.circle),
               ),
             ),
           ],
@@ -490,7 +490,7 @@ class _TrainingScreenState extends State<TrainingScreen> {
                   child: Container(
                     width: 16,
                     height: 16,
-                    decoration: const BoxDecoration(color: Color(0xFFDC2626), shape: BoxShape.circle),
+                    decoration: const BoxDecoration(color: Color(0xFFCB0002), shape: BoxShape.circle),
                     child: Center(
                       child: Text('$badge', style: const TextStyle(color: _white, fontSize: 9, fontWeight: FontWeight.w700)),
                     ),

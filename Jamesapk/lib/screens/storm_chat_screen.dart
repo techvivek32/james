@@ -133,7 +133,7 @@ class _StormChatScreenState extends State<StormChatScreen> {
               // Content
               Expanded(
                 child: isLoading
-                    ? const Center(child: CircularProgressIndicator(color: Color(0xFFDC2626)))
+                    ? const Center(child: CircularProgressIndicator(color: Color(0xFFCB0002)))
                     : groups.isEmpty
                         ? _buildEmptyState()
                         : _buildGroupsList(),
@@ -181,7 +181,7 @@ class _StormChatScreenState extends State<StormChatScreen> {
 
   Widget _buildGroupsList() {
     return RefreshIndicator(
-      color: const Color(0xFFDC2626),
+      color: const Color(0xFFCB0002),
       onRefresh: _fetchGroups,
       child: ListView.builder(
         padding: const EdgeInsets.all(16),
@@ -296,7 +296,7 @@ class _StormChatScreenState extends State<StormChatScreen> {
                                 style: TextStyle(
                                   fontSize: 10,
                                   fontWeight: FontWeight.w600,
-                                  color: Color(0xFFDC2626),
+                                  color: Color(0xFFCB0002),
                                 ),
                               ),
                             ),
@@ -310,7 +310,7 @@ class _StormChatScreenState extends State<StormChatScreen> {
                     margin: const EdgeInsets.only(right: 8),
                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                     decoration: BoxDecoration(
-                      color: const Color(0xFFDC2626),
+                      color: const Color(0xFFCB0002),
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Text(
@@ -373,7 +373,7 @@ class _StormChatScreenState extends State<StormChatScreen> {
         children: [
           Icon(
             icon,
-            color: active ? const Color(0xFFDC2626) : const Color(0xFF9CA3AF),
+            color: active ? const Color(0xFFCB0002) : const Color(0xFF9CA3AF),
             size: 24,
           ),
           const SizedBox(height: 4),
@@ -381,7 +381,7 @@ class _StormChatScreenState extends State<StormChatScreen> {
             label,
             style: TextStyle(
               fontSize: 11,
-              color: active ? const Color(0xFFDC2626) : const Color(0xFF9CA3AF),
+              color: active ? const Color(0xFFCB0002) : const Color(0xFF9CA3AF),
               fontWeight: active ? FontWeight.w600 : FontWeight.normal,
             ),
           ),
@@ -394,13 +394,13 @@ class _StormChatScreenState extends State<StormChatScreen> {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Icon(icon, color: const Color(0xFFDC2626), size: 24),
+        Icon(icon, color: const Color(0xFFCB0002), size: 24),
         const SizedBox(height: 4),
         Text(
           label,
           style: const TextStyle(
             fontSize: 11,
-            color: Color(0xFFDC2626),
+            color: Color(0xFFCB0002),
             fontWeight: FontWeight.w600,
           ),
         ),

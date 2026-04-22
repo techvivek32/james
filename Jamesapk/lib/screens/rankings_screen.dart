@@ -13,12 +13,12 @@ class RankingsScreen extends StatefulWidget {
 class _RankingsScreenState extends State<RankingsScreen> {
   static const _bg = Color(0xFFF3F4F6);
   static const _white = Color(0xFFFFFFFF);
-  static const _primary = Color(0xFFDC2626);
+  static const _primary = Color(0xFFCB0002);
   static const _textDark = Color(0xFF111827);
   static const _textLight = Color(0xFF6B7280);
   static const _textPlaceholder = Color(0xFF9CA3AF);
   static const _border = Color(0xFFD1D5DB);
-  static const _link = Color(0xFFDC2626);
+  static const _link = Color(0xFFCB0002);
 
   int _stormChatGroupCount = 0;
   String? _userId;
@@ -193,7 +193,7 @@ class _RankingsScreenState extends State<RankingsScreen> {
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         gradient: const LinearGradient(
-          colors: [Color(0xFFDC2626), Color(0xFFB91C1C)],
+          colors: [Color(0xFFCB0002), Color(0xFFA00002)],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
@@ -422,7 +422,7 @@ class _RankingsScreenState extends State<RankingsScreen> {
               child: Container(
                 width: 16,
                 height: 16,
-                decoration: const BoxDecoration(color: Color(0xFFDC2626), shape: BoxShape.circle),
+                decoration: const BoxDecoration(color: Color(0xFFCB0002), shape: BoxShape.circle),
                 child: Center(
                   child: Text('$badge', style: const TextStyle(color: _white, fontSize: 9, fontWeight: FontWeight.w700)),
                 ),

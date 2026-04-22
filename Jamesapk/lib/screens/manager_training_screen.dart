@@ -13,12 +13,12 @@ class ManagerTrainingScreen extends StatefulWidget {
 class _ManagerTrainingScreenState extends State<ManagerTrainingScreen> {
   static const _bg = Color(0xFFF3F4F6);
   static const _white = Color(0xFFFFFFFF);
-  static const _primary = Color(0xFFDC2626);
+  static const _primary = Color(0xFFCB0002);
   static const _textDark = Color(0xFF111827);
   static const _textLight = Color(0xFF6B7280);
   static const _textPlaceholder = Color(0xFF9CA3AF);
   static const _border = Color(0xFFD1D5DB);
-  static const _link = Color(0xFFDC2626);
+  static const _link = Color(0xFFCB0002);
 
   int _stormChatGroupCount = 0;
   String? _userId;

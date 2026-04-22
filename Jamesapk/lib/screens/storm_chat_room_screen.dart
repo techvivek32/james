@@ -270,7 +270,7 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
         child: Wrap(
           children: [
             ListTile(
-              leading: const Icon(Icons.photo_library, color: Color(0xFFDC2626)),
+              leading: const Icon(Icons.photo_library, color: Color(0xFFCB0002)),
               title: const Text('Choose from Gallery'),
               onTap: () async {
                 Navigator.pop(context);
@@ -281,7 +281,7 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
               },
             ),
             ListTile(
-              leading: const Icon(Icons.camera_alt, color: Color(0xFFDC2626)),
+              leading: const Icon(Icons.camera_alt, color: Color(0xFFCB0002)),
               title: const Text('Take Photo'),
               onTap: () async {
                 Navigator.pop(context);
@@ -292,7 +292,7 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
               },
             ),
             ListTile(
-              leading: const Icon(Icons.videocam, color: Color(0xFFDC2626)),
+              leading: const Icon(Icons.videocam, color: Color(0xFFCB0002)),
               title: const Text('Choose Video'),
               onTap: () async {
                 Navigator.pop(context);
@@ -359,7 +359,7 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(message),
-        backgroundColor: const Color(0xFFDC2626),
+        backgroundColor: const Color(0xFFCB0002),
       ),
     );
   }
@@ -395,7 +395,7 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
     return Scaffold(
       backgroundColor: const Color(0xFFFAFAFA),
       appBar: AppBar(
-        backgroundColor: const Color(0xFFDC2626),
+        backgroundColor: const Color(0xFFCB0002),
         elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: Colors.white),
@@ -468,7 +468,7 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
           Expanded(
             child: isLoading
                 ? const Center(
-                    child: CircularProgressIndicator(color: Color(0xFFDC2626)),
+                    child: CircularProgressIndicator(color: Color(0xFFCB0002)),
                   )
                 : messages.isEmpty
                     ? Center(
@@ -524,7 +524,7 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
                       borderRadius: BorderRadius.circular(8),
                       border: Border(
                         left: BorderSide(
-                          color: const Color(0xFFDC2626),
+                          color: const Color(0xFFCB0002),
                           width: 3,
                         ),
                       ),
@@ -540,7 +540,7 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
                                 style: const TextStyle(
                                   fontSize: 12,
                                   fontWeight: FontWeight.w600,
-                                  color: Color(0xFFDC2626),
+                                  color: Color(0xFFCB0002),
                                 ),
                               ),
                               const SizedBox(height: 2),
@@ -581,7 +581,7 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
                                   ? '🔒 Only group admins can send messages\nMembers can only read messages'
                                   : '🔒 You cannot send messages in this group',
                           style: const TextStyle(
-                            color: Color(0xFFDC2626),
+                            color: Color(0xFFCB0002),
                             fontSize: 14,
                           ),
                           textAlign: TextAlign.center,
@@ -592,7 +592,7 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
                           IconButton(
                             icon: Icon(
                               isUploading ? Icons.hourglass_empty : Icons.attach_file,
-                              color: const Color(0xFFDC2626),
+                              color: const Color(0xFFCB0002),
                             ),
                             onPressed: isUploading ? null : _pickAndUploadMedia,
                           ),
@@ -611,7 +611,7 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
                                 ),
                                 focusedBorder: OutlineInputBorder(
                                   borderRadius: BorderRadius.circular(24),
-                                  borderSide: const BorderSide(color: Color(0xFFDC2626)),
+                                  borderSide: const BorderSide(color: Color(0xFFCB0002)),
                                 ),
                                 contentPadding: const EdgeInsets.symmetric(
                                   horizontal: 16,
@@ -626,7 +626,7 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
                           const SizedBox(width: 8),
                           Container(
                             decoration: const BoxDecoration(
-                              color: Color(0xFFDC2626),
+                              color: Color(0xFFCB0002),
                               shape: BoxShape.circle,
                             ),
                             child: IconButton(
@@ -713,7 +713,7 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                         decoration: BoxDecoration(
-                          color: isMyMessage ? const Color(0xFFDC2626) : const Color(0xFFF3F4F6),
+                          color: isMyMessage ? const Color(0xFFCB0002) : const Color(0xFFF3F4F6),
                           borderRadius: BorderRadius.only(
                             topLeft: const Radius.circular(16),
                             topRight: const Radius.circular(16),
@@ -743,7 +743,7 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
                                     borderRadius: BorderRadius.circular(8),
                                     border: Border(
                                       left: BorderSide(
-                                        color: isMyMessage ? Colors.white : const Color(0xFFDC2626),
+                                        color: isMyMessage ? Colors.white : const Color(0xFFCB0002),
                                         width: 3,
                                       ),
                                     ),
@@ -756,7 +756,7 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
                                         style: TextStyle(
                                           fontSize: 11,
                                           fontWeight: FontWeight.w600,
-                                          color: isMyMessage ? Colors.white : const Color(0xFFDC2626),
+                                          color: isMyMessage ? Colors.white : const Color(0xFFCB0002),
                                         ),
                                       ),
                                       const SizedBox(height: 2),

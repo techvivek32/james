@@ -17,7 +17,7 @@ class _PlannerScreenState extends State<PlannerScreen> {
   static const _textLight = Color(0xFF6B7280);
   static const _textPlaceholder = Color(0xFF9CA3AF);
   static const _border = Color(0xFFD1D5DB);
-  static const _link = Color(0xFFDC2626);
+  static const _link = Color(0xFFCB0002);
 
   bool _isDaily = true;
   double _inspections = 5;
@@ -486,7 +486,7 @@ class _PlannerScreenState extends State<PlannerScreen> {
               child: Container(
                 width: 16,
                 height: 16,
-                decoration: const BoxDecoration(color: Color(0xFFDC2626), shape: BoxShape.circle),
+                decoration: const BoxDecoration(color: Color(0xFFCB0002), shape: BoxShape.circle),
                 child: Center(
                   child: Text('$badge', style: const TextStyle(color: _white, fontSize: 9, fontWeight: FontWeight.w700)),
                 ),

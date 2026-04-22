@@ -12,7 +12,7 @@ class ManagerProfileScreen extends StatefulWidget {
 class _ManagerProfileScreenState extends State<ManagerProfileScreen> {
   static const _bg = Color(0xFFF3F4F6);
   static const _white = Color(0xFFFFFFFF);
-  static const _primary = Color(0xFFDC2626);
+  static const _primary = Color(0xFFCB0002);
   static const _textDark = Color(0xFF111827);
   static const _textLight = Color(0xFF6B7280);
   static const _border = Color(0xFFD1D5DB);
