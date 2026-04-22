@@ -5,6 +5,7 @@ type AppToolCategory = {
   name: string;
   slug: string;
   order: number;
+  status: 'draft' | 'published';
 };
 
 type AppToolItem = {
@@ -19,6 +20,7 @@ type AppToolItem = {
   appStoreLink?: string;
   playStoreLink?: string;
   category: string;
+  status: 'draft' | 'published';
 };
 
 export function AppsToolManagement() {
@@ -165,6 +167,48 @@ export function AppsToolManagement() {
     } catch (error) {
       console.error('Error updating category:', error);
       alert('Failed to update category');
+    }
+  }
+
+  async function updateCategoryStatus(id: string, status: 'draft' | 'published') {
+    try {
+      const response = await fetch(`/api/apps-tools/categories/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          name: categories.find(cat => cat._id === id)?.name,
+          status 
+        })
+      });
+
+      if (response.ok) {
+        const updatedCategory = await response.json();
+        setCategories(categories.map(cat => cat._id === id ? updatedCategory : cat));
+      }
+    } catch (error) {
+      console.error('Error updating category status:', error);
+      alert('Failed to update category status');
+    }
+  }
+
+  async function updateItemStatus(categorySlug: string, id: string, status: 'draft' | 'published') {
+    try {
+      const response = await fetch(`/api/apps-tools/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status })
+      });
+
+      if (response.ok) {
+        const updatedItem = await response.json();
+        setItemsByCategory(prev => ({
+          ...prev,
+          [categorySlug]: (prev[categorySlug] || []).map(item => item._id === id ? updatedItem : item)
+        }));
+      }
+    } catch (error) {
+      console.error('Error updating item status:', error);
+      alert('Failed to update item status');
     }
   }
 
@@ -370,6 +414,38 @@ export function AppsToolManagement() {
                   }}>
                     ✏️ Edit
                   </button>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginLeft: 12 }}>
+                    <button
+                      type="button"
+                      onClick={() => updateCategoryStatus(category._id, category.status === 'published' ? 'draft' : 'published')}
+                      style={{
+                        position: 'relative',
+                        width: 36,
+                        height: 20,
+                        borderRadius: 10,
+                        border: 'none',
+                        cursor: 'pointer',
+                        transition: 'background-color 0.2s',
+                        backgroundColor: category.status === 'published' ? '#16a34a' : '#d1d5db',
+                        padding: 0
+                      }}
+                    >
+                      <div style={{
+                        position: 'absolute',
+                        top: 2,
+                        left: category.status === 'published' ? 18 : 2,
+                        width: 16,
+                        height: 16,
+                        borderRadius: '50%',
+                        backgroundColor: 'white',
+                        transition: 'left 0.2s',
+                        boxShadow: '0 1px 3px rgba(0,0,0,0.2)'
+                      }} />
+                    </button>
+                    <span style={{ color: category.status === 'published' ? '#16a34a' : '#6b7280', fontWeight: 600, fontSize: 12 }}>
+                      {category.status === 'published' ? 'Published' : 'Draft'}
+                    </span>
+                  </div>
                   <button type="button" className="btn-ghost btn-danger btn-small" onClick={() => deleteCategory(category._id, category.slug)}>
                     🗑️ Delete
                   </button>
@@ -580,7 +656,7 @@ export function AppsToolManagement() {
           ) : (
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(350px, 1fr))", gap: 20 }}>
               {items.map((item) => (
-                <div key={item._id} className="card" style={{ padding: 0, overflow: "hidden", height: "100%" }}>
+                <div key={item._id} className="card" style={{ padding: 0, overflow: "hidden", height: "100%", position: 'relative' }}>
                   <div style={{ 
                     width: "100%", 
                     height: item.imageHeight || 280, 
@@ -618,9 +694,43 @@ export function AppsToolManagement() {
                         </a>
                       )}
                     </div>
-                    <div style={{ marginTop: 12, display: "flex", gap: 8 }}>
-                      <button type="button" className="btn-secondary btn-small" onClick={() => startEdit(item)}>Edit</button>
-                      <button type="button" className="btn-ghost btn-danger btn-small" onClick={() => deleteItem(category.slug, item._id)}>Delete</button>
+                    <div style={{ marginTop: 12, display: "flex", gap: 8, alignItems: 'center', justifyContent: 'space-between' }}>
+                      <div style={{ display: 'flex', gap: 8 }}>
+                        <button type="button" className="btn-secondary btn-small" onClick={() => startEdit(item)}>Edit</button>
+                        <button type="button" className="btn-ghost btn-danger btn-small" onClick={() => deleteItem(category.slug, item._id)}>Delete</button>
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <button
+                          type="button"
+                          onClick={() => updateItemStatus(category.slug, item._id, item.status === 'published' ? 'draft' : 'published')}
+                          style={{
+                            position: 'relative',
+                            width: 36,
+                            height: 20,
+                            borderRadius: 10,
+                            border: 'none',
+                            cursor: 'pointer',
+                            transition: 'background-color 0.2s',
+                            backgroundColor: item.status === 'published' ? '#16a34a' : '#d1d5db',
+                            padding: 0
+                          }}
+                        >
+                          <div style={{
+                            position: 'absolute',
+                            top: 2,
+                            left: item.status === 'published' ? 18 : 2,
+                            width: 16,
+                            height: 16,
+                            borderRadius: '50%',
+                            backgroundColor: 'white',
+                            transition: 'left 0.2s',
+                            boxShadow: '0 1px 3px rgba(0,0,0,0.2)'
+                          }} />
+                        </button>
+                        <span style={{ color: item.status === 'published' ? '#16a34a' : '#6b7280', fontWeight: 600, fontSize: 11 }}>
+                          {item.status === 'published' ? 'Published' : 'Draft'}
+                        </span>
+                      </div>
                     </div>
                   </div>
                 </div>

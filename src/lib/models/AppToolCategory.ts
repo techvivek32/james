@@ -4,6 +4,7 @@ export interface IAppToolCategory extends Document {
   name: string;
   slug: string;
   order: number;
+  status: 'draft' | 'published';
   createdAt: Date;
   updatedAt: Date;
 }
@@ -24,6 +25,11 @@ const AppToolCategorySchema = new Schema<IAppToolCategory>(
     order: {
       type: Number,
       default: 0
+    },
+    status: {
+      type: String,
+      enum: ['draft', 'published'],
+      default: 'draft'
     }
   },
   {

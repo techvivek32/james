@@ -15,7 +15,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
   } else if (req.method === 'POST') {
     try {
-      const { name, order } = req.body;
+      const { name, order, status } = req.body;
       
       if (!name) {
         return res.status(400).json({ error: 'Category name is required' });
@@ -27,7 +27,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       const category = await AppToolCategory.create({
         name,
         slug,
-        order: order || 0
+        order: order || 0,
+        status: status || 'draft'
       });
 
       res.status(201).json(category);

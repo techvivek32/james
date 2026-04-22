@@ -9,7 +9,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   if (req.method === 'PUT') {
     try {
-      const { name } = req.body;
+      const { name, status } = req.body;
       
       if (!name) {
         return res.status(400).json({ error: 'Category name is required' });
@@ -18,9 +18,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       // Create slug from name
       const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
 
+      const updateData: any = { name, slug };
+      if (status) {
+        updateData.status = status;
+      }
+
       const category = await AppToolCategory.findByIdAndUpdate(
         id,
-        { name, slug },
+        updateData,
         { new: true }
       );
 
