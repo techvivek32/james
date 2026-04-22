@@ -446,13 +446,16 @@ class _TrainingScreenState extends State<TrainingScreen> {
   Widget _navItem(IconData icon, String label, bool active, String? route, BuildContext context) {
     return GestureDetector(
       onTap: route != null ? () => Navigator.pushReplacementNamed(context, route) : null,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, color: active ? _link : _textPlaceholder, size: 24),
-          const SizedBox(height: 4),
-          Text(label, style: TextStyle(fontSize: 11, color: active ? _link : _textPlaceholder, fontWeight: active ? FontWeight.w600 : FontWeight.normal)),
-        ],
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, color: active ? _link : _textPlaceholder, size: 24),
+            const SizedBox(height: 4),
+            Text(label, style: TextStyle(fontSize: 11, color: active ? _link : _textPlaceholder, fontWeight: active ? FontWeight.w600 : FontWeight.normal)),
+          ],
+        ),
       ),
     );
   }
@@ -460,31 +463,16 @@ class _TrainingScreenState extends State<TrainingScreen> {
   Widget _navItemWithBadge(IconData icon, String label, int badge, BuildContext context) {
     return GestureDetector(
       onTap: () => Navigator.pushReplacementNamed(context, '/stormchat'),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Stack(
-            clipBehavior: Clip.none,
-            children: [
-              Icon(icon, color: _textPlaceholder, size: 24),
-              if (badge > 0)
-                Positioned(
-                  top: -4,
-                  right: -6,
-                  child: Container(
-                    width: 16,
-                    height: 16,
-                    decoration: const BoxDecoration(color: Color(0xFFCB0002), shape: BoxShape.circle),
-                    child: Center(
-                      child: Text('$badge', style: const TextStyle(color: _white, fontSize: 9, fontWeight: FontWeight.w700)),
-                    ),
-                  ),
-                ),
-            ],
-          ),
-          const SizedBox(height: 4),
-          Text(label, style: const TextStyle(fontSize: 11, color: _textPlaceholder)),
-        ],
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, color: _textPlaceholder, size: 24),
+            const SizedBox(height: 4),
+            Text(label, style: const TextStyle(fontSize: 11, color: _textPlaceholder)),
+          ],
+        ),
       ),
     );
   }

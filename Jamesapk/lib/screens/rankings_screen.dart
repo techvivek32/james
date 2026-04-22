@@ -99,20 +99,36 @@ class _RankingsScreenState extends State<RankingsScreen> {
           child: Column(
             children: [
               Expanded(
-                child: SingleChildScrollView(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: Center(
                   child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      const SizedBox(height: 16),
-                      _buildHeader(),
-                      const SizedBox(height: 16),
-                      _buildFilterRow(),
-                      const SizedBox(height: 16),
-                      _buildStatusCard(),
+                      Icon(
+                        Icons.emoji_events_outlined,
+                        size: 100,
+                        color: _textLight.withOpacity(0.3),
+                      ),
                       const SizedBox(height: 24),
-                      _buildLeaderboard(),
-                      const SizedBox(height: 16),
+                      const Text(
+                        'Coming Soon',
+                        style: TextStyle(
+                          fontSize: 32,
+                          fontWeight: FontWeight.w800,
+                          color: _textDark,
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 48),
+                        child: Text(
+                          'Rankings feature is under development',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            fontSize: 16,
+                            color: _textLight,
+                          ),
+                        ),
+                      ),
                     ],
                   ),
                 ),
@@ -390,13 +406,16 @@ class _RankingsScreenState extends State<RankingsScreen> {
   Widget _navItem(BuildContext context, IconData icon, String label, bool active, String? route) {
     return GestureDetector(
       onTap: route != null ? () => Navigator.pushReplacementNamed(context, route) : null,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, color: active ? _link : _textPlaceholder, size: 24),
-          const SizedBox(height: 4),
-          Text(label, style: TextStyle(fontSize: 11, color: active ? _link : _textPlaceholder, fontWeight: active ? FontWeight.w600 : FontWeight.normal)),
-        ],
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, color: active ? _link : _textPlaceholder, size: 24),
+            const SizedBox(height: 4),
+            Text(label, style: TextStyle(fontSize: 11, color: active ? _link : _textPlaceholder, fontWeight: active ? FontWeight.w600 : FontWeight.normal)),
+          ],
+        ),
       ),
     );
   }
@@ -404,31 +423,16 @@ class _RankingsScreenState extends State<RankingsScreen> {
   Widget _navItemWithBadge(BuildContext context, IconData icon, String label, int badge, String route) {
     return GestureDetector(
       onTap: () => Navigator.pushReplacementNamed(context, route),
-      child: Stack(
-        clipBehavior: Clip.none,
-        children: [
-          Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(icon, color: _textPlaceholder, size: 24),
-              const SizedBox(height: 4),
-              Text(label, style: const TextStyle(fontSize: 11, color: _textPlaceholder)),
-            ],
-          ),
-          if (badge > 0)
-            Positioned(
-              top: -4,
-              right: -6,
-              child: Container(
-                width: 16,
-                height: 16,
-                decoration: const BoxDecoration(color: Color(0xFFCB0002), shape: BoxShape.circle),
-                child: Center(
-                  child: Text('$badge', style: const TextStyle(color: _white, fontSize: 9, fontWeight: FontWeight.w700)),
-                ),
-              ),
-            ),
-        ],
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, color: _textPlaceholder, size: 24),
+            const SizedBox(height: 4),
+            Text(label, style: const TextStyle(fontSize: 11, color: _textPlaceholder)),
+          ],
+        ),
       ),
     );
   }
