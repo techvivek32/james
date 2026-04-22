@@ -61,12 +61,12 @@ flutter:
 
   assets:
     - assets/images/logo.jpeg
-    - assets/images/logo-1.jpeg
+    - assets/images/logo-1.png
 
 flutter_launcher_icons:
   android: true
   ios: true
-  image_path: "assets/images/logo-1.jpeg"
+  image_path: "assets/images/logo-1.png"
   min_sdk_android: 21
   remove_alpha_ios: true
 
