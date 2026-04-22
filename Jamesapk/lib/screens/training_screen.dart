@@ -267,7 +267,7 @@ class _TrainingScreenState extends State<TrainingScreen> {
           children: [
             const Icon(Icons.school_outlined, color: _link, size: 22),
             const SizedBox(width: 8),
-            const Text('Courses', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: _textDark)),
+            const Text('Courses', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: _textDark)),
           ],
         ),
         const SizedBox(height: 12),
@@ -284,7 +284,7 @@ class _TrainingScreenState extends State<TrainingScreen> {
           children: [
             const Icon(Icons.apps_outlined, color: _link, size: 22),
             const SizedBox(width: 8),
-            const Text('Apps & Tools', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: _textDark)),
+            const Text('Apps & Tools', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: _textDark)),
           ],
         ),
         const SizedBox(height: 12),
