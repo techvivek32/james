@@ -63,6 +63,7 @@ export function UserManagement(props: UserEditorProps) {
   const [assignedSalesUsers, setAssignedSalesUsers] = useState<any[]>([]);
   const [trainingModalData, setTrainingModalData] = useState<{ course: any; completed: number; total: number; isCompleted: boolean }[]>([]);
   const [isLoadingTrainingModal, setIsLoadingTrainingModal] = useState(false);
+  const [activeUsersSearch, setActiveUsersSearch] = useState("");
 
   function openTrainingProgress(user: UserProfile) {
     setTrainingModalData([]);
@@ -759,14 +760,38 @@ export function UserManagement(props: UserEditorProps) {
           </div>
         </div>
         <div className="panel-body">
-          <div className="panel-section">
+          <div>
+            <input
+              type="text"
+              placeholder="Search active users..."
+              value={activeUsersSearch}
+              onChange={(e) => setActiveUsersSearch(e.target.value)}
+              style={{
+                width: "100%",
+                padding: "8px 12px",
+                fontSize: 13,
+                border: "1px solid #e5e7eb",
+                borderRadius: 6,
+                marginBottom: 8,
+                marginTop: 0,
+                boxSizing: "border-box",
+                outline: "none"
+              }}
+            />
+          </div>
+          <div className="panel-section" style={{ paddingTop: 0, marginTop: 0 }}>
             <div className="panel-section-title" style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer" }} onClick={() => setShowActiveUsers(!showActiveUsers)}>
               <span>{showActiveUsers ? "▾" : "▸"}</span>
               <span>Active Users</span>
             </div>
             {showActiveUsers && (
               <div className="list">
-                {sortUsers(draftUsers.filter(u => !u.suspended)).map((user) => {
+                {sortUsers(draftUsers.filter(u => !u.suspended)).filter(user => 
+                  activeUsersSearch === "" || 
+                  user.name.toLowerCase().includes(activeUsersSearch.toLowerCase()) ||
+                  user.email.toLowerCase().includes(activeUsersSearch.toLowerCase()) ||
+                  (user.roles || [user.role]).some(r => r.toLowerCase().includes(activeUsersSearch.toLowerCase()))
+                ).map((user) => {
                   const isActive = user.id === selectedUserId;
                   return (
                     <button key={user.id} className={isActive ? "list-item active" : "list-item"} onClick={() => setSelectedUserId(user.id)}>
