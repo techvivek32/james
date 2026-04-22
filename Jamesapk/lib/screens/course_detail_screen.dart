@@ -103,8 +103,6 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  _buildTimerSection(),
-                  const SizedBox(height: 24),
                   _buildProgressSection(),
                   const SizedBox(height: 24),
                   _buildContinueButton(),

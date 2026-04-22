@@ -71,16 +71,17 @@ export default async function handler(
           if (webResponse.ok) {
             const webProgressData = await webResponse.json();
             
-            // Use web's exact calculation logic
+            // Use web's exact calculation logic - only count lesson pages (not quizzes)
             const completedPages = webProgressData.completedPages?.length || 0;
-            const totalPages = course.pages?.length || 0;
-            const progressPercent = totalPages > 0 ? Math.round((completedPages / totalPages) * 100) : 0;
+            const lessonPages = course.pages?.filter((p: any) => p.status === 'published' && !p.isQuiz) || [];
+            const totalLessonPages = lessonPages.length;
+            const progressPercent = totalLessonPages > 0 ? Math.round((completedPages / totalLessonPages) * 100) : 0;
             
             progress.completedLessons = completedPages;
-            progress.totalLessons = totalPages;
+            progress.totalLessons = totalLessonPages;
             progress.progressPercent = progressPercent;
               
-            console.log(`✅ Web API result: ${completedPages}/${totalPages} = ${progressPercent}%`);
+            console.log(`✅ Web API result: ${completedPages}/${totalLessonPages} lessons = ${progressPercent}%`);
           }
         } catch (error) {
           console.log('⚠️ Could not call web API:', error);
