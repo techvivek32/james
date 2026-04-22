@@ -24,6 +24,7 @@ export function UserManagement(props: UserEditorProps) {
     if (!isDirty) setDraftDeletedUsers(props.deletedUsers);
   }, [props.deletedUsers]);
   const [notifyUsers, setNotifyUsers] = useState<Record<string, boolean>>({});
+  const [notifyUsersBySMS, setNotifyUsersBySMS] = useState<Record<string, boolean>>({});
   const [isSaving, setIsSaving] = useState(false);
   const isSavingRef = useRef(false);
   const [isDirty, setIsDirty] = useState(false);
@@ -938,15 +939,26 @@ export function UserManagement(props: UserEditorProps) {
               <div className="panel-header-row">
                 <span>User Details{selectedUser.suspended && <span style={{ color: "#dc2626", marginLeft: 8 }}>• SUSPENDED</span>}</span>
                 <div className="panel-header-actions">
-                  <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 13, color: "#374151", cursor: "pointer", userSelect: "none", marginRight: 4 }}>
-                    <input
-                      type="checkbox"
-                      checked={!!notifyUsers[selectedUserId]}
-                      onChange={e => setNotifyUsers(prev => ({ ...prev, [selectedUserId]: e.target.checked }))}
-                      style={{ width: 15, height: 15, cursor: "pointer" }}
-                    />
-                    Notify user by email
-                  </label>
+                  <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                    <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 13, color: "#374151", cursor: "pointer", userSelect: "none" }}>
+                      <input
+                        type="checkbox"
+                        checked={!!notifyUsers[selectedUserId]}
+                        onChange={e => setNotifyUsers(prev => ({ ...prev, [selectedUserId]: e.target.checked }))}
+                        style={{ width: 15, height: 15, cursor: "pointer" }}
+                      />
+                      Notify user by email
+                    </label>
+                    <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 13, color: "#374151", cursor: "pointer", userSelect: "none" }}>
+                      <input
+                        type="checkbox"
+                        checked={!!notifyUsersBySMS[selectedUserId]}
+                        onChange={e => setNotifyUsersBySMS(prev => ({ ...prev, [selectedUserId]: e.target.checked }))}
+                        style={{ width: 15, height: 15, cursor: "pointer" }}
+                      />
+                      Notify user by SMS
+                    </label>
+                  </div>
                   <button type="button" className="btn-primary btn-small" disabled={!isDirty || !!emailError || isSaving} onClick={async () => {
                     if (emailError) {
                       emailInputRef.current?.focus();
