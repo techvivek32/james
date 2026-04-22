@@ -294,11 +294,7 @@ class _TrainingScreenState extends State<TrainingScreen> {
           iconColor: Color(0xFF16A34A),
           title: 'Apps & Tools',
           subtitle: 'Utilities',
-          onTap: () {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Apps & Tools coming soon!')),
-            );
-          },
+          onTap: () => Navigator.pushNamed(context, '/apps-tools-categories'),
         ),
       ],
     );
