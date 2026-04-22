@@ -25,6 +25,7 @@ class _TrainingScreenState extends State<TrainingScreen> {
 
   String _greeting = 'Good Morning';
   String _userName = 'Loading...';
+  String _userHeadshotUrl = '';
   int _stormChatGroupCount = 0;
   String? _userId;
 
@@ -56,6 +57,7 @@ class _TrainingScreenState extends State<TrainingScreen> {
         setState(() {
           _userName = user['name'] ?? 'User';
           _userId = user['_id'] ?? user['id'];
+          _userHeadshotUrl = user['headshotUrl'] ?? '';
         });
         // Fetch groups after user data is loaded
         _fetchStormChatGroups();
@@ -144,7 +146,12 @@ class _TrainingScreenState extends State<TrainingScreen> {
                   CircleAvatar(
                     radius: 26,
                     backgroundColor: _border,
-                    child: const Icon(Icons.person, size: 28, color: _textLight),
+                    backgroundImage: _userHeadshotUrl.isNotEmpty
+                        ? NetworkImage('https://millerstorm.tech$_userHeadshotUrl')
+                        : null,
+                    child: _userHeadshotUrl.isEmpty
+                        ? const Icon(Icons.person, size: 28, color: _textLight)
+                        : null,
                   ),
                   Positioned(
                     bottom: 2,
