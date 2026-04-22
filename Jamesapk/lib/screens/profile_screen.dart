@@ -74,11 +74,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
           _userRole = user['role'] ?? 'Sales Rep';
           _userPhone = user['phone'] ?? '';
           
-          // Handle territories as array
-          if (user['territories'] is List) {
-            _userTerritories = List<String>.from(user['territories']);
-          } else if (user['territory'] != null && user['territory'].toString().isNotEmpty) {
-            _userTerritories = [user['territory'].toString()];
+          // Parse territory string (format: "DFW, Texas · Lubbock, Texas")
+          if (user['territory'] != null && user['territory'].toString().isNotEmpty) {
+            _userTerritories = user['territory']
+                .toString()
+                .split('·')
+                .map((t) => t.trim())
+                .where((t) => t.isNotEmpty)
+                .toList();
           } else {
             _userTerritories = [];
           }
@@ -201,13 +204,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
     try {
       print('Saving profile for user ID: $_userId');
+      
+      // Convert territories array to string with " · " separator
+      final territoryString = _userTerritories.join(' · ');
+      
       final response = await http.put(
         Uri.parse('https://millerstorm.tech/api/users/$_userId'),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({
           'name': _nameController.text,
           'phone': _phoneController.text,
-          'territories': _userTerritories,
+          'territory': territoryString,
           'strengths': _strengthsController.text,
           'weaknesses': _weaknessesController.text,
         }),
@@ -224,9 +231,19 @@ class _ProfileScreenState extends State<ProfileScreen> {
         setState(() {
           _userName = updatedUser['name'] ?? _userName;
           _userPhone = updatedUser['phone'] ?? '';
-          if (updatedUser['territories'] is List) {
-            _userTerritories = List<String>.from(updatedUser['territories']);
+          
+          // Parse territory string back to array
+          if (updatedUser['territory'] != null && updatedUser['territory'].toString().isNotEmpty) {
+            _userTerritories = updatedUser['territory']
+                .toString()
+                .split('·')
+                .map((t) => t.trim())
+                .where((t) => t.isNotEmpty)
+                .toList();
+          } else {
+            _userTerritories = [];
           }
+          
           _userStrengths = updatedUser['strengths'] ?? '';
           _userWeaknesses = updatedUser['weaknesses'] ?? '';
           _isEditMode = false;
