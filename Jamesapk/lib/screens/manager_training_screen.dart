@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import 'manager_courses_screen.dart';
 
 class ManagerTrainingScreen extends StatefulWidget {
   const ManagerTrainingScreen({super.key});
@@ -18,11 +19,11 @@ class _ManagerTrainingScreenState extends State<ManagerTrainingScreen> {
   static const _textLight = Color(0xFF6B7280);
   static const _textPlaceholder = Color(0xFF9CA3AF);
   static const _border = Color(0xFFD1D5DB);
-  static const _link = Color(0xFFCB0002);
 
   int _stormChatGroupCount = 0;
   String? _userId;
-  bool _showMyModules = true;
+  String? _userName;
+  String? _userHeadshot;
 
   @override
   void initState() {
@@ -36,7 +37,11 @@ class _ManagerTrainingScreenState extends State<ManagerTrainingScreen> {
       final userStr = prefs.getString('user');
       if (userStr != null) {
         final user = jsonDecode(userStr);
-        _userId = user['_id'] ?? user['id'];
+        setState(() {
+          _userId = user['_id'] ?? user['id'];
+          _userName = user['name'];
+          _userHeadshot = user['headshotUrl'];
+        });
         await _fetchStormChatGroups();
       }
     } catch (e) {
@@ -79,358 +84,60 @@ class _ManagerTrainingScreenState extends State<ManagerTrainingScreen> {
       child: Scaffold(
         backgroundColor: _bg,
         body: SafeArea(
-        child: Column(
-          children: [
-            Expanded(
-              child: SingleChildScrollView(
-                child: Padding(
-                  padding: const EdgeInsets.all(20),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        'Training Center',
-                        style: TextStyle(
-                          fontSize: 24,
-                          fontWeight: FontWeight.bold,
-                          color: _textDark,
-                        ),
-                      ),
-                      const SizedBox(height: 14),
-                      _buildTabs(),
-                      const SizedBox(height: 20),
-                      _buildProgressCard(),
-                      const SizedBox(height: 24),
-                      const Text(
-                        'Required Next',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                          color: _textDark,
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      _buildRequiredModule(),
-                      const SizedBox(height: 24),
-                      const Text(
-                        'Library',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                          color: _textDark,
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      _buildLibraryItem(
-                        'Cold Outreach Templates',
-                        '5 Lessons • Updated recently',
-                        Icons.description_outlined,
-                        false,
-                      ),
-                      const SizedBox(height: 12),
-                      _buildLibraryItem(
-                        'Product Knowledge Core',
-                        'Completed Sep 12',
-                        Icons.check,
-                        true,
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-            _buildBottomNav(context),
-          ],
-        ),
-      ),
-      ),
-    );
-  }
-
-  Widget _buildTabs() {
-    return Row(
-      children: [
-        Expanded(
-          child: GestureDetector(
-            onTap: () => setState(() => _showMyModules = true),
-            child: Container(
-              padding: const EdgeInsets.symmetric(vertical: 10),
-              decoration: BoxDecoration(
-                color: _showMyModules ? _white : Colors.transparent,
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(
-                  color: _showMyModules ? _border : Colors.transparent,
-                ),
-              ),
-              child: Text(
-                'My Modules',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                  color: _showMyModules ? _textDark : _textLight,
-                ),
-              ),
-            ),
-          ),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: GestureDetector(
-            onTap: () => setState(() => _showMyModules = false),
-            child: Container(
-              padding: const EdgeInsets.symmetric(vertical: 10),
-              decoration: BoxDecoration(
-                color: !_showMyModules ? _white : Colors.transparent,
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(
-                  color: !_showMyModules ? _border : Colors.transparent,
-                ),
-              ),
-              child: Text(
-                'Team Progress',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                  color: !_showMyModules ? _textDark : _textLight,
-                ),
-              ),
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildProgressCard() {
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: _primary,
-        borderRadius: BorderRadius.circular(14),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-            decoration: BoxDecoration(
-              color: _white.withOpacity(0.2),
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: const Text(
-              'COMING SOON',
-              style: TextStyle(color: _white, fontSize: 11, fontWeight: FontWeight.w700, letterSpacing: 0.5),
-            ),
-          ),
-          const SizedBox(height: 12),
-          const Text(
-            'Training Modules',
-            style: TextStyle(
-              fontSize: 24,
-              fontWeight: FontWeight.bold,
-              color: _white,
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            'Track your progress and team performance',
-            style: TextStyle(
-              fontSize: 13,
-              color: _white.withOpacity(0.8),
-            ),
-          ),
-          const SizedBox(height: 16),
-          Container(
-            width: double.infinity,
-            height: 48,
-            decoration: BoxDecoration(
-              color: _white.withOpacity(0.3),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: const Center(
-              child: Text(
-                'Coming Soon',
-                style: TextStyle(color: _white, fontSize: 15, fontWeight: FontWeight.w700),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildRequiredModule() {
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: _white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: _primary, width: 2),
-      ),
-      child: Column(
-        children: [
-          Row(
+          child: Column(
             children: [
               Container(
-                width: 48,
-                height: 48,
-                decoration: BoxDecoration(
-                  color: Color(0xFFFEE2E2),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Icon(
-                  Icons.handshake_outlined,
-                  color: _primary,
-                  size: 26,
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                color: _white,
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                child: Row(
                   children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
-                          'OBJECTION HANDLING',
-                          style: TextStyle(
-                            fontSize: 10,
-                            fontWeight: FontWeight.bold,
-                            color: _primary,
-                            letterSpacing: 0.5,
-                          ),
-                        ),
-                        Text(
-                          '15 Min',
-                          style: TextStyle(
-                            fontSize: 11,
-                            color: _textLight,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 3),
-                    const Text(
-                      "Mastering the 'Too Expensive' Pivot",
-                      style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.bold,
-                        color: _textDark,
+                    GestureDetector(
+                      onTap: () => Navigator.pushNamed(context, '/manager-profile'),
+                      child: CircleAvatar(
+                        radius: 18,
+                        backgroundColor: _border,
+                        backgroundImage: _userHeadshot != null && _userHeadshot!.isNotEmpty
+                            ? NetworkImage(_userHeadshot!.startsWith('http') 
+                                ? _userHeadshot! 
+                                : 'https://millerstorm.tech$_userHeadshot')
+                            : null,
+                        child: _userHeadshot == null || _userHeadshot!.isEmpty
+                            ? Icon(Icons.person, color: _textLight, size: 20)
+                            : null,
                       ),
                     ),
-                    const SizedBox(height: 6),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: ClipRRect(
-                            borderRadius: BorderRadius.circular(3),
-                            child: LinearProgressIndicator(
-                              value: 0.30,
-                              backgroundColor: _border,
-                              valueColor: const AlwaysStoppedAnimation<Color>(_primary),
-                              minHeight: 4,
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            _userName ?? 'Manager',
+                            style: const TextStyle(
+                              color: _textDark,
+                              fontSize: 16,
+                              fontWeight: FontWeight.w700,
                             ),
                           ),
-                        ),
-                        const SizedBox(width: 8),
-                        const Text(
-                          '30%',
-                          style: TextStyle(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w600,
-                            color: _textLight,
+                          const Text(
+                            'Training Center',
+                            style: TextStyle(
+                              color: _textLight,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w400,
+                            ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
                   ],
                 ),
               ),
+              const Expanded(child: ManagerCoursesScreen()),
             ],
           ),
-          const SizedBox(height: 12),
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton(
-              onPressed: () {},
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.black,
-                padding: const EdgeInsets.symmetric(vertical: 12),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10),
-                ),
-              ),
-              child: const Text(
-                'Continue Module',
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                  color: _white,
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildLibraryItem(String title, String subtitle, IconData icon, bool isCompleted) {
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: _white,
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 46,
-            height: 46,
-            decoration: BoxDecoration(
-              color: isCompleted ? Color(0xFFD1FAE5) : Color(0xFFF3F4F6),
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: Icon(
-              icon,
-              color: isCompleted ? Color(0xFF10B981) : _textLight,
-              size: 22,
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                    color: _textDark,
-                  ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  subtitle,
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: _textLight,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          if (!isCompleted)
-            Icon(
-              Icons.play_circle_outline,
-              color: _textDark,
-              size: 26,
-            ),
-        ],
+        ),
+        bottomNavigationBar: _buildBottomNav(context),
       ),
     );
   }
@@ -464,25 +171,31 @@ class _ManagerTrainingScreenState extends State<ManagerTrainingScreen> {
   Widget _navItem(BuildContext context, IconData icon, String label, bool active, String? route) {
     return GestureDetector(
       onTap: route != null ? () => Navigator.pushReplacementNamed(context, route) : null,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, color: active ? _link : _textPlaceholder, size: 24),
-          const SizedBox(height: 4),
-          Text(label, style: TextStyle(fontSize: 11, color: active ? _link : _textPlaceholder, fontWeight: active ? FontWeight.w600 : FontWeight.normal)),
-        ],
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, color: active ? _primary : _textPlaceholder, size: 24),
+            const SizedBox(height: 4),
+            Text(label, style: TextStyle(fontSize: 11, color: active ? _primary : _textPlaceholder, fontWeight: active ? FontWeight.w600 : FontWeight.normal)),
+          ],
+        ),
       ),
     );
   }
 
   Widget _navItemActive(IconData icon, String label) {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Icon(icon, color: _link, size: 24),
-        const SizedBox(height: 4),
-        Text(label, style: const TextStyle(fontSize: 11, color: _link, fontWeight: FontWeight.w600)),
-      ],
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, color: _primary, size: 24),
+          const SizedBox(height: 4),
+          Text(label, style: const TextStyle(fontSize: 11, color: _primary, fontWeight: FontWeight.w600)),
+        ],
+      ),
     );
   }
 }

@@ -566,6 +566,7 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
       barrierDismissible: false,
       builder: (BuildContext dialogContext) => StatefulBuilder(
         builder: (context, setDialogState) => AlertDialog(
+          backgroundColor: _white,
           title: const Text('Create Playlist', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w600)),
           content: SingleChildScrollView(
             child: SizedBox(

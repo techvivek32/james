@@ -121,9 +121,7 @@ class _ManagerDashboardScreenState extends State<ManagerDashboardScreen> {
                         children: [
                           _buildAttentionRequired(),
                           const SizedBox(height: 24),
-                          _buildTopPerformers(),
-                          const SizedBox(height: 24),
-                          _buildRecentActivity(),
+                          _buildTeamProgress(),
                           const SizedBox(height: 16),
                         ],
                       ),
@@ -371,29 +369,17 @@ class _ManagerDashboardScreenState extends State<ManagerDashboardScreen> {
     );
   }
 
-  Widget _buildTopPerformers() {
+  Widget _buildTeamProgress() {
     return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            const Text(
-              'Top Performers',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-                color: _textDark,
-              ),
-            ),
-            Text(
-              'View All',
-              style: TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.w600,
-                color: _primary,
-              ),
-            ),
-          ],
+        const Text(
+          'Team Progress',
+          style: TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.bold,
+            color: _textDark,
+          ),
         ),
         const SizedBox(height: 12),
         Container(
@@ -411,9 +397,11 @@ class _ManagerDashboardScreenState extends State<ManagerDashboardScreen> {
           ),
           child: Column(
             children: [
-              _buildPerformerRow(1, 'Sarah Jenkins', '24 Deals', '\$124k'),
+              _buildProgressRow('Sarah Jenkins', 'Door Knocking 101', 85),
               const SizedBox(height: 16),
-              _buildPerformerRow(2, 'Marcus Chen', '19 Deals', '\$98k'),
+              _buildProgressRow('Marcus Chen', 'Sales Fundamentals', 62),
+              const SizedBox(height: 16),
+              _buildProgressRow('David Lopez', 'Door Knocking 101', 45),
             ],
           ),
         ),
@@ -421,170 +409,68 @@ class _ManagerDashboardScreenState extends State<ManagerDashboardScreen> {
     );
   }
 
-  Widget _buildPerformerRow(int rank, String name, String deals, String revenue) {
-    return Row(
-      children: [
-        Text(
-          '$rank',
-          style: TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.bold,
-            color: _textLight,
-          ),
-        ),
-        const SizedBox(width: 12),
-        CircleAvatar(
-          radius: 20,
-          backgroundColor: _border,
-          child: Icon(Icons.person, color: _textLight, size: 20),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                name,
-                style: const TextStyle(
-                  fontSize: 15,
-                  fontWeight: FontWeight.bold,
-                  color: _textDark,
-                ),
-              ),
-              const SizedBox(height: 2),
-              Text(
-                deals,
-                style: TextStyle(
-                  fontSize: 13,
-                  color: _textLight,
-                ),
-              ),
-            ],
-          ),
-        ),
-        Text(
-          revenue,
-          style: const TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.bold,
-            color: _primary,
-          ),
-        ),
-      ],
-    );
-  }
+  Widget _buildProgressRow(String name, String course, int progress) {
+    Color progressColor;
+    if (progress >= 80) {
+      progressColor = _success;
+    } else if (progress >= 50) {
+      progressColor = _warning;
+    } else {
+      progressColor = _primary;
+    }
 
-  Widget _buildRecentActivity() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
-          'Recent Activity',
-          style: TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.bold,
-            color: _textDark,
-          ),
-        ),
-        const SizedBox(height: 12),
-        _buildActivityItem(
-          '10 mins ago',
-          'David L.',
-          ' just closed a deal worth ',
-          '\$12,500.',
-          'Enterprise',
-          _primary,
-        ),
-        const SizedBox(height: 16),
-        _buildActivityItem(
-          '2 hours ago',
-          'System',
-          ' generated new weekly reports for all team leads.',
-          '',
-          null,
-          _textLight,
-        ),
-      ],
-    );
-  }
-
-  Widget _buildActivityItem(String time, String boldText, String normalText, String amount, String? tag, Color dotColor) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Container(
-          width: 8,
-          height: 8,
-          margin: const EdgeInsets.only(top: 5),
-          decoration: BoxDecoration(
-            color: dotColor,
-            shape: BoxShape.circle,
-          ),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                time,
-                style: TextStyle(
-                  fontSize: 12,
-                  color: _textLight,
-                ),
-              ),
-              const SizedBox(height: 4),
-              Row(
+        Row(
+          children: [
+            CircleAvatar(
+              radius: 18,
+              backgroundColor: _border,
+              child: Icon(Icons.person, color: _textLight, size: 18),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Expanded(
-                    child: RichText(
-                      text: TextSpan(
-                        style: TextStyle(
-                          fontSize: 14,
-                          color: _textMedium,
-                          height: 1.3,
-                        ),
-                        children: [
-                          TextSpan(
-                            text: boldText,
-                            style: const TextStyle(
-                              fontWeight: FontWeight.bold,
-                              color: _textDark,
-                            ),
-                          ),
-                          TextSpan(text: normalText),
-                          if (amount.isNotEmpty)
-                            TextSpan(
-                              text: amount,
-                              style: const TextStyle(
-                                fontWeight: FontWeight.bold,
-                                color: _textDark,
-                              ),
-                            ),
-                        ],
-                      ),
+                  Text(
+                    name,
+                    style: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.bold,
+                      color: _textDark,
                     ),
                   ),
-                  if (tag != null)
-                    Container(
-                      margin: const EdgeInsets.only(left: 8),
-                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                      decoration: BoxDecoration(
-                        color: _textLight.withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(4),
-                      ),
-                      child: Text(
-                        tag,
-                        style: TextStyle(
-                          fontSize: 10,
-                          fontWeight: FontWeight.w600,
-                          color: _textLight,
-                        ),
-                      ),
+                  const SizedBox(height: 2),
+                  Text(
+                    course,
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: _textLight,
                     ),
+                  ),
                 ],
               ),
-            ],
+            ),
+            Text(
+              '$progress%',
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.bold,
+                color: progressColor,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        ClipRRect(
+          borderRadius: BorderRadius.circular(4),
+          child: LinearProgressIndicator(
+            value: progress / 100,
+            minHeight: 6,
+            backgroundColor: _border,
+            valueColor: AlwaysStoppedAnimation<Color>(progressColor),
           ),
         ),
       ],
