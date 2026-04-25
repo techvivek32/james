@@ -87,13 +87,23 @@ export function ManagerOnlineTrainingPage(props: {
     }
   }, [publishedCourses]);
 
-  // Load playlists from localStorage
+  // Load playlists from database
   useEffect(() => {
-    const saved = localStorage.getItem('manager-playlists');
-    if (saved) {
-      setPlaylists(JSON.parse(saved));
+    if (props.currentUser?.id) {
+      fetch(`/api/playlists?managerId=${props.currentUser.id}`)
+        .then(res => res.json())
+        .then(data => {
+          console.log('Playlists loaded:', data);
+          // Convert MongoDB _id to id for compatibility
+          const formattedPlaylists = data.map((p: any) => ({
+            ...p,
+            id: p._id || p.id,
+          }));
+          setPlaylists(formattedPlaylists);
+        })
+        .catch(err => console.error('Failed to load playlists:', err));
     }
-  }, []);
+  }, [props.currentUser?.id]);
 
   // Load sales users under this manager
   useEffect(() => {
@@ -518,23 +528,40 @@ export function ManagerOnlineTrainingPage(props: {
               <button
                 type="button"
                 className="btn-primary btn-success"
-                onClick={() => {
+                onClick={async () => {
                   if (playlistName.trim() && selectedModules.size > 0) {
-                    const newPlaylist: Playlist = {
-                      id: Date.now().toString(),
-                      name: playlistName,
-                      courseId: selectedCourse.id,
-                      courseName: selectedCourse.title,
-                      selectedModules: Array.from(selectedModules),
-                      createdAt: new Date().toISOString()
-                    };
-                    const updatedPlaylists = [...playlists, newPlaylist];
-                    setPlaylists(updatedPlaylists);
-                    localStorage.setItem('manager-playlists', JSON.stringify(updatedPlaylists));
-                    setIsCreatePlaylistOpen(false);
-                    setPlaylistName('');
-                    setSelectedModules(new Set());
-                    alert('Playlist created successfully!');
+                    try {
+                      const response = await fetch('/api/playlists', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                          name: playlistName,
+                          courseId: selectedCourse.id,
+                          courseName: selectedCourse.title,
+                          selectedModules: Array.from(selectedModules),
+                          managerId: props.currentUser.id,
+                          managerName: props.currentUser.name,
+                        }),
+                      });
+                      
+                      if (response.ok) {
+                        const newPlaylist = await response.json();
+                        const formattedPlaylist = {
+                          ...newPlaylist,
+                          id: newPlaylist._id || newPlaylist.id,
+                        };
+                        setPlaylists([...playlists, formattedPlaylist]);
+                        setIsCreatePlaylistOpen(false);
+                        setPlaylistName('');
+                        setSelectedModules(new Set());
+                        alert('Playlist created successfully!');
+                      } else {
+                        alert('Failed to create playlist');
+                      }
+                    } catch (error) {
+                      console.error('Error creating playlist:', error);
+                      alert('Failed to create playlist');
+                    }
                   }
                 }}
                 disabled={!playlistName.trim() || selectedModules.size === 0}
@@ -625,24 +652,42 @@ export function ManagerOnlineTrainingPage(props: {
               <button
                 type="button"
                 className="btn-primary btn-success"
-                onClick={() => {
+                onClick={async () => {
                   if (playlistName.trim() && selectedModules.size > 0) {
-                    const updatedPlaylist: Playlist = {
-                      ...editingPlaylist,
-                      name: playlistName,
-                      selectedModules: Array.from(selectedModules)
-                    };
-                    const updatedPlaylists = playlists.map(p => 
-                      p.id === editingPlaylist.id ? updatedPlaylist : p
-                    );
-                    setPlaylists(updatedPlaylists);
-                    localStorage.setItem('manager-playlists', JSON.stringify(updatedPlaylists));
-                    setIsEditPlaylistOpen(false);
-                    setEditingPlaylist(null);
-                    setPlaylistName('');
-                    setSelectedModules(new Set());
-                    setSelectedCourse(null);
-                    alert('Playlist updated successfully!');
+                    try {
+                      const response = await fetch('/api/playlists', {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                          id: editingPlaylist._id || editingPlaylist.id,
+                          name: playlistName,
+                          selectedModules: Array.from(selectedModules),
+                        }),
+                      });
+                      
+                      if (response.ok) {
+                        const updatedPlaylist = await response.json();
+                        const formattedPlaylist = {
+                          ...updatedPlaylist,
+                          id: updatedPlaylist._id || updatedPlaylist.id,
+                        };
+                        const updatedPlaylists = playlists.map(p => 
+                          (p.id === editingPlaylist.id || p._id === editingPlaylist._id) ? formattedPlaylist : p
+                        );
+                        setPlaylists(updatedPlaylists);
+                        setIsEditPlaylistOpen(false);
+                        setEditingPlaylist(null);
+                        setPlaylistName('');
+                        setSelectedModules(new Set());
+                        setSelectedCourse(null);
+                        alert('Playlist updated successfully!');
+                      } else {
+                        alert('Failed to update playlist');
+                      }
+                    } catch (error) {
+                      console.error('Error updating playlist:', error);
+                      alert('Failed to update playlist');
+                    }
                   }
                 }}
                 disabled={!playlistName.trim() || selectedModules.size === 0}
@@ -1931,7 +1976,10 @@ export function ManagerOnlineTrainingPage(props: {
                                 .filter(p => p.status === 'published' && playlist.selectedModules.includes(p.id))
                                 .sort((a, b) => playlist.selectedModules.indexOf(a.id) - playlist.selectedModules.indexOf(b.id));
                               setActivePageId(playlistPages[0]?.id ?? null);
-                              setViewingPlaylist(playlist);
+                              setViewingPlaylist({
+                                ...playlist,
+                                id: playlist._id || playlist.id,
+                              });
                               setSelectedCourse(course);
                             }
                           }}
@@ -1958,7 +2006,10 @@ export function ManagerOnlineTrainingPage(props: {
                           type="button"
                           className="btn-secondary playlist-action-btn"
                           onClick={() => {
-                            setAssigningPlaylist(playlist);
+                            setAssigningPlaylist({
+                              ...playlist,
+                              id: playlist._id || playlist.id,
+                            });
                             setIsAssignModalOpen(true);
                           }}
                         >
@@ -1967,11 +2018,26 @@ export function ManagerOnlineTrainingPage(props: {
                         <button
                           type="button"
                           className="btn-ghost btn-danger playlist-action-btn"
-                          onClick={() => {
+                          onClick={async () => {
                             if (confirm('Delete this playlist?')) {
-                              const updated = playlists.filter(p => p.id !== playlist.id);
-                              setPlaylists(updated);
-                              localStorage.setItem('manager-playlists', JSON.stringify(updated));
+                              try {
+                                const response = await fetch(`/api/playlists?id=${playlist._id || playlist.id}`, {
+                                  method: 'DELETE',
+                                });
+                                
+                                if (response.ok) {
+                                  const updated = playlists.filter(p => 
+                                    (p.id !== playlist.id && p._id !== playlist._id)
+                                  );
+                                  setPlaylists(updated);
+                                  alert('Playlist deleted successfully!');
+                                } else {
+                                  alert('Failed to delete playlist');
+                                }
+                              } catch (error) {
+                                console.error('Error deleting playlist:', error);
+                                alert('Failed to delete playlist');
+                              }
                             }
                           }}
                         >
