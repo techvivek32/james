@@ -67,6 +67,50 @@ class _ProfileScreenState extends State<ProfileScreen> {
       final userStr = prefs.getString('user');
       if (userStr != null) {
         final user = jsonDecode(userStr);
+        final userId = user['id'] ?? user['_id'];
+        
+        // Fetch fresh data from API
+        try {
+          final response = await http.get(
+            Uri.parse('https://millerstorm.tech/api/users/$userId'),
+          );
+          
+          if (response.statusCode == 200) {
+            final freshUser = jsonDecode(response.body);
+            // Update SharedPreferences with fresh data
+            await prefs.setString('user', jsonEncode(freshUser));
+            
+            setState(() {
+              _userId = freshUser['id'] ?? freshUser['_id'];
+              _userName = freshUser['name'] ?? 'User';
+              _userEmail = freshUser['email'] ?? '';
+              _userRole = freshUser['role'] ?? 'Sales Rep';
+              _userPhone = freshUser['phone'] ?? '';
+              
+              // Parse territory string (format: "DFW, Texas · Lubbock, Texas")
+              if (freshUser['territory'] != null && freshUser['territory'].toString().isNotEmpty) {
+                _userTerritories = freshUser['territory']
+                    .toString()
+                    .split('·')
+                    .map((t) => t.trim())
+                    .where((t) => t.isNotEmpty)
+                    .toList();
+              } else {
+                _userTerritories = [];
+              }
+              
+              _userStrengths = freshUser['strengths'] ?? '';
+              _userWeaknesses = freshUser['weaknesses'] ?? '';
+              _userHeadshotUrl = freshUser['headshotUrl'] ?? '';
+            });
+            return;
+          }
+        } catch (e) {
+          print('Error fetching fresh user data: $e');
+          // Fall back to cached data if API fails
+        }
+        
+        // Use cached data if API call fails
         setState(() {
           _userId = user['id'] ?? user['_id'];
           _userName = user['name'] ?? 'User';
@@ -325,159 +369,164 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Widget _buildViewMode() {
-    return SingleChildScrollView(
-      child: Column(
-        children: [
-          Container(
-            width: double.infinity,
-            color: _primary,
-            padding: const EdgeInsets.only(bottom: 40),
-            child: Column(
-              children: [
-                Stack(
-                  children: [
-                    CircleAvatar(
-                      radius: 50,
-                      backgroundColor: _white.withOpacity(0.2),
-                      backgroundImage: _userHeadshotUrl.isNotEmpty
-                          ? NetworkImage('https://millerstorm.tech$_userHeadshotUrl')
-                          : null,
-                      child: _userHeadshotUrl.isEmpty
-                          ? Icon(Icons.person, color: _white, size: 50)
-                          : null,
-                    ),
-                    Positioned(
-                      bottom: 0,
-                      right: 0,
-                      child: GestureDetector(
-                        onTap: _isUploadingImage ? null : _pickAndUploadImage,
-                        child: Container(
-                          width: 36,
-                          height: 36,
-                          decoration: BoxDecoration(
-                            color: _white,
-                            shape: BoxShape.circle,
-                            border: Border.all(color: _primary, width: 2),
+    return RefreshIndicator(
+      onRefresh: _loadUserData,
+      color: _primary,
+      child: SingleChildScrollView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        child: Column(
+          children: [
+            Container(
+              width: double.infinity,
+              color: _primary,
+              padding: const EdgeInsets.only(bottom: 40),
+              child: Column(
+                children: [
+                  Stack(
+                    children: [
+                      CircleAvatar(
+                        radius: 50,
+                        backgroundColor: _white.withOpacity(0.2),
+                        backgroundImage: _userHeadshotUrl.isNotEmpty
+                            ? NetworkImage('https://millerstorm.tech$_userHeadshotUrl')
+                            : null,
+                        child: _userHeadshotUrl.isEmpty
+                            ? Icon(Icons.person, color: _white, size: 50)
+                            : null,
+                      ),
+                      Positioned(
+                        bottom: 0,
+                        right: 0,
+                        child: GestureDetector(
+                          onTap: _isUploadingImage ? null : _pickAndUploadImage,
+                          child: Container(
+                            width: 36,
+                            height: 36,
+                            decoration: BoxDecoration(
+                              color: _white,
+                              shape: BoxShape.circle,
+                              border: Border.all(color: _primary, width: 2),
+                            ),
+                            child: _isUploadingImage
+                                ? Padding(
+                                    padding: const EdgeInsets.all(8),
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                      color: _primary,
+                                    ),
+                                  )
+                                : Icon(Icons.camera_alt, color: _primary, size: 18),
                           ),
-                          child: _isUploadingImage
-                              ? Padding(
-                                  padding: const EdgeInsets.all(8),
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                    color: _primary,
-                                  ),
-                                )
-                              : Icon(Icons.camera_alt, color: _primary, size: 18),
                         ),
                       ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 16),
-                Text(
-                  _userName,
-                  style: const TextStyle(
-                    color: _white,
-                    fontSize: 24,
-                    fontWeight: FontWeight.bold,
+                    ],
                   ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  _userEmail,
-                  style: TextStyle(
-                    color: _white.withOpacity(0.9),
-                    fontSize: 14,
-                  ),
-                ),
-                const SizedBox(height: 12),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: _white.withOpacity(0.2),
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: Text(
-                    _userRole.toUpperCase(),
+                  const SizedBox(height: 16),
+                  Text(
+                    _userName,
                     style: const TextStyle(
                       color: _white,
-                      fontSize: 12,
+                      fontSize: 24,
                       fontWeight: FontWeight.bold,
-                      letterSpacing: 0.5,
                     ),
                   ),
-                ),
-              ],
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.all(20),
-            child: Column(
-              children: [
-                _buildMenuItem(
-                  icon: Icons.person_outline,
-                  title: 'Edit Profile',
-                  onTap: _enterEditMode,
-                ),
-                const SizedBox(height: 12),
-                _buildMenuItem(
-                  icon: Icons.notifications_outlined,
-                  title: 'Notifications',
-                  onTap: () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Coming Soon'),
-                        backgroundColor: Color(0xFFCB0002),
-                      ),
-                    );
-                  },
-                ),
-                const SizedBox(height: 12),
-                _buildMenuItem(
-                  icon: Icons.help_outline,
-                  title: 'Help & Support',
-                  onTap: () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Coming Soon'),
-                        backgroundColor: Color(0xFFCB0002),
-                      ),
-                    );
-                  },
-                ),
-                const SizedBox(height: 24),
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton(
-                    onPressed: _logout,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: _primary,
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
+                  const SizedBox(height: 4),
+                  Text(
+                    _userEmail,
+                    style: TextStyle(
+                      color: _white.withOpacity(0.9),
+                      fontSize: 14,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: _white.withOpacity(0.2),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Text(
+                      _userRole.toUpperCase(),
+                      style: const TextStyle(
+                        color: _white,
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: 0.5,
                       ),
                     ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: const [
-                        Icon(Icons.logout, color: _white, size: 20),
-                        SizedBox(width: 8),
-                        Text(
-                          'Logout',
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                            color: _white,
-                          ),
+                  ),
+                ],
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.all(20),
+              child: Column(
+                children: [
+                  _buildMenuItem(
+                    icon: Icons.person_outline,
+                    title: 'Edit Profile',
+                    onTap: _enterEditMode,
+                  ),
+                  const SizedBox(height: 12),
+                  _buildMenuItem(
+                    icon: Icons.notifications_outlined,
+                    title: 'Notifications',
+                    onTap: () {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Coming Soon'),
+                          backgroundColor: Color(0xFFCB0002),
                         ),
-                      ],
+                      );
+                    },
+                  ),
+                  const SizedBox(height: 12),
+                  _buildMenuItem(
+                    icon: Icons.help_outline,
+                    title: 'Help & Support',
+                    onTap: () {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Coming Soon'),
+                          backgroundColor: Color(0xFFCB0002),
+                        ),
+                      );
+                    },
+                  ),
+                  const SizedBox(height: 24),
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      onPressed: _logout,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: _primary,
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: const [
+                          Icon(Icons.logout, color: _white, size: 20),
+                          SizedBox(width: 8),
+                          Text(
+                            'Logout',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                              color: _white,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
