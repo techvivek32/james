@@ -9,6 +9,7 @@ import { enableGlobalAutoplay } from "../../utils/autoplayEnabler";
 
 type Playlist = {
   id: string;
+  _id?: string; // MongoDB ID
   name: string;
   courseId: string;
   courseName: string;
@@ -86,13 +87,23 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
       }
     }
   }, [courses]);
-  // Load playlists from localStorage
+  // Load playlists from database
   useEffect(() => {
-    const saved = localStorage.getItem('sales-playlists');
-    if (saved) {
-      setPlaylists(JSON.parse(saved));
+    if (user?.id) {
+      fetch(`/api/playlists?managerId=${user.id}`)
+        .then(res => res.json())
+        .then(data => {
+          console.log('Playlists loaded:', data);
+          // Convert MongoDB _id to id for compatibility
+          const formattedPlaylists = data.map((p: any) => ({
+            ...p,
+            id: p._id || p.id,
+          }));
+          setPlaylists(formattedPlaylists);
+        })
+        .catch(err => console.error('Failed to load playlists:', err));
     }
-  }, []);
+  }, [user?.id]);
 
   // Load assigned playlists from API
   useEffect(() => {
@@ -610,7 +621,10 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
                                 .filter(p => p.status === 'published' && playlist.selectedModules.includes(p.id))
                                 .sort((a, b) => playlist.selectedModules.indexOf(a.id) - playlist.selectedModules.indexOf(b.id));
                               setActivePageId(playlistPages[0]?.id ?? null);
-                              setViewingPlaylist(playlist);
+                              setViewingPlaylist({
+                                ...playlist,
+                                id: playlist._id || playlist.id,
+                              });
                               setSelectedCourse(course);
                             }
                           }}
@@ -620,11 +634,26 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
                         <button
                           type="button"
                           className="btn-ghost btn-danger playlist-action-btn"
-                          onClick={() => {
+                          onClick={async () => {
                             if (confirm('Delete this playlist?')) {
-                              const updated = playlists.filter(p => p.id !== playlist.id);
-                              setPlaylists(updated);
-                              localStorage.setItem('sales-playlists', JSON.stringify(updated));
+                              try {
+                                const response = await fetch(`/api/playlists?id=${playlist._id || playlist.id}`, {
+                                  method: 'DELETE',
+                                });
+                                
+                                if (response.ok) {
+                                  const updated = playlists.filter(p => 
+                                    (p.id !== playlist.id && p._id !== playlist._id)
+                                  );
+                                  setPlaylists(updated);
+                                  alert('Playlist deleted successfully!');
+                                } else {
+                                  alert('Failed to delete playlist');
+                                }
+                              } catch (error) {
+                                console.error('Error deleting playlist:', error);
+                                alert('Failed to delete playlist');
+                              }
                             }
                           }}
                         >
@@ -1217,23 +1246,40 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
                 <button
                   type="button"
                   className="btn-primary btn-success"
-                  onClick={() => {
-                    if (playlistName.trim() && selectedModules.size > 0) {
-                      const newPlaylist: Playlist = {
-                        id: Date.now().toString(),
-                        name: playlistName,
-                        courseId: selectedCourse.id,
-                        courseName: selectedCourse.title,
-                        selectedModules: Array.from(selectedModules),
-                        createdAt: new Date().toISOString()
-                      };
-                      const updatedPlaylists = [...playlists, newPlaylist];
-                      setPlaylists(updatedPlaylists);
-                      localStorage.setItem('sales-playlists', JSON.stringify(updatedPlaylists));
-                      setIsCreatePlaylistOpen(false);
-                      setPlaylistName('');
-                      setSelectedModules(new Set());
-                      alert('Playlist created successfully!');
+                  onClick={async () => {
+                    if (playlistName.trim() && selectedModules.size > 0 && user) {
+                      try {
+                        const response = await fetch('/api/playlists', {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({
+                            name: playlistName,
+                            courseId: selectedCourse.id,
+                            courseName: selectedCourse.title,
+                            selectedModules: Array.from(selectedModules),
+                            managerId: user.id,
+                            managerName: user.name,
+                          }),
+                        });
+                        
+                        if (response.ok) {
+                          const newPlaylist = await response.json();
+                          const formattedPlaylist = {
+                            ...newPlaylist,
+                            id: newPlaylist._id || newPlaylist.id,
+                          };
+                          setPlaylists([...playlists, formattedPlaylist]);
+                          setIsCreatePlaylistOpen(false);
+                          setPlaylistName('');
+                          setSelectedModules(new Set());
+                          alert('Playlist created successfully!');
+                        } else {
+                          alert('Failed to create playlist');
+                        }
+                      } catch (error) {
+                        console.error('Error creating playlist:', error);
+                        alert('Failed to create playlist');
+                      }
                     }
                   }}
                   disabled={!playlistName.trim() || selectedModules.size === 0}
