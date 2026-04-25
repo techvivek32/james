@@ -563,59 +563,64 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
 
     showDialog(
       context: context,
-      builder: (context) => StatefulBuilder(
+      barrierDismissible: false,
+      builder: (BuildContext dialogContext) => StatefulBuilder(
         builder: (context, setDialogState) => AlertDialog(
-          title: const Text('Create Playlist'),
+          title: const Text('Create Playlist', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w600)),
           content: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                TextField(
-                  decoration: const InputDecoration(
-                    labelText: 'Playlist Name',
-                    border: OutlineInputBorder(),
+            child: SizedBox(
+              width: MediaQuery.of(context).size.width * 0.9,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  TextField(
+                    decoration: const InputDecoration(
+                      labelText: 'Playlist Name',
+                      border: OutlineInputBorder(),
+                      hintText: 'Enter playlist name',
+                    ),
+                    onChanged: (value) {
+                      setDialogState(() => _playlistName = value);
+                    },
                   ),
-                  onChanged: (value) {
-                    setState(() => _playlistName = value);
-                    setDialogState(() => _playlistName = value);
-                  },
-                ),
-                const SizedBox(height: 16),
-                const Text(
-                  'Select Lessons & Quizzes',
-                  style: TextStyle(fontWeight: FontWeight.w600),
-                ),
-                const SizedBox(height: 8),
-                Container(
-                  constraints: const BoxConstraints(maxHeight: 300),
-                  decoration: BoxDecoration(
-                    border: Border.all(color: _border),
-                    borderRadius: BorderRadius.circular(8),
+                  const SizedBox(height: 16),
+                  const Text(
+                    'Select Lessons & Quizzes',
+                    style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
                   ),
-                  child: ListView(
-                    shrinkWrap: true,
-                    children: _buildModuleCheckboxes(setDialogState),
+                  const SizedBox(height: 8),
+                  Container(
+                    constraints: const BoxConstraints(maxHeight: 400),
+                    decoration: BoxDecoration(
+                      border: Border.all(color: _border),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: ListView(
+                      shrinkWrap: true,
+                      children: _buildModuleCheckboxes(setDialogState),
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
           actions: [
             TextButton(
-              onPressed: () => Navigator.pop(context),
+              onPressed: () => Navigator.of(dialogContext).pop(),
               child: const Text('Cancel'),
             ),
             ElevatedButton(
               onPressed: _playlistName.trim().isEmpty || _selectedModules.isEmpty
                   ? null
                   : () async {
-                      Navigator.pop(context);
+                      Navigator.of(dialogContext).pop();
                       await _createPlaylist();
                     },
               style: ElevatedButton.styleFrom(
                 backgroundColor: _primary,
                 foregroundColor: _white,
+                disabledBackgroundColor: _border,
               ),
               child: const Text('Create Playlist'),
             ),
