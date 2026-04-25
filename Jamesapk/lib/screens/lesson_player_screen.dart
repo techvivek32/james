@@ -13,6 +13,7 @@ class LessonPlayerScreen extends StatefulWidget {
   final String courseTitle;
   final String lessonId;
   final String lessonTitle;
+  final List<String>? playlistModules;
 
   const LessonPlayerScreen({
     super.key,
@@ -20,6 +21,7 @@ class LessonPlayerScreen extends StatefulWidget {
     required this.courseTitle,
     required this.lessonId,
     required this.lessonTitle,
+    this.playlistModules,
   });
 
   @override
@@ -76,6 +78,11 @@ class _LessonPlayerScreenState extends State<LessonPlayerScreen> {
           page['status'] == 'published'
         ).toList();
         
+        // If viewing a playlist, filter to only playlist modules
+        if (widget.playlistModules != null) {
+          lessons = lessons.where((page) => widget.playlistModules!.contains(page['id'])).toList();
+        }
+        
         // Sort pages by folder order to ensure quizzes appear in correct sequence
         final folders = courseData['folders'] as List<dynamic>? ?? [];
         if (folders.isNotEmpty) {
@@ -107,6 +114,9 @@ class _LessonPlayerScreenState extends State<LessonPlayerScreen> {
         }
         
         print('📚 Total pages loaded: ${lessons.length}');
+        if (widget.playlistModules != null) {
+          print('🎵 Playlist mode: showing ${lessons.length} modules');
+        }
         for (var i = 0; i < lessons.length; i++) {
           print('  [$i] ${lessons[i]['title']} - isQuiz: ${lessons[i]['isQuiz']} - folderId: ${lessons[i]['folderId']}');
         }
@@ -159,6 +169,9 @@ class _LessonPlayerScreenState extends State<LessonPlayerScreen> {
         print('🎥 Video URL: ${lesson?['videoUrl']}');
         print('📝 Is Quiz: ${lesson?['isQuiz']}');
         print('📍 Current index: $currentIndex of ${lessons.length}');
+        if (widget.playlistModules != null) {
+          print('🎵 Playlist: ${widget.playlistModules!.length} total modules');
+        }
         if (currentIndex < lessons.length - 1) {
           print('➡️ Next will be: ${lessons[currentIndex + 1]['title']} (isQuiz: ${lessons[currentIndex + 1]['isQuiz']})');
         }
@@ -384,15 +397,17 @@ class _LessonPlayerScreenState extends State<LessonPlayerScreen> {
               courseTitle: widget.courseTitle,
               lessonId: nextLesson['id'],
               lessonTitle: nextLesson['title'],
+              playlistModules: widget.playlistModules,
             ),
           ),
         );
       } else {
         // Last lesson - go back to course detail
         Navigator.pop(context);
+        final message = widget.playlistModules != null ? '🎉 Playlist completed!' : '🎉 Course completed!';
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('🎉 Course completed!'),
+          SnackBar(
+            content: Text(message),
             backgroundColor: Colors.green,
           ),
         );

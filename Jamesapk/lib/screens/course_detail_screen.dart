@@ -7,11 +7,13 @@ import 'lesson_player_screen.dart';
 class CourseDetailScreen extends StatefulWidget {
   final String courseId;
   final String courseTitle;
+  final List<String>? playlistModules;
 
   const CourseDetailScreen({
     super.key,
     required this.courseId,
     required this.courseTitle,
+    this.playlistModules,
   });
 
   @override
@@ -32,14 +34,28 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
   int _completedLessons = 0;
   int _totalLessons = 0;
   int _progressPercent = 0;
+  String? _userId;
   
   // Track which sections are expanded
   Set<int> _expandedSections = <int>{};
+  
+  // Playlist creation
+  bool _isCreatingPlaylist = false;
+  String _playlistName = '';
+  Set<String> _selectedModules = <String>{};
 
   @override
   void initState() {
     super.initState();
+    _loadUserId();
     _fetchCourseDetail();
+  }
+
+  Future<void> _loadUserId() async {
+    final user = await AuthService.getStoredUser();
+    setState(() {
+      _userId = user?['id'] ?? user?['_id'] ?? '';
+    });
   }
 
   Future<void> _fetchCourseDetail() async {
@@ -95,6 +111,13 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
           widget.courseTitle,
           style: const TextStyle(color: _textDark, fontSize: 18, fontWeight: FontWeight.w700),
         ),
+        actions: widget.playlistModules == null ? [
+          IconButton(
+            icon: const Icon(Icons.playlist_add, color: _textDark),
+            onPressed: () => _showCreatePlaylistDialog(),
+            tooltip: 'Make Playlist',
+          ),
+        ] : null,
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator(color: _primary))
@@ -103,10 +126,11 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  _buildProgressSection(),
-                  const SizedBox(height: 24),
-                  _buildContinueButton(),
-                  const SizedBox(height: 32),
+                  if (widget.playlistModules == null) _buildProgressSection(),
+                  if (widget.playlistModules == null) const SizedBox(height: 24),
+                  if (widget.playlistModules == null) _buildContinueButton(),
+                  if (widget.playlistModules == null) const SizedBox(height: 32),
+                  if (widget.playlistModules != null) const SizedBox(height: 16),
                   _buildCourseContent(),
                 ],
               ),
@@ -219,6 +243,7 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
                   courseTitle: widget.courseTitle,
                   lessonId: firstLesson['id'] ?? '',
                   lessonTitle: firstLesson['title'] ?? 'First Lesson',
+                  playlistModules: widget.playlistModules,
                 ),
               ),
             );
@@ -249,7 +274,12 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
 
     // Get folders from course data
     final folders = _course!['folders'] as List<dynamic>? ?? [];
-    final pages = _course!['pages'] as List<dynamic>? ?? [];
+    var pages = _course!['pages'] as List<dynamic>? ?? [];
+    
+    // Filter pages if viewing a playlist
+    if (widget.playlistModules != null) {
+      pages = pages.where((page) => widget.playlistModules!.contains(page['id'])).toList();
+    }
     
     // If no folders, create sections from lessonNames or pages
     List<Map<String, dynamic>> sections = [];
@@ -263,7 +293,7 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
           'lessons': folderPages.length,
           'pages': folderPages,
         };
-      }).toList();
+      }).where((section) => section['lessons'] > 0).toList();
     } else if (pages.isNotEmpty) {
       // Group pages by some logic or show all as one section
       sections = [
@@ -411,6 +441,7 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
                                     courseTitle: widget.courseTitle,
                                     lessonId: page['id'] ?? '',
                                     lessonTitle: page['title'] ?? 'Lesson ${pageIndex + 1}',
+                                    playlistModules: widget.playlistModules,
                                   ),
                                 ),
                               );
@@ -522,5 +553,193 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
         ),
       ],
     );
+  }
+
+  void _showCreatePlaylistDialog() {
+    setState(() {
+      _playlistName = '';
+      _selectedModules.clear();
+    });
+
+    showDialog(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: const Text('Create Playlist'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                TextField(
+                  decoration: const InputDecoration(
+                    labelText: 'Playlist Name',
+                    border: OutlineInputBorder(),
+                  ),
+                  onChanged: (value) {
+                    setState(() => _playlistName = value);
+                    setDialogState(() => _playlistName = value);
+                  },
+                ),
+                const SizedBox(height: 16),
+                const Text(
+                  'Select Lessons & Quizzes',
+                  style: TextStyle(fontWeight: FontWeight.w600),
+                ),
+                const SizedBox(height: 8),
+                Container(
+                  constraints: const BoxConstraints(maxHeight: 300),
+                  decoration: BoxDecoration(
+                    border: Border.all(color: _border),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: ListView(
+                    shrinkWrap: true,
+                    children: _buildModuleCheckboxes(setDialogState),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: _playlistName.trim().isEmpty || _selectedModules.isEmpty
+                  ? null
+                  : () async {
+                      Navigator.pop(context);
+                      await _createPlaylist();
+                    },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: _primary,
+                foregroundColor: _white,
+              ),
+              child: const Text('Create Playlist'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  List<Widget> _buildModuleCheckboxes(StateSetter setDialogState) {
+    if (_course == null) return [];
+
+    final pages = _course!['pages'] as List<dynamic>? ?? [];
+    final folders = _course!['folders'] as List<dynamic>? ?? [];
+
+    List<Widget> widgets = [];
+
+    // Pages without folders
+    for (var page in pages.where((p) => p['folderId'] == null)) {
+      widgets.add(
+        CheckboxListTile(
+          title: Text(page['title'] ?? 'Untitled'),
+          value: _selectedModules.contains(page['id']),
+          onChanged: (bool? value) {
+            setDialogState(() {
+              if (value == true) {
+                _selectedModules.add(page['id']);
+              } else {
+                _selectedModules.remove(page['id']);
+              }
+            });
+            setState(() {});
+          },
+        ),
+      );
+    }
+
+    // Folders with their pages
+    for (var folder in folders) {
+      final folderPages = pages.where((p) => p['folderId'] == folder['id']).toList();
+      if (folderPages.isEmpty) continue;
+
+      widgets.add(
+        Container(
+          color: _bg,
+          child: ListTile(
+            title: Text(
+              '📁 ${folder['title']}',
+              style: const TextStyle(fontWeight: FontWeight.w600),
+            ),
+            dense: true,
+          ),
+        ),
+      );
+
+      for (var page in folderPages) {
+        widgets.add(
+          Padding(
+            padding: const EdgeInsets.only(left: 16),
+            child: CheckboxListTile(
+              title: Text(
+                '${page['isQuiz'] == true ? '📝' : '📄'} ${page['title'] ?? 'Untitled'}',
+                style: const TextStyle(fontSize: 14),
+              ),
+              value: _selectedModules.contains(page['id']),
+              onChanged: (bool? value) {
+                setDialogState(() {
+                  if (value == true) {
+                    _selectedModules.add(page['id']);
+                  } else {
+                    _selectedModules.remove(page['id']);
+                  }
+                });
+                setState(() {});
+              },
+            ),
+          ),
+        );
+      }
+    }
+
+    return widgets;
+  }
+
+  Future<void> _createPlaylist() async {
+    if (_userId == null || _userId!.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('User not logged in')),
+      );
+      return;
+    }
+
+    try {
+      final user = await AuthService.getStoredUser();
+      final response = await http.post(
+        Uri.parse('https://millerstorm.tech/api/playlists'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'name': _playlistName,
+          'courseId': widget.courseId,
+          'courseName': widget.courseTitle,
+          'selectedModules': _selectedModules.toList(),
+          'managerId': _userId,
+          'managerName': user?['name'] ?? 'User',
+        }),
+      );
+
+      if (response.statusCode == 201) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Playlist created successfully!'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Failed to create playlist')),
+        );
+      }
+    } catch (e) {
+      print('Error creating playlist: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Error creating playlist')),
+      );
+    }
   }
 }
