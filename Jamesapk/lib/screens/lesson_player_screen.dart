@@ -190,6 +190,13 @@ class _LessonPlayerScreenState extends State<LessonPlayerScreen> {
       ..setBackgroundColor(Colors.black)
       ..enableZoom(false)
       ..setUserAgent('Mozilla/5.0 (Linux; Android 10) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.120 Mobile Safari/537.36')
+      ..addJavaScriptChannel(
+        'VideoEndChannel',
+        onMessageReceived: (JavaScriptMessage message) {
+          print('🎬 Video ended - auto-advancing to next lesson');
+          _markCompleteAndNext();
+        },
+      )
       ..setNavigationDelegate(
         NavigationDelegate(
           onPageStarted: (String url) {
@@ -197,7 +204,7 @@ class _LessonPlayerScreenState extends State<LessonPlayerScreen> {
           },
           onPageFinished: (String url) {
             print('✅ Video page loaded: $url');
-            // Inject JavaScript to prevent auto-pause
+            // Inject JavaScript to detect video end and auto-advance
             _webViewController?.runJavaScript('''
               // Disable media session handlers that cause auto-pause
               if ('mediaSession' in navigator) {
@@ -212,6 +219,14 @@ class _LessonPlayerScreenState extends State<LessonPlayerScreen> {
                   video.setAttribute('playsinline', 'true');
                   video.setAttribute('webkit-playsinline', 'true');
                   video.removeAttribute('controls');
+                  
+                  // Listen for video end event
+                  video.addEventListener('ended', function() {
+                    console.log('Video ended - notifying Flutter');
+                    if (window.VideoEndChannel) {
+                      window.VideoEndChannel.postMessage('ended');
+                    }
+                  });
                   
                   // Re-add controls after a delay
                   setTimeout(function() {
