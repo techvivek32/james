@@ -82,87 +82,34 @@ class _ManagerPlannerScreenState extends State<ManagerPlannerScreen> {
         child: Column(
           children: [
             Expanded(
-              child: SingleChildScrollView(
+              child: Center(
                 child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.center,
                   children: [
+                    Icon(
+                      Icons.calendar_today,
+                      size: 100,
+                      color: _textLight.withOpacity(0.3),
+                    ),
+                    const SizedBox(height: 24),
+                    const Text(
+                      'Coming Soon',
+                      style: TextStyle(
+                        fontSize: 32,
+                        fontWeight: FontWeight.w800,
+                        color: _textDark,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
                     Padding(
-                      padding: const EdgeInsets.all(20),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          const Text(
-                            'Team Business Plans',
-                            style: TextStyle(
-                              fontSize: 22,
-                              fontWeight: FontWeight.bold,
-                              color: _textDark,
-                            ),
-                          ),
-                          Icon(Icons.more_vert, color: _textDark, size: 24),
-                        ],
-                      ),
-                    ),
-                    Container(
-                      width: double.infinity,
-                      color: _white,
-                      padding: const EdgeInsets.all(20),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text(
-                            'TEAM TOTALS',
-                            style: TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.bold,
-                              color: _textDark,
-                              letterSpacing: 0.5,
-                            ),
-                          ),
-                          const SizedBox(height: 16),
-                          _buildTeamTotalsCard(),
-                          const SizedBox(height: 20),
-                          _buildVolumeTargets(),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Container(
-                      color: _white,
-                      padding: const EdgeInsets.all(20),
-                      child: Column(
-                        children: [
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              const Text(
-                                'SALES TEAM PLANS',
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.bold,
-                                  color: _textDark,
-                                  letterSpacing: 0.5,
-                                ),
-                              ),
-                              Row(
-                                children: [
-                                  Icon(Icons.add, color: _primary, size: 18),
-                                  const SizedBox(width: 4),
-                                  Text(
-                                    'Add Rep',
-                                    style: TextStyle(
-                                      fontSize: 14,
-                                      fontWeight: FontWeight.w600,
-                                      color: _primary,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 16),
-                          _buildRepCard(),
-                        ],
+                      padding: const EdgeInsets.symmetric(horizontal: 48),
+                      child: Text(
+                        'Team Business Planner feature is under development',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontSize: 16,
+                          color: _textLight,
+                        ),
                       ),
                     ),
                   ],

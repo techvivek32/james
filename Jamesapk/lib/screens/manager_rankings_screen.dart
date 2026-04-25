@@ -98,27 +98,35 @@ class _ManagerRankingsScreenState extends State<ManagerRankingsScreen> {
         child: Column(
           children: [
             Expanded(
-              child: SingleChildScrollView(
+              child: Center(
                 child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Padding(
-                      padding: const EdgeInsets.all(20),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          _buildHeader(),
-                          const SizedBox(height: 20),
-                          _buildFilterTabs(),
-                          const SizedBox(height: 16),
-                          _buildMetricsRow(),
-                        ],
+                    Icon(
+                      Icons.emoji_events_outlined,
+                      size: 100,
+                      color: _textLight.withOpacity(0.3),
+                    ),
+                    const SizedBox(height: 24),
+                    const Text(
+                      'Coming Soon',
+                      style: TextStyle(
+                        fontSize: 32,
+                        fontWeight: FontWeight.w800,
+                        color: _textDark,
                       ),
                     ),
-                    _buildTopThree(),
+                    const SizedBox(height: 12),
                     Padding(
-                      padding: const EdgeInsets.all(20),
-                      child: _buildLeaderboard(),
+                      padding: const EdgeInsets.symmetric(horizontal: 48),
+                      child: Text(
+                        'Rankings feature is under development',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontSize: 16,
+                          color: _textLight,
+                        ),
+                      ),
                     ),
                   ],
                 ),
