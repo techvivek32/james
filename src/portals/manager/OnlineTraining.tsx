@@ -8,6 +8,7 @@ import { PlaybookTimer } from "../../components/PlaybookTimer";
 
 type Playlist = {
   id: string;
+  _id?: string; // MongoDB ID
   name: string;
   courseId: string;
   courseName: string;
