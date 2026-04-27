@@ -205,6 +205,45 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
     }
   }
 
+  // Build styled text with red @ mentions
+  TextSpan _buildStyledText(String text) {
+    final List<TextSpan> spans = [];
+    final RegExp mentionRegExp = RegExp(r'@\w+');
+    int start = 0;
+
+    for (final Match match in mentionRegExp.allMatches(text)) {
+      // Add text before the mention
+      if (match.start > start) {
+        spans.add(TextSpan(
+          text: text.substring(start, match.start),
+          style: const TextStyle(color: Color(0xFF111827), fontSize: 16),
+        ));
+      }
+
+      // Add the mention in red
+      spans.add(TextSpan(
+        text: match.group(0),
+        style: const TextStyle(
+          color: Color(0xFFCB0002),
+          fontSize: 16,
+          fontWeight: FontWeight.w600,
+        ),
+      ));
+
+      start = match.end;
+    }
+
+    // Add remaining text
+    if (start < text.length) {
+      spans.add(TextSpan(
+        text: text.substring(start),
+        style: const TextStyle(color: Color(0xFF111827), fontSize: 16),
+      ));
+    }
+
+    return TextSpan(children: spans);
+  }
+
   void _insertMention(String name) {
     final text = _messageController.text;
     final cursorPosition = _messageController.selection.baseOffset;
@@ -656,15 +695,22 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
                     constraints: const BoxConstraints(maxHeight: 200),
                     margin: const EdgeInsets.only(bottom: 8),
                     decoration: BoxDecoration(
-                      color: const Color(0xFF1F2937),
+                      color: Colors.white,
                       borderRadius: BorderRadius.circular(12),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.1),
+                          blurRadius: 8,
+                          offset: const Offset(0, -2),
+                        ),
+                      ],
                     ),
                     child: _loadingMembers
                         ? const Padding(
                             padding: EdgeInsets.all(16),
                             child: Center(
                               child: CircularProgressIndicator(
-                                color: Colors.white,
+                                color: Color(0xFFCB0002),
                                 strokeWidth: 2,
                               ),
                             ),
@@ -675,7 +721,7 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
                                 child: Text(
                                   'No members found',
                                   style: const TextStyle(
-                                    color: Colors.white70,
+                                    color: Color(0xFF6B7280),
                                     fontSize: 14,
                                   ),
                                   textAlign: TextAlign.center,
@@ -693,21 +739,21 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
                                     dense: true,
                                     leading: CircleAvatar(
                                       radius: 18,
-                                      backgroundColor: const Color(0xFF374151),
+                                      backgroundColor: const Color(0xFFF3F4F6),
                                       backgroundImage: headshotUrl.isNotEmpty
                                           ? NetworkImage('https://millerstorm.tech$headshotUrl')
                                           : null,
                                       child: headshotUrl.isEmpty
                                           ? Text(
                                               name[0].toUpperCase(),
-                                              style: const TextStyle(color: Colors.white, fontSize: 14),
+                                              style: const TextStyle(color: Color(0xFF6B7280), fontSize: 14),
                                             )
                                           : null,
                                     ),
                                     title: Text(
                                       name,
                                       style: const TextStyle(
-                                        color: Colors.white,
+                                        color: Color(0xFF111827),
                                         fontSize: 14,
                                         fontWeight: FontWeight.w500,
                                       ),
@@ -802,8 +848,15 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
                           Expanded(
                             child: TextField(
                               controller: _messageController,
+                              style: const TextStyle(
+                                color: Color(0xFF111827),
+                                fontSize: 16,
+                              ),
                               decoration: InputDecoration(
                                 hintText: 'Type a message...',
+                                hintStyle: const TextStyle(
+                                  color: Color(0xFF9CA3AF),
+                                ),
                                 border: OutlineInputBorder(
                                   borderRadius: BorderRadius.circular(24),
                                   borderSide: const BorderSide(color: Color(0xFFE5E7EB)),
