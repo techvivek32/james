@@ -176,34 +176,41 @@ class _CoursesScreenState extends State<CoursesScreen> with SingleTickerProvider
     if (_courses.isEmpty) {
       return const Center(child: Text('No courses available'));
     }
-    return ListView.builder(
-      padding: const EdgeInsets.all(16),
-      itemCount: _courses.length,
-      itemBuilder: (context, index) {
-        final course = _courses[index];
-        return Padding(
-          padding: const EdgeInsets.only(bottom: 16),
-          child: GestureDetector(
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => CourseDetailScreen(
-                    courseId: course['id'] ?? '',
-                    courseTitle: course['title'] ?? 'Course',
-                  ),
-                ),
-              ).then((_) => _loadData());
-            },
-            child: _buildCourseCard(
-              course['title'] ?? 'Untitled',
-              '${course['progress']?['progressPercent'] ?? 0}%',
-              _getCourseIcon(course['icon']),
-              course['coverImageUrl'],
-            ),
-          ),
-        );
+    return RefreshIndicator(
+      color: _primary,
+      onRefresh: () async {
+        setState(() => _isLoading = true);
+        await _loadData();
       },
+      child: ListView.builder(
+        padding: const EdgeInsets.all(16),
+        itemCount: _courses.length,
+        itemBuilder: (context, index) {
+          final course = _courses[index];
+          return Padding(
+            padding: const EdgeInsets.only(bottom: 16),
+            child: GestureDetector(
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => CourseDetailScreen(
+                      courseId: course['id'] ?? '',
+                      courseTitle: course['title'] ?? 'Course',
+                    ),
+                  ),
+                ).then((_) => _loadData());
+              },
+              child: _buildCourseCard(
+                course['title'] ?? 'Untitled',
+                '${course['progress']?['progressPercent'] ?? 0}%',
+                _getCourseIcon(course['icon']),
+                course['coverImageUrl'],
+              ),
+            ),
+          );
+        },
+      ),
     );
   }
 
