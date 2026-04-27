@@ -31,6 +31,8 @@ export function StormChatManagement() {
   const [selectedGroup, setSelectedGroup] = useState<ChatGroup | null>(null);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
+  const [draggedGroupId, setDraggedGroupId] = useState<string | null>(null);
+  const [dragOverGroupId, setDragOverGroupId] = useState<string | null>(null);
   
   // Form states
   const [groupName, setGroupName] = useState("");
@@ -263,6 +265,50 @@ export function StormChatManagement() {
 
   function deselectAll() {
     setSelectedMembers([]);
+  }
+
+  function handleGroupDragStart(e: React.DragEvent, groupId: string) {
+    setDraggedGroupId(groupId);
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', groupId);
+  }
+
+  function handleGroupDragEnd() {
+    setDraggedGroupId(null);
+    setDragOverGroupId(null);
+  }
+
+  function handleGroupDragOver(e: React.DragEvent, groupId: string) {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    if (draggedGroupId && draggedGroupId !== groupId) {
+      setDragOverGroupId(groupId);
+    }
+  }
+
+  function handleGroupDrop(e: React.DragEvent, targetGroupId: string) {
+    e.preventDefault();
+    if (!draggedGroupId || draggedGroupId === targetGroupId) {
+      setDraggedGroupId(null);
+      setDragOverGroupId(null);
+      return;
+    }
+    const reordered = [...groups];
+    const fromIndex = reordered.findIndex(g => g._id === draggedGroupId);
+    const toIndex = reordered.findIndex(g => g._id === targetGroupId);
+    if (fromIndex === -1 || toIndex === -1) return;
+    const [moved] = reordered.splice(fromIndex, 1);
+    reordered.splice(toIndex, 0, moved);
+    setGroups(reordered);
+    setDraggedGroupId(null);
+    setDragOverGroupId(null);
+
+    // Persist new order to DB
+    fetch('/api/storm-chat/groups/reorder', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ orderedIds: reordered.map(g => g._id) })
+    }).catch(err => console.error('Failed to save group order:', err));
   }
 
   function renderUserSelection() {
@@ -658,32 +704,56 @@ export function StormChatManagement() {
               {groups.map(group => (
                 <div 
                   key={group._id} 
+                  draggable={true}
+                  onDragStart={(e) => handleGroupDragStart(e, group._id)}
+                  onDragEnd={handleGroupDragEnd}
+                  onDragOver={(e) => handleGroupDragOver(e, group._id)}
+                  onDrop={(e) => handleGroupDrop(e, group._id)}
                   style={{ 
                     padding: 12, 
                     display: 'flex', 
                     flexDirection: 'column',
                     gap: 10,
-                    border: '1px solid #e5e7eb',
+                    border: dragOverGroupId === group._id ? '2px dashed #DC2626' : '1px solid #e5e7eb',
                     borderRadius: 10,
-                    backgroundColor: '#fff',
+                    backgroundColor: dragOverGroupId === group._id ? '#fef2f2' : '#fff',
                     transition: 'all 0.2s',
                     position: 'relative',
-                    cursor: 'pointer'
+                    cursor: 'grab',
+                    opacity: draggedGroupId === group._id ? 0.45 : 1,
+                    transform: draggedGroupId === group._id ? 'rotate(2deg) scale(0.97)' : 'none',
                   }}
                   onClick={() => setSelectedGroup(group)}
                   onMouseEnter={(e) => {
-                    e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.1)';
-                    e.currentTarget.style.borderColor = '#d1d5db';
-                    e.currentTarget.style.transform = 'translateY(-2px)';
+                    if (!draggedGroupId) {
+                      e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.1)';
+                      e.currentTarget.style.borderColor = '#d1d5db';
+                      e.currentTarget.style.transform = 'translateY(-2px)';
+                    }
                   }}
                   onMouseLeave={(e) => {
-                    e.currentTarget.style.boxShadow = 'none';
-                    e.currentTarget.style.borderColor = '#e5e7eb';
-                    e.currentTarget.style.transform = 'translateY(0)';
+                    if (!draggedGroupId) {
+                      e.currentTarget.style.boxShadow = 'none';
+                      e.currentTarget.style.borderColor = '#e5e7eb';
+                      e.currentTarget.style.transform = 'translateY(0)';
+                    }
                   }}
                 >
                   {/* Header with Image and Actions */}
                   <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+                    {/* Drag handle */}
+                    <div style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      color: '#d1d5db',
+                      fontSize: 16,
+                      cursor: 'grab',
+                      paddingTop: 2,
+                      flexShrink: 0,
+                      userSelect: 'none'
+                    }} title="Drag to reorder">
+                      ⠿
+                    </div>
                     {/* Group Image */}
                     <div style={{ 
                       width: 48, 

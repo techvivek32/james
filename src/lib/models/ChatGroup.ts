@@ -8,6 +8,7 @@ export interface IChatGroup extends Document {
   admins: string[];
   onlyAdminCanChat: boolean;
   createdBy: string;
+  order: number;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -41,6 +42,10 @@ const ChatGroupSchema = new Schema<IChatGroup>(
     createdBy: {
       type: String,
       required: true
+    },
+    order: {
+      type: Number,
+      default: 0
     }
   },
   {
