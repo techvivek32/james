@@ -45,6 +45,7 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
   List<dynamic> _allMembers = [];
   int _mentionStartIndex = -1;
   String _mentionQuery = '';
+  bool _loadingMembers = true;
 
   bool get canSendMessage {
     final onlyAdminCanChat = widget.group['onlyAdminCanChat'] ?? false;
@@ -76,7 +77,7 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
     _fetchMessages();
     _startPolling();
     _markAsRead();
-    _fetchGroupMembers();
+    _fetchGroupMembers(); // Fetch members immediately on screen load
     _messageController.addListener(_onMessageTextChanged);
   }
 
@@ -102,21 +103,21 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
   }
 
   Future<void> _fetchGroupMembers() async {
+    setState(() {
+      _loadingMembers = true;
+    });
+    
     try {
       final members = List<String>.from(widget.group['members'] ?? []);
-      print('🔵 Fetching ${members.length} group members');
       final List<dynamic> memberDetails = [];
       
       for (String memberId in members) {
         try {
-          print('🔵 Fetching member: $memberId');
           final response = await http.get(
             Uri.parse('https://millerstorm.tech/api/users/by-mongo-id/$memberId'),
           );
-          print('🔵 Member $memberId response: ${response.statusCode}');
           if (response.statusCode == 200) {
             final userData = json.decode(response.body);
-            print('🔵 Member data: ${userData['name']}');
             memberDetails.add(userData);
           }
         } catch (e) {
@@ -126,10 +127,22 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
       
       setState(() {
         _allMembers = memberDetails;
+        _loadingMembers = false;
+        // Update filtered members if mention list is showing
+        if (_showMentionList) {
+          _filteredMembers = _mentionQuery.isEmpty 
+              ? List.from(_allMembers)
+              : _allMembers.where((member) {
+                  final name = (member['name'] ?? '').toLowerCase();
+                  return name.contains(_mentionQuery);
+                }).toList();
+        }
       });
-      print('🔵 Loaded ${memberDetails.length} group members: ${memberDetails.map((m) => m['name']).toList()}');
     } catch (e) {
       print('❌ Error fetching group members: $e');
+      setState(() {
+        _loadingMembers = false;
+      });
     }
   }
 
@@ -137,36 +150,44 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
     final text = _messageController.text;
     final cursorPosition = _messageController.selection.baseOffset;
     
-    print('🔵 Text changed: "$text", cursor: $cursorPosition');
+    if (cursorPosition < 0 || text.isEmpty) {
+      setState(() {
+        _showMentionList = false;
+        _filteredMembers = [];
+      });
+      return;
+    }
     
-    if (cursorPosition < 0) return;
+    if (!text.contains('@')) {
+      setState(() {
+        _showMentionList = false;
+        _filteredMembers = [];
+      });
+      return;
+    }
     
     // Find the last @ before cursor
     int lastAtIndex = -1;
     for (int i = cursorPosition - 1; i >= 0; i--) {
       if (text[i] == '@') {
         lastAtIndex = i;
-        print('🔵 Found @ at index $i');
         break;
       }
       if (text[i] == ' ' || text[i] == '\n') {
-        print('🔵 Found space/newline at index $i, stopping search');
         break;
       }
     }
     
     if (lastAtIndex != -1) {
-      // Extract query after @
-      final query = text.substring(lastAtIndex + 1, cursorPosition).toLowerCase();
-      print('🔵 Mention query: "$query"');
+      final query = text.substring(lastAtIndex + 1, cursorPosition).toLowerCase().trim();
       
-      // Filter members
-      final filtered = _allMembers.where((member) {
-        final name = (member['name'] ?? '').toLowerCase();
-        return name.contains(query);
-      }).toList();
-      
-      print('🔵 Filtered ${filtered.length} members: ${filtered.map((m) => m['name']).toList()}');
+      // Filter members - if query is empty, show all members
+      final filtered = query.isEmpty 
+          ? List.from(_allMembers)
+          : _allMembers.where((member) {
+              final name = (member['name'] ?? '').toLowerCase();
+              return name.contains(query);
+            }).toList();
       
       setState(() {
         _showMentionList = true;
@@ -175,9 +196,6 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
         _filteredMembers = filtered;
       });
     } else {
-      if (_showMentionList) {
-        print('🔵 Hiding mention list');
-      }
       setState(() {
         _showMentionList = false;
         _mentionStartIndex = -1;
@@ -641,53 +659,63 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
                       color: const Color(0xFF1F2937),
                       borderRadius: BorderRadius.circular(12),
                     ),
-                    child: _filteredMembers.isEmpty
-                        ? Padding(
-                            padding: const EdgeInsets.all(16),
-                            child: Text(
-                              'No members found',
-                              style: const TextStyle(
-                                color: Colors.white70,
-                                fontSize: 14,
+                    child: _loadingMembers
+                        ? const Padding(
+                            padding: EdgeInsets.all(16),
+                            child: Center(
+                              child: CircularProgressIndicator(
+                                color: Colors.white,
+                                strokeWidth: 2,
                               ),
-                              textAlign: TextAlign.center,
                             ),
                           )
-                        : ListView.builder(
-                            shrinkWrap: true,
-                            itemCount: _filteredMembers.length,
-                            itemBuilder: (context, index) {
-                              final member = _filteredMembers[index];
-                              final name = member['name'] ?? 'Unknown';
-                              final headshotUrl = member['headshotUrl'] ?? '';
-                              
-                              return ListTile(
-                                dense: true,
-                                leading: CircleAvatar(
-                                  radius: 18,
-                                  backgroundColor: const Color(0xFF374151),
-                                  backgroundImage: headshotUrl.isNotEmpty
-                                      ? NetworkImage('https://millerstorm.tech$headshotUrl')
-                                      : null,
-                                  child: headshotUrl.isEmpty
-                                      ? Text(
-                                          name[0].toUpperCase(),
-                                          style: const TextStyle(color: Colors.white, fontSize: 14),
-                                        )
-                                      : null,
-                                ),
-                                title: Text(
-                                  name,
+                        : _filteredMembers.isEmpty
+                            ? Padding(
+                                padding: const EdgeInsets.all(16),
+                                child: Text(
+                                  'No members found',
                                   style: const TextStyle(
-                                    color: Colors.white,
+                                    color: Colors.white70,
                                     fontSize: 14,
-                                    fontWeight: FontWeight.w500,
                                   ),
+                                  textAlign: TextAlign.center,
                                 ),
-                                onTap: () => _insertMention(name),
-                              );
-                            },
-                          ),
+                              )
+                            : ListView.builder(
+                                shrinkWrap: true,
+                                itemCount: _filteredMembers.length,
+                                itemBuilder: (context, index) {
+                                  final member = _filteredMembers[index];
+                                  final name = member['name'] ?? 'Unknown';
+                                  final headshotUrl = member['headshotUrl'] ?? '';
+                                  
+                                  return ListTile(
+                                    dense: true,
+                                    leading: CircleAvatar(
+                                      radius: 18,
+                                      backgroundColor: const Color(0xFF374151),
+                                      backgroundImage: headshotUrl.isNotEmpty
+                                          ? NetworkImage('https://millerstorm.tech$headshotUrl')
+                                          : null,
+                                      child: headshotUrl.isEmpty
+                                          ? Text(
+                                              name[0].toUpperCase(),
+                                              style: const TextStyle(color: Colors.white, fontSize: 14),
+                                            )
+                                          : null,
+                                    ),
+                                    title: Text(
+                                      name,
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                    ),
+                                    onTap: () => _insertMention(name),
+                                  );
+                                },
+                              ),
                   ),
                 // Reply preview
                 if (replyingTo != null)
