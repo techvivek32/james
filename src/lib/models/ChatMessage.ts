@@ -11,6 +11,7 @@ export interface IChatMessage extends Document {
   replyTo?: string;
   replyToMessage?: string;
   replyToSender?: string;
+  mentions?: string[]; // Array of user IDs mentioned in the message
   createdAt: Date;
   updatedAt: Date;
 }
@@ -55,6 +56,10 @@ const ChatMessageSchema = new Schema<IChatMessage>(
     },
     replyToSender: {
       type: String
+    },
+    mentions: {
+      type: [String],
+      default: []
     }
   },
   {

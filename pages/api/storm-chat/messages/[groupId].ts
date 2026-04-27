@@ -71,6 +71,29 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         }
       }
 
+      // Extract mentions from message text
+      const mentionedUserIds: string[] = [];
+      if (message && messageType === 'text') {
+        const mentionRegex = /@(\w+(?:\s+\w+)*)/g;
+        const matches = message.matchAll(mentionRegex);
+        const mentionedNames = Array.from(matches, m => m[1]);
+        
+        if (mentionedNames.length > 0) {
+          // Import User model
+          const UserModel = (await import('../../../../src/lib/models/User')).default;
+          
+          // Find users by name and filter to only group members
+          for (const name of mentionedNames) {
+            const user = await UserModel.findOne({ 
+              name: { $regex: new RegExp(`^${name}$`, 'i') }
+            });
+            if (user && group.members.includes(user._id.toString())) {
+              mentionedUserIds.push(user._id.toString());
+            }
+          }
+        }
+      }
+
       // Create message with reply fields if provided
       const messageData: any = {
         groupId,
@@ -79,7 +102,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         senderRole,
         message: message || '',
         messageType: messageType || 'text',
-        mediaUrl: mediaUrl || ''
+        mediaUrl: mediaUrl || '',
+        mentions: mentionedUserIds
       };
 
       // Add reply fields if they exist
