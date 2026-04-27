@@ -26,6 +26,9 @@ class _CoursesScreenState extends State<CoursesScreen> with SingleTickerProvider
   bool _isLoading = true;
   late TabController _tabController;
   String? _userId;
+  String _searchQuery = '';
+  bool _isSearching = false;
+  final TextEditingController _searchController = TextEditingController();
 
   @override
   void initState() {
@@ -37,6 +40,7 @@ class _CoursesScreenState extends State<CoursesScreen> with SingleTickerProvider
   @override
   void dispose() {
     _tabController.dispose();
+    _searchController.dispose();
     super.dispose();
   }
 
@@ -141,10 +145,41 @@ class _CoursesScreenState extends State<CoursesScreen> with SingleTickerProvider
           icon: const Icon(Icons.arrow_back, color: _textDark),
           onPressed: () => Navigator.pop(context),
         ),
-        title: const Text(
-          'Training Center',
-          style: TextStyle(color: _textDark, fontSize: 18, fontWeight: FontWeight.w700),
-        ),
+        title: _isSearching
+            ? TextField(
+                controller: _searchController,
+                autofocus: true,
+                style: const TextStyle(fontSize: 16, color: _textDark),
+                decoration: const InputDecoration(
+                  hintText: 'Search courses...',
+                  border: InputBorder.none,
+                  hintStyle: TextStyle(color: _textLight),
+                ),
+                onChanged: (val) => setState(() => _searchQuery = val),
+              )
+            : const Text(
+                'Training Center',
+                style: TextStyle(color: _textDark, fontSize: 18, fontWeight: FontWeight.w700),
+              ),
+        actions: [
+          IconButton(
+            icon: Icon(
+              _isSearching ? Icons.close : Icons.search,
+              color: _textDark,
+            ),
+            onPressed: () {
+              setState(() {
+                if (_isSearching) {
+                  _isSearching = false;
+                  _searchQuery = '';
+                  _searchController.clear();
+                } else {
+                  _isSearching = true;
+                }
+              });
+            },
+          ),
+        ],
         bottom: TabBar(
           controller: _tabController,
           labelColor: _blue,
@@ -173,9 +208,28 @@ class _CoursesScreenState extends State<CoursesScreen> with SingleTickerProvider
     if (_isLoading) {
       return const Center(child: CircularProgressIndicator(color: _primary));
     }
-    if (_courses.isEmpty) {
-      return const Center(child: Text('No courses available'));
+
+    final filtered = _searchQuery.isEmpty
+        ? _courses
+        : _courses.where((c) =>
+            (c['title'] ?? '').toString().toLowerCase().contains(_searchQuery.toLowerCase())).toList();
+
+    if (filtered.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.search_off, size: 64, color: _textLight.withOpacity(0.3)),
+            const SizedBox(height: 12),
+            Text(
+              _searchQuery.isEmpty ? 'No courses available' : 'No results for "$_searchQuery"',
+              style: const TextStyle(fontSize: 15, color: _textLight),
+            ),
+          ],
+        ),
+      );
     }
+
     return RefreshIndicator(
       color: _primary,
       onRefresh: () async {
@@ -184,9 +238,9 @@ class _CoursesScreenState extends State<CoursesScreen> with SingleTickerProvider
       },
       child: ListView.builder(
         padding: const EdgeInsets.all(16),
-        itemCount: _courses.length,
+        itemCount: filtered.length,
         itemBuilder: (context, index) {
-          final course = _courses[index];
+          final course = filtered[index];
           return Padding(
             padding: const EdgeInsets.only(bottom: 16),
             child: GestureDetector(
