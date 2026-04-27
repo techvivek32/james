@@ -51,10 +51,93 @@ class _LessonPlayerScreenState extends State<LessonPlayerScreen> {
   Map<String, dynamic>? _quizScore;
   List<dynamic> _savedQuizResults = [];
 
+  // AI Chat state
+  bool _showAIChat = false;
+  final List<Map<String, String>> _chatMessages = [];
+  final TextEditingController _chatController = TextEditingController();
+  bool _isChatLoading = false;
+  Map<String, dynamic>? _courseBot;
+
   @override
   void initState() {
     super.initState();
     _fetchLessonData();
+    _fetchCourseBot();
+  }
+
+  @override
+  void dispose() {
+    SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+    SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
+    _chatController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _fetchCourseBot() async {
+    try {
+      final response = await http.get(
+        Uri.parse('https://millerstorm.tech/api/course-ai-bots'),
+      );
+      if (response.statusCode == 200) {
+        final bots = jsonDecode(response.body) as List;
+        final published = bots.firstWhere(
+          (b) => b['status'] == 'published' && (b['selectedCourses'] as List?)?.contains(widget.courseId) == true,
+          orElse: () => null,
+        );
+        setState(() {
+          _courseBot = published;
+        });
+      }
+    } catch (e) {
+      print('Error fetching course bot: $e');
+    }
+  }
+
+  Future<void> _sendChatMessage() async {
+    if (_chatController.text.trim().isEmpty || _isChatLoading) return;
+
+    final userMessage = _chatController.text.trim();
+    setState(() {
+      _chatMessages.add({'role': 'user', 'content': userMessage});
+      _isChatLoading = true;
+    });
+    _chatController.clear();
+
+    try {
+      final response = await http.post(
+        Uri.parse('https://millerstorm.tech/api/chat'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'messages': _chatMessages,
+          'lessonTitle': widget.lessonTitle,
+          'lessonContent': _lesson?['body'],
+          'videoUrl': _lesson?['videoUrl'],
+          'courseTitle': widget.courseTitle,
+          'trainingText': _courseBot?['trainingText'],
+          'hasTraining': _courseBot != null && (_courseBot!['trainingText']?.toString().trim().isNotEmpty ?? false),
+        }),
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        setState(() {
+          _chatMessages.add({'role': 'assistant', 'content': data['message']});
+        });
+      } else {
+        setState(() {
+          _chatMessages.add({'role': 'assistant', 'content': 'Sorry, I couldn\'t process your request.'});
+        });
+      }
+    } catch (e) {
+      print('Chat error: $e');
+      setState(() {
+        _chatMessages.add({'role': 'assistant', 'content': 'Sorry, I couldn\'t process your request.'});
+      });
+    } finally {
+      setState(() {
+        _isChatLoading = false;
+      });
+    }
   }
 
   Future<void> _fetchLessonData() async {
@@ -940,6 +1023,7 @@ class _LessonPlayerScreenState extends State<LessonPlayerScreen> {
   void dispose() {
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
     SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
+    _chatController.dispose();
     super.dispose();
   }
 
@@ -982,141 +1066,384 @@ class _LessonPlayerScreenState extends State<LessonPlayerScreen> {
             ),
           ],
         ),
+        actions: [
+          IconButton(
+            icon: Icon(
+              Icons.smart_toy_outlined,
+              color: _showAIChat ? _primary : _textDark,
+            ),
+            tooltip: 'AI Coach',
+            onPressed: () {
+              setState(() {
+                _showAIChat = !_showAIChat;
+              });
+            },
+          ),
+        ],
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator(color: _primary))
-          : Column(
+          : Stack(
               children: [
-                // Video Player (only if not quiz and has video)
-                if (_lesson?['isQuiz'] != true && _lesson?['videoUrl'] != null)
-                  _buildVideoPlayer(),
-                
-                // Content below video
-                Expanded(
-                  child: SingleChildScrollView(
-                    padding: const EdgeInsets.fromLTRB(16, 16, 16, 80),
-                    child: Column(
-                      children: [
-                        // Quiz or Lesson content
-                        if (_lesson?['isQuiz'] == true)
-                          _buildQuizContent()
-                        else
-                          _buildLessonContent(),
-                        
-                        // Resources (only for lessons)
-                        if (_lesson?['isQuiz'] != true)
-                          _buildResourceLinks(),
-                      ],
-                    ),
-                  ),
-                ),
-                
-                // Bottom action bar
-                Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: _white,
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.05),
-                        blurRadius: 8,
-                        offset: const Offset(0, -2),
-                      ),
-                    ],
-                  ),
-                  child: Row(
-                    children: [
-                      // Progress indicator
-                      Expanded(
+                Column(
+                  children: [
+                    // Video Player (only if not quiz and has video)
+                    if (_lesson?['isQuiz'] != true && _lesson?['videoUrl'] != null)
+                      _buildVideoPlayer(),
+
+                    // Content below video
+                    Expanded(
+                      child: SingleChildScrollView(
+                        padding: const EdgeInsets.fromLTRB(16, 16, 16, 80),
                         child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          mainAxisSize: MainAxisSize.min,
                           children: [
-                            Text(
-                              'Lesson ${_currentLessonIndex + 1} of ${_allLessons.length}',
-                              style: const TextStyle(
-                                fontSize: 12,
-                                color: _textLight,
-                                fontWeight: FontWeight.w500,
-                              ),
-                            ),
-                            const SizedBox(height: 4),
-                            LinearProgressIndicator(
-                              value: _allLessons.isNotEmpty ? (_currentLessonIndex + 1) / _allLessons.length : 0,
-                              backgroundColor: _border,
-                              valueColor: AlwaysStoppedAnimation<Color>(_primary),
-                              minHeight: 3,
-                            ),
+                            if (_lesson?['isQuiz'] == true)
+                              _buildQuizContent()
+                            else
+                              _buildLessonContent(),
+                            if (_lesson?['isQuiz'] != true)
+                              _buildResourceLinks(),
                           ],
                         ),
                       ),
-                      
-                      const SizedBox(width: 16),
-                      
-                      // Quiz submit or Next button
-                      if (_lesson?['isQuiz'] == true && !_quizSubmitted)
-                        GestureDetector(
-                          onTap: () {
-                            final questions = _lesson!['quizQuestions'] as List<dynamic>? ?? [];
-                            if (_selectedAnswers.length == questions.length) {
-                              _submitQuiz();
-                            }
-                          },
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                            decoration: BoxDecoration(
-                              color: _selectedAnswers.length == (_lesson!['quizQuestions'] as List<dynamic>? ?? []).length
-                                  ? _primary
-                                  : _border,
-                              borderRadius: BorderRadius.circular(20),
-                            ),
-                            child: const Text(
-                              'Submit Quiz',
-                              style: TextStyle(
-                                color: _white,
-                                fontSize: 14,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
+                    ),
+
+                    // Bottom action bar
+                    Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: _white,
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.05),
+                            blurRadius: 8,
+                            offset: const Offset(0, -2),
                           ),
-                        )
-                      else if (_lesson?['isQuiz'] != true || _quizSubmitted)
-                        GestureDetector(
-                          onTap: _markCompleteAndNext,
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                            decoration: BoxDecoration(
-                              color: _primary,
-                              borderRadius: BorderRadius.circular(20),
-                            ),
-                            child: Row(
+                        ],
+                      ),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
                               mainAxisSize: MainAxisSize.min,
                               children: [
                                 Text(
-                                  _currentLessonIndex < _allLessons.length - 1 ? 'Next' : 'Complete',
+                                  'Lesson ${_currentLessonIndex + 1} of ${_allLessons.length}',
                                   style: const TextStyle(
+                                    fontSize: 12,
+                                    color: _textLight,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                                const SizedBox(height: 4),
+                                LinearProgressIndicator(
+                                  value: _allLessons.isNotEmpty
+                                      ? (_currentLessonIndex + 1) / _allLessons.length
+                                      : 0,
+                                  backgroundColor: _border,
+                                  valueColor: AlwaysStoppedAnimation<Color>(_primary),
+                                  minHeight: 3,
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(width: 16),
+                          if (_lesson?['isQuiz'] == true && !_quizSubmitted)
+                            GestureDetector(
+                              onTap: () {
+                                final questions =
+                                    _lesson!['quizQuestions'] as List<dynamic>? ?? [];
+                                if (_selectedAnswers.length == questions.length) {
+                                  _submitQuiz();
+                                }
+                              },
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 24, vertical: 12),
+                                decoration: BoxDecoration(
+                                  color: _selectedAnswers.length ==
+                                          (_lesson!['quizQuestions']
+                                                  as List<dynamic>? ??
+                                              [])
+                                              .length
+                                      ? _primary
+                                      : _border,
+                                  borderRadius: BorderRadius.circular(20),
+                                ),
+                                child: const Text(
+                                  'Submit Quiz',
+                                  style: TextStyle(
                                     color: _white,
                                     fontSize: 14,
                                     fontWeight: FontWeight.w600,
                                   ),
                                 ),
-                                const SizedBox(width: 4),
-                                Icon(
-                                  _currentLessonIndex < _allLessons.length - 1 
-                                      ? Icons.arrow_forward 
-                                      : Icons.check,
-                                  color: _white,
-                                  size: 16,
+                              ),
+                            )
+                          else if (_lesson?['isQuiz'] != true || _quizSubmitted)
+                            GestureDetector(
+                              onTap: _markCompleteAndNext,
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 24, vertical: 12),
+                                decoration: BoxDecoration(
+                                  color: _primary,
+                                  borderRadius: BorderRadius.circular(20),
                                 ),
-                              ],
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Text(
+                                      _currentLessonIndex < _allLessons.length - 1
+                                          ? 'Next'
+                                          : 'Complete',
+                                      style: const TextStyle(
+                                        color: _white,
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 4),
+                                    Icon(
+                                      _currentLessonIndex < _allLessons.length - 1
+                                          ? Icons.arrow_forward
+                                          : Icons.check,
+                                      color: _white,
+                                      size: 16,
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+
+                // AI Chat Panel — slides in from right
+                if (_showAIChat)
+                  Positioned(
+                    top: 0,
+                    right: 0,
+                    bottom: 0,
+                    width: MediaQuery.of(context).size.width * 0.88,
+                    child: _buildAIChatPanel(),
+                  ),
+              ],
+            ),
+    );
+  }
+
+  Widget _buildAIChatPanel() {
+    final ScrollController scrollController = ScrollController();
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (scrollController.hasClients) {
+        scrollController.animateTo(
+          scrollController.position.maxScrollExtent,
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeOut,
+        );
+      }
+    });
+
+    return Container(
+      decoration: BoxDecoration(
+        color: _white,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.15),
+            blurRadius: 16,
+            offset: const Offset(-4, 0),
+          ),
+        ],
+      ),
+      child: Column(
+        children: [
+          // Header
+          Container(
+            padding: const EdgeInsets.fromLTRB(16, 12, 8, 12),
+            decoration: const BoxDecoration(
+              border: Border(bottom: BorderSide(color: Color(0xFFE5E7EB))),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  width: 32,
+                  height: 32,
+                  decoration: BoxDecoration(
+                    color: _primary.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: const Icon(Icons.smart_toy_outlined, color: _primary, size: 18),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Lesson AI Coach',
+                        style: TextStyle(
+                          fontWeight: FontWeight.w600,
+                          fontSize: 14,
+                          color: _textDark,
+                        ),
+                      ),
+                      Text(
+                        'Ask about ${widget.lessonTitle}',
+                        style: const TextStyle(fontSize: 11, color: _textLight),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                  ),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.close, color: _textLight, size: 20),
+                  onPressed: () => setState(() => _showAIChat = false),
+                ),
+              ],
+            ),
+          ),
+
+          // Messages
+          Expanded(
+            child: _chatMessages.isEmpty
+                ? Center(
+                    child: Padding(
+                      padding: const EdgeInsets.all(24),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.chat_bubble_outline,
+                              size: 48, color: _textLight.withOpacity(0.4)),
+                          const SizedBox(height: 12),
+                          const Text(
+                            'Ask me anything about this lesson!',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(color: _textLight, fontSize: 13),
+                          ),
+                        ],
+                      ),
+                    ),
+                  )
+                : ListView.builder(
+                    controller: scrollController,
+                    padding: const EdgeInsets.all(12),
+                    itemCount: _chatMessages.length + (_isChatLoading ? 1 : 0),
+                    itemBuilder: (context, index) {
+                      if (index == _chatMessages.length) {
+                        return Container(
+                          margin: const EdgeInsets.only(bottom: 8),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 12, vertical: 10),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFEFF6FF),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: const Text(
+                            'Thinking...',
+                            style: TextStyle(
+                                fontSize: 13, color: _textLight),
+                          ),
+                        );
+                      }
+                      final msg = _chatMessages[index];
+                      final isUser = msg['role'] == 'user';
+                      return Align(
+                        alignment: isUser
+                            ? Alignment.centerRight
+                            : Alignment.centerLeft,
+                        child: Container(
+                          margin: const EdgeInsets.only(bottom: 8),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 12, vertical: 10),
+                          constraints: BoxConstraints(
+                            maxWidth:
+                                MediaQuery.of(context).size.width * 0.7,
+                          ),
+                          decoration: BoxDecoration(
+                            color: isUser
+                                ? const Color(0xFF1F2937)
+                                : const Color(0xFFEFF6FF),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Text(
+                            msg['content'] ?? '',
+                            style: TextStyle(
+                              fontSize: 13,
+                              color: isUser ? _white : _textDark,
                             ),
                           ),
                         ),
-                    ],
+                      );
+                    },
+                  ),
+          ),
+
+          // Input
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: const BoxDecoration(
+              border: Border(top: BorderSide(color: Color(0xFFE5E7EB))),
+            ),
+            child: Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: _chatController,
+                    style: const TextStyle(fontSize: 13),
+                    maxLines: null,
+                    textInputAction: TextInputAction.send,
+                    onSubmitted: (_) => _sendChatMessage(),
+                    decoration: InputDecoration(
+                      hintText: 'Ask the coach...',
+                      hintStyle:
+                          const TextStyle(fontSize: 13, color: _textLight),
+                      contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 12, vertical: 10),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(10),
+                        borderSide:
+                            const BorderSide(color: Color(0xFFE5E7EB)),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(10),
+                        borderSide:
+                            const BorderSide(color: Color(0xFFE5E7EB)),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(10),
+                        borderSide: BorderSide(color: _primary),
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                GestureDetector(
+                  onTap: _sendChatMessage,
+                  child: Container(
+                    width: 40,
+                    height: 40,
+                    decoration: BoxDecoration(
+                      color: _isChatLoading ? _border : const Color(0xFF1F2937),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Icon(
+                      _isChatLoading ? Icons.hourglass_empty : Icons.send,
+                      color: _white,
+                      size: 18,
+                    ),
                   ),
                 ),
               ],
             ),
+          ),
+        ],
+      ),
     );
   }
 }
