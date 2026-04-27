@@ -457,9 +457,9 @@ class _PlannerScreenState extends State<PlannerScreen> {
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
               _navItem(Icons.school_outlined, 'Training', false, '/training'),
-              _navItemWithBadge(Icons.chat_bubble_outline, 'StormChat', _stormChatGroupCount, '/stormchat'),
               _navItem(Icons.emoji_events_outlined, 'Rankings', false, '/rankings'),
               _navItemActive(),
+              _navItemWithBadge(Icons.chat_bubble_outline, 'StormChat', _stormChatGroupCount, '/stormchat'),
             ],
           ),
         ),

@@ -393,9 +393,9 @@ class _RankingsScreenState extends State<RankingsScreen> {
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
               _navItem(context, Icons.school_outlined, 'Training', false, '/training'),
-              _navItemWithBadge(context, Icons.chat_bubble_outline, 'StormChat', _stormChatGroupCount, '/stormchat'),
               _navItem(context, Icons.emoji_events_outlined, 'Rankings', true, null),
               _navItem(context, Icons.work_outline, 'Planner', false, '/planner'),
+              _navItemWithBadge(context, Icons.chat_bubble_outline, 'StormChat', _stormChatGroupCount, '/stormchat'),
             ],
           ),
         ),

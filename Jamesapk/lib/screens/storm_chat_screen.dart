@@ -355,9 +355,9 @@ class _StormChatScreenState extends State<StormChatScreen> {
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
               _navItem(context, Icons.school_outlined, 'Training', false, '/training'),
-              _navItemActive(Icons.chat_bubble_outline, 'StormChat'),
               _navItem(context, Icons.emoji_events_outlined, 'Rankings', false, '/rankings'),
               _navItem(context, Icons.work_outline, 'Planner', false, '/planner'),
+              _navItemActive(Icons.chat_bubble_outline, 'StormChat'),
             ],
           ),
         ),
