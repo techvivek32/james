@@ -38,6 +38,13 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
   dynamic replyingTo; // Store the message being replied to
   String? _blinkingMessageId; // Track which message is blinking
   Timer? _blinkTimer;
+  
+  // Mention feature
+  bool _showMentionList = false;
+  List<dynamic> _filteredMembers = [];
+  List<dynamic> _allMembers = [];
+  int _mentionStartIndex = -1;
+  String _mentionQuery = '';
 
   bool get canSendMessage {
     final onlyAdminCanChat = widget.group['onlyAdminCanChat'] ?? false;
@@ -69,12 +76,15 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
     _fetchMessages();
     _startPolling();
     _markAsRead();
+    _fetchGroupMembers();
+    _messageController.addListener(_onMessageTextChanged);
   }
 
   @override
   void dispose() {
     _pollTimer?.cancel();
     _blinkTimer?.cancel();
+    _messageController.removeListener(_onMessageTextChanged);
     _messageController.dispose();
     _scrollController.dispose();
     _markAsRead(); // Mark as read when leaving chat
@@ -89,6 +99,114 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
       });
       print('🔵 User loaded - Name: $userName');
     }
+  }
+
+  Future<void> _fetchGroupMembers() async {
+    try {
+      final members = List<String>.from(widget.group['members'] ?? []);
+      print('🔵 Fetching ${members.length} group members');
+      final List<dynamic> memberDetails = [];
+      
+      for (String memberId in members) {
+        try {
+          print('🔵 Fetching member: $memberId');
+          final response = await http.get(
+            Uri.parse('https://millerstorm.tech/api/users/by-mongo-id/$memberId'),
+          );
+          print('🔵 Member $memberId response: ${response.statusCode}');
+          if (response.statusCode == 200) {
+            final userData = json.decode(response.body);
+            print('🔵 Member data: ${userData['name']}');
+            memberDetails.add(userData);
+          }
+        } catch (e) {
+          print('❌ Error fetching member $memberId: $e');
+        }
+      }
+      
+      setState(() {
+        _allMembers = memberDetails;
+      });
+      print('🔵 Loaded ${memberDetails.length} group members: ${memberDetails.map((m) => m['name']).toList()}');
+    } catch (e) {
+      print('❌ Error fetching group members: $e');
+    }
+  }
+
+  void _onMessageTextChanged() {
+    final text = _messageController.text;
+    final cursorPosition = _messageController.selection.baseOffset;
+    
+    print('🔵 Text changed: "$text", cursor: $cursorPosition');
+    
+    if (cursorPosition < 0) return;
+    
+    // Find the last @ before cursor
+    int lastAtIndex = -1;
+    for (int i = cursorPosition - 1; i >= 0; i--) {
+      if (text[i] == '@') {
+        lastAtIndex = i;
+        print('🔵 Found @ at index $i');
+        break;
+      }
+      if (text[i] == ' ' || text[i] == '\n') {
+        print('🔵 Found space/newline at index $i, stopping search');
+        break;
+      }
+    }
+    
+    if (lastAtIndex != -1) {
+      // Extract query after @
+      final query = text.substring(lastAtIndex + 1, cursorPosition).toLowerCase();
+      print('🔵 Mention query: "$query"');
+      
+      // Filter members
+      final filtered = _allMembers.where((member) {
+        final name = (member['name'] ?? '').toLowerCase();
+        return name.contains(query);
+      }).toList();
+      
+      print('🔵 Filtered ${filtered.length} members: ${filtered.map((m) => m['name']).toList()}');
+      
+      setState(() {
+        _showMentionList = true;
+        _mentionStartIndex = lastAtIndex;
+        _mentionQuery = query;
+        _filteredMembers = filtered;
+      });
+    } else {
+      if (_showMentionList) {
+        print('🔵 Hiding mention list');
+      }
+      setState(() {
+        _showMentionList = false;
+        _mentionStartIndex = -1;
+        _mentionQuery = '';
+        _filteredMembers = [];
+      });
+    }
+  }
+
+  void _insertMention(String name) {
+    final text = _messageController.text;
+    final cursorPosition = _messageController.selection.baseOffset;
+    
+    // Replace from @ to cursor with the mention
+    final beforeMention = text.substring(0, _mentionStartIndex);
+    final afterMention = text.substring(cursorPosition);
+    final newText = '$beforeMention@$name $afterMention';
+    
+    _messageController.text = newText;
+    _messageController.selection = TextSelection.fromPosition(
+      TextPosition(offset: beforeMention.length + name.length + 2),
+    );
+    
+    setState(() {
+      _showMentionList = false;
+      _mentionStartIndex = -1;
+      _mentionQuery = '';
+      _filteredMembers = [];
+    });
   }
 
   void _startPolling() {
@@ -514,6 +632,63 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
             ),
             child: Column(
               children: [
+                // Mention list
+                if (_showMentionList)
+                  Container(
+                    constraints: const BoxConstraints(maxHeight: 200),
+                    margin: const EdgeInsets.only(bottom: 8),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF1F2937),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: _filteredMembers.isEmpty
+                        ? Padding(
+                            padding: const EdgeInsets.all(16),
+                            child: Text(
+                              'No members found',
+                              style: const TextStyle(
+                                color: Colors.white70,
+                                fontSize: 14,
+                              ),
+                              textAlign: TextAlign.center,
+                            ),
+                          )
+                        : ListView.builder(
+                            shrinkWrap: true,
+                            itemCount: _filteredMembers.length,
+                            itemBuilder: (context, index) {
+                              final member = _filteredMembers[index];
+                              final name = member['name'] ?? 'Unknown';
+                              final headshotUrl = member['headshotUrl'] ?? '';
+                              
+                              return ListTile(
+                                dense: true,
+                                leading: CircleAvatar(
+                                  radius: 18,
+                                  backgroundColor: const Color(0xFF374151),
+                                  backgroundImage: headshotUrl.isNotEmpty
+                                      ? NetworkImage('https://millerstorm.tech$headshotUrl')
+                                      : null,
+                                  child: headshotUrl.isEmpty
+                                      ? Text(
+                                          name[0].toUpperCase(),
+                                          style: const TextStyle(color: Colors.white, fontSize: 14),
+                                        )
+                                      : null,
+                                ),
+                                title: Text(
+                                  name,
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                                onTap: () => _insertMention(name),
+                              );
+                            },
+                          ),
+                  ),
                 // Reply preview
                 if (replyingTo != null)
                   Container(
