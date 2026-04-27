@@ -1623,22 +1623,20 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
           </div>
         </div>
 
-        {/* AI Chat toggle button - only show if bot is configured for this page */}
-        {courseBot && courseBot.selectedPages && activePage && courseBot.selectedPages.includes(activePage.id) && (
-          <button
-            onClick={() => setShowAIChat(p => !p)}
-            style={{
-              position: "fixed", bottom: "24px", right: "24px", zIndex: 500,
-              width: 52, height: 52, borderRadius: "50%", border: "none",
-              background: "#1f2937", color: "#fff", fontSize: "22px",
-              cursor: "pointer", boxShadow: "0 4px 16px rgba(0,0,0,0.25)",
-              display: "flex", alignItems: "center", justifyContent: "center",
-            }}
-            title={showAIChat ? "Hide AI Chat" : "Show AI Chat"}
-          >
-            {showAIChat ? "✕" : "🤖"}
-          </button>
-        )}
+        {/* AI Chat toggle button */}
+        <button
+          onClick={() => setShowAIChat(p => !p)}
+          style={{
+            position: "fixed", bottom: "24px", right: "24px", zIndex: 500,
+            width: 52, height: 52, borderRadius: "50%", border: "none",
+            background: "#1f2937", color: "#fff", fontSize: "22px",
+            cursor: "pointer", boxShadow: "0 4px 16px rgba(0,0,0,0.25)",
+            display: "flex", alignItems: "center", justifyContent: "center",
+          }}
+          title={showAIChat ? "Hide AI Chat" : "Show AI Chat"}
+        >
+          {showAIChat ? "✕" : "🤖"}
+        </button>
 
         {/* AI Chat right panel */}
         {showAIChat && activePage && (
