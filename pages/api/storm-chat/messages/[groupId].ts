@@ -75,8 +75,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       const mentionedUserIds: string[] = [];
       if (message && messageType === 'text') {
         const mentionRegex = /@(\w+(?:\s+\w+)*)/g;
-        const matches = message.matchAll(mentionRegex);
-        const mentionedNames = Array.from(matches, m => m[1]);
+        const matches = Array.from(message.matchAll(mentionRegex));
+        const mentionedNames = matches.map(m => m[1]);
         
         if (mentionedNames.length > 0) {
           // Import User model
