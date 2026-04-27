@@ -1624,7 +1624,7 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
         </div>
 
         {/* AI Chat toggle button - only show if bot is configured for this page */}
-        {courseBot && courseBot.selectedPages && courseBot.selectedPages.includes(activePage?.id || '') && (
+        {courseBot && courseBot.selectedPages && activePage && courseBot.selectedPages.includes(activePage.id) && (
           <button
             onClick={() => setShowAIChat(p => !p)}
             style={{
