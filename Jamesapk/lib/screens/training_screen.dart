@@ -282,7 +282,7 @@ class _TrainingScreenState extends State<TrainingScreen> {
           icon: Icons.school_outlined,
           iconBg: Color(0xFFEFF6FF),
           iconColor: _link,
-          title: 'Training Center',
+          title: 'Miller Storm Training Center',
           subtitle: 'Courses',
           onTap: () => Navigator.pushNamed(context, '/courses'),
         ),
