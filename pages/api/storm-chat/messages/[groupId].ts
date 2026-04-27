@@ -75,12 +75,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       const mentionedUserIds: string[] = [];
       if (message && messageType === 'text') {
         const mentionRegex = /@(\w+(?:\s+\w+)*)/g;
-        const matches = Array.from(message.matchAll(mentionRegex));
-        const mentionedNames = matches.map((m: RegExpMatchArray) => m[1]);
+        const matches: RegExpMatchArray[] = Array.from(message.matchAll(mentionRegex));
+        const mentionedNames = matches.map(m => m[1]);
         
         if (mentionedNames.length > 0) {
           // Import User model
-          const UserModel = (await import('../../../../src/lib/models/User')).default;
+          const { UserModel } = await import('../../../../src/lib/models/User');
           
           // Find users by name and filter to only group members
           for (const name of mentionedNames) {
