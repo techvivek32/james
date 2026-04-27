@@ -301,7 +301,7 @@ class _TrainingScreenState extends State<TrainingScreen> {
           iconColor: Color(0xFF16A34A),
           title: 'Apps & Tools',
           subtitle: 'Utilities',
-          onTap: () => Navigator.pushNamed(context, '/apps-tools-categories'),
+          onTap: () => Navigator.pushNamed(context, '/apps-tools-items'),
         ),
       ],
     );
