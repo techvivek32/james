@@ -29,6 +29,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   String _userWeaknesses = '';
   String _userHeadshotUrl = '';
   String? _userId;
+  String _managerName = '';
   bool _isEditMode = false;
   bool _isSaving = false;
   bool _isUploadingImage = false;
@@ -103,6 +104,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
               _userWeaknesses = freshUser['weaknesses'] ?? '';
               _userHeadshotUrl = freshUser['headshotUrl'] ?? '';
             });
+
+            // Fetch manager name if managerId exists
+            final managerId = freshUser['managerId'];
+            if (managerId != null && managerId.toString().isNotEmpty) {
+              _fetchManagerName(managerId.toString());
+            }
             return;
           }
         } catch (e) {
@@ -134,9 +141,31 @@ class _ProfileScreenState extends State<ProfileScreen> {
           _userWeaknesses = user['weaknesses'] ?? '';
           _userHeadshotUrl = user['headshotUrl'] ?? '';
         });
+
+        // Fetch manager name if managerId exists
+        final managerId = user['managerId'];
+        if (managerId != null && managerId.toString().isNotEmpty) {
+          _fetchManagerName(managerId.toString());
+        }
       }
     } catch (e) {
       print('Error loading user data: $e');
+    }
+  }
+
+  Future<void> _fetchManagerName(String managerId) async {
+    try {
+      final response = await http.get(
+        Uri.parse('https://millerstorm.tech/api/users/$managerId'),
+      );
+      if (response.statusCode == 200) {
+        final manager = jsonDecode(response.body);
+        setState(() {
+          _managerName = manager['name'] ?? '';
+        });
+      }
+    } catch (e) {
+      print('Error fetching manager: $e');
     }
   }
 
@@ -259,8 +288,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
           'name': _nameController.text,
           'phone': _phoneController.text,
           'territory': territoryString,
-          'strengths': _strengthsController.text,
-          'weaknesses': _weaknessesController.text,
         }),
       );
 
@@ -560,19 +587,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
           const SizedBox(height: 16),
           _buildTerritoryField(),
           const SizedBox(height: 16),
-          _buildTextField(
-            label: 'Strengths / Superpowers',
-            controller: _strengthsController,
-            icon: Icons.star_outline,
-            maxLines: 3,
-          ),
-          const SizedBox(height: 16),
-          _buildTextField(
-            label: 'Weaknesses / Insecurities',
-            controller: _weaknessesController,
-            icon: Icons.warning_amber_outlined,
-            maxLines: 3,
-          ),
+          if (_managerName.isNotEmpty) ...[
+            _buildTextField(
+              label: 'Manager',
+              controller: TextEditingController(text: _managerName),
+              icon: Icons.manage_accounts_outlined,
+              enabled: false,
+              helperText: 'Assigned by admin',
+            ),
+            const SizedBox(height: 16),
+          ],
           const SizedBox(height: 32),
           SizedBox(
             width: double.infinity,
