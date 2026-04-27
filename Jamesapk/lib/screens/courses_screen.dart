@@ -21,11 +21,14 @@ class _CoursesScreenState extends State<CoursesScreen> with SingleTickerProvider
   static const _blue = Color(0xFF2563EB);
 
   List<dynamic> _courses = [];
+  List<dynamic> _filteredCourses = [];
   List<dynamic> _myPlaylists = [];
   List<dynamic> _assignedPlaylists = [];
   bool _isLoading = true;
   late TabController _tabController;
   String? _userId;
+  final TextEditingController _searchController = TextEditingController();
+  String _searchQuery = '';
 
   @override
   void initState() {
@@ -37,6 +40,7 @@ class _CoursesScreenState extends State<CoursesScreen> with SingleTickerProvider
   @override
   void dispose() {
     _tabController.dispose();
+    _searchController.dispose();
     super.dispose();
   }
 
@@ -71,6 +75,7 @@ class _CoursesScreenState extends State<CoursesScreen> with SingleTickerProvider
         
         setState(() {
           _courses = courses;
+          _filteredCourses = courses;
           _isLoading = false;
         });
       } else {
@@ -80,6 +85,21 @@ class _CoursesScreenState extends State<CoursesScreen> with SingleTickerProvider
       print('Error fetching courses: $e');
       setState(() => _isLoading = false);
     }
+  }
+
+  void _filterCourses(String query) {
+    setState(() {
+      _searchQuery = query.toLowerCase();
+      if (_searchQuery.isEmpty) {
+        _filteredCourses = _courses;
+      } else {
+        _filteredCourses = _courses.where((course) {
+          final title = (course['title'] ?? '').toLowerCase();
+          final description = (course['description'] ?? '').toLowerCase();
+          return title.contains(_searchQuery) || description.contains(_searchQuery);
+        }).toList();
+      }
+    });
   }
 
   Future<void> _fetchMyPlaylists() async {
@@ -173,44 +193,99 @@ class _CoursesScreenState extends State<CoursesScreen> with SingleTickerProvider
     if (_isLoading) {
       return const Center(child: CircularProgressIndicator(color: _primary));
     }
-    if (_courses.isEmpty) {
-      return const Center(child: Text('No courses available'));
-    }
-    return RefreshIndicator(
-      color: _primary,
-      onRefresh: () async {
-        setState(() => _isLoading = true);
-        await _loadData();
-      },
-      child: ListView.builder(
-        padding: const EdgeInsets.all(16),
-        itemCount: _courses.length,
-        itemBuilder: (context, index) {
-          final course = _courses[index];
-          return Padding(
-            padding: const EdgeInsets.only(bottom: 16),
-            child: GestureDetector(
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => CourseDetailScreen(
-                      courseId: course['id'] ?? '',
-                      courseTitle: course['title'] ?? 'Course',
+    return Column(
+      children: [
+        Container(
+          color: _white,
+          padding: const EdgeInsets.all(16),
+          child: TextField(
+            controller: _searchController,
+            onChanged: _filterCourses,
+            decoration: InputDecoration(
+              hintText: 'Search courses...',
+              hintStyle: TextStyle(color: _textLight, fontSize: 14),
+              prefixIcon: const Icon(Icons.search, color: _textLight),
+              suffixIcon: _searchQuery.isNotEmpty
+                  ? IconButton(
+                      icon: const Icon(Icons.clear, color: _textLight),
+                      onPressed: () {
+                        _searchController.clear();
+                        _filterCourses('');
+                      },
+                    )
+                  : null,
+              filled: true,
+              fillColor: _bg,
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide.none,
+              ),
+              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            ),
+          ),
+        ),
+        Expanded(
+          child: _filteredCourses.isEmpty
+              ? Center(
+                  child: Padding(
+                    padding: const EdgeInsets.all(32),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.search_off, size: 64, color: _textLight.withOpacity(0.3)),
+                        const SizedBox(height: 16),
+                        Text(
+                          _searchQuery.isEmpty ? 'No courses available' : 'No courses found',
+                          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color: _textDark),
+                        ),
+                        if (_searchQuery.isNotEmpty) const SizedBox(height: 8),
+                        if (_searchQuery.isNotEmpty) Text(
+                          'Try searching with different keywords',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(fontSize: 14, color: _textLight),
+                        ),
+                      ],
                     ),
                   ),
-                ).then((_) => _loadData());
-              },
-              child: _buildCourseCard(
-                course['title'] ?? 'Untitled',
-                '${course['progress']?['progressPercent'] ?? 0}%',
-                _getCourseIcon(course['icon']),
-                course['coverImageUrl'],
-              ),
-            ),
-          );
-        },
-      ),
+                )
+              : RefreshIndicator(
+                  color: _primary,
+                  onRefresh: () async {
+                    setState(() => _isLoading = true);
+                    await _loadData();
+                  },
+                  child: ListView.builder(
+                    padding: const EdgeInsets.all(16),
+                    itemCount: _filteredCourses.length,
+                    itemBuilder: (context, index) {
+                      final course = _filteredCourses[index];
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: 16),
+                        child: GestureDetector(
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => CourseDetailScreen(
+                                  courseId: course['id'] ?? '',
+                                  courseTitle: course['title'] ?? 'Course',
+                                ),
+                              ),
+                            ).then((_) => _loadData());
+                          },
+                          child: _buildCourseCard(
+                            course['title'] ?? 'Untitled',
+                            '${course['progress']?['progressPercent'] ?? 0}%',
+                            _getCourseIcon(course['icon']),
+                            course['coverImageUrl'],
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+        ),
+      ],
     );
   }
 
