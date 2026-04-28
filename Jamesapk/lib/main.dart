@@ -18,6 +18,7 @@ import 'screens/manager_profile_screen.dart';
 import 'screens/profile_screen.dart';
 import 'screens/apps_tools_items_screen.dart';
 import 'screens/apps_tools_detail_screen.dart';
+import 'screens/ai_clone_chat_screen.dart';
 
 void main() {
   runApp(const MillerStormApp());

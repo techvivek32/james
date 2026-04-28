@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import 'ai_clone_chat_screen.dart';
 
 class TrainingScreen extends StatefulWidget {
   const TrainingScreen({super.key});
@@ -28,6 +29,8 @@ class _TrainingScreenState extends State<TrainingScreen> {
   String _userHeadshotUrl = '';
   int _stormChatGroupCount = 0;
   String? _userId;
+  List<dynamic> _bots = [];
+  bool _loadingBots = false;
 
   @override
   void initState() {
@@ -35,6 +38,7 @@ class _TrainingScreenState extends State<TrainingScreen> {
     _loadUserData();
     _setGreeting();
     _fetchStormChatGroups();
+    _fetchBots();
   }
 
   void _setGreeting() {
@@ -96,6 +100,35 @@ class _TrainingScreenState extends State<TrainingScreen> {
     }
   }
 
+  Future<void> _fetchBots() async {
+    setState(() {
+      _loadingBots = true;
+    });
+
+    try {
+      final response = await http.get(
+        Uri.parse('https://millerstorm.tech/api/ai-bots'),
+      );
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body) as List;
+        setState(() {
+          _bots = data;
+          _loadingBots = false;
+        });
+      } else {
+        setState(() {
+          _loadingBots = false;
+        });
+      }
+    } catch (e) {
+      print('Error fetching bots: $e');
+      setState(() {
+        _loadingBots = false;
+      });
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return WillPopScope(
@@ -120,6 +153,8 @@ class _TrainingScreenState extends State<TrainingScreen> {
                     _buildBootcampCard(),
                     const SizedBox(height: 24),
                     _buildAICoaches(),
+                    const SizedBox(height: 20),
+                    _buildJaysAIClone(),
                     const SizedBox(height: 16),
                   ],
                 ),
@@ -304,6 +339,129 @@ class _TrainingScreenState extends State<TrainingScreen> {
           onTap: () => Navigator.pushNamed(context, '/apps-tools-items'),
         ),
       ],
+    );
+  }
+
+  Widget _buildJaysAIClone() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            const Icon(Icons.smart_toy_outlined, color: _link, size: 22),
+            const SizedBox(width: 8),
+            const Text('Jay\'s AI Clone', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: _textDark)),
+          ],
+        ),
+        const SizedBox(height: 12),
+        if (_loadingBots)
+          const Center(
+            child: Padding(
+              padding: EdgeInsets.all(20),
+              child: CircularProgressIndicator(color: _primary),
+            ),
+          )
+        else if (_bots.isEmpty)
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: _white,
+              borderRadius: BorderRadius.circular(16),
+              boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 8)],
+            ),
+            child: const Center(
+              child: Text(
+                'No AI bots available',
+                style: TextStyle(fontSize: 14, color: _textLight),
+              ),
+            ),
+          )
+        else
+          ..._bots.map((bot) => Padding(
+            padding: const EdgeInsets.only(bottom: 12),
+            child: _buildBotCard(bot),
+          )),
+      ],
+    );
+  }
+
+  Widget _buildBotCard(dynamic bot) {
+    final name = bot['name'] ?? 'Unknown Bot';
+    final description = bot['description'] ?? '';
+    final imageUrl = bot['imageUrl'] ?? '';
+
+    return GestureDetector(
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => AiCloneChatScreen(bot: bot),
+          ),
+        );
+      },
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: _white,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 8)],
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 56,
+              height: 56,
+              decoration: BoxDecoration(
+                color: const Color(0xFFFEF2F2),
+                borderRadius: BorderRadius.circular(12),
+                image: imageUrl.isNotEmpty
+                    ? DecorationImage(
+                        image: NetworkImage('https://millerstorm.tech$imageUrl'),
+                        fit: BoxFit.cover,
+                      )
+                    : null,
+              ),
+              child: imageUrl.isEmpty
+                  ? const Icon(
+                      Icons.smart_toy,
+                      size: 28,
+                      color: _link,
+                    )
+                  : null,
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    name,
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w700,
+                      color: _textDark,
+                    ),
+                  ),
+                  if (description.isNotEmpty) const SizedBox(height: 4),
+                  if (description.isNotEmpty)
+                    Text(
+                      description,
+                      style: const TextStyle(
+                        fontSize: 14,
+                        color: _textLight,
+                      ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                ],
+              ),
+            ),
+            const Icon(Icons.chevron_right, color: _textPlaceholder, size: 24),
+          ],
+        ),
+      ),
     );
   }
 
