@@ -1237,6 +1237,114 @@ class _AIChatState extends State<_AIChat> {
   final ScrollController _scrollController = ScrollController();
   final List<Map<String, String>> _messages = [];
   bool _isLoading = false;
+  String? _userId;
+  String? _currentChatId;
+  List<dynamic> _chatHistory = [];
+  bool _showHistory = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadUserAndHistory();
+  }
+
+  Future<void> _loadUserAndHistory() async {
+    final user = await AuthService.getStoredUser();
+    _userId = user?['id'];
+    if (_userId != null) {
+      await _fetchChatHistory();
+    }
+  }
+
+  Future<void> _fetchChatHistory() async {
+    try {
+      final response = await http.get(
+        Uri.parse('https://millerstorm.tech/api/lesson-chat-history?userId=$_userId&lessonTitle=${Uri.encodeComponent(widget.lessonTitle)}'),
+      );
+      
+      if (response.statusCode == 200) {
+        final chats = jsonDecode(response.body) as List<dynamic>;
+        setState(() {
+          _chatHistory = chats;
+        });
+      }
+    } catch (e) {
+      print('❌ Error fetching chat history: $e');
+    }
+  }
+
+  Future<void> _saveChatHistory() async {
+    if (_userId == null || _messages.isEmpty) return;
+    
+    try {
+      _currentChatId ??= 'lesson-chat-${DateTime.now().millisecondsSinceEpoch}';
+      
+      final title = _messages.isNotEmpty && _messages[0]['role'] == 'user'
+          ? _messages[0]['content']!.substring(0, _messages[0]['content']!.length > 50 ? 50 : _messages[0]['content']!.length)
+          : 'New Chat';
+      
+      await http.post(
+        Uri.parse('https://millerstorm.tech/api/lesson-chat-history'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'userId': _userId,
+          'chatId': _currentChatId,
+          'lessonTitle': widget.lessonTitle,
+          'title': title,
+          'messages': _messages,
+        }),
+      );
+    } catch (e) {
+      print('❌ Error saving chat history: $e');
+    }
+  }
+
+  void _loadChat(dynamic chat) {
+    setState(() {
+      _currentChatId = chat['chatId'];
+      _messages.clear();
+      final messages = chat['messages'] as List<dynamic>? ?? [];
+      for (var msg in messages) {
+        _messages.add({
+          'role': msg['role'].toString(),
+          'content': msg['content'].toString(),
+        });
+      }
+      _showHistory = false;
+    });
+    _scrollToBottom();
+  }
+
+  Future<void> _deleteChat(String chatId) async {
+    try {
+      await http.delete(
+        Uri.parse('https://millerstorm.tech/api/lesson-chat-history'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'userId': _userId,
+          'chatId': chatId,
+        }),
+      );
+      await _fetchChatHistory();
+      
+      if (_currentChatId == chatId) {
+        setState(() {
+          _messages.clear();
+          _currentChatId = null;
+        });
+      }
+    } catch (e) {
+      print('❌ Error deleting chat: $e');
+    }
+  }
+
+  void _startNewChat() {
+    setState(() {
+      _messages.clear();
+      _currentChatId = null;
+      _showHistory = false;
+    });
+  }
 
   @override
   void dispose() {
@@ -1287,6 +1395,9 @@ class _AIChatState extends State<_AIChat> {
         setState(() {
           _messages.add({'role': 'assistant', 'content': data['message']});
         });
+        
+        // Save chat history after successful response
+        await _saveChatHistory();
       } else {
         setState(() {
           _messages.add({
@@ -1342,31 +1453,64 @@ class _AIChatState extends State<_AIChat> {
               ),
               child: Row(
                 children: [
+                  if (!_showHistory)
+                    IconButton(
+                      icon: const Icon(Icons.history, color: _textDark),
+                      onPressed: () {
+                        setState(() {
+                          _showHistory = true;
+                        });
+                      },
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(),
+                    ),
+                  if (_showHistory)
+                    IconButton(
+                      icon: const Icon(Icons.arrow_back, color: _textDark),
+                      onPressed: () {
+                        setState(() {
+                          _showHistory = false;
+                        });
+                      },
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(),
+                    ),
+                  const SizedBox(width: 12),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text(
-                          'Lesson AI Coach',
-                          style: TextStyle(
+                        Text(
+                          _showHistory ? 'Chat History' : 'Lesson AI Coach',
+                          style: const TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.w600,
                             color: _textDark,
                           ),
                         ),
-                        const SizedBox(height: 2),
-                        Text(
-                          'Ask questions about ${widget.lessonTitle}',
-                          style: const TextStyle(
-                            fontSize: 12,
-                            color: _textLight,
+                        if (!_showHistory)
+                          const SizedBox(height: 2),
+                        if (!_showHistory)
+                          Text(
+                            'Ask questions about ${widget.lessonTitle}',
+                            style: const TextStyle(
+                              fontSize: 12,
+                              color: _textLight,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
                           ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
                       ],
                     ),
                   ),
+                  if (!_showHistory && _messages.isNotEmpty)
+                    IconButton(
+                      icon: const Icon(Icons.add, color: _textDark),
+                      onPressed: _startNewChat,
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(),
+                    ),
+                  const SizedBox(width: 8),
                   IconButton(
                     icon: const Icon(Icons.close, color: _textLight),
                     onPressed: () => Navigator.pop(context),
@@ -1377,9 +1521,62 @@ class _AIChatState extends State<_AIChat> {
               ),
             ),
 
-            // Messages
+            // Messages or History
             Expanded(
-              child: _messages.isEmpty
+              child: _showHistory
+                  ? _chatHistory.isEmpty
+                      ? const Center(
+                          child: Padding(
+                            padding: EdgeInsets.all(24),
+                            child: Text(
+                              'No chat history yet',
+                              style: TextStyle(
+                                fontSize: 14,
+                                color: _textLight,
+                              ),
+                            ),
+                          ),
+                        )
+                      : ListView.builder(
+                          padding: const EdgeInsets.all(16),
+                          itemCount: _chatHistory.length,
+                          itemBuilder: (context, index) {
+                            final chat = _chatHistory[index];
+                            return Container(
+                              margin: const EdgeInsets.only(bottom: 12),
+                              decoration: BoxDecoration(
+                                color: _white,
+                                border: Border.all(color: _border),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: ListTile(
+                                title: Text(
+                                  chat['title'] ?? 'Chat',
+                                  style: const TextStyle(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w500,
+                                    color: _textDark,
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                                subtitle: Text(
+                                  '${(chat['messages'] as List?)?.length ?? 0} messages',
+                                  style: const TextStyle(
+                                    fontSize: 12,
+                                    color: _textLight,
+                                  ),
+                                ),
+                                trailing: IconButton(
+                                  icon: const Icon(Icons.delete, color: _textLight, size: 20),
+                                  onPressed: () => _deleteChat(chat['chatId']),
+                                ),
+                                onTap: () => _loadChat(chat),
+                              ),
+                            );
+                          },
+                        )
+                  : _messages.isEmpty
                   ? Center(
                       child: Padding(
                         padding: const EdgeInsets.all(24),
