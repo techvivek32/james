@@ -350,43 +350,63 @@ class _TrainingScreenState extends State<TrainingScreen> {
           children: [
             const Icon(Icons.smart_toy_outlined, color: _link, size: 22),
             const SizedBox(width: 8),
-            const Text('Jay\'s AI Clone', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: _textDark)),
+            const Text('AI Assistants', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: _textDark)),
           ],
         ),
         const SizedBox(height: 12),
-        if (_loadingBots)
-          const Center(
-            child: Padding(
-              padding: EdgeInsets.all(20),
-              child: CircularProgressIndicator(color: _primary),
-            ),
-          )
-        else if (_bots.isEmpty)
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(
-              color: _white,
-              borderRadius: BorderRadius.circular(16),
-              boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 8)],
-            ),
-            child: const Center(
-              child: Text(
-                'No AI bots available',
-                style: TextStyle(fontSize: 14, color: _textLight),
-              ),
-            ),
-          )
-        else
-          ..._bots.map((bot) => Padding(
-            padding: const EdgeInsets.only(bottom: 12),
-            child: _buildBotCard(bot),
-          )),
+        Container(
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            color: _white,
+            borderRadius: BorderRadius.circular(16),
+            boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 8)],
+          ),
+          child: _loadingBots
+              ? const Center(
+                  child: Padding(
+                    padding: EdgeInsets.all(20),
+                    child: CircularProgressIndicator(color: _primary),
+                  ),
+                )
+              : _bots.isEmpty
+                  ? Center(
+                      child: Padding(
+                        padding: const EdgeInsets.all(20),
+                        child: Column(
+                          children: [
+                            Icon(Icons.smart_toy_outlined, size: 48, color: _textLight.withOpacity(0.5)),
+                            const SizedBox(height: 12),
+                            const Text(
+                              'No AI assistants available',
+                              style: TextStyle(fontSize: 14, color: _textLight),
+                            ),
+                          ],
+                        ),
+                      ),
+                    )
+                  : Column(
+                      children: _bots.asMap().entries.map((entry) {
+                        final index = entry.key;
+                        final bot = entry.value;
+                        return Column(
+                          children: [
+                            if (index > 0)
+                              Container(
+                                height: 1,
+                                margin: const EdgeInsets.symmetric(vertical: 12),
+                                color: const Color(0xFFF3F4F6),
+                              ),
+                            _buildBotListItem(bot),
+                          ],
+                        );
+                      }).toList(),
+                    ),
+        ),
       ],
     );
   }
 
-  Widget _buildBotCard(dynamic bot) {
+  Widget _buildBotListItem(dynamic bot) {
     final name = bot['name'] ?? 'Unknown Bot';
     final description = bot['description'] ?? '';
     final imageUrl = bot['imageUrl'] ?? '';
@@ -400,67 +420,66 @@ class _TrainingScreenState extends State<TrainingScreen> {
           ),
         );
       },
-      child: Container(
-        width: double.infinity,
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: _white,
-          borderRadius: BorderRadius.circular(16),
-          boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 8)],
-        ),
-        child: Row(
-          children: [
-            Container(
-              width: 56,
-              height: 56,
-              decoration: BoxDecoration(
-                color: const Color(0xFFFEF2F2),
-                borderRadius: BorderRadius.circular(12),
-                image: imageUrl.isNotEmpty
-                    ? DecorationImage(
-                        image: NetworkImage('https://millerstorm.tech$imageUrl'),
-                        fit: BoxFit.cover,
-                      )
-                    : null,
-              ),
-              child: imageUrl.isEmpty
-                  ? const Icon(
-                      Icons.smart_toy,
-                      size: 28,
-                      color: _link,
+      child: Row(
+        children: [
+          Container(
+            width: 48,
+            height: 48,
+            decoration: BoxDecoration(
+              color: const Color(0xFFFEF2F2),
+              borderRadius: BorderRadius.circular(12),
+              image: imageUrl.isNotEmpty
+                  ? DecorationImage(
+                      image: NetworkImage('https://millerstorm.tech$imageUrl'),
+                      fit: BoxFit.cover,
                     )
                   : null,
             ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    name,
-                    style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w700,
-                      color: _textDark,
-                    ),
+            child: imageUrl.isEmpty
+                ? const Icon(
+                    Icons.smart_toy,
+                    size: 24,
+                    color: _link,
+                  )
+                : null,
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  name,
+                  style: const TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w600,
+                    color: _textDark,
                   ),
-                  if (description.isNotEmpty) const SizedBox(height: 4),
-                  if (description.isNotEmpty)
-                    Text(
-                      description,
-                      style: const TextStyle(
-                        fontSize: 14,
-                        color: _textLight,
-                      ),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
+                ),
+                if (description.isNotEmpty) const SizedBox(height: 3),
+                if (description.isNotEmpty)
+                  Text(
+                    description,
+                    style: const TextStyle(
+                      fontSize: 13,
+                      color: _textLight,
                     ),
-                ],
-              ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+              ],
             ),
-            const Icon(Icons.chevron_right, color: _textPlaceholder, size: 24),
-          ],
-        ),
+          ),
+          const SizedBox(width: 8),
+          Container(
+            padding: const EdgeInsets.all(6),
+            decoration: BoxDecoration(
+              color: const Color(0xFFF3F4F6),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: const Icon(Icons.arrow_forward_ios, color: _textLight, size: 14),
+          ),
+        ],
       ),
     );
   }
