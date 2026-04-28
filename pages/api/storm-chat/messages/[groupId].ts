@@ -74,22 +74,21 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       // Extract mentions from message text
       const mentionedUserIds: string[] = [];
       if (message && messageType === 'text') {
-        const mentionRegex = /@(\w+(?:\s+\w+)*)/g;
-        const matches: RegExpMatchArray[] = Array.from(message.matchAll(mentionRegex));
-        const mentionedNames = matches.map(m => m[1]);
+        // Import User model
+        const { UserModel } = await import('../../../../src/lib/models/User');
         
-        if (mentionedNames.length > 0) {
-          // Import User model
-          const { UserModel } = await import('../../../../src/lib/models/User');
-          
-          // Find users by name and filter to only group members
-          for (const name of mentionedNames) {
-            const user = await UserModel.findOne({ 
-              name: { $regex: new RegExp(`^${name}$`, 'i') }
-            });
-            if (user && group.members.includes(user._id.toString())) {
-              mentionedUserIds.push(user._id.toString());
-            }
+        // Get all group members
+        const groupMembers = await UserModel.find({
+          _id: { $in: group.members }
+        }).select('_id name');
+        
+        // For each member, check if their name is mentioned with @
+        for (const member of groupMembers) {
+          const memberName = member.name;
+          // Create regex to match @Name (case insensitive, with word boundary or space after)
+          const nameRegex = new RegExp(`@${memberName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(?=\\s|$)`, 'i');
+          if (nameRegex.test(message)) {
+            mentionedUserIds.push(member._id.toString());
           }
         }
       }
