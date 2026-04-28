@@ -1082,7 +1082,7 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
     final textColor = isMyMessage ? Colors.white : const Color(0xFF111827);
 
     if (messageType == 'text') {
-      return _buildTextWithLinks(message['message'] ?? '', textColor);
+      return _buildTextWithLinks(message['message'] ?? '', textColor, isMyMessage);
     } else if (messageType == 'image' && message['mediaUrl'] != null) {
       return GestureDetector(
         onTap: () {
@@ -1143,85 +1143,114 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
     );
   }
 
-  Widget _buildTextWithLinks(String text, Color textColor) {
+  Widget _buildTextWithLinks(String text, Color textColor, bool isMyMessage) {
     final RegExp urlRegExp = RegExp(
       r'https?://[^\s]+',
       caseSensitive: false,
     );
+    final RegExp mentionRegExp = RegExp(r'@[\w\s]+');
 
     final List<TextSpan> spans = [];
     int start = 0;
 
+    // Combine both URL and mention matches and sort by position
+    final List<MapEntry<int, String>> allMatches = [];
+    
+    // Add URL matches
     for (final Match match in urlRegExp.allMatches(text)) {
-      // Add text before the URL
-      if (match.start > start) {
+      allMatches.add(MapEntry(match.start, 'url:${match.group(0)}'));
+    }
+    
+    // Add mention matches
+    for (final Match match in mentionRegExp.allMatches(text)) {
+      allMatches.add(MapEntry(match.start, 'mention:${match.group(0)}'));
+    }
+    
+    // Sort by position
+    allMatches.sort((a, b) => a.key.compareTo(b.key));
+
+    for (final entry in allMatches) {
+      final position = entry.key;
+      final value = entry.value;
+      final type = value.split(':')[0];
+      final content = value.substring(value.indexOf(':') + 1);
+      
+      // Add text before this match
+      if (position > start) {
         spans.add(TextSpan(
-          text: text.substring(start, match.start),
+          text: text.substring(start, position),
           style: TextStyle(fontSize: 14, color: textColor),
         ));
       }
 
-      // Add the clickable URL
-      final String url = match.group(0)!;
-      spans.add(TextSpan(
-        text: url,
-        style: TextStyle(
-          fontSize: 14,
-          color: textColor == Colors.white ? Colors.lightBlueAccent : Colors.blue,
-          decoration: TextDecoration.underline,
-        ),
-        recognizer: TapGestureRecognizer()
-          ..onTap = () async {
-            try {
-              final Uri uri = Uri.parse(url);
-              // Try to launch with external application first
-              bool launched = false;
-              
-              // Try external application mode
-              if (await canLaunchUrl(uri)) {
-                launched = await launchUrl(
-                  uri,
-                  mode: LaunchMode.externalApplication,
-                );
-              }
-              
-              // If external app fails, try platform default
-              if (!launched && await canLaunchUrl(uri)) {
-                launched = await launchUrl(
-                  uri,
-                  mode: LaunchMode.platformDefault,
-                );
-              }
-              
-              // If still not launched, show error
-              if (!launched) {
+      if (type == 'url') {
+        // Add clickable URL
+        spans.add(TextSpan(
+          text: content,
+          style: TextStyle(
+            fontSize: 14,
+            color: textColor == Colors.white ? Colors.lightBlueAccent : Colors.blue,
+            decoration: TextDecoration.underline,
+          ),
+          recognizer: TapGestureRecognizer()
+            ..onTap = () async {
+              try {
+                final Uri uri = Uri.parse(content);
+                bool launched = false;
+                
+                if (await canLaunchUrl(uri)) {
+                  launched = await launchUrl(
+                    uri,
+                    mode: LaunchMode.externalApplication,
+                  );
+                }
+                
+                if (!launched && await canLaunchUrl(uri)) {
+                  launched = await launchUrl(
+                    uri,
+                    mode: LaunchMode.platformDefault,
+                  );
+                }
+                
+                if (!launched) {
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text('Could not launch $content'),
+                        backgroundColor: Colors.red,
+                      ),
+                    );
+                  }
+                }
+              } catch (e) {
+                print('Error launching URL: $e');
                 if (context.mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
-                      content: Text('Could not launch $url'),
+                      content: Text('Error: ${e.toString()}'),
                       backgroundColor: Colors.red,
                     ),
                   );
                 }
               }
-            } catch (e) {
-              print('Error launching URL: $e');
-              if (context.mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text('Error: ${e.toString()}'),
-                    backgroundColor: Colors.red,
-                  ),
-                );
-              }
-            }
-          },
-      ));
+            },
+        ));
+      } else if (type == 'mention') {
+        // Add bold mention - white for my messages, red for others
+        spans.add(TextSpan(
+          text: content,
+          style: TextStyle(
+            fontSize: 14,
+            color: isMyMessage ? Colors.white : const Color(0xFFCB0002),
+            fontWeight: FontWeight.bold,
+          ),
+        ));
+      }
 
-      start = match.end;
+      start = position + content.length;
     }
 
-    // Add remaining text after the last URL
+    // Add remaining text after the last match
     if (start < text.length) {
       spans.add(TextSpan(
         text: text.substring(start),

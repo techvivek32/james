@@ -14,6 +14,7 @@ class ManagerStormChatScreen extends StatefulWidget {
 class _ManagerStormChatScreenState extends State<ManagerStormChatScreen> {
   List<dynamic> groups = [];
   Map<String, int> unreadCounts = {};
+  Map<String, int> mentionCounts = {};
   bool isLoading = true;
   String? userId;
   String? userRole;
@@ -72,18 +73,28 @@ class _ManagerStormChatScreenState extends State<ManagerStormChatScreen> {
     
     try {
       final groupIds = groups.map((g) => g['_id']).join(',');
-      final response = await http.get(
+      
+      // Fetch unread counts
+      final unreadResponse = await http.get(
         Uri.parse('https://millerstorm.tech/api/storm-chat/unread-counts?userId=$userId&groupIds=$groupIds'),
       );
 
-      if (response.statusCode == 200) {
-        final counts = json.decode(response.body) as Map<String, dynamic>;
+      // Fetch mention counts
+      final mentionResponse = await http.get(
+        Uri.parse('https://millerstorm.tech/api/storm-chat/mention-counts?userId=$userId&groupIds=$groupIds'),
+      );
+
+      if (unreadResponse.statusCode == 200 && mentionResponse.statusCode == 200) {
+        final unreadData = json.decode(unreadResponse.body) as Map<String, dynamic>;
+        final mentionData = json.decode(mentionResponse.body) as Map<String, dynamic>;
+        
         setState(() {
-          unreadCounts = counts.map((key, value) => MapEntry(key, value as int));
+          unreadCounts = unreadData.map((key, value) => MapEntry(key, value as int));
+          mentionCounts = mentionData.map((key, value) => MapEntry(key, value as int));
         });
       }
     } catch (e) {
-      print('❌ Error fetching unread counts: $e');
+      print('❌ Error fetching counts: $e');
     }
   }
 
@@ -163,6 +174,7 @@ class _ManagerStormChatScreenState extends State<ManagerStormChatScreen> {
     final onlyAdminCanChat = group['onlyAdminCanChat'] ?? false;
     final groupId = group['_id'];
     final unreadCount = unreadCounts[groupId] ?? 0;
+    final mentionCount = mentionCounts[groupId] ?? 0;
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
@@ -228,23 +240,45 @@ class _ManagerStormChatScreenState extends State<ManagerStormChatScreen> {
                     ],
                   ),
                 ),
-                if (unreadCount > 0)
-                  Container(
-                    margin: const EdgeInsets.only(right: 8),
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFCB0002),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Text(
-                      unreadCount > 99 ? '99+' : unreadCount.toString(),
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
+                // Badges
+                Row(
+                  children: [
+                    if (mentionCount > 0)
+                      Container(
+                        margin: const EdgeInsets.only(right: 6),
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFCB0002),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Text(
+                          '@${mentionCount > 99 ? '99+' : mentionCount}',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
                       ),
-                    ),
-                  ),
+                    if (unreadCount > 0)
+                      Container(
+                        margin: const EdgeInsets.only(right: 8),
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFCB0002),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Text(
+                          unreadCount > 99 ? '99+' : unreadCount.toString(),
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
                 const Icon(Icons.chevron_right, color: Colors.grey),
               ],
             ),
