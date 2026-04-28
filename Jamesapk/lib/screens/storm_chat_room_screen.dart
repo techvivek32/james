@@ -575,7 +575,7 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFFAFAFA),
+      backgroundColor: const Color(0xFFD1C4E9),
       appBar: AppBar(
         backgroundColor: const Color(0xFFCB0002),
         elevation: 0,
@@ -685,7 +685,7 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: const Color(0xFFEDE7F6),
               boxShadow: [
                 BoxShadow(
                   color: Colors.black.withOpacity(0.05),
@@ -702,7 +702,7 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
                     constraints: const BoxConstraints(maxHeight: 200),
                     margin: const EdgeInsets.only(bottom: 8),
                     decoration: BoxDecoration(
-                      color: Colors.white,
+                      color: const Color(0xFFFFFFFF),
                       borderRadius: BorderRadius.circular(12),
                       boxShadow: [
                         BoxShadow(
@@ -853,37 +853,45 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
                             onPressed: isUploading ? null : _pickAndUploadMedia,
                           ),
                           Expanded(
-                            child: TextField(
-                              controller: _messageController,
-                              style: const TextStyle(
-                                color: Color(0xFF111827),
-                                fontSize: 16,
+                            child: Container(
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(24),
                               ),
-                              decoration: InputDecoration(
-                                hintText: 'Type a message...',
-                                hintStyle: const TextStyle(
-                                  color: Color(0xFF9CA3AF),
+                              child: TextField(
+                                controller: _messageController,
+                                style: const TextStyle(
+                                  color: Color(0xFF111827),
+                                  fontSize: 16,
                                 ),
-                                border: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(24),
-                                  borderSide: const BorderSide(color: Color(0xFFE5E7EB)),
+                                decoration: InputDecoration(
+                                  hintText: 'Type a message...',
+                                  hintStyle: const TextStyle(
+                                    color: Color(0xFF9CA3AF),
+                                  ),
+                                  border: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(24),
+                                    borderSide: BorderSide.none,
+                                  ),
+                                  enabledBorder: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(24),
+                                    borderSide: BorderSide.none,
+                                  ),
+                                  focusedBorder: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(24),
+                                    borderSide: const BorderSide(color: Color(0xFFCB0002), width: 2),
+                                  ),
+                                  contentPadding: const EdgeInsets.symmetric(
+                                    horizontal: 16,
+                                    vertical: 10,
+                                  ),
+                                  filled: true,
+                                  fillColor: Colors.white,
                                 ),
-                                enabledBorder: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(24),
-                                  borderSide: const BorderSide(color: Color(0xFFE5E7EB)),
-                                ),
-                                focusedBorder: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(24),
-                                  borderSide: const BorderSide(color: Color(0xFFCB0002)),
-                                ),
-                                contentPadding: const EdgeInsets.symmetric(
-                                  horizontal: 16,
-                                  vertical: 10,
-                                ),
+                                maxLines: null,
+                                textInputAction: TextInputAction.send,
+                                onSubmitted: (_) => _sendMessage(),
                               ),
-                              maxLines: null,
-                              textInputAction: TextInputAction.send,
-                              onSubmitted: (_) => _sendMessage(),
                             ),
                           ),
                           const SizedBox(width: 8),
