@@ -109,35 +109,42 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
     
     try {
       final members = List<String>.from(widget.group['members'] ?? []);
-      final List<dynamic> memberDetails = [];
       
-      for (String memberId in members) {
-        try {
-          final response = await http.get(
-            Uri.parse('https://millerstorm.tech/api/users/by-mongo-id/$memberId'),
-          );
-          if (response.statusCode == 200) {
-            final userData = json.decode(response.body);
-            memberDetails.add(userData);
-          }
-        } catch (e) {
-          print('❌ Error fetching member $memberId: $e');
-        }
+      if (members.isEmpty) {
+        setState(() {
+          _allMembers = [];
+          _loadingMembers = false;
+        });
+        return;
       }
       
-      setState(() {
-        _allMembers = memberDetails;
-        _loadingMembers = false;
-        // Update filtered members if mention list is showing
-        if (_showMentionList) {
-          _filteredMembers = _mentionQuery.isEmpty 
-              ? List.from(_allMembers)
-              : _allMembers.where((member) {
-                  final name = (member['name'] ?? '').toLowerCase();
-                  return name.contains(_mentionQuery);
-                }).toList();
-        }
-      });
+      // Fetch all members in a single API call
+      final memberIds = members.join(',');
+      final response = await http.get(
+        Uri.parse('https://millerstorm.tech/api/users/by-mongo-ids?ids=$memberIds'),
+      );
+      
+      if (response.statusCode == 200) {
+        final memberDetails = json.decode(response.body) as List;
+        
+        setState(() {
+          _allMembers = memberDetails;
+          _loadingMembers = false;
+          // Update filtered members if mention list is showing
+          if (_showMentionList) {
+            _filteredMembers = _mentionQuery.isEmpty 
+                ? List.from(_allMembers)
+                : _allMembers.where((member) {
+                    final name = (member['name'] ?? '').toLowerCase();
+                    return name.contains(_mentionQuery);
+                  }).toList();
+          }
+        });
+      } else {
+        setState(() {
+          _loadingMembers = false;
+        });
+      }
     } catch (e) {
       print('❌ Error fetching group members: $e');
       setState(() {
