@@ -38,6 +38,7 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
   dynamic replyingTo; // Store the message being replied to
   String? _blinkingMessageId; // Track which message is blinking
   Timer? _blinkTimer;
+  bool _isDarkTheme = false; // Theme toggle state
   
   // Mention feature
   bool _showMentionList = false;
@@ -217,13 +218,14 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
     final List<TextSpan> spans = [];
     final RegExp mentionRegExp = RegExp(r'@\w+');
     int start = 0;
+    final textColor = _isDarkTheme ? Colors.white : const Color(0xFF111827);
 
     for (final Match match in mentionRegExp.allMatches(text)) {
       // Add text before the mention
       if (match.start > start) {
         spans.add(TextSpan(
           text: text.substring(start, match.start),
-          style: const TextStyle(color: Color(0xFF111827), fontSize: 16),
+          style: TextStyle(color: textColor, fontSize: 16),
         ));
       }
 
@@ -244,7 +246,7 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
     if (start < text.length) {
       spans.add(TextSpan(
         text: text.substring(start),
-        style: const TextStyle(color: Color(0xFF111827), fontSize: 16),
+        style: TextStyle(color: textColor, fontSize: 16),
       ));
     }
 
@@ -574,8 +576,15 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // Theme colors
+    final bgColor = _isDarkTheme ? Colors.black : const Color(0xFFF5F7FA);
+    final inputAreaColor = _isDarkTheme ? const Color(0xFF1C1C1E) : const Color(0xFFFFFFFF);
+    final textFieldColor = _isDarkTheme ? const Color(0xFF2C2C2E) : const Color(0xFFF3F4F6);
+    final mentionListColor = _isDarkTheme ? const Color(0xFF1C1C1E) : const Color(0xFFFFFFFF);
+    final inputTextColor = _isDarkTheme ? Colors.white : const Color(0xFF111827);
+    
     return Scaffold(
-      backgroundColor: const Color(0xFFD1C4E9),
+      backgroundColor: bgColor,
       appBar: AppBar(
         backgroundColor: const Color(0xFFCB0002),
         elevation: 0,
@@ -643,6 +652,19 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
             ],
           ),
         ),
+        actions: [
+          IconButton(
+            icon: Icon(
+              _isDarkTheme ? Icons.light_mode : Icons.dark_mode,
+              color: Colors.white,
+            ),
+            onPressed: () {
+              setState(() {
+                _isDarkTheme = !_isDarkTheme;
+              });
+            },
+          ),
+        ],
       ),
       body: Column(
         children: [
@@ -685,7 +707,7 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: const Color(0xFFEDE7F6),
+              color: inputAreaColor,
               boxShadow: [
                 BoxShadow(
                   color: Colors.black.withOpacity(0.05),
@@ -702,7 +724,7 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
                     constraints: const BoxConstraints(maxHeight: 200),
                     margin: const EdgeInsets.only(bottom: 8),
                     decoration: BoxDecoration(
-                      color: const Color(0xFFFFFFFF),
+                      color: mentionListColor,
                       borderRadius: BorderRadius.circular(12),
                       boxShadow: [
                         BoxShadow(
@@ -759,8 +781,8 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
                                     ),
                                     title: Text(
                                       name,
-                                      style: const TextStyle(
-                                        color: Color(0xFF111827),
+                                      style: TextStyle(
+                                        color: _isDarkTheme ? Colors.white : const Color(0xFF111827),
                                         fontSize: 14,
                                         fontWeight: FontWeight.w500,
                                       ),
@@ -855,13 +877,13 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
                           Expanded(
                             child: Container(
                               decoration: BoxDecoration(
-                                color: Colors.white,
+                                color: textFieldColor,
                                 borderRadius: BorderRadius.circular(24),
                               ),
                               child: TextField(
                                 controller: _messageController,
-                                style: const TextStyle(
-                                  color: Color(0xFF111827),
+                                style: TextStyle(
+                                  color: inputTextColor,
                                   fontSize: 16,
                                 ),
                                 decoration: InputDecoration(
@@ -886,7 +908,7 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
                                     vertical: 10,
                                   ),
                                   filled: true,
-                                  fillColor: Colors.white,
+                                  fillColor: textFieldColor,
                                 ),
                                 maxLines: null,
                                 textInputAction: TextInputAction.send,
@@ -924,6 +946,11 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
     final showDate = index == 0 ||
         _formatDate(messages[index - 1]['createdAt']) != _formatDate(message['createdAt']);
     final isBlinking = _blinkingMessageId == message['_id'];
+    
+    // Theme colors for message bubbles
+    final messageBubbleOther = _isDarkTheme ? const Color(0xFF2C2C2E) : const Color(0xFFF3F4F6);
+    final dateChipColor = _isDarkTheme ? const Color(0xFF2C2C2E) : const Color(0xFFF3F4F6);
+    final dateTextColor = _isDarkTheme ? const Color(0xFF9CA3AF) : const Color(0xFF6B7280);
 
     return Column(
       children: [
@@ -933,14 +960,14 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
               decoration: BoxDecoration(
-                color: const Color(0xFFF3F4F6),
+                color: dateChipColor,
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Text(
                 _formatDate(message['createdAt']),
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 12,
-                  color: Color(0xFF6B7280),
+                  color: dateTextColor,
                 ),
               ),
             ),
@@ -984,7 +1011,7 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                         decoration: BoxDecoration(
-                          color: isMyMessage ? const Color(0xFFCB0002) : const Color(0xFFF3F4F6),
+                          color: isMyMessage ? const Color(0xFFCB0002) : messageBubbleOther,
                           borderRadius: BorderRadius.only(
                             topLeft: const Radius.circular(16),
                             topRight: const Radius.circular(16),
@@ -1079,7 +1106,7 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
 
   Widget _buildMessageContent(dynamic message, bool isMyMessage) {
     final messageType = message['messageType'] ?? 'text';
-    final textColor = isMyMessage ? Colors.white : const Color(0xFF111827);
+    final textColor = isMyMessage ? Colors.white : (_isDarkTheme ? Colors.white : const Color(0xFF111827));
 
     if (messageType == 'text') {
       return _buildTextWithLinks(message['message'] ?? '', textColor, isMyMessage);
@@ -1236,12 +1263,16 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
             },
         ));
       } else if (type == 'mention') {
-        // Add bold mention - white for my messages, red for others
+        // Add mention - white for my messages, white in dark theme for others, red in light theme for others
+        final mentionColor = isMyMessage 
+            ? Colors.white 
+            : (_isDarkTheme ? Colors.white : const Color(0xFFCB0002));
+        
         spans.add(TextSpan(
           text: content,
           style: TextStyle(
             fontSize: 14,
-            color: isMyMessage ? Colors.white : const Color(0xFFCB0002),
+            color: mentionColor,
             fontWeight: FontWeight.bold,
           ),
         ));
