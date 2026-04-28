@@ -100,9 +100,14 @@ class _ManagerStormChatScreenState extends State<ManagerStormChatScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFFF5F5F5),
-      body: SafeArea(
+    return WillPopScope(
+      onWillPop: () async {
+        Navigator.pushReplacementNamed(context, '/manager-dashboard');
+        return false;
+      },
+      child: Scaffold(
+        backgroundColor: const Color(0xFFF5F5F5),
+        body: SafeArea(
         child: Column(
           children: [
             Padding(
@@ -132,6 +137,7 @@ class _ManagerStormChatScreenState extends State<ManagerStormChatScreen> {
             _buildBottomNav(context),
           ],
         ),
+      ),
       ),
     );
   }
