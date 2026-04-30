@@ -163,7 +163,7 @@ class _CoursesScreenState extends State<CoursesScreen> with SingleTickerProvider
         backgroundColor: _white,
         elevation: 0,
         title: const Text(
-          'Training Center',
+          ' Miller Storm Training Center',
           style: TextStyle(color: _textDark, fontSize: 18, fontWeight: FontWeight.w700),
         ),
         bottom: TabBar(
