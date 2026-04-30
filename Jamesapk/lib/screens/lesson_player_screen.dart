@@ -1446,6 +1446,8 @@ class _AIChatState extends State<_AIChat> {
 
   @override
   Widget build(BuildContext context) {
+    final keyboardHeight = MediaQuery.of(context).viewInsets.bottom;
+    
     return DraggableScrollableSheet(
       initialChildSize: 0.9,
       minChildSize: 0.5,
@@ -1458,7 +1460,9 @@ class _AIChatState extends State<_AIChat> {
             topRight: Radius.circular(20),
           ),
         ),
-        child: Column(
+        child: Padding(
+          padding: EdgeInsets.only(bottom: keyboardHeight),
+          child: Column(
           children: [
             // Header
             Container(
@@ -1686,69 +1690,71 @@ class _AIChatState extends State<_AIChat> {
             ),
 
             // Input area
-            Container(
-              padding: EdgeInsets.only(
-                left: 16,
-                right: 16,
-                top: 12,
-                bottom: 12 + MediaQuery.of(context).viewInsets.bottom,
-              ),
-              decoration: const BoxDecoration(
-                color: _white,
-                border: Border(
-                  top: BorderSide(color: _border, width: 1),
+            if (!_showHistory)
+              Container(
+                padding: EdgeInsets.only(
+                  left: 16,
+                  right: 16,
+                  top: 12,
+                  bottom: 12 + MediaQuery.of(context).padding.bottom,
+                ),
+                decoration: const BoxDecoration(
+                  color: _white,
+                  border: Border(
+                    top: BorderSide(color: _border, width: 1),
+                  ),
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      decoration: BoxDecoration(
+                        color: _white,
+                        border: Border.all(color: _border),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: TextField(
+                        controller: _messageController,
+                        maxLines: null,
+                        keyboardType: TextInputType.multiline,
+                        textInputAction: TextInputAction.newline,
+                        decoration: const InputDecoration(
+                          hintText: 'Ask the coach a question...',
+                          hintStyle: TextStyle(fontSize: 13, color: _textLight),
+                          border: InputBorder.none,
+                          contentPadding: EdgeInsets.all(12),
+                        ),
+                        style: const TextStyle(fontSize: 13, color: _textDark),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton(
+                        onPressed: _isLoading ? null : _sendMessage,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: _textDark,
+                          disabledBackgroundColor: _border,
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                        ),
+                        child: Text(
+                          _isLoading ? 'Thinking...' : 'Send',
+                          style: const TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                            color: _white,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Container(
-                    decoration: BoxDecoration(
-                      color: _white,
-                      border: Border.all(color: _border),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: TextField(
-                      controller: _messageController,
-                      maxLines: null,
-                      keyboardType: TextInputType.multiline,
-                      textInputAction: TextInputAction.newline,
-                      decoration: const InputDecoration(
-                        hintText: 'Ask the coach a question...',
-                        hintStyle: TextStyle(fontSize: 13, color: _textLight),
-                        border: InputBorder.none,
-                        contentPadding: EdgeInsets.all(12),
-                      ),
-                      style: const TextStyle(fontSize: 13, color: _textDark),
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton(
-                      onPressed: _isLoading ? null : _sendMessage,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: _textDark,
-                        disabledBackgroundColor: _border,
-                        padding: const EdgeInsets.symmetric(vertical: 12),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                      ),
-                      child: Text(
-                        _isLoading ? 'Thinking...' : 'Send',
-                        style: const TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w600,
-                          color: _white,
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
