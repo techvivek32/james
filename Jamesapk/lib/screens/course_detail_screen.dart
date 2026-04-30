@@ -233,9 +233,9 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
         if (_course != null) {
           final pages = _course!['pages'] as List<dynamic>? ?? [];
           final folders = _course!['folders'] as List<dynamic>? ?? [];
-          
+
           var lessons = pages.where((page) => page['status'] == 'published').toList();
-          
+
           if (folders.isNotEmpty) {
             final folderIndexMap = <String, int>{};
             for (var i = 0; i < folders.length; i++) {
@@ -262,14 +262,36 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
             });
           }
 
-          // Use already loaded progress data from _course
-          final completedPages = (_course!['progress']?['completedPages'] as List<dynamic>? ?? []);
-          final completedLessonIds = completedPages.map((p) => p.toString()).toSet();
+          // Fetch actual completed pages from progress API
+          Set<String> completedLessonIds = {};
+          try {
+            final user = await AuthService.getStoredUser();
+            final userId = user?['id'] ?? '';
+            if (userId.isNotEmpty) {
+              final progressResponse = await http.get(
+                Uri.parse('https://millerstorm.tech/api/progress?userId=$userId&courseId=${widget.courseId}'),
+              );
+              if (progressResponse.statusCode == 200) {
+                final progressData = jsonDecode(progressResponse.body);
+                final completedPages = progressData['completedPages'] as List<dynamic>? ?? [];
+                completedLessonIds = completedPages.map((p) => p.toString()).toSet();
+                print('✅ Completed pages: $completedLessonIds');
+              }
+            }
+          } catch (e) {
+            print('⚠️ Could not load progress: $e');
+          }
 
-          final nextLesson = lessons.firstWhere(
-            (lesson) => !completedLessonIds.contains(lesson['id']),
-            orElse: () => lessons.isNotEmpty ? lessons.first : null,
-          );
+          // Find first incomplete lesson
+          dynamic nextLesson;
+          for (final lesson in lessons) {
+            if (!completedLessonIds.contains(lesson['id'])) {
+              nextLesson = lesson;
+              break;
+            }
+          }
+          // If all completed, go to first lesson
+          nextLesson ??= lessons.isNotEmpty ? lessons.first : null;
 
           if (nextLesson != null) {
             Navigator.push(

@@ -1146,13 +1146,16 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
     if (messageType == 'text') {
       return _buildTextWithLinks(message['message'] ?? '', textColor, isMyMessage);
     } else if (messageType == 'image' && message['mediaUrl'] != null) {
+      final imageUrl = message['mediaUrl'].toString().startsWith('http')
+          ? message['mediaUrl'].toString()
+          : 'https://millerstorm.tech${message['mediaUrl']}';
       return GestureDetector(
         onTap: () {
           Navigator.push(
             context,
             MaterialPageRoute(
               builder: (context) => ImageViewerScreen(
-                imageUrl: message['mediaUrl'],
+                imageUrl: imageUrl,
               ),
             ),
           );
@@ -1160,9 +1163,27 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
         child: ClipRRect(
           borderRadius: BorderRadius.circular(8),
           child: Image.network(
-            'https://millerstorm.tech${message['mediaUrl']}',
+            imageUrl,
             width: 200,
+            height: 150,
             fit: BoxFit.cover,
+            loadingBuilder: (context, child, loadingProgress) {
+              if (loadingProgress == null) return child;
+              return Container(
+                width: 200,
+                height: 150,
+                color: Colors.grey[200],
+                child: Center(
+                  child: CircularProgressIndicator(
+                    value: loadingProgress.expectedTotalBytes != null
+                        ? loadingProgress.cumulativeBytesLoaded / loadingProgress.expectedTotalBytes!
+                        : null,
+                    color: const Color(0xFFCB0002),
+                    strokeWidth: 2,
+                  ),
+                ),
+              );
+            },
             errorBuilder: (context, error, stackTrace) {
               return Container(
                 width: 200,
