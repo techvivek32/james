@@ -6,7 +6,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   await connectMongo();
 
   if (req.method === "GET") {
-    const bots = await AiBotModel.find({ isActive: true }).lean();
+    const bots = await AiBotModel.find({ isActive: true, status: 'published' }).lean();
     const normalized = bots.map(normalizeBot);
     // Sort: bots with sortOrder set come first (by sortOrder asc), rest by createdAt desc
     normalized.sort((a: any, b: any) => {
