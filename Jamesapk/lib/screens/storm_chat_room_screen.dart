@@ -494,45 +494,51 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
   }
 
   Future<void> _uploadFile(File file, String type) async {
-    // Check file size
     final fileSize = await file.length();
     final fileSizeMB = fileSize / (1024 * 1024);
-    
-    // Show size limit warning
-    if (type == 'video' && fileSizeMB > 1000) {
-      _showError('Video size exceeds 1000MB limit');
+
+    if (type == 'video' && fileSizeMB > 500) {
+      _showError('Video size exceeds 500MB limit (${fileSizeMB.toStringAsFixed(1)}MB)');
       return;
     }
     if (type == 'image' && fileSizeMB > 30) {
       _showError('Image size exceeds 30MB limit');
       return;
     }
-    
-    setState(() {
-      isUploading = true;
-    });
+
+    setState(() { isUploading = true; });
 
     try {
+      final fileName = file.path.split('/').last;
+      final mimeType = type == 'video' ? 'video/mp4' : 'image/jpeg';
+
       var request = http.MultipartRequest(
         'POST',
         Uri.parse('https://millerstorm.tech/api/upload-image'),
       );
-      request.files.add(await http.MultipartFile.fromPath('file', file.path));
-
-      // Send with longer timeout for large files
-      var streamedResponse = await request.send().timeout(
-        Duration(minutes: 10), // 10 minute timeout for large videos
-        onTimeout: () {
-          throw TimeoutException('Upload timed out. File may be too large.');
-        },
+      request.headers['Accept'] = 'application/json';
+      request.files.add(
+        await http.MultipartFile.fromPath(
+          'file',
+          file.path,
+          filename: fileName,
+        ),
       );
-      var response = await http.Response.fromStream(streamedResponse);
+
+      print('📤 Uploading $type: $fileName (${fileSizeMB.toStringAsFixed(1)}MB)');
+
+      final streamedResponse = await request.send().timeout(
+        const Duration(minutes: 15),
+        onTimeout: () => throw Exception('Upload timed out after 15 minutes'),
+      );
+      final response = await http.Response.fromStream(streamedResponse);
+
+      print('📤 Upload response: ${response.statusCode} - ${response.body}');
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         final url = data['url'];
 
-        // Send message with media
         await http.post(
           Uri.parse('https://millerstorm.tech/api/storm-chat/messages/${widget.group['_id']}'),
           headers: {'Content-Type': 'application/json'},
@@ -540,7 +546,7 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
             'senderId': widget.userId,
             'senderName': userName,
             'senderRole': widget.userRole,
-            'message': file.path.split('/').last,
+            'message': fileName,
             'messageType': type,
             'mediaUrl': url,
           }),
@@ -548,28 +554,18 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
 
         await _fetchMessages();
       } else {
-        // Parse error message from server
-        String errorMsg = 'Failed to upload file (${response.statusCode})';
+        String errorMsg = 'Upload failed (${response.statusCode})';
         try {
           final errorData = json.decode(response.body);
-          if (errorData['error'] != null) {
-            errorMsg = errorData['error'];
-          }
-        } catch (e) {
-          print('Could not parse error response: $e');
-        }
+          if (errorData['error'] != null) errorMsg = errorData['error'];
+        } catch (_) {}
         _showError(errorMsg);
       }
-    } on TimeoutException catch (e) {
-      print('Upload timeout: $e');
-      _showError('Upload timed out. File may be too large.');
     } catch (e) {
-      print('Error uploading file: $e');
-      _showError('Failed to upload file');
+      print('❌ Upload error: $e');
+      _showError('Upload failed: ${e.toString().replaceAll('Exception: ', '')}');
     } finally {
-      setState(() {
-        isUploading = false;
-      });
+      setState(() { isUploading = false; });
     }
   }
 
