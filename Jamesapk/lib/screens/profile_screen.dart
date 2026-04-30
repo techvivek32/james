@@ -362,15 +362,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: _bg,
+    return WillPopScope(
+      onWillPop: () async {
+        Navigator.pushReplacementNamed(context, '/courses');
+        return false;
+      },
+      child: Scaffold(
+        backgroundColor: _bg,
       appBar: AppBar(
         backgroundColor: _primary,
         elevation: 0,
-        leading: IconButton(
-          icon: Icon(Icons.arrow_back, color: _white),
-          onPressed: () => Navigator.pop(context),
-        ),
         title: Text(
           _isEditMode ? 'Edit Profile' : 'Profile',
           style: const TextStyle(
@@ -391,7 +392,105 @@ class _ProfileScreenState extends State<ProfileScreen> {
               ]
             : null,
       ),
-      body: _isEditMode ? _buildEditMode() : _buildViewMode(),
+      body: Column(
+        children: [
+          Expanded(
+            child: _isEditMode ? _buildEditMode() : _buildViewMode(),
+          ),
+          _buildBottomNav(context),
+        ],
+      ),
+      ),
+    );
+  }
+
+  Widget _buildBottomNav(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: _white,
+        border: const Border(top: BorderSide(color: _border, width: 1)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.04),
+            blurRadius: 8,
+            offset: const Offset(0, -2),
+          ),
+        ],
+      ),
+      child: SafeArea(
+        top: false,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 8),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
+            children: [
+              _navItem(Icons.school_outlined, 'Training', false, '/courses', context),
+              _navItem(Icons.chat_bubble_outline, 'StormChat', false, '/stormchat', context),
+              _navItem(Icons.apps_outlined, 'Apps & Tools', false, '/apps-tools-items', context),
+              _navItemActive(Icons.person_outline, 'Profile'),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _navItem(IconData icon, String label, bool active, String? route, BuildContext context) {
+    return Flexible(
+      child: GestureDetector(
+        onTap: route != null ? () => Navigator.pushReplacementNamed(context, route) : null,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                icon,
+                color: active ? _primary : const Color(0xFF9CA3AF),
+                size: 24,
+              ),
+              const SizedBox(height: 4),
+              Text(
+                label,
+                style: TextStyle(
+                  fontSize: 10,
+                  color: active ? _primary : const Color(0xFF9CA3AF),
+                  fontWeight: active ? FontWeight.w600 : FontWeight.normal,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                textAlign: TextAlign.center,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _navItemActive(IconData icon, String label) {
+    return Flexible(
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, color: _primary, size: 24),
+            const SizedBox(height: 4),
+            Text(
+              label,
+              style: const TextStyle(
+                fontSize: 10,
+                color: _primary,
+                fontWeight: FontWeight.w600,
+              ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
+      ),
     );
   }
 

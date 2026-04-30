@@ -616,10 +616,10 @@ class _TrainingScreenState extends State<TrainingScreen> {
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
-              _navItem(Icons.school_outlined, 'Training', true, null, context),
-              _navItem(Icons.emoji_events_outlined, 'Rankings', false, '/rankings', context),
-              _navItem(Icons.work_outline, 'Planner', false, '/planner', context),
+              _navItem(Icons.school_outlined, 'Training', true, '/courses', context),
               _navItemWithBadge(Icons.chat_bubble_outline, 'StormChat', _stormChatGroupCount, context),
+              _navItem(Icons.apps_outlined, 'Apps & Tools', false, '/apps-tools-items', context),
+              _navItem(Icons.person_outline, 'Profile', false, '/profile', context),
             ],
           ),
         ),

@@ -30,7 +30,7 @@ class _SplashScreenState extends State<SplashScreen> {
         final role = user['role'] as String?;
         
         if (role == 'sales') {
-          Navigator.pushReplacementNamed(context, '/training');
+          Navigator.pushReplacementNamed(context, '/courses');
         } else if (role == 'manager') {
           Navigator.pushReplacementNamed(context, '/manager-dashboard');
         } else {

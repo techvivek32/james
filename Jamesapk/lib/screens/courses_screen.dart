@@ -152,15 +152,16 @@ class _CoursesScreenState extends State<CoursesScreen> with SingleTickerProvider
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: _bg,
-      appBar: AppBar(
+    return WillPopScope(
+      onWillPop: () async {
+        // Prevent back button from exiting app
+        return false;
+      },
+      child: Scaffold(
+        backgroundColor: _bg,
+        appBar: AppBar(
         backgroundColor: _white,
         elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: _textDark),
-          onPressed: () => Navigator.pop(context),
-        ),
         title: const Text(
           'Training Center',
           style: TextStyle(color: _textDark, fontSize: 18, fontWeight: FontWeight.w700),
@@ -178,13 +179,21 @@ class _CoursesScreenState extends State<CoursesScreen> with SingleTickerProvider
           ],
         ),
       ),
-      body: TabBarView(
-        controller: _tabController,
+      body: Column(
         children: [
-          _buildCoursesTab(),
-          _buildMyPlaylistsTab(),
-          _buildAssignedPlaylistsTab(),
+          Expanded(
+            child: TabBarView(
+              controller: _tabController,
+              children: [
+                _buildCoursesTab(),
+                _buildMyPlaylistsTab(),
+                _buildAssignedPlaylistsTab(),
+              ],
+            ),
+          ),
+          _buildBottomNav(),
         ],
+      ),
       ),
     );
   }
@@ -633,6 +642,60 @@ class _CoursesScreenState extends State<CoursesScreen> with SingleTickerProvider
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildBottomNav() {
+    return Container(
+      decoration: BoxDecoration(
+        color: _white,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 10,
+            offset: const Offset(0, -2),
+          ),
+        ],
+      ),
+      child: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
+            children: [
+              _navItemActive(Icons.school, 'Training'),
+              _navItem(Icons.chat_bubble, 'StormChat', '/stormchat'),
+              _navItem(Icons.apps, 'Apps & Tools', '/apps-tools-items'),
+              _navItem(Icons.person, 'Profile', '/profile'),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _navItem(IconData icon, String label, String route) {
+    return GestureDetector(
+      onTap: () => Navigator.pushReplacementNamed(context, route),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, color: _textLight, size: 24),
+          const SizedBox(height: 4),
+          Text(label, style: const TextStyle(fontSize: 11, color: _textLight)),
+        ],
+      ),
+    );
+  }
+
+  Widget _navItemActive(IconData icon, String label) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(icon, color: _primary, size: 24),
+        const SizedBox(height: 4),
+        Text(label, style: const TextStyle(fontSize: 11, color: _primary, fontWeight: FontWeight.w600)),
+      ],
     );
   }
 }

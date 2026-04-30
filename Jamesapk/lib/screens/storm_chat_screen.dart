@@ -115,7 +115,7 @@ class _StormChatScreenState extends State<StormChatScreen> {
   Widget build(BuildContext context) {
     return WillPopScope(
       onWillPop: () async {
-        Navigator.pushReplacementNamed(context, '/training');
+        Navigator.pushReplacementNamed(context, '/courses');
         return false;
       },
       child: Scaffold(
@@ -388,10 +388,10 @@ class _StormChatScreenState extends State<StormChatScreen> {
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
-              _navItem(context, Icons.school_outlined, 'Training', false, '/training'),
-              _navItem(context, Icons.emoji_events_outlined, 'Rankings', false, '/rankings'),
-              _navItem(context, Icons.work_outline, 'Planner', false, '/planner'),
+              _navItem(context, Icons.school_outlined, 'Training', false, '/courses'),
               _navItemActive(Icons.chat_bubble_outline, 'StormChat'),
+              _navItem(context, Icons.apps_outlined, 'Apps & Tools', false, '/apps-tools-items'),
+              _navItem(context, Icons.person_outline, 'Profile', false, '/profile'),
             ],
           ),
         ),
