@@ -1081,7 +1081,12 @@ class _LessonPlayerScreenState extends State<LessonPlayerScreen> {
                     
                     // Bottom action bar
                     Container(
-                      padding: const EdgeInsets.all(16),
+                      padding: EdgeInsets.only(
+                        left: 16,
+                        right: 16,
+                        top: 16,
+                        bottom: 16 + MediaQuery.of(context).padding.bottom,
+                      ),
                       decoration: BoxDecoration(
                         color: _white,
                         boxShadow: [
@@ -1192,7 +1197,7 @@ class _LessonPlayerScreenState extends State<LessonPlayerScreen> {
                     (_courseBot!['selectedPages'] as List<dynamic>?)?.contains(_lesson!['id']) == true)
                   Positioned(
                     right: 16,
-                    bottom: 90,
+                    bottom: 100 + MediaQuery.of(context).padding.bottom,
                     child: GestureDetector(
                       onTap: _showAIChatDialog,
                       child: Container(
@@ -1685,8 +1690,8 @@ class _AIChatState extends State<_AIChat> {
               padding: EdgeInsets.only(
                 left: 16,
                 right: 16,
-                top: 16,
-                bottom: 16 + MediaQuery.of(context).viewInsets.bottom,
+                top: 12,
+                bottom: 12 + MediaQuery.of(context).viewInsets.bottom,
               ),
               decoration: const BoxDecoration(
                 color: _white,
@@ -1694,54 +1699,53 @@ class _AIChatState extends State<_AIChat> {
                   top: BorderSide(color: _border, width: 1),
                 ),
               ),
-              child: SafeArea(
-                child: Column(
-                  children: [
-                    Container(
-                      decoration: BoxDecoration(
-                        color: _white,
-                        border: Border.all(color: _border),
-                        borderRadius: BorderRadius.circular(8),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    decoration: BoxDecoration(
+                      color: _white,
+                      border: Border.all(color: _border),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: TextField(
+                      controller: _messageController,
+                      maxLines: null,
+                      keyboardType: TextInputType.multiline,
+                      textInputAction: TextInputAction.newline,
+                      decoration: const InputDecoration(
+                        hintText: 'Ask the coach a question...',
+                        hintStyle: TextStyle(fontSize: 13, color: _textLight),
+                        border: InputBorder.none,
+                        contentPadding: EdgeInsets.all(12),
                       ),
-                      child: TextField(
-                        controller: _messageController,
-                        maxLines: null,
-                        keyboardType: TextInputType.multiline,
-                        textInputAction: TextInputAction.newline,
-                        decoration: const InputDecoration(
-                          hintText: 'Ask the coach a question...',
-                          hintStyle: TextStyle(fontSize: 13, color: _textLight),
-                          border: InputBorder.none,
-                          contentPadding: EdgeInsets.all(12),
+                      style: const TextStyle(fontSize: 13, color: _textDark),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      onPressed: _isLoading ? null : _sendMessage,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: _textDark,
+                        disabledBackgroundColor: _border,
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
                         ),
-                        style: const TextStyle(fontSize: 13, color: _textDark),
+                      ),
+                      child: Text(
+                        _isLoading ? 'Thinking...' : 'Send',
+                        style: const TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          color: _white,
+                        ),
                       ),
                     ),
-                    const SizedBox(height: 8),
-                    SizedBox(
-                      width: double.infinity,
-                      child: ElevatedButton(
-                        onPressed: _isLoading ? null : _sendMessage,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: _textDark,
-                          disabledBackgroundColor: _border,
-                          padding: const EdgeInsets.symmetric(vertical: 12),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                        ),
-                        child: Text(
-                          _isLoading ? 'Thinking...' : 'Send',
-                          style: const TextStyle(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w600,
-                            color: _white,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
+                  ),
+                ],
               ),
             ),
           ],

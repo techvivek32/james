@@ -1180,7 +1180,7 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
       r'https?://[^\s]+',
       caseSensitive: false,
     );
-    final RegExp mentionRegExp = RegExp(r'@[\w\s]+');
+    final RegExp mentionRegExp = RegExp(r'@\w+');
 
     final List<TextSpan> spans = [];
     int start = 0;
@@ -1278,7 +1278,7 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
           style: TextStyle(
             fontSize: 14,
             color: mentionColor,
-            fontWeight: FontWeight.bold,
+            fontWeight: FontWeight.w600,
           ),
         ));
       }
