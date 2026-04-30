@@ -229,20 +229,87 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
 
   Widget _buildContinueButton() {
     return GestureDetector(
-      onTap: () {
+      onTap: () async {
         if (_course != null) {
           final pages = _course!['pages'] as List<dynamic>? ?? [];
-          final firstLesson = pages.isNotEmpty ? pages.first : null;
+          final folders = _course!['folders'] as List<dynamic>? ?? [];
           
-          if (firstLesson != null) {
+          // Filter only published pages
+          var lessons = pages.where((page) => page['status'] == 'published').toList();
+          
+          // Sort lessons by folder order
+          if (folders.isNotEmpty) {
+            final folderIndexMap = <String, int>{};
+            for (var i = 0; i < folders.length; i++) {
+              folderIndexMap[folders[i]['id']] = i;
+            }
+            
+            final pageIndexMap = <String, int>{};
+            for (var i = 0; i < lessons.length; i++) {
+              pageIndexMap[lessons[i]['id']] = i;
+            }
+            
+            lessons.sort((a, b) {
+              final aFolderId = a['folderId'];
+              final bFolderId = b['folderId'];
+              
+              if (aFolderId != null && bFolderId != null) {
+                final aFolderIndex = folderIndexMap[aFolderId] ?? 999;
+                final bFolderIndex = folderIndexMap[bFolderId] ?? 999;
+                
+                if (aFolderIndex == bFolderIndex) {
+                  final aPageIndex = pageIndexMap[a['id']] ?? 999;
+                  final bPageIndex = pageIndexMap[b['id']] ?? 999;
+                  return aPageIndex.compareTo(bPageIndex);
+                }
+                
+                return aFolderIndex.compareTo(bFolderIndex);
+              }
+              
+              if (aFolderId != null && bFolderId == null) return -1;
+              if (aFolderId == null && bFolderId != null) return 1;
+              
+              final aPageIndex = pageIndexMap[a['id']] ?? 999;
+              final bPageIndex = pageIndexMap[b['id']] ?? 999;
+              return aPageIndex.compareTo(bPageIndex);
+            });
+          }
+          
+          // Get completed lessons from progress
+          final user = await AuthService.getStoredUser();
+          final userId = user?['id'] ?? '';
+          Set<String> completedLessonIds = {};
+          
+          if (userId.isNotEmpty) {
+            try {
+              final progressResponse = await http.get(
+                Uri.parse('https://millerstorm.tech/api/progress?userId=$userId&courseId=${widget.courseId}'),
+              );
+              if (progressResponse.statusCode == 200) {
+                final progressData = jsonDecode(progressResponse.body);
+                final completedPages = progressData['completedPages'] as List<dynamic>? ?? [];
+                completedLessonIds = completedPages.map((p) => p.toString()).toSet();
+              }
+            } catch (e) {
+              print('⚠️ Could not load progress: $e');
+            }
+          }
+          
+          // Find first incomplete lesson
+          final nextLesson = lessons.firstWhere(
+            (lesson) => !completedLessonIds.contains(lesson['id']),
+            orElse: () => lessons.isNotEmpty ? lessons.first : null,
+          );
+          
+          if (nextLesson != null) {
             Navigator.push(
               context,
               MaterialPageRoute(
                 builder: (context) => LessonPlayerScreen(
                   courseId: widget.courseId,
                   courseTitle: widget.courseTitle,
-                  lessonId: firstLesson['id'] ?? '',
-                  lessonTitle: firstLesson['title'] ?? 'First Lesson',
+                  lessonId: nextLesson['id'] ?? '',
+                  lessonTitle: nextLesson['title'] ?? 'Lesson',
                   playlistModules: widget.playlistModules,
                 ),
               ),

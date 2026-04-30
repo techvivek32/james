@@ -53,7 +53,7 @@ class AppsToolsDetailScreen extends StatelessWidget {
       body: CustomScrollView(
         slivers: [
           SliverAppBar(
-            expandedHeight: 250,
+            expandedHeight: 200,
             pinned: true,
             backgroundColor: _white,
             leading: Container(
@@ -79,12 +79,12 @@ class AppsToolsDetailScreen extends StatelessWidget {
                 children: [
                   if (imageUrl.isNotEmpty)
                     Padding(
-                      padding: const EdgeInsets.all(16),
+                      padding: const EdgeInsets.fromLTRB(16, 60, 16, 16),
                       child: ClipRRect(
                         borderRadius: BorderRadius.circular(16),
                         child: Image.network(
                           fullImageUrl,
-                          fit: BoxFit.cover,
+                          fit: BoxFit.contain,
                           errorBuilder: (context, error, stackTrace) {
                             return Container(
                               color: _bg,
@@ -171,7 +171,7 @@ class AppsToolsDetailScreen extends StatelessWidget {
                       if (playStoreLink.isNotEmpty)
                         _buildLinkButton(context, 'Get it on Google Play', playStoreLink, Icons.android),
                     ],
-                    const SizedBox(height: 40),
+                    SizedBox(height: MediaQuery.of(context).padding.bottom + 40),
                   ],
                 ),
               ),
