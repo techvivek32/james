@@ -234,73 +234,43 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
           final pages = _course!['pages'] as List<dynamic>? ?? [];
           final folders = _course!['folders'] as List<dynamic>? ?? [];
           
-          // Filter only published pages
           var lessons = pages.where((page) => page['status'] == 'published').toList();
           
-          // Sort lessons by folder order
           if (folders.isNotEmpty) {
             final folderIndexMap = <String, int>{};
             for (var i = 0; i < folders.length; i++) {
               folderIndexMap[folders[i]['id']] = i;
             }
-            
             final pageIndexMap = <String, int>{};
             for (var i = 0; i < lessons.length; i++) {
               pageIndexMap[lessons[i]['id']] = i;
             }
-            
             lessons.sort((a, b) {
               final aFolderId = a['folderId'];
               final bFolderId = b['folderId'];
-              
               if (aFolderId != null && bFolderId != null) {
                 final aFolderIndex = folderIndexMap[aFolderId] ?? 999;
                 final bFolderIndex = folderIndexMap[bFolderId] ?? 999;
-                
                 if (aFolderIndex == bFolderIndex) {
-                  final aPageIndex = pageIndexMap[a['id']] ?? 999;
-                  final bPageIndex = pageIndexMap[b['id']] ?? 999;
-                  return aPageIndex.compareTo(bPageIndex);
+                  return (pageIndexMap[a['id']] ?? 999).compareTo(pageIndexMap[b['id']] ?? 999);
                 }
-                
                 return aFolderIndex.compareTo(bFolderIndex);
               }
-              
-              if (aFolderId != null && bFolderId == null) return -1;
-              if (aFolderId == null && bFolderId != null) return 1;
-              
-              final aPageIndex = pageIndexMap[a['id']] ?? 999;
-              final bPageIndex = pageIndexMap[b['id']] ?? 999;
-              return aPageIndex.compareTo(bPageIndex);
+              if (aFolderId != null) return -1;
+              if (bFolderId != null) return 1;
+              return (pageIndexMap[a['id']] ?? 999).compareTo(pageIndexMap[b['id']] ?? 999);
             });
           }
-          
-          // Get completed lessons from progress
-          final user = await AuthService.getStoredUser();
-          final userId = user?['id'] ?? '';
-          Set<String> completedLessonIds = {};
-          
-          if (userId.isNotEmpty) {
-            try {
-              final progressResponse = await http.get(
-                Uri.parse('https://millerstorm.tech/api/progress?userId=$userId&courseId=${widget.courseId}'),
-              );
-              if (progressResponse.statusCode == 200) {
-                final progressData = jsonDecode(progressResponse.body);
-                final completedPages = progressData['completedPages'] as List<dynamic>? ?? [];
-                completedLessonIds = completedPages.map((p) => p.toString()).toSet();
-              }
-            } catch (e) {
-              print('⚠️ Could not load progress: $e');
-            }
-          }
-          
-          // Find first incomplete lesson
+
+          // Use already loaded progress data from _course
+          final completedPages = (_course!['progress']?['completedPages'] as List<dynamic>? ?? []);
+          final completedLessonIds = completedPages.map((p) => p.toString()).toSet();
+
           final nextLesson = lessons.firstWhere(
             (lesson) => !completedLessonIds.contains(lesson['id']),
             orElse: () => lessons.isNotEmpty ? lessons.first : null,
           );
-          
+
           if (nextLesson != null) {
             Navigator.push(
               context,

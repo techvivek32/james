@@ -475,7 +475,6 @@ class _LessonPlayerScreenState extends State<LessonPlayerScreen> {
     _webViewController ??= WebViewController()
       ..setJavaScriptMode(JavaScriptMode.unrestricted)
       ..setBackgroundColor(Colors.black)
-      ..setMediaPlaybackRequiresUserGesture(false)
       ..setUserAgent('Mozilla/5.0 (Linux; Android 11; Pixel 5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/90.0.4430.91 Mobile Safari/537.36')
       ..addJavaScriptChannel(
         'VideoEndChannel',

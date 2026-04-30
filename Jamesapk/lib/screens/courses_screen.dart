@@ -567,6 +567,7 @@ class _CoursesScreenState extends State<CoursesScreen> with SingleTickerProvider
                                 width: double.infinity,
                                 height: 160,
                                 fit: BoxFit.cover,
+                                cacheWidth: 400,
                                 errorBuilder: (context, error, stackTrace) {
                                   return Container(
                                     decoration: BoxDecoration(
@@ -587,6 +588,7 @@ class _CoursesScreenState extends State<CoursesScreen> with SingleTickerProvider
                                 width: double.infinity,
                                 height: 160,
                                 fit: BoxFit.cover,
+                                cacheWidth: 400,
                                 errorBuilder: (context, error, stackTrace) {
                                   return Container(
                                     decoration: BoxDecoration(
