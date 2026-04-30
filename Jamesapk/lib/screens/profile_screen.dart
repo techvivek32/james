@@ -603,32 +603,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     title: 'Edit Profile',
                     onTap: _enterEditMode,
                   ),
-                  const SizedBox(height: 12),
-                  _buildMenuItem(
-                    icon: Icons.notifications_outlined,
-                    title: 'Notifications',
-                    onTap: () {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('Coming Soon'),
-                          backgroundColor: Color(0xFFCB0002),
-                        ),
-                      );
-                    },
-                  ),
-                  const SizedBox(height: 12),
-                  _buildMenuItem(
-                    icon: Icons.help_outline,
-                    title: 'Help & Support',
-                    onTap: () {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('Coming Soon'),
-                          backgroundColor: Color(0xFFCB0002),
-                        ),
-                      );
-                    },
-                  ),
                   const SizedBox(height: 24),
                   SizedBox(
                     width: double.infinity,
