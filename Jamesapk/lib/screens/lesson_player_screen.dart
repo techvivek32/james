@@ -242,11 +242,38 @@ class _LessonPlayerScreenState extends State<LessonPlayerScreen> {
           onPageFinished: (String url) {
             print('✅ Video page loaded: $url');
             _webViewController?.runJavaScript('''
+              // Override media session to prevent auto-pause
               if ('mediaSession' in navigator) {
-                navigator.mediaSession.setActionHandler('pause', null);
-                navigator.mediaSession.setActionHandler('stop', null);
+                navigator.mediaSession.setActionHandler('pause', function() {});
+                navigator.mediaSession.setActionHandler('stop', function() {});
+                navigator.mediaSession.setActionHandler('play', function() {
+                  var videos = document.querySelectorAll('video');
+                  videos.forEach(function(v) { v.play(); });
+                });
               }
-              
+
+              // Patch HTMLMediaElement pause to block external pause calls
+              var origPause = HTMLMediaElement.prototype.pause;
+              HTMLMediaElement.prototype.pause = function() {
+                if (this._userPaused) {
+                  origPause.call(this);
+                }
+              };
+
+              document.addEventListener('click', function(e) {
+                var videos = document.querySelectorAll('video');
+                videos.forEach(function(video) {
+                  if (e.target === video || video.contains(e.target)) {
+                    if (video.paused) {
+                      video._userPaused = false;
+                      video.play();
+                    } else {
+                      video._userPaused = true;
+                    }
+                  }
+                });
+              }, true);
+
               setTimeout(function() {
                 var videos = document.querySelectorAll('video');
                 videos.forEach(function(video) {
@@ -254,7 +281,7 @@ class _LessonPlayerScreenState extends State<LessonPlayerScreen> {
                   video.setAttribute('webkit-playsinline', 'true');
                   video.muted = false;
                   video.volume = 1.0;
-                  
+
                   video.addEventListener('ended', function() {
                     if (window.VideoEndChannel) {
                       window.VideoEndChannel.postMessage('ended');
@@ -284,8 +311,8 @@ class _LessonPlayerScreenState extends State<LessonPlayerScreen> {
         final hash = vimeoMatch.group(2);
         // Use Vimeo player with playsinline enabled
         final embedUrl = hash != null 
-          ? 'https://player.vimeo.com/video/$videoId?h=$hash&playsinline=1&controls=1&autoplay=0&muted=0'
-          : 'https://player.vimeo.com/video/$videoId?playsinline=1&controls=1&autoplay=0&muted=0';
+          ? 'https://player.vimeo.com/video/$videoId?h=$hash&playsinline=1&controls=1&autoplay=0&muted=0&autopause=0'
+          : 'https://player.vimeo.com/video/$videoId?playsinline=1&controls=1&autoplay=0&muted=0&autopause=0';
         print('✅ Vimeo embed URL: $embedUrl');
         return embedUrl;
       }
