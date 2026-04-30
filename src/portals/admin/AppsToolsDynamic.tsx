@@ -163,6 +163,7 @@ export function AppsToolManagement() {
         setCategories(categories.map(cat => cat._id === id ? updatedCategory : cat));
         setIsEditingCategory(null);
         setEditingCategoryName("");
+        await fetchAppTools();
       }
     } catch (error) {
       console.error('Error updating category:', error);
