@@ -200,10 +200,7 @@ class _LessonPlayerScreenState extends State<LessonPlayerScreen> {
           print('➡️ Next will be: ${lessons[currentIndex + 1]['title']} (isQuiz: ${lessons[currentIndex + 1]['isQuiz']})');
         }
         
-        // Initialize video player only if not a quiz and has video
-        if (lesson?['isQuiz'] != true && lesson?['videoUrl'] != null) {
-          _initializeVideoPlayer(lesson!['videoUrl']);
-        }
+        // Video player is handled by _IsolatedVideoPlayer widget — no init needed.
       } else {
         setState(() {
           _isLoading = false;
@@ -217,25 +214,8 @@ class _LessonPlayerScreenState extends State<LessonPlayerScreen> {
     }
   }
 
-  void _initializeVideoPlayer(String videoUrl) {
-    final embedUrl = _getEmbedUrl(videoUrl);
-    print('🎥 Initializing video player with URL: $embedUrl');
-
-    _webViewController = WebViewController()
-      ..setJavaScriptMode(JavaScriptMode.unrestricted)
-      ..setBackgroundColor(Colors.black)
-      ..enableZoom(false)
-      ..setMediaPlaybackRequiresUserGesture(false)
-      ..setUserAgent('Mozilla/5.0 (Linux; Android 11; Pixel 5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/90.0.4430.91 Mobile Safari/537.36')
-      ..setNavigationDelegate(
-        NavigationDelegate(
-          onWebResourceError: (WebResourceError error) {
-            print('❌ Video load error: ${error.description}');
-          },
-        ),
-      )
-      ..loadHtmlString(_buildVideoHtml(embedUrl));
-  }
+  // Video player is handled by _IsolatedVideoPlayer widget below.
+  // No manual initialization needed here.
 
   String _buildVideoHtml(String embedUrl) {
     return '''
@@ -1583,10 +1563,11 @@ class _AIChatState extends State<_AIChat> {
                         )
                   : _messages.isEmpty
                   ? Center(
-                      child: Padding(
+                      child: SingleChildScrollView(
                         padding: const EdgeInsets.all(24),
                         child: Column(
                           mainAxisAlignment: MainAxisAlignment.center,
+                          mainAxisSize: MainAxisSize.min,
                           children: [
                             Container(
                               width: 80,
