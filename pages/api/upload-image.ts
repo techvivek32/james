@@ -23,7 +23,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const form = formidable({
     uploadDir,
     keepExtensions: true,
-    maxFileSize: 100 * 1024 * 1024,
+    maxFileSize: 1000 * 1024 * 1024, // 1000MB for videos
   });
 
   form.parse(req, (err, fields, files) => {
