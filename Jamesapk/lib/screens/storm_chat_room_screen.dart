@@ -705,7 +705,12 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
           
           // Input
           Container(
-            padding: const EdgeInsets.all(12),
+            padding: EdgeInsets.only(
+              left: 12,
+              right: 12,
+              top: 12,
+              bottom: 12 + MediaQuery.of(context).padding.bottom,
+            ),
             decoration: BoxDecoration(
               color: inputAreaColor,
               boxShadow: [

@@ -1062,7 +1062,7 @@ class _LessonPlayerScreenState extends State<LessonPlayerScreen> {
                     // Content below video
                     Expanded(
                       child: SingleChildScrollView(
-                        padding: const EdgeInsets.fromLTRB(16, 16, 16, 80),
+                        padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
                         child: Column(
                           children: [
                             // Quiz or Lesson content
