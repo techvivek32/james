@@ -231,12 +231,23 @@ class _LessonPlayerScreenState extends State<LessonPlayerScreen> {
 </head>
 <body>
 <iframe
+  id="player"
   src="$embedUrl"
   allow="autoplay; fullscreen; picture-in-picture; encrypted-media"
   allowfullscreen
   webkitallowfullscreen
   mozallowfullscreen>
 </iframe>
+<script src="https://player.vimeo.com/api/player.js"></script>
+<script>
+  var iframe = document.getElementById('player');
+  var player = new Vimeo.Player(iframe);
+  player.on('ended', function() {
+    if (window.VideoEndChannel) {
+      window.VideoEndChannel.postMessage('ended');
+    }
+  });
+</script>
 </body>
 </html>''';
   }
@@ -253,8 +264,8 @@ class _LessonPlayerScreenState extends State<LessonPlayerScreen> {
         final hash = vimeoMatch.group(2);
         // Use Vimeo player with playsinline enabled
         final embedUrl = hash != null 
-          ? 'https://player.vimeo.com/video/$videoId?h=$hash&playsinline=1&controls=1&autoplay=0&muted=0&autopause=0'
-          : 'https://player.vimeo.com/video/$videoId?playsinline=1&controls=1&autoplay=0&muted=0&autopause=0';
+          ? 'https://player.vimeo.com/video/$videoId?h=$hash&autoplay=1&playsinline=1&controls=1&muted=0&autopause=0'
+          : 'https://player.vimeo.com/video/$videoId?autoplay=1&playsinline=1&controls=1&muted=0&autopause=0';
         print('✅ Vimeo embed URL: $embedUrl');
         return embedUrl;
       }
@@ -456,20 +467,30 @@ class _LessonPlayerScreenState extends State<LessonPlayerScreen> {
   }
 
   Widget _buildVideoPlayer() {
-    // Don't show video section if no video URL
     if (_lesson?['videoUrl'] == null) {
       return const SizedBox.shrink();
     }
+
+    final embedUrl = _getEmbedUrl(_lesson!['videoUrl']);
+    _webViewController ??= WebViewController()
+      ..setJavaScriptMode(JavaScriptMode.unrestricted)
+      ..setBackgroundColor(Colors.black)
+      ..setMediaPlaybackRequiresUserGesture(false)
+      ..setUserAgent('Mozilla/5.0 (Linux; Android 11; Pixel 5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/90.0.4430.91 Mobile Safari/537.36')
+      ..addJavaScriptChannel(
+        'VideoEndChannel',
+        onMessageReceived: (JavaScriptMessage message) {
+          print('🎬 Video ended - auto-advancing');
+          _markCompleteAndNext();
+        },
+      )
+      ..loadHtmlString(_buildVideoHtml(embedUrl));
 
     return Container(
       height: _isFullscreen ? MediaQuery.of(context).size.height : 220,
       width: double.infinity,
       color: Colors.black,
-      child: _webViewController != null
-          ? WebViewWidget(controller: _webViewController!)
-          : const Center(
-              child: CircularProgressIndicator(color: Colors.white),
-            ),
+      child: WebViewWidget(controller: _webViewController!),
     );
   }
 
