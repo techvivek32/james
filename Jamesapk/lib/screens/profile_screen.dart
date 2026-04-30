@@ -388,6 +388,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
             fontWeight: FontWeight.bold,
           ),
         ),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.logout, color: _white),
+            onPressed: _logout,
+            tooltip: 'Logout',
+          ),
+        ],
       ),
       body: Column(
         children: [
@@ -511,20 +518,26 @@ class _ProfileScreenState extends State<ProfileScreen> {
           children: [
             Container(
               width: double.infinity,
-              color: _primary,
-              padding: const EdgeInsets.only(bottom: 40),
-              child: Column(
+              decoration: BoxDecoration(
+                color: _primary,
+                borderRadius: const BorderRadius.only(
+                  bottomLeft: Radius.circular(26),
+                  bottomRight: Radius.circular(26),
+                ),
+              ),
+              padding: const EdgeInsets.all(20),
+              child: Row(
                 children: [
                   Stack(
                     children: [
                       CircleAvatar(
-                        radius: 50,
+                        radius: 40,
                         backgroundColor: _white.withOpacity(0.2),
                         backgroundImage: _userHeadshotUrl.isNotEmpty
                             ? NetworkImage('https://millerstorm.tech$_userHeadshotUrl')
                             : null,
                         child: _userHeadshotUrl.isEmpty
-                            ? Icon(Icons.person, color: _white, size: 50)
+                            ? Icon(Icons.person, color: _white, size: 40)
                             : null,
                       ),
                       Positioned(
@@ -533,8 +546,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         child: GestureDetector(
                           onTap: _isUploadingImage ? null : _pickAndUploadImage,
                           child: Container(
-                            width: 36,
-                            height: 36,
+                            width: 30,
+                            height: 30,
                             decoration: BoxDecoration(
                               color: _white,
                               shape: BoxShape.circle,
@@ -542,55 +555,67 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             ),
                             child: _isUploadingImage
                                 ? Padding(
-                                    padding: const EdgeInsets.all(8),
+                                    padding: const EdgeInsets.all(6),
                                     child: CircularProgressIndicator(
                                       strokeWidth: 2,
                                       color: _primary,
                                     ),
                                   )
-                                : Icon(Icons.camera_alt, color: _primary, size: 18),
+                                : Icon(Icons.camera_alt, color: _primary, size: 14),
                           ),
                         ),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 16),
-                  Text(
-                    _userName,
-                    style: const TextStyle(
-                      color: _white,
-                      fontSize: 24,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    _userEmail,
-                    style: TextStyle(
-                      color: _white.withOpacity(0.9),
-                      fontSize: 14,
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-                    decoration: BoxDecoration(
-                      color: _white.withOpacity(0.2),
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Text(
-                      _userRole.toUpperCase(),
-                      style: const TextStyle(
-                        color: _white,
-                        fontSize: 12,
-                        fontWeight: FontWeight.bold,
-                        letterSpacing: 0.5,
-                      ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          _userName,
+                          style: const TextStyle(
+                            color: _white,
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          _userEmail,
+                          style: TextStyle(
+                            color: _white.withOpacity(0.9),
+                            fontSize: 13,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        const SizedBox(height: 8),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: _white.withOpacity(0.2),
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                          child: Text(
+                            _userRole.toUpperCase(),
+                            style: const TextStyle(
+                              color: _white,
+                              fontSize: 11,
+                              fontWeight: FontWeight.bold,
+                              letterSpacing: 0.5,
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ],
               ),
             ),
+            const SizedBox(height: 2),
             Padding(
               padding: const EdgeInsets.all(20),
               child: Column(
@@ -658,35 +683,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                 color: _white,
                               ),
                             ),
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton(
-                      onPressed: _logout,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: _primary,
-                        padding: const EdgeInsets.symmetric(vertical: 16),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: const [
-                          Icon(Icons.logout, color: _white, size: 20),
-                          SizedBox(width: 8),
-                          Text(
-                            'Logout',
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                              color: _white,
-                            ),
-                          ),
-                        ],
-                      ),
                     ),
                   ),
                 ],
