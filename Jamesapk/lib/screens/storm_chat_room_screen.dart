@@ -1180,12 +1180,35 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
       r'https?://[^\s]+',
       caseSensitive: false,
     );
-    final RegExp mentionRegExp = RegExp(r'@\w+');
 
     final List<TextSpan> spans = [];
     int start = 0;
 
-    // Combine both URL and mention matches and sort by position
+    // Build a list of all possible user names from members AND message senders
+    final Set<String> allUserNames = {};
+    
+    // Add all member names
+    for (final member in _allMembers) {
+      final memberName = member['name'] ?? '';
+      if (memberName.isNotEmpty) {
+        allUserNames.add(memberName);
+      }
+    }
+    
+    // Add all sender names from messages (to catch users not in member list)
+    for (final message in messages) {
+      final senderName = message['senderName'] ?? '';
+      if (senderName.isNotEmpty) {
+        allUserNames.add(senderName);
+      }
+    }
+    
+    // Add current user name
+    if (userName != null && userName!.isNotEmpty) {
+      allUserNames.add(userName!);
+    }
+
+    // Build a list of all possible mentions
     final List<MapEntry<int, String>> allMatches = [];
     
     // Add URL matches
@@ -1193,15 +1216,45 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
       allMatches.add(MapEntry(match.start, 'url:${match.group(0)}'));
     }
     
-    // Add mention matches
-    for (final Match match in mentionRegExp.allMatches(text)) {
-      allMatches.add(MapEntry(match.start, 'mention:${match.group(0)}'));
+    // Check for mentions based on actual user names
+    for (final name in allUserNames) {
+      final mentionText = '@$name';
+      int index = 0;
+      
+      // Find all occurrences of this user's mention in the text
+      while (index < text.length) {
+        index = text.indexOf(mentionText, index);
+        if (index == -1) break;
+        
+        // Check if this is a valid mention (not part of a longer word)
+        final endIndex = index + mentionText.length;
+        final isValidEnd = endIndex >= text.length || 
+                          !RegExp(r'[a-zA-Z]').hasMatch(text[endIndex]);
+        
+        if (isValidEnd) {
+          allMatches.add(MapEntry(index, 'mention:$mentionText'));
+        }
+        
+        index = endIndex;
+      }
     }
     
-    // Sort by position
+    // Sort by position and remove overlapping matches
     allMatches.sort((a, b) => a.key.compareTo(b.key));
+    
+    // Remove overlapping matches (keep the first one)
+    final List<MapEntry<int, String>> filteredMatches = [];
+    int lastEnd = 0;
+    for (final match in allMatches) {
+      final position = match.key;
+      if (position >= lastEnd) {
+        filteredMatches.add(match);
+        final content = match.value.substring(match.value.indexOf(':') + 1);
+        lastEnd = position + content.length;
+      }
+    }
 
-    for (final entry in allMatches) {
+    for (final entry in filteredMatches) {
       final position = entry.key;
       final value = entry.value;
       final type = value.split(':')[0];
