@@ -218,85 +218,47 @@ class _LessonPlayerScreenState extends State<LessonPlayerScreen> {
   }
 
   void _initializeVideoPlayer(String videoUrl) {
-    String embedUrl = _getEmbedUrl(videoUrl);
-    
+    final embedUrl = _getEmbedUrl(videoUrl);
     print('🎥 Initializing video player with URL: $embedUrl');
-    
+
     _webViewController = WebViewController()
       ..setJavaScriptMode(JavaScriptMode.unrestricted)
       ..setBackgroundColor(Colors.black)
       ..enableZoom(false)
+      ..setMediaPlaybackRequiresUserGesture(false)
       ..setUserAgent('Mozilla/5.0 (Linux; Android 11; Pixel 5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/90.0.4430.91 Mobile Safari/537.36')
-      ..addJavaScriptChannel(
-        'VideoEndChannel',
-        onMessageReceived: (JavaScriptMessage message) {
-          print('🎬 Video ended - auto-advancing to next lesson');
-          _markCompleteAndNext();
-        },
-      )
       ..setNavigationDelegate(
         NavigationDelegate(
-          onPageStarted: (String url) {
-            print('🔄 Video page started loading: $url');
-          },
-          onPageFinished: (String url) {
-            print('✅ Video page loaded: $url');
-            _webViewController?.runJavaScript('''
-              // Override media session to prevent auto-pause
-              if ('mediaSession' in navigator) {
-                navigator.mediaSession.setActionHandler('pause', function() {});
-                navigator.mediaSession.setActionHandler('stop', function() {});
-                navigator.mediaSession.setActionHandler('play', function() {
-                  var videos = document.querySelectorAll('video');
-                  videos.forEach(function(v) { v.play(); });
-                });
-              }
-
-              // Patch HTMLMediaElement pause to block external pause calls
-              var origPause = HTMLMediaElement.prototype.pause;
-              HTMLMediaElement.prototype.pause = function() {
-                if (this._userPaused) {
-                  origPause.call(this);
-                }
-              };
-
-              document.addEventListener('click', function(e) {
-                var videos = document.querySelectorAll('video');
-                videos.forEach(function(video) {
-                  if (e.target === video || video.contains(e.target)) {
-                    if (video.paused) {
-                      video._userPaused = false;
-                      video.play();
-                    } else {
-                      video._userPaused = true;
-                    }
-                  }
-                });
-              }, true);
-
-              setTimeout(function() {
-                var videos = document.querySelectorAll('video');
-                videos.forEach(function(video) {
-                  video.setAttribute('playsinline', 'true');
-                  video.setAttribute('webkit-playsinline', 'true');
-                  video.muted = false;
-                  video.volume = 1.0;
-
-                  video.addEventListener('ended', function() {
-                    if (window.VideoEndChannel) {
-                      window.VideoEndChannel.postMessage('ended');
-                    }
-                  });
-                });
-              }, 2000);
-            ''');
-          },
           onWebResourceError: (WebResourceError error) {
             print('❌ Video load error: ${error.description}');
           },
         ),
       )
-      ..loadRequest(Uri.parse(embedUrl));
+      ..loadHtmlString(_buildVideoHtml(embedUrl));
+  }
+
+  String _buildVideoHtml(String embedUrl) {
+    return '''
+<!DOCTYPE html>
+<html>
+<head>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { width: 100%; height: 100%; background: #000; overflow: hidden; }
+  iframe { position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: none; }
+</style>
+</head>
+<body>
+<iframe
+  src="$embedUrl"
+  allow="autoplay; fullscreen; picture-in-picture; encrypted-media"
+  allowfullscreen
+  webkitallowfullscreen
+  mozallowfullscreen>
+</iframe>
+</body>
+</html>''';
   }
 
   String _getEmbedUrl(String videoUrl) {
