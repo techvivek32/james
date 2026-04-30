@@ -149,6 +149,9 @@ export function AppsToolManagement() {
   async function updateCategory(id: string) {
     if (!editingCategoryName.trim()) return;
     
+    const oldCategory = categories.find(cat => cat._id === id);
+    const oldSlug = oldCategory?.slug;
+    
     try {
       const response = await fetch(`/api/apps-tools/categories/${id}`, {
         method: 'PUT',
@@ -161,6 +164,21 @@ export function AppsToolManagement() {
       if (response.ok) {
         const updatedCategory = await response.json();
         setCategories(categories.map(cat => cat._id === id ? updatedCategory : cat));
+        
+        // Update items grouping if slug changed
+        if (oldSlug && oldSlug !== updatedCategory.slug) {
+          const itemsInOldCategory = itemsByCategory[oldSlug] || [];
+          const updatedItems = itemsInOldCategory.map(item => ({
+            ...item,
+            category: updatedCategory.slug
+          }));
+          
+          const newItemsByCategory = { ...itemsByCategory };
+          delete newItemsByCategory[oldSlug];
+          newItemsByCategory[updatedCategory.slug] = updatedItems;
+          setItemsByCategory(newItemsByCategory);
+        }
+        
         setIsEditingCategory(null);
         setEditingCategoryName("");
       }
