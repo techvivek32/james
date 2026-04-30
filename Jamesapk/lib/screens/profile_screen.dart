@@ -47,6 +47,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
     'Other',
   ];
 
+  bool _showTerritoryDropdown = false;
+
   @override
   void initState() {
     super.initState();
@@ -88,6 +90,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
               _userRole = freshUser['role'] ?? 'Sales Rep';
               _userPhone = freshUser['phone'] ?? '';
               
+              _nameController.text = _userName;
+              _phoneController.text = _userPhone;
+              
               // Parse territory string (format: "DFW, Texas · Lubbock, Texas")
               if (freshUser['territory'] != null && freshUser['territory'].toString().isNotEmpty) {
                 _userTerritories = freshUser['territory']
@@ -124,6 +129,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
           _userEmail = user['email'] ?? '';
           _userRole = user['role'] ?? 'Sales Rep';
           _userPhone = user['phone'] ?? '';
+          
+          _nameController.text = _userName;
+          _phoneController.text = _userPhone;
           
           // Parse territory string (format: "DFW, Texas · Lubbock, Texas")
           if (user['territory'] != null && user['territory'].toString().isNotEmpty) {
@@ -373,29 +381,18 @@ class _ProfileScreenState extends State<ProfileScreen> {
         backgroundColor: _primary,
         elevation: 0,
         title: Text(
-          _isEditMode ? 'Edit Profile' : 'Profile',
+          'Profile',
           style: const TextStyle(
             color: _white,
             fontSize: 20,
             fontWeight: FontWeight.bold,
           ),
         ),
-        actions: _isEditMode
-            ? [
-                TextButton(
-                  onPressed: _isSaving ? null : _cancelEdit,
-                  child: const Text(
-                    'Cancel',
-                    style: TextStyle(color: _white, fontSize: 16),
-                  ),
-                ),
-              ]
-            : null,
       ),
       body: Column(
         children: [
           Expanded(
-            child: _isEditMode ? _buildEditMode() : _buildViewMode(),
+            child: _buildViewMode(),
           ),
           _buildBottomNav(context),
         ],
@@ -597,13 +594,73 @@ class _ProfileScreenState extends State<ProfileScreen> {
             Padding(
               padding: const EdgeInsets.all(20),
               child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  _buildMenuItem(
+                  _buildTextField(
+                    label: 'Full Name',
+                    controller: _nameController,
                     icon: Icons.person_outline,
-                    title: 'Edit Profile',
-                    onTap: _enterEditMode,
                   ),
-                  const SizedBox(height: 24),
+                  const SizedBox(height: 16),
+                  _buildTextField(
+                    label: 'Email',
+                    controller: TextEditingController(text: _userEmail),
+                    icon: Icons.email_outlined,
+                    enabled: false,
+                    helperText: 'Email cannot be changed',
+                  ),
+                  const SizedBox(height: 16),
+                  _buildTextField(
+                    label: 'Phone',
+                    controller: _phoneController,
+                    icon: Icons.phone_outlined,
+                    hint: 'Your mobile number',
+                  ),
+                  const SizedBox(height: 16),
+                  _buildTerritoryField(),
+                  const SizedBox(height: 16),
+                  if (_managerName.isNotEmpty) ...[
+                    _buildTextField(
+                      label: 'Manager',
+                      controller: TextEditingController(text: _managerName),
+                      icon: Icons.manage_accounts_outlined,
+                      enabled: false,
+                      helperText: 'Assigned by admin',
+                    ),
+                    const SizedBox(height: 16),
+                  ],
+                  const SizedBox(height: 16),
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      onPressed: _isSaving ? null : _saveProfile,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: _primary,
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      child: _isSaving
+                          ? const SizedBox(
+                              height: 20,
+                              width: 20,
+                              child: CircularProgressIndicator(
+                                color: _white,
+                                strokeWidth: 2,
+                              ),
+                            )
+                          : const Text(
+                              'Save Changes',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                                color: _white,
+                              ),
+                            ),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
                   SizedBox(
                     width: double.infinity,
                     child: ElevatedButton(
@@ -717,6 +774,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Widget _buildTerritoryField() {
+    String displayText = _userTerritories.isEmpty ? 'Select Territory' : _userTerritories.join(', ');
+    
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -729,40 +788,112 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ),
         ),
         const SizedBox(height: 8),
-        Container(
-          decoration: BoxDecoration(
-            color: _white,
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: _border),
-          ),
-          child: Column(
-            children: _availableTerritories.map((territory) {
-              final isSelected = _userTerritories.contains(territory);
-              return CheckboxListTile(
-                value: isSelected,
-                onChanged: (bool? value) {
-                  setState(() {
-                    if (value == true) {
-                      _userTerritories.add(territory);
-                    } else {
-                      _userTerritories.remove(territory);
-                    }
-                  });
-                },
-                title: Text(
-                  territory,
-                  style: const TextStyle(
-                    fontSize: 16,
-                    color: _textDark,
+        GestureDetector(
+          onTap: () {
+            setState(() {
+              _showTerritoryDropdown = !_showTerritoryDropdown;
+            });
+          },
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            decoration: BoxDecoration(
+              color: _white,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: _showTerritoryDropdown ? _primary : _border, width: _showTerritoryDropdown ? 2 : 1),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Expanded(
+                  child: Text(
+                    displayText,
+                    style: TextStyle(
+                      fontSize: 16,
+                      color: _userTerritories.isEmpty ? _textLight : _textDark,
+                    ),
                   ),
                 ),
-                activeColor: _primary,
-                controlAffinity: ListTileControlAffinity.leading,
-                contentPadding: const EdgeInsets.symmetric(horizontal: 12),
-              );
-            }).toList(),
+                Icon(
+                  _showTerritoryDropdown ? Icons.arrow_drop_up : Icons.arrow_drop_down,
+                  color: _textLight,
+                ),
+              ],
+            ),
           ),
         ),
+        if (_showTerritoryDropdown) ...[
+          const SizedBox(height: 8),
+          Container(
+            decoration: BoxDecoration(
+              color: _white,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: _border),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.1),
+                  blurRadius: 8,
+                  offset: const Offset(0, 2),
+                ),
+              ],
+            ),
+            child: Column(
+              children: _availableTerritories.map((territory) {
+                final isSelected = _userTerritories.contains(territory);
+                return InkWell(
+                  onTap: () {
+                    setState(() {
+                      if (isSelected) {
+                        _userTerritories.remove(territory);
+                      } else {
+                        _userTerritories.add(territory);
+                      }
+                    });
+                  },
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                    decoration: BoxDecoration(
+                      color: isSelected ? _primary.withOpacity(0.05) : Colors.transparent,
+                    ),
+                    child: Row(
+                      children: [
+                        Container(
+                          width: 20,
+                          height: 20,
+                          decoration: BoxDecoration(
+                            color: isSelected ? _primary : Colors.transparent,
+                            border: Border.all(
+                              color: isSelected ? _primary : _border,
+                              width: 2,
+                            ),
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: isSelected
+                              ? const Icon(
+                                  Icons.check,
+                                  size: 14,
+                                  color: _white,
+                                )
+                              : null,
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Text(
+                            territory,
+                            style: TextStyle(
+                              fontSize: 16,
+                              color: _textDark,
+                              fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              }).toList(),
+            ),
+          ),
+        ],
       ],
     );
   }
