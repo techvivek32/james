@@ -226,7 +226,8 @@ class _LessonPlayerScreenState extends State<LessonPlayerScreen> {
       ..setJavaScriptMode(JavaScriptMode.unrestricted)
       ..setBackgroundColor(Colors.black)
       ..enableZoom(false)
-      ..setUserAgent('Mozilla/5.0 (Linux; Android 10) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.120 Mobile Safari/537.36')
+      ..setMediaPlaybackRequiresUserGesture(false)
+      ..setUserAgent('Mozilla/5.0 (Linux; Android 11; Pixel 5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/90.0.4430.91 Mobile Safari/537.36')
       ..addJavaScriptChannel(
         'VideoEndChannel',
         onMessageReceived: (JavaScriptMessage message) {
@@ -241,34 +242,25 @@ class _LessonPlayerScreenState extends State<LessonPlayerScreen> {
           },
           onPageFinished: (String url) {
             print('✅ Video page loaded: $url');
-            // Inject JavaScript to detect video end and auto-advance
             _webViewController?.runJavaScript('''
-              // Disable media session handlers that cause auto-pause
               if ('mediaSession' in navigator) {
                 navigator.mediaSession.setActionHandler('pause', null);
                 navigator.mediaSession.setActionHandler('stop', null);
               }
               
-              // Find and configure video elements
               setTimeout(function() {
                 var videos = document.querySelectorAll('video');
                 videos.forEach(function(video) {
                   video.setAttribute('playsinline', 'true');
                   video.setAttribute('webkit-playsinline', 'true');
-                  video.removeAttribute('controls');
+                  video.muted = false;
+                  video.volume = 1.0;
                   
-                  // Listen for video end event
                   video.addEventListener('ended', function() {
-                    console.log('Video ended - notifying Flutter');
                     if (window.VideoEndChannel) {
                       window.VideoEndChannel.postMessage('ended');
                     }
                   });
-                  
-                  // Re-add controls after a delay
-                  setTimeout(function() {
-                    video.setAttribute('controls', 'true');
-                  }, 1000);
                 });
               }, 2000);
             ''');
@@ -293,15 +285,15 @@ class _LessonPlayerScreenState extends State<LessonPlayerScreen> {
         final hash = vimeoMatch.group(2);
         // Use Vimeo player with playsinline enabled
         final embedUrl = hash != null 
-          ? 'https://player.vimeo.com/video/$videoId?h=$hash&playsinline=1&controls=1'
-          : 'https://player.vimeo.com/video/$videoId?playsinline=1&controls=1';
+          ? 'https://player.vimeo.com/video/$videoId?h=$hash&playsinline=1&controls=1&autoplay=0&muted=0'
+          : 'https://player.vimeo.com/video/$videoId?playsinline=1&controls=1&autoplay=0&muted=0';
         print('✅ Vimeo embed URL: $embedUrl');
         return embedUrl;
       }
     } else if (videoUrl.contains('youtube.com') || videoUrl.contains('youtu.be')) {
       final youtubeMatch = RegExp(r'(?:youtube\.com/watch\?v=|youtu\.be/)([^&\n?#]+)').firstMatch(videoUrl);
       if (youtubeMatch != null) {
-        final embedUrl = 'https://www.youtube.com/embed/${youtubeMatch.group(1)}?playsinline=1&controls=1';
+        final embedUrl = 'https://www.youtube.com/embed/${youtubeMatch.group(1)}?playsinline=1&controls=1&rel=0';
         print('✅ YouTube embed URL: $embedUrl');
         return embedUrl;
       }
