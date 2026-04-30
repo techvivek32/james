@@ -486,6 +486,7 @@ class _LessonPlayerScreenState extends State<LessonPlayerScreen> {
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       isDismissible: true,
+      useSafeArea: true,
       builder: (context) => _AIChat(
         lessonTitle: _lesson?['title'] ?? widget.lessonTitle,
         lessonContent: _lesson?['body'] ?? '',
@@ -1446,22 +1447,20 @@ class _AIChatState extends State<_AIChat> {
 
   @override
   Widget build(BuildContext context) {
-    final keyboardHeight = MediaQuery.of(context).viewInsets.bottom;
-    
     return DraggableScrollableSheet(
       initialChildSize: 0.9,
       minChildSize: 0.5,
       maxChildSize: 0.95,
-      builder: (context, scrollController) => Container(
-        decoration: const BoxDecoration(
-          color: _white,
-          borderRadius: BorderRadius.only(
-            topLeft: Radius.circular(20),
-            topRight: Radius.circular(20),
+      builder: (context, scrollController) => Padding(
+        padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+        child: Container(
+          decoration: const BoxDecoration(
+            color: _white,
+            borderRadius: BorderRadius.only(
+              topLeft: Radius.circular(20),
+              topRight: Radius.circular(20),
+            ),
           ),
-        ),
-        child: Padding(
-          padding: EdgeInsets.only(bottom: keyboardHeight),
           child: Column(
           children: [
             // Header
@@ -1692,12 +1691,7 @@ class _AIChatState extends State<_AIChat> {
             // Input area
             if (!_showHistory)
               Container(
-                padding: EdgeInsets.only(
-                  left: 16,
-                  right: 16,
-                  top: 12,
-                  bottom: 12 + MediaQuery.of(context).padding.bottom,
-                ),
+                padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
                 decoration: const BoxDecoration(
                   color: _white,
                   border: Border(
@@ -1760,8 +1754,3 @@ class _AIChatState extends State<_AIChat> {
     );
   }
 }
-
-
-
-
-
