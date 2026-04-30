@@ -90,25 +90,40 @@ class _LessonPlayerScreenState extends State<LessonPlayerScreen> {
           lessons = lessons.where((page) => widget.playlistModules!.contains(page['id'])).toList();
         }
         
-        // Sort pages by folder order to ensure quizzes appear in correct sequence
+        // Sort pages by folder order and page order within folders
         final folders = courseData['folders'] as List<dynamic>? ?? [];
         if (folders.isNotEmpty) {
-          // Create a map of folderId to folder index for sorting
+          // Create a map of folderId to folder index
           final folderIndexMap = <String, int>{};
           for (var i = 0; i < folders.length; i++) {
             folderIndexMap[folders[i]['id']] = i;
           }
           
-          // Sort pages: first by folder order, then pages without folders at the end
+          // Create a map of pageId to its original index for stable sorting
+          final pageIndexMap = <String, int>{};
+          for (var i = 0; i < lessons.length; i++) {
+            pageIndexMap[lessons[i]['id']] = i;
+          }
+          
+          // Sort pages: by folder order, then by original page order within folder
           lessons.sort((a, b) {
             final aFolderId = a['folderId'];
             final bFolderId = b['folderId'];
             
-            // If both have folders, sort by folder index
+            // If both have folders
             if (aFolderId != null && bFolderId != null) {
-              final aIndex = folderIndexMap[aFolderId] ?? 999;
-              final bIndex = folderIndexMap[bFolderId] ?? 999;
-              return aIndex.compareTo(bIndex);
+              final aFolderIndex = folderIndexMap[aFolderId] ?? 999;
+              final bFolderIndex = folderIndexMap[bFolderId] ?? 999;
+              
+              // If same folder, sort by original page order
+              if (aFolderIndex == bFolderIndex) {
+                final aPageIndex = pageIndexMap[a['id']] ?? 999;
+                final bPageIndex = pageIndexMap[b['id']] ?? 999;
+                return aPageIndex.compareTo(bPageIndex);
+              }
+              
+              // Different folders, sort by folder order
+              return aFolderIndex.compareTo(bFolderIndex);
             }
             
             // Pages with folders come before pages without folders
@@ -116,7 +131,9 @@ class _LessonPlayerScreenState extends State<LessonPlayerScreen> {
             if (aFolderId == null && bFolderId != null) return 1;
             
             // Both without folders, maintain original order
-            return 0;
+            final aPageIndex = pageIndexMap[a['id']] ?? 999;
+            final bPageIndex = pageIndexMap[b['id']] ?? 999;
+            return aPageIndex.compareTo(bPageIndex);
           });
         }
         
