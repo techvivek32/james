@@ -39,9 +39,15 @@ class _VideoViewerScreenState extends State<VideoViewerScreen> {
           ? widget.videoUrl 
           : 'https://millerstorm.tech${widget.videoUrl}';
       
+      print('🎥 Initializing video from URL: $url');
+      
       _controller = VideoPlayerController.networkUrl(Uri.parse(url));
       
       await _controller.initialize();
+      
+      print('✅ Video initialized successfully');
+      print('📊 Video duration: ${_controller.value.duration}');
+      print('📐 Video aspect ratio: ${_controller.value.aspectRatio}');
       
       setState(() {
         _isInitialized = true;
@@ -58,7 +64,8 @@ class _VideoViewerScreenState extends State<VideoViewerScreen> {
         }
       });
     } catch (e) {
-      print('Video initialization error: $e');
+      print('❌ Video initialization error: $e');
+      print('❌ Video URL was: ${widget.videoUrl}');
       setState(() {
         _hasError = true;
       });

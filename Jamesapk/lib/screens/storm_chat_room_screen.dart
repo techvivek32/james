@@ -1186,13 +1186,18 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
         ),
       );
     } else if (messageType == 'video' && message['mediaUrl'] != null) {
+      final videoUrl = message['mediaUrl'];
+      print('🎥 Video message URL: $videoUrl');
+      
       return GestureDetector(
         onTap: () {
+          print('🎥 Opening video viewer for: $videoUrl');
           Navigator.push(
             context,
             MaterialPageRoute(
               builder: (context) => VideoViewerScreen(
-                videoUrl: message['mediaUrl'],
+                videoUrl: videoUrl,
+                fileName: message['message'],
               ),
             ),
           );
@@ -1210,26 +1215,18 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
               ),
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(8),
-                child: Image.network(
-                  'https://millerstorm.tech${message['mediaUrl']}',
-                  width: 200,
-                  height: 150,
-                  fit: BoxFit.cover,
-                  errorBuilder: (context, error, stackTrace) {
-                    return Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: const [
-                          Icon(Icons.videocam, size: 48, color: Colors.white70),
-                          SizedBox(height: 8),
-                          Text(
-                            'Video',
-                            style: TextStyle(fontSize: 12, color: Colors.white70),
-                          ),
-                        ],
+                child: Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: const [
+                      Icon(Icons.videocam, size: 48, color: Colors.white70),
+                      SizedBox(height: 8),
+                      Text(
+                        'Video',
+                        style: TextStyle(fontSize: 12, color: Colors.white70),
                       ),
-                    );
-                  },
+                    ],
+                  ),
                 ),
               ),
             ),
