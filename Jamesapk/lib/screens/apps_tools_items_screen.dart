@@ -22,6 +22,7 @@ class _AppsToolsItemsScreenState extends State<AppsToolsItemsScreen> with Single
   List<dynamic> _items = [];
   List<dynamic> _categories = [];
   bool _loading = true;
+  bool _loadingItems = false;
   late TabController _tabController;
   int _selectedCategoryIndex = 0;
 
@@ -57,6 +58,7 @@ class _AppsToolsItemsScreenState extends State<AppsToolsItemsScreen> with Single
               if (!_tabController.indexIsChanging) {
                 setState(() {
                   _selectedCategoryIndex = _tabController.index;
+                  _loadingItems = true;
                 });
                 _fetchItems();
               }
@@ -97,12 +99,14 @@ class _AppsToolsItemsScreenState extends State<AppsToolsItemsScreen> with Single
         setState(() {
           _items = categoryItems;
           _loading = false;
+          _loadingItems = false;
         });
       }
     } catch (e) {
       print('Error fetching items: $e');
       setState(() {
         _loading = false;
+        _loadingItems = false;
       });
     }
   }
@@ -166,24 +170,26 @@ class _AppsToolsItemsScreenState extends State<AppsToolsItemsScreen> with Single
                           style: TextStyle(color: _textLight, fontSize: 14),
                         ),
                       )
-                    : _items.isEmpty
-                        ? const Center(
-                            child: Text(
-                              'No items available',
-                              style: TextStyle(color: _textLight, fontSize: 14),
-                            ),
-                          )
-                        : ListView.builder(
-                            padding: const EdgeInsets.all(16),
-                            itemCount: _items.length,
-                            itemBuilder: (context, index) {
-                              final item = _items[index];
-                              return Padding(
-                                padding: const EdgeInsets.only(bottom: 16),
-                                child: _buildItemCard(item),
-                              );
-                            },
-                          ),
+                    : _loadingItems
+                        ? const Center(child: CircularProgressIndicator(color: _primary))
+                        : _items.isEmpty
+                            ? const Center(
+                                child: Text(
+                                  'No items available',
+                                  style: TextStyle(color: _textLight, fontSize: 14),
+                                ),
+                              )
+                            : ListView.builder(
+                                padding: const EdgeInsets.all(16),
+                                itemCount: _items.length,
+                                itemBuilder: (context, index) {
+                                  final item = _items[index];
+                                  return Padding(
+                                    padding: const EdgeInsets.only(bottom: 16),
+                                    child: _buildItemCard(item),
+                                  );
+                                },
+                              ),
           ),
           _buildBottomNav(context),
         ],
