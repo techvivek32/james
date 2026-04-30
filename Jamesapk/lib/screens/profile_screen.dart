@@ -420,13 +420,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
       child: SafeArea(
         top: false,
         child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 8),
+          padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
               _navItem(Icons.school_outlined, 'Training', false, '/courses', context),
+              const SizedBox(width: 2),
               _navItem(Icons.chat_bubble_outline, 'StormChat', false, '/stormchat', context),
+              const SizedBox(width: 2),
               _navItem(Icons.apps_outlined, 'Apps & Tools', false, '/apps-tools-items', context),
+              const SizedBox(width: 2),
               _navItemActive(Icons.person_outline, 'Profile'),
             ],
           ),
@@ -436,26 +439,29 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Widget _navItem(IconData icon, String label, bool active, String? route, BuildContext context) {
-    return Flexible(
+    return Expanded(
       child: GestureDetector(
         onTap: route != null ? () => Navigator.pushReplacementNamed(context, route) : null,
         child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
+          padding: const EdgeInsets.symmetric(vertical: 8),
+          decoration: BoxDecoration(
+            color: Colors.transparent,
+            borderRadius: BorderRadius.circular(8),
+          ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               Icon(
                 icon,
-                color: active ? _primary : const Color(0xFF9CA3AF),
+                color: const Color(0xFF9CA3AF),
                 size: 24,
               ),
               const SizedBox(height: 4),
               Text(
                 label,
-                style: TextStyle(
+                style: const TextStyle(
                   fontSize: 10,
-                  color: active ? _primary : const Color(0xFF9CA3AF),
-                  fontWeight: active ? FontWeight.w600 : FontWeight.normal,
+                  color: Color(0xFF9CA3AF),
                 ),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
@@ -469,9 +475,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Widget _navItemActive(IconData icon, String label) {
-    return Flexible(
+    return Expanded(
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
+        padding: const EdgeInsets.symmetric(vertical: 8),
+        decoration: BoxDecoration(
+          color: _primary.withOpacity(0.1),
+          borderRadius: BorderRadius.circular(8),
+        ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [

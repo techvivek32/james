@@ -664,8 +664,11 @@ class _CoursesScreenState extends State<CoursesScreen> with SingleTickerProvider
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
               _navItemActive(Icons.school, 'Training'),
+              const SizedBox(width: 2),
               _navItem(Icons.chat_bubble, 'StormChat', '/stormchat'),
+              const SizedBox(width: 2),
               _navItem(Icons.apps, 'Apps & Tools', '/apps-tools-items'),
+              const SizedBox(width: 2),
               _navItem(Icons.person, 'Profile', '/profile'),
             ],
           ),
@@ -675,27 +678,45 @@ class _CoursesScreenState extends State<CoursesScreen> with SingleTickerProvider
   }
 
   Widget _navItem(IconData icon, String label, String route) {
-    return GestureDetector(
-      onTap: () => Navigator.pushReplacementNamed(context, route),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, color: _textLight, size: 24),
-          const SizedBox(height: 4),
-          Text(label, style: const TextStyle(fontSize: 11, color: _textLight)),
-        ],
+    return Expanded(
+      child: GestureDetector(
+        onTap: () => Navigator.pushReplacementNamed(context, route),
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 8),
+          decoration: BoxDecoration(
+            color: Colors.transparent,
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(icon, color: _textLight, size: 24),
+              const SizedBox(height: 4),
+              Text(label, style: const TextStyle(fontSize: 11, color: _textLight)),
+            ],
+          ),
+        ),
       ),
     );
   }
 
   Widget _navItemActive(IconData icon, String label) {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Icon(icon, color: _primary, size: 24),
-        const SizedBox(height: 4),
-        Text(label, style: const TextStyle(fontSize: 11, color: _primary, fontWeight: FontWeight.w600)),
-      ],
+    return Expanded(
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 8),
+        decoration: BoxDecoration(
+          color: _primary.withOpacity(0.1),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, color: _primary, size: 24),
+            const SizedBox(height: 4),
+            Text(label, style: const TextStyle(fontSize: 11, color: _primary, fontWeight: FontWeight.w600)),
+          ],
+        ),
+      ),
     );
   }
 }

@@ -208,75 +208,91 @@ class _AppsToolsItemsScreenState extends State<AppsToolsItemsScreen> with Single
       child: SafeArea(
         top: false,
         child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 8),
+          padding: const EdgeInsets.all(16),
           child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
-              _navItem(Icons.school_outlined, 'Training', false, '/courses', context),
-              _navItem(Icons.chat_bubble_outline, 'StormChat', false, '/stormchat', context),
-              _navItemActive(Icons.apps_outlined, 'Apps & Tools'),
-              _navItem(Icons.person_outline, 'Profile', false, '/profile', context),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _navItem(IconData icon, String label, bool active, String? route, BuildContext context) {
-    return Flexible(
-      child: GestureDetector(
-        onTap: route != null ? () => Navigator.pushReplacementNamed(context, route) : null,
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(
-                icon,
-                color: active ? _primary : const Color(0xFF9CA3AF),
-                size: 24,
-              ),
-              const SizedBox(height: 4),
-              Text(
-                label,
-                style: TextStyle(
-                  fontSize: 10,
-                  color: active ? _primary : const Color(0xFF9CA3AF),
-                  fontWeight: active ? FontWeight.w600 : FontWeight.normal,
+              Expanded(
+                child: GestureDetector(
+                  onTap: () => Navigator.pushReplacementNamed(context, '/courses'),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(vertical: 8),
+                    decoration: BoxDecoration(
+                      color: Colors.transparent,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: const [
+                        Icon(Icons.school_outlined, color: Color(0xFF9CA3AF), size: 24),
+                        SizedBox(height: 4),
+                        Text('Training', style: TextStyle(fontSize: 10, color: Color(0xFF9CA3AF)), textAlign: TextAlign.center),
+                      ],
+                    ),
+                  ),
                 ),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                textAlign: TextAlign.center,
+              ),
+              const SizedBox(width: 2),
+              Expanded(
+                child: GestureDetector(
+                  onTap: () => Navigator.pushReplacementNamed(context, '/stormchat'),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(vertical: 8),
+                    decoration: BoxDecoration(
+                      color: Colors.transparent,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: const [
+                        Icon(Icons.chat_bubble_outline, color: Color(0xFF9CA3AF), size: 24),
+                        SizedBox(height: 4),
+                        Text('StormChat', style: TextStyle(fontSize: 10, color: Color(0xFF9CA3AF)), textAlign: TextAlign.center),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 2),
+              Expanded(
+                child: Container(
+                  padding: const EdgeInsets.symmetric(vertical: 8),
+                  decoration: BoxDecoration(
+                    color: _primary.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: const [
+                      Icon(Icons.apps_outlined, color: _primary, size: 24),
+                      SizedBox(height: 4),
+                      Text('Apps & Tools', style: TextStyle(fontSize: 10, color: _primary, fontWeight: FontWeight.w600), textAlign: TextAlign.center),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(width: 2),
+              Expanded(
+                child: GestureDetector(
+                  onTap: () => Navigator.pushReplacementNamed(context, '/profile'),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(vertical: 8),
+                    decoration: BoxDecoration(
+                      color: Colors.transparent,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: const [
+                        Icon(Icons.person_outline, color: Color(0xFF9CA3AF), size: 24),
+                        SizedBox(height: 4),
+                        Text('Profile', style: TextStyle(fontSize: 10, color: Color(0xFF9CA3AF)), textAlign: TextAlign.center),
+                      ],
+                    ),
+                  ),
+                ),
               ),
             ],
           ),
-        ),
-      ),
-    );
-  }
-
-  Widget _navItemActive(IconData icon, String label) {
-    return Flexible(
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, color: _primary, size: 24),
-            const SizedBox(height: 4),
-            Text(
-              label,
-              style: const TextStyle(
-                fontSize: 10,
-                color: _primary,
-                fontWeight: FontWeight.w600,
-              ),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              textAlign: TextAlign.center,
-            ),
-          ],
         ),
       ),
     );
