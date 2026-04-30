@@ -8,6 +8,7 @@ import 'dart:io';
 import '../services/auth_service.dart';
 import 'storm_chat_group_info_screen.dart';
 import 'image_viewer_screen.dart';
+import 'video_viewer_screen.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 class StormChatRoomScreen extends StatefulWidget {
@@ -1156,15 +1157,67 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
         ),
       );
     } else if (messageType == 'video' && message['mediaUrl'] != null) {
-      return Container(
-        width: 200,
-        height: 150,
-        decoration: BoxDecoration(
-          color: Colors.black,
-          borderRadius: BorderRadius.circular(8),
-        ),
-        child: const Center(
-          child: Icon(Icons.play_circle_outline, size: 48, color: Colors.white),
+      return GestureDetector(
+        onTap: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => VideoViewerScreen(
+                videoUrl: message['mediaUrl'],
+              ),
+            ),
+          );
+        },
+        child: Stack(
+          alignment: Alignment.center,
+          children: [
+            Container(
+              width: 200,
+              height: 150,
+              decoration: BoxDecoration(
+                color: Colors.black87,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.grey[700]!, width: 1),
+              ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(8),
+                child: Image.network(
+                  'https://millerstorm.tech${message['mediaUrl']}',
+                  width: 200,
+                  height: 150,
+                  fit: BoxFit.cover,
+                  errorBuilder: (context, error, stackTrace) {
+                    return Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: const [
+                          Icon(Icons.videocam, size: 48, color: Colors.white70),
+                          SizedBox(height: 8),
+                          Text(
+                            'Video',
+                            style: TextStyle(fontSize: 12, color: Colors.white70),
+                          ),
+                        ],
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ),
+            Container(
+              width: 60,
+              height: 60,
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.9),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(
+                Icons.play_arrow,
+                size: 40,
+                color: Color(0xFFCB0002),
+              ),
+            ),
+          ],
         ),
       );
     }
