@@ -1,6 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { connectMongo } from '../../../../src/lib/mongodb';
 import AppToolCategory from '../../../../src/lib/models/AppToolCategory';
+import AppTool from '../../../../src/lib/models/AppTool';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   await connectMongo();
@@ -15,6 +16,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         return res.status(400).json({ error: 'Category name is required' });
       }
 
+      // Get the old category to check if name changed
+      const oldCategory = await AppToolCategory.findById(id);
+      if (!oldCategory) {
+        return res.status(404).json({ error: 'Category not found' });
+      }
+
       // Create slug from name
       const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
 
@@ -23,6 +30,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         updateData.status = status;
       }
 
+      // Update the category
       const category = await AppToolCategory.findByIdAndUpdate(
         id,
         updateData,
@@ -31,6 +39,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
       if (!category) {
         return res.status(404).json({ error: 'Category not found' });
+      }
+
+      // If category name changed, update all items with the old category name
+      if (oldCategory.name !== name) {
+        await AppTool.updateMany(
+          { category: oldCategory.name },
+          { category: name }
+        );
+        console.log(`Updated all items from category "${oldCategory.name}" to "${name}"`);
       }
 
       res.status(200).json(category);
