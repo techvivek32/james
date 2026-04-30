@@ -1,6 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { connectMongo } from '../../../src/lib/mongodb';
 import AppTool from '../../../src/lib/models/AppTool';
+import AppToolCategory from '../../../src/lib/models/AppToolCategory';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   await connectMongo();
@@ -15,7 +16,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         return res.status(404).json({ error: 'App/Tool not found' });
       }
 
-      return res.status(200).json(appTool);
+      const category = await AppToolCategory.findById(appTool.categoryId);
+      return res.status(200).json({
+        ...appTool.toObject(),
+        category: category?.slug || '',
+        categoryName: category?.name || ''
+      });
     } catch (error) {
       console.error('Error fetching app/tool:', error);
       return res.status(500).json({ error: 'Failed to fetch app/tool' });
@@ -26,9 +32,19 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     try {
       const { title, imageUrl, imageWidth, imageHeight, description, link, webLink, appStoreLink, playStoreLink, category, status } = req.body;
 
+      const updateData: any = { title, imageUrl, imageWidth, imageHeight, description, link, webLink, appStoreLink, playStoreLink, status };
+      
+      // If category is provided, convert slug to ID
+      if (category) {
+        const categoryDoc = await AppToolCategory.findOne({ slug: category });
+        if (categoryDoc) {
+          updateData.categoryId = categoryDoc._id;
+        }
+      }
+
       const appTool = await AppTool.findByIdAndUpdate(
         id,
-        { title, imageUrl, imageWidth, imageHeight, description, link, webLink, appStoreLink, playStoreLink, category, status },
+        updateData,
         { new: true, runValidators: true }
       );
 
@@ -36,7 +52,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         return res.status(404).json({ error: 'App/Tool not found' });
       }
 
-      return res.status(200).json(appTool);
+      const categoryDoc = await AppToolCategory.findById(appTool.categoryId);
+      return res.status(200).json({
+        ...appTool.toObject(),
+        category: categoryDoc?.slug || '',
+        categoryName: categoryDoc?.name || ''
+      });
     } catch (error) {
       console.error('Error updating app/tool:', error);
       return res.status(500).json({ error: 'Failed to update app/tool' });
