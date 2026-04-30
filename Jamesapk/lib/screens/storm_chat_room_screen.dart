@@ -494,6 +494,20 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
   }
 
   Future<void> _uploadFile(File file, String type) async {
+    // Check file size
+    final fileSize = await file.length();
+    final fileSizeMB = fileSize / (1024 * 1024);
+    
+    // Show size limit warning
+    if (type == 'video' && fileSizeMB > 1000) {
+      _showError('Video size exceeds 1000MB limit');
+      return;
+    }
+    if (type == 'image' && fileSizeMB > 30) {
+      _showError('Image size exceeds 30MB limit');
+      return;
+    }
+    
     setState(() {
       isUploading = true;
     });
@@ -505,7 +519,13 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
       );
       request.files.add(await http.MultipartFile.fromPath('file', file.path));
 
-      var streamedResponse = await request.send();
+      // Send with longer timeout for large files
+      var streamedResponse = await request.send().timeout(
+        Duration(minutes: 10), // 10 minute timeout for large videos
+        onTimeout: () {
+          throw TimeoutException('Upload timed out. File may be too large.');
+        },
+      );
       var response = await http.Response.fromStream(streamedResponse);
 
       if (response.statusCode == 200) {
@@ -528,8 +548,21 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
 
         await _fetchMessages();
       } else {
-        _showError('Failed to upload file');
+        // Parse error message from server
+        String errorMsg = 'Failed to upload file (${response.statusCode})';
+        try {
+          final errorData = json.decode(response.body);
+          if (errorData['error'] != null) {
+            errorMsg = errorData['error'];
+          }
+        } catch (e) {
+          print('Could not parse error response: $e');
+        }
+        _showError(errorMsg);
       }
+    } on TimeoutException catch (e) {
+      print('Upload timeout: $e');
+      _showError('Upload timed out. File may be too large.');
     } catch (e) {
       print('Error uploading file: $e');
       _showError('Failed to upload file');

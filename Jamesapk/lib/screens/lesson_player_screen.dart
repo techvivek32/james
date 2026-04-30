@@ -291,17 +291,17 @@ class _LessonPlayerScreenState extends State<LessonPlayerScreen> {
       if (vimeoMatch != null) {
         final videoId = vimeoMatch.group(1);
         final hash = vimeoMatch.group(2);
-        // Use Vimeo player with autoplay enabled and playsinline enabled
+        // Use Vimeo player with playsinline enabled
         final embedUrl = hash != null 
-          ? 'https://player.vimeo.com/video/$videoId?h=$hash&autoplay=1&playsinline=1&controls=1'
-          : 'https://player.vimeo.com/video/$videoId?autoplay=1&playsinline=1&controls=1';
+          ? 'https://player.vimeo.com/video/$videoId?h=$hash&playsinline=1&controls=1'
+          : 'https://player.vimeo.com/video/$videoId?playsinline=1&controls=1';
         print('✅ Vimeo embed URL: $embedUrl');
         return embedUrl;
       }
     } else if (videoUrl.contains('youtube.com') || videoUrl.contains('youtu.be')) {
       final youtubeMatch = RegExp(r'(?:youtube\.com/watch\?v=|youtu\.be/)([^&\n?#]+)').firstMatch(videoUrl);
       if (youtubeMatch != null) {
-        final embedUrl = 'https://www.youtube.com/embed/${youtubeMatch.group(1)}?autoplay=1&playsinline=1&controls=1';
+        final embedUrl = 'https://www.youtube.com/embed/${youtubeMatch.group(1)}?playsinline=1&controls=1';
         print('✅ YouTube embed URL: $embedUrl');
         return embedUrl;
       }
