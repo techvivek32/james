@@ -14,7 +14,6 @@ const Training: NextPage = () => {
 
   useEffect(() => {
     let mounted = true;
-    let pollInterval: NodeJS.Timeout;
     
     async function loadCourses() {
       if (!user?.id) {
@@ -45,16 +44,10 @@ const Training: NextPage = () => {
     
     if (user?.id) {
       loadCourses();
-      
-      // Poll for updates every 5 seconds
-      pollInterval = setInterval(() => {
-        loadCourses();
-      }, 5000);
     }
     
     return () => {
       mounted = false;
-      if (pollInterval) clearInterval(pollInterval);
     };
   }, [user?.id, user?.role]);
 
