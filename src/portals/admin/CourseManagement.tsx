@@ -661,17 +661,23 @@ export function CourseManagement(props: CourseEditorProps) {
     setIsSavingCourse(true);
     try {
       if (isCreatingNewCourse && newCourseData) {
-        // Save new course
+        // Save new course - only save the new course, not all courses
+        const cleanedCourse = props.cleanCourses ? props.cleanCourses([newCourseData])[0] : newCourseData;
+        
+        const res = await fetch("/api/courses/bulk", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify([cleanedCourse])
+        });
+        
+        if (!res.ok) {
+          throw new Error('Failed to save course');
+        }
+        
+        // Update local state
         const next = [...props.courses, newCourseData];
         props.onCoursesChange(next);
-        // Force immediate save with timeout
-        if (props.onForceSave) {
-          const savePromise = props.onForceSave(next);
-          const timeoutPromise = new Promise((_, reject) => 
-            setTimeout(() => reject(new Error('Save timeout')), 30000)
-          );
-          await Promise.race([savePromise, timeoutPromise]);
-        }
+        
         setSelectedCourseId(newCourseData.id);
         setIsCreatingNewCourse(false);
         setNewCourseData(null);
@@ -679,17 +685,23 @@ export function CourseManagement(props: CourseEditorProps) {
         setHasChanges(false);
         showToast('Course created successfully!', 'success');
       } else if (selectedCourse && hasChanges) {
-        // Save existing course changes — explicitly trigger save
+        // Save only the changed course, not all courses
+        const cleanedCourse = props.cleanCourses ? props.cleanCourses([selectedCourse])[0] : selectedCourse;
+        
+        const res = await fetch("/api/courses/bulk", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify([cleanedCourse])
+        });
+        
+        if (!res.ok) {
+          throw new Error('Failed to save course');
+        }
+        
+        // Update local state
         const next = props.courses.map((course) => course.id === selectedCourse.id ? selectedCourse : course);
         props.onCoursesChange(next);
-        // Force immediate save with timeout
-        if (props.onForceSave) {
-          const savePromise = props.onForceSave(next);
-          const timeoutPromise = new Promise((_, reject) => 
-            setTimeout(() => reject(new Error('Save timeout')), 30000)
-          );
-          await Promise.race([savePromise, timeoutPromise]);
-        }
+        
         setOriginalCourse(JSON.parse(JSON.stringify(selectedCourse)));
         setHasChanges(false);
         console.log('Course saved:', selectedCourse.title);
@@ -698,11 +710,7 @@ export function CourseManagement(props: CourseEditorProps) {
       setViewMode("grid");
     } catch (error) {
       console.error('Save error:', error);
-      if (error instanceof Error && error.message === 'Save timeout') {
-        showToast('Save is taking longer than expected. Please check your connection.', 'error');
-      } else {
-        showToast('Failed to save course. Please try again.', 'error');
-      }
+      showToast('Failed to save course. Please try again.', 'error');
     } finally {
       setIsSavingCourse(false);
     }

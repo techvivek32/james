@@ -47,7 +47,7 @@ const courseFolderSchema = new Schema(
 
   const courseSchema = new Schema(
   {
-    id: { type: String, required: true, unique: true },
+    id: { type: String, required: true, unique: true, index: true },
     title: { type: String, required: true },
     tagline: String,
     description: String,
@@ -73,5 +73,10 @@ const courseFolderSchema = new Schema(
   },
   { timestamps: true, strict: true, minimize: false }
 );
+
+// Add index for faster queries
+courseSchema.index({ id: 1 });
+courseSchema.index({ status: 1 });
+courseSchema.index({ order: 1 });
 
 export const CourseModel = models.Course || model("Course", courseSchema);
