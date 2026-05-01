@@ -635,16 +635,17 @@ export function CourseManagement(props: CourseEditorProps) {
     setSavingMessage(type === 'quiz' ? 'Saving Quiz...' : 'Saving Lesson...');
     
     try {
-      // Build the updated courses list
-      const next = props.courses.map((course) => 
-        course.id === selectedCourse.id ? selectedCourse : course
-      );
-      // Update React state first
-      props.onCoursesChange(next);
+      // Save only the changed course, not all courses
+      const cleanedCourse = props.cleanCourses ? props.cleanCourses([selectedCourse])[0] : selectedCourse;
       
-      // Then directly call the API — don't rely on debounce
-      if (props.onForceSave) {
-        await props.onForceSave(next);
+      const res = await fetch("/api/courses/bulk", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify([cleanedCourse])
+      });
+      
+      if (!res.ok) {
+        throw new Error('Failed to save');
       }
       
       showToast(type === 'quiz' ? 'Quiz saved successfully!' : 'Lesson saved successfully!', 'success');
@@ -674,10 +675,6 @@ export function CourseManagement(props: CourseEditorProps) {
           throw new Error('Failed to save course');
         }
         
-        // Update local state
-        const next = [...props.courses, newCourseData];
-        props.onCoursesChange(next);
-        
         setSelectedCourseId(newCourseData.id);
         setIsCreatingNewCourse(false);
         setNewCourseData(null);
@@ -697,10 +694,6 @@ export function CourseManagement(props: CourseEditorProps) {
         if (!res.ok) {
           throw new Error('Failed to save course');
         }
-        
-        // Update local state
-        const next = props.courses.map((course) => course.id === selectedCourse.id ? selectedCourse : course);
-        props.onCoursesChange(next);
         
         setOriginalCourse(JSON.parse(JSON.stringify(selectedCourse)));
         setHasChanges(false);
