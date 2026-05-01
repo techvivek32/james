@@ -16,6 +16,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
+  console.log('Upload request received');
+  console.log('Content-Type:', req.headers['content-type']);
+  console.log('Content-Length:', req.headers['content-length']);
+
   const uploadDir = path.join(process.cwd(), 'public', 'uploads');
   
   if (!fs.existsSync(uploadDir)) {
@@ -25,19 +29,28 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const form = formidable({
     uploadDir,
     keepExtensions: true,
-    maxFileSize: 1000 * 1024 * 1024, // 1000MB for videos
+    maxFileSize: 1000 * 1024 * 1024, // 1000MB
     maxFieldsSize: 1000 * 1024 * 1024, // 1000MB
-    maxTotalFileSize: 1000 * 1024 * 1024, // 1000MB total
+    maxTotalFileSize: 1000 * 1024 * 1024, // 1000MB
+    allowEmptyFiles: false,
+    minFileSize: 1, // At least 1 byte
   });
 
-  form.parse(req, (err, fields, files) => {
-    if (err) {
-      console.error('Upload error:', err);
-      return res.status(500).json({ error: 'Upload failed', details: err.message });
-    }
+  try {
+    const [fields, files] = await new Promise((resolve, reject) => {
+      form.parse(req, (err, fields, files) => {
+        if (err) {
+          console.error('Formidable parse error:', err);
+          reject(err);
+          return;
+        }
+        resolve([fields, files]);
+      });
+    });
 
     const file = Array.isArray(files.file) ? files.file[0] : files.file;
     if (!file) {
+      console.error('No file in upload');
       return res.status(400).json({ error: 'No file uploaded' });
     }
 
@@ -45,6 +58,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const url = `/uploads/${filename}`;
 
     console.log('File uploaded successfully:', url);
-    res.status(200).json({ url });
-  });
+    console.log('File size:', file.size, 'bytes');
+    
+    return res.status(200).json({ url });
+  } catch (err: any) {
+    console.error('Upload error:', err);
+    return res.status(500).json({ 
+      error: 'Upload failed', 
+      details: err.message || 'Unknown error'
+    });
+  }
 }
