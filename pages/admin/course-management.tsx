@@ -99,7 +99,7 @@ const CourseManagementPage: NextPage = () => {
     setCourses(next);
     latestCoursesRef.current = next;
 
-    // Delete: save immediately, cancel any pending debounce
+    // Delete: save immediately
     if (isDelete) {
       if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
       setDeleting(true);
@@ -108,9 +108,8 @@ const CourseManagementPage: NextPage = () => {
       return;
     }
 
-    // Other changes: debounce 300ms
-    if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
-    saveTimerRef.current = setTimeout(() => doSave(latestCoursesRef.current).catch(err => console.error("Auto-save failed:", err)), 300);
+    // For other changes (like status toggle), save immediately with only the changed course
+    // No auto-save - let individual components handle their own saves
   }
 
   if (isLoading) {

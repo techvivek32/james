@@ -2207,12 +2207,26 @@ export function CourseManagement(props: CourseEditorProps) {
                       <button
                         type="button"
                         className={selectedCourse.status === "published" ? "status-toggle status-toggle-on" : "status-toggle"}
-                        onClick={() =>
-                          updateCourse({
-                            ...selectedCourse,
-                            status: (selectedCourse.status ?? "draft") === "published" ? "draft" : "published"
-                          })
-                        }
+                        onClick={async () => {
+                          const newStatus = (selectedCourse.status ?? "draft") === "published" ? "draft" : "published";
+                          const updatedCourse = { ...selectedCourse, status: newStatus };
+                          updateCourse(updatedCourse);
+                          
+                          // Save immediately with only this course
+                          try {
+                            const cleanedCourse = props.cleanCourses ? props.cleanCourses([updatedCourse])[0] : updatedCourse;
+                            const res = await fetch("/api/courses/bulk", {
+                              method: "PUT",
+                              headers: { "Content-Type": "application/json" },
+                              body: JSON.stringify([cleanedCourse])
+                            });
+                            if (!res.ok) throw new Error('Failed to save status');
+                            showToast(`Course ${newStatus === 'published' ? 'published' : 'unpublished'} successfully!`, 'success');
+                          } catch (error) {
+                            console.error('Status save error:', error);
+                            showToast('Failed to save status. Please try again.', 'error');
+                          }
+                        }}
                       >
                         <span className={selectedCourse.status === "published" ? "status-toggle-label status-toggle-label-on" : "status-toggle-label"}>
                           {selectedCourse.status === "published" ? "Published" : "Draft"}
