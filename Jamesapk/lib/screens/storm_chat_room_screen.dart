@@ -514,7 +514,7 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
 
       var request = http.MultipartRequest(
         'POST',
-        Uri.parse('https://millerstorm.tech/api/upload-image'),
+        Uri.parse('https://millerstorm.tech/api/direct-upload'),
       );
       request.headers['Accept'] = 'application/json';
       request.files.add(
