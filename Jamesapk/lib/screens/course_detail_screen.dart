@@ -335,6 +335,9 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
     final folders = _course!['folders'] as List<dynamic>? ?? [];
     var pages = _course!['pages'] as List<dynamic>? ?? [];
     
+    // Filter out draft pages - only show published
+    pages = pages.where((page) => page['status'] == 'published').toList();
+    
     // Filter pages if viewing a playlist
     if (widget.playlistModules != null) {
       pages = pages.where((page) => widget.playlistModules!.contains(page['id'])).toList();
