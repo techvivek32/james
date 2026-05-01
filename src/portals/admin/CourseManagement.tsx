@@ -2208,7 +2208,7 @@ export function CourseManagement(props: CourseEditorProps) {
                         type="button"
                         className={selectedCourse.status === "published" ? "status-toggle status-toggle-on" : "status-toggle"}
                         onClick={async () => {
-                          const newStatus = (selectedCourse.status ?? "draft") === "published" ? "draft" : "published";
+                          const newStatus: "draft" | "published" = (selectedCourse.status ?? "draft") === "published" ? "draft" : "published";
                           const updatedCourse = { ...selectedCourse, status: newStatus };
                           updateCourse(updatedCourse);
                           
