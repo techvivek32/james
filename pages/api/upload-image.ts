@@ -6,6 +6,8 @@ import path from 'path';
 export const config = {
   api: {
     bodyParser: false,
+    responseLimit: false,
+    externalResolver: true,
   },
 };
 
@@ -24,11 +26,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     uploadDir,
     keepExtensions: true,
     maxFileSize: 1000 * 1024 * 1024, // 1000MB for videos
+    maxFieldsSize: 1000 * 1024 * 1024, // 1000MB
+    maxTotalFileSize: 1000 * 1024 * 1024, // 1000MB total
   });
 
   form.parse(req, (err, fields, files) => {
     if (err) {
-      return res.status(500).json({ error: 'Upload failed' });
+      console.error('Upload error:', err);
+      return res.status(500).json({ error: 'Upload failed', details: err.message });
     }
 
     const file = Array.isArray(files.file) ? files.file[0] : files.file;
@@ -39,6 +44,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const filename = path.basename(file.filepath);
     const url = `/uploads/${filename}`;
 
+    console.log('File uploaded successfully:', url);
     res.status(200).json({ url });
   });
 }
