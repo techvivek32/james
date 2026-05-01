@@ -63,11 +63,34 @@ const CourseManagementPage: NextPage = () => {
   }
 
   async function doSave(toSave: Course[]) {
-    const res = await fetch("/api/courses/bulk", {
-      method: "PUT", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(cleanCourses(toSave))
-    });
-    if (!res.ok) throw new Error(await res.text());
+    console.log(`[Save] Starting save for ${toSave.length} courses`);
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
+    
+    try {
+      const res = await fetch("/api/courses/bulk", {
+        method: "PUT", 
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(cleanCourses(toSave)),
+        signal: controller.signal
+      });
+      clearTimeout(timeoutId);
+      
+      if (!res.ok) {
+        const errorText = await res.text();
+        console.error('[Save] API error:', errorText);
+        throw new Error(errorText);
+      }
+      
+      console.log('[Save] Successfully saved');
+    } catch (error) {
+      clearTimeout(timeoutId);
+      if (error instanceof Error && error.name === 'AbortError') {
+        console.error('[Save] Request timeout');
+        throw new Error('Save request timed out');
+      }
+      throw error;
+    }
   }
 
   async function handleCoursesChange(next: Course[]) {

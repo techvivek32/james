@@ -664,9 +664,13 @@ export function CourseManagement(props: CourseEditorProps) {
         // Save new course
         const next = [...props.courses, newCourseData];
         props.onCoursesChange(next);
-        // Force immediate save
+        // Force immediate save with timeout
         if (props.onForceSave) {
-          await props.onForceSave(next);
+          const savePromise = props.onForceSave(next);
+          const timeoutPromise = new Promise((_, reject) => 
+            setTimeout(() => reject(new Error('Save timeout')), 30000)
+          );
+          await Promise.race([savePromise, timeoutPromise]);
         }
         setSelectedCourseId(newCourseData.id);
         setIsCreatingNewCourse(false);
@@ -678,9 +682,13 @@ export function CourseManagement(props: CourseEditorProps) {
         // Save existing course changes — explicitly trigger save
         const next = props.courses.map((course) => course.id === selectedCourse.id ? selectedCourse : course);
         props.onCoursesChange(next);
-        // Force immediate save
+        // Force immediate save with timeout
         if (props.onForceSave) {
-          await props.onForceSave(next);
+          const savePromise = props.onForceSave(next);
+          const timeoutPromise = new Promise((_, reject) => 
+            setTimeout(() => reject(new Error('Save timeout')), 30000)
+          );
+          await Promise.race([savePromise, timeoutPromise]);
         }
         setOriginalCourse(JSON.parse(JSON.stringify(selectedCourse)));
         setHasChanges(false);
@@ -690,7 +698,11 @@ export function CourseManagement(props: CourseEditorProps) {
       setViewMode("grid");
     } catch (error) {
       console.error('Save error:', error);
-      showToast('Failed to save course. Please try again.', 'error');
+      if (error instanceof Error && error.message === 'Save timeout') {
+        showToast('Save is taking longer than expected. Please check your connection.', 'error');
+      } else {
+        showToast('Failed to save course. Please try again.', 'error');
+      }
     } finally {
       setIsSavingCourse(false);
     }
