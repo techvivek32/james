@@ -35,20 +35,20 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     allowEmptyFiles: false,
     minFileSize: 1, // At least 1 byte
   });
-
+ 
   try {
-    const [fields, files] = await new Promise((resolve, reject) => {
+    const result = await new Promise<{ fields: formidable.Fields; files: formidable.Files }>((resolve, reject) => {
       form.parse(req, (err, fields, files) => {
         if (err) {
           console.error('Formidable parse error:', err);
           reject(err);
           return;
         }
-        resolve([fields, files]);
+        resolve({ fields, files });
       });
     });
 
-    const file = Array.isArray(files.file) ? files.file[0] : files.file;
+    const file = Array.isArray(result.files.file) ? result.files.file[0] : result.files.file;
     if (!file) {
       console.error('No file in upload');
       return res.status(400).json({ error: 'No file uploaded' });
