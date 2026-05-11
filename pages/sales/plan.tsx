@@ -11,16 +11,27 @@ const Plan: NextPage = () => {
 
   useEffect(() => {
     async function loadUserProfile() {
-      if (!user?.id) return;
+      if (!user?.id) {
+        console.log('⚠️ No user ID available');
+        return;
+      }
+      
+      console.log('🔍 Loading user profile for ID:', user.id);
       
       try {
         const userRes = await fetch(`/api/users/${user.id}`);
+        console.log('📡 User API response status:', userRes.status);
+        
         if (userRes.ok) {
           const userProfile = await userRes.json();
+          console.log('✅ Loaded user profile:', { id: userProfile.id, name: userProfile.name, email: userProfile.email });
           setProfile(userProfile);
+        } else {
+          const errorData = await userRes.json();
+          console.error('❌ Failed to load user profile:', errorData);
         }
       } catch (error) {
-        console.error("Failed to load user profile:", error);
+        console.error("❌ Failed to load user profile:", error);
       }
     }
     loadUserProfile();

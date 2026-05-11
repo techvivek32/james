@@ -44,8 +44,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const { managerId, userId } = req.query;
     
     try {
-      // Get users from existing API
-      const usersResponse = await fetch(`http://localhost:6789/api/users`);
+      // Get users from existing API - use proper domain
+      const baseUrl = process.env.NEXT_PUBLIC_API_URL || `${req.headers['x-forwarded-proto'] || 'https'}://${req.headers.host}`;
+      const usersResponse = await fetch(`${baseUrl}/api/users`);
+      
+      if (!usersResponse.ok) {
+        throw new Error(`Failed to fetch users: ${usersResponse.status}`);
+      }
+      
       const users = await usersResponse.json();
       
       console.log('All users:', users.map((u: any) => ({ name: u.name, id: u.id, role: u.role, managerId: u.managerId })));
@@ -70,13 +76,33 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       
       // If requesting specific user's plan
       if (userId) {
-        const user = users.find((u: any) => u.id === userId);
+        console.log('🔍 Looking for user with ID:', userId);
+        console.log('📋 Available users:', users.map((u: any) => ({ id: u.id, email: u.email, name: u.name })));
+        
+        // Try to find by id first, then by email as fallback
+        let user = users.find((u: any) => u.id === userId);
         if (!user) {
-          res.status(404).json({ error: 'User not found' });
+          console.log('⚠️ User not found by ID, trying email lookup...');
+          user = users.find((u: any) => u.email === userId);
+        }
+        
+        if (!user) {
+          console.error('❌ User not found for ID/Email:', userId);
+          res.status(404).json({ 
+            error: 'User not found', 
+            searchedFor: userId, 
+            availableIds: users.map((u: any) => u.id),
+            availableEmails: users.map((u: any) => u.email)
+          });
           return;
         }
         
-        const plan = allBusinessPlans.find((p: any) => p.userId === userId);
+        console.log('✅ Found user:', { id: user.id, name: user.name, email: user.email });
+        
+        // Look for plan using the actual user.id (not the search term)
+        const plan = allBusinessPlans.find((p: any) => p.userId === user.id);
+        console.log('📦 Found plan:', plan ? 'Yes' : 'No');
+        
         const result = [{
           userId: user.id,
           userName: user.name,
@@ -87,7 +113,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           updatedAt: plan?.updatedAt || null
         }];
         
-        console.log('Single user plan result:', result);
+        console.log('📤 Sending result:', result);
         res.status(200).json(result);
         return;
       }
