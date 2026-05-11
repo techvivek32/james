@@ -85,9 +85,45 @@ class _ManagerPlannerScreenState extends State<ManagerPlannerScreen> {
     return id.toString();
   }
 
-  Future<void> _fetchTeamData() async {
+  void _recalculateTotalsFromLocalData() {
+    double totalIncome = 0;
+    double totalDealsY = 0, totalDealsM = 0;
+    double totalClaimsY = 0, totalClaimsM = 0;
+    double totalInspectY = 0, totalInspectM = 0;
+
+    for (var member in _teamMembers) {
+      final businessPlan = member['businessPlan'];
+      if (businessPlan != null && businessPlan['committed'] == true) {
+        final incomeGoal = (businessPlan['revenueGoal'] ?? 0).toDouble();
+        final dealAve = (businessPlan['averageDealSize'] ?? 12000).toDouble();
+        final metrics = _calculateMetrics(incomeGoal, dealAve);
+
+        totalIncome += incomeGoal;
+        totalDealsY += metrics['dealsPerYear']!;
+        totalDealsM += metrics['dealsPerMonth']!;
+        totalClaimsY += metrics['claimsPerYear']!;
+        totalClaimsM += metrics['claimsPerMonth']!;
+        totalInspectY += metrics['inspectionsPerYear']!;
+        totalInspectM += metrics['inspectionsPerMonth']!;
+      }
+    }
+
+    setState(() {
+      _totals = {
+        'incomeGoal': totalIncome,
+        'dealsPerYear': totalDealsY,
+        'dealsPerMonth': totalDealsM,
+        'claimsPerYear': totalClaimsY,
+        'claimsPerMonth': totalClaimsM,
+        'inspectionsPerYear': totalInspectY,
+        'inspectionsPerMonth': totalInspectM,
+      };
+    });
+  }
+
+  Future<void> _fetchTeamData({bool silent = false}) async {
     if (_userId == null || _userId!.isEmpty) return;
-    setState(() => _isLoading = true);
+    if (!silent) setState(() => _isLoading = true);
 
     try {
       final response = await http.get(Uri.parse('https://millerstorm.tech/api/users'));
@@ -206,8 +242,8 @@ class _ManagerPlannerScreenState extends State<ManagerPlannerScreen> {
           print('Error sending notification: $e');
         }
         
-        // Refresh the whole data to ensure local state is perfect
-        await _fetchTeamData();
+        // Refresh the whole data in the background silently to ensure local state is perfect
+        _fetchTeamData(silent: true);
       } else {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -227,9 +263,9 @@ class _ManagerPlannerScreenState extends State<ManagerPlannerScreen> {
 
   void _showEditDialog(dynamic member) {
     final bp = member['businessPlan'] ?? {};
-    final nameController = TextEditingController(text: (bp['revenueGoal'] ?? 100000).toString());
-    final dealAveController = TextEditingController(text: (bp['averageDealSize'] ?? 12000).toString());
-    final daysController = TextEditingController(text: (bp['daysPerWeek'] ?? 5).toString());
+    final nameController = TextEditingController(text: (bp['revenueGoal'] ?? 100000).toInt().toString());
+    final dealAveController = TextEditingController(text: (bp['averageDealSize'] ?? 12000).toInt().toString());
+    final daysController = TextEditingController(text: (bp['daysPerWeek'] ?? 5).toInt().toString());
 
     showDialog(
       context: context,
@@ -252,7 +288,7 @@ class _ManagerPlannerScreenState extends State<ManagerPlannerScreen> {
         actions: [
           TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
           ElevatedButton(
-            onPressed: () {
+            onPressed: () async {
               final incomeGoal = double.tryParse(nameController.text) ?? 0.0;
               final dealAve = double.tryParse(dealAveController.text) ?? 0.0;
               final days = double.tryParse(daysController.text) ?? 5.0;
@@ -272,7 +308,22 @@ class _ManagerPlannerScreenState extends State<ManagerPlannerScreen> {
               };
 
               Navigator.pop(context);
-              _savePlan(_extractId(member), updatedPlan);
+
+              // 1. Instant local update for the specific member
+              setState(() {
+                final index = _teamMembers.indexWhere((m) => _extractId(m) == _extractId(member));
+                if (index != -1) {
+                  _teamMembers[index] = {
+                    ..._teamMembers[index],
+                    'businessPlan': updatedPlan,
+                  };
+                  // Recalculate totals immediately without a full fetch
+                  _recalculateTotalsFromLocalData();
+                }
+              });
+
+              // 2. Save to server in background
+              await _savePlan(_extractId(member), updatedPlan);
             },
             style: ElevatedButton.styleFrom(backgroundColor: _primary, foregroundColor: _white),
             child: const Text('Save'),
@@ -358,6 +409,9 @@ class _ManagerPlannerScreenState extends State<ManagerPlannerScreen> {
                                         'calculateMetrics': _calculateMetrics,
                                         'onSavePlan': (String id, Map<String, dynamic> plan) async {
                                           await _savePlan(id, plan);
+                                        },
+                                        'onRefresh': () async {
+                                          await _fetchTeamData(silent: true);
                                         },
                                       },
                                     ).then((_) => _fetchTeamData());

@@ -5,13 +5,15 @@ import 'dart:convert';
 class ManagerAllPlansScreen extends StatefulWidget {
   final List<dynamic> teamMembers;
   final Function(double, double) calculateMetrics;
-  final Function(String, Map<String, dynamic>) onSavePlan;
+  final Future<void> Function(String, Map<String, dynamic>) onSavePlan;
+  final Future<void> Function() onRefresh;
 
   const ManagerAllPlansScreen({
     super.key,
     required this.teamMembers,
     required this.calculateMetrics,
     required this.onSavePlan,
+    required this.onRefresh,
   });
 
   @override
@@ -29,21 +31,41 @@ class _ManagerAllPlansScreenState extends State<ManagerAllPlansScreen> {
   static const _link = Color(0xFFCB0002);
 
   final TextEditingController _searchController = TextEditingController();
+  List<dynamic> _currentMembers = [];
   List<dynamic> _filteredMembers = [];
   Set<String> _expandedReps = {};
+  bool _isRefreshing = false;
 
   @override
   void initState() {
     super.initState();
-    _filteredMembers = widget.teamMembers;
+    _currentMembers = List.from(widget.teamMembers);
+    _filteredMembers = _currentMembers;
+  }
+
+  @override
+  void didUpdateWidget(ManagerAllPlansScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.teamMembers != widget.teamMembers) {
+      setState(() {
+        _currentMembers = List.from(widget.teamMembers);
+        _filterMembers(_searchController.text);
+      });
+    }
+  }
+
+  Future<void> _handleRefresh() async {
+    setState(() => _isRefreshing = true);
+    await widget.onRefresh();
+    setState(() => _isRefreshing = false);
   }
 
   void _filterMembers(String query) {
     setState(() {
       if (query.isEmpty) {
-        _filteredMembers = widget.teamMembers;
+        _filteredMembers = _currentMembers;
       } else {
-        _filteredMembers = widget.teamMembers
+        _filteredMembers = _currentMembers
             .where((member) =>
                 (member['name'] ?? '').toString().toLowerCase().contains(query.toLowerCase()))
             .toList();
@@ -63,9 +85,9 @@ class _ManagerAllPlansScreenState extends State<ManagerAllPlansScreen> {
 
   void _showEditDialog(dynamic member) {
     final bp = member['businessPlan'] ?? {};
-    final nameController = TextEditingController(text: (bp['revenueGoal'] ?? 100000).toString());
-    final dealAveController = TextEditingController(text: (bp['averageDealSize'] ?? 12000).toString());
-    final daysController = TextEditingController(text: (bp['daysPerWeek'] ?? 5).toString());
+    final nameController = TextEditingController(text: (bp['revenueGoal'] ?? 100000).toInt().toString());
+    final dealAveController = TextEditingController(text: (bp['averageDealSize'] ?? 12000).toInt().toString());
+    final daysController = TextEditingController(text: (bp['daysPerWeek'] ?? 5).toInt().toString());
 
     showDialog(
       context: context,
@@ -88,7 +110,7 @@ class _ManagerAllPlansScreenState extends State<ManagerAllPlansScreen> {
         actions: [
           TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
           ElevatedButton(
-            onPressed: () {
+            onPressed: () async {
               final incomeGoal = double.tryParse(nameController.text) ?? 0.0;
               final dealAve = double.tryParse(dealAveController.text) ?? 0.0;
               final days = double.tryParse(daysController.text) ?? 5.0;
@@ -108,7 +130,22 @@ class _ManagerAllPlansScreenState extends State<ManagerAllPlansScreen> {
               };
 
               Navigator.pop(context);
-              widget.onSavePlan(_extractId(member), updatedPlan);
+              
+              // First, update locally so the UI changes immediately
+              setState(() {
+                final index = _currentMembers.indexWhere((m) => _extractId(m) == _extractId(member));
+                if (index != -1) {
+                  _currentMembers[index] = {
+                    ..._currentMembers[index],
+                    'businessPlan': updatedPlan,
+                  };
+                  _filterMembers(_searchController.text);
+                }
+              });
+
+              // Then save to server and do a full refresh
+              await widget.onSavePlan(_extractId(member), updatedPlan);
+              await _handleRefresh();
             },
             style: ElevatedButton.styleFrom(backgroundColor: _primary, foregroundColor: _white),
             child: const Text('Save'),
@@ -177,12 +214,16 @@ class _ManagerAllPlansScreenState extends State<ManagerAllPlansScreen> {
             ),
           ),
           Expanded(
-            child: ListView.builder(
-              padding: const EdgeInsets.all(16),
-              itemCount: _filteredMembers.length,
-              itemBuilder: (context, index) {
-                return _buildRepCard(_filteredMembers[index]);
-              },
+            child: RefreshIndicator(
+              onRefresh: _handleRefresh,
+              color: _primary,
+              child: ListView.builder(
+                padding: const EdgeInsets.all(16),
+                itemCount: _filteredMembers.length,
+                itemBuilder: (context, index) {
+                  return _buildRepCard(_filteredMembers[index]);
+                },
+              ),
             ),
           ),
         ],

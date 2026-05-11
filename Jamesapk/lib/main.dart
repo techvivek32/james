@@ -74,6 +74,7 @@ class MillerStormApp extends StatelessWidget {
                 teamMembers: args['teamMembers'],
                 calculateMetrics: args['calculateMetrics'],
                 onSavePlan: args['onSavePlan'],
+                onRefresh: args['onRefresh'],
               ),
             );
           case '/manager-stormchat':
