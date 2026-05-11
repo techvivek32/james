@@ -36,8 +36,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   final _nameController = TextEditingController();
   final _phoneController = TextEditingController();
-  final _strengthsController = TextEditingController();
-  final _weaknessesController = TextEditingController();
   final ImagePicker _picker = ImagePicker();
 
   final List<String> _availableTerritories = [
@@ -59,8 +57,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
   void dispose() {
     _nameController.dispose();
     _phoneController.dispose();
-    _strengthsController.dispose();
-    _weaknessesController.dispose();
     super.dispose();
   }
 
@@ -182,8 +178,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
       _isEditMode = true;
       _nameController.text = _userName;
       _phoneController.text = _userPhone;
-      _strengthsController.text = _userStrengths;
-      _weaknessesController.text = _userWeaknesses;
     });
   }
 

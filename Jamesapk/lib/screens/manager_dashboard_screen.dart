@@ -493,15 +493,19 @@ class _ManagerDashboardScreenState extends State<ManagerDashboardScreen> {
       child: SafeArea(
         top: false,
         child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 8),
+          padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
-              _navItemActive(Icons.home, 'Home'),
-              _navItem(Icons.chat_bubble_outline, 'StormChat', '/manager-stormchat'),
-              _navItem(Icons.bar_chart, 'Rank', '/manager-rankings'),
-              _navItem(Icons.calendar_today, 'Planner', '/manager-planner'),
               _navItem(Icons.school_outlined, 'Training', '/manager-training'),
+              const SizedBox(width: 2),
+              _navItem(Icons.chat_bubble_outline, 'StormChat', '/manager-stormchat'),
+              const SizedBox(width: 2),
+              _navItem(Icons.apps_outlined, 'Apps & Tools', '/manager-apps-tools-items'),
+              const SizedBox(width: 2),
+              _navItem(Icons.work_outline, 'Planner', '/manager-planner'),
+              const SizedBox(width: 2),
+              _navItem(Icons.person_outline, 'Profile', '/manager-profile'),
             ],
           ),
         ),

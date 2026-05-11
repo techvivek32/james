@@ -18,6 +18,8 @@ import 'screens/manager_profile_screen.dart';
 import 'screens/profile_screen.dart';
 import 'screens/apps_tools_items_screen.dart';
 import 'screens/apps_tools_detail_screen.dart';
+import 'screens/manager_apps_tools_items_screen.dart';
+import 'screens/manager_apps_tools_detail_screen.dart';
 import 'screens/ai_clone_chat_screen.dart';
 
 void main() {
@@ -60,6 +62,10 @@ class MillerStormApp extends StatelessWidget {
             return MaterialPageRoute(builder: (_) => const AppsToolsItemsScreen());
           case '/apps-tools-detail':
             return MaterialPageRoute(builder: (_) => const AppsToolsDetailScreen(), settings: settings);
+          case '/manager-apps-tools-items':
+            return MaterialPageRoute(builder: (_) => const ManagerAppsToolsItemsScreen());
+          case '/manager-apps-tools-detail':
+            return MaterialPageRoute(builder: (_) => const ManagerAppsToolsDetailScreen(), settings: settings);
           case '/manager-stormchat':
             return MaterialPageRoute(builder: (_) => const ManagerStormChatScreen());
           case '/manager-rankings':

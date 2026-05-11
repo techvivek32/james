@@ -73,7 +73,7 @@ class _ManagerPlannerScreenState extends State<ManagerPlannerScreen> {
   Widget build(BuildContext context) {
     return WillPopScope(
       onWillPop: () async {
-        Navigator.pushReplacementNamed(context, '/manager-dashboard');
+        Navigator.pushReplacementNamed(context, '/manager-training');
         return false;
       },
       child: Scaffold(
@@ -668,15 +668,19 @@ class _ManagerPlannerScreenState extends State<ManagerPlannerScreen> {
       child: SafeArea(
         top: false,
         child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 8),
+          padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
-              _navItem(context, Icons.home, 'Home', false, '/manager-dashboard'),
-              _navItem(context, Icons.chat_bubble_outline, 'StormChat', false, '/manager-stormchat'),
-              _navItem(context, Icons.bar_chart, 'Rank', false, '/manager-rankings'),
-              _navItemActive(Icons.calendar_today, 'Planner'),
               _navItem(context, Icons.school_outlined, 'Training', false, '/manager-training'),
+              const SizedBox(width: 2),
+              _navItem(context, Icons.chat_bubble_outline, 'StormChat', false, '/manager-stormchat'),
+              const SizedBox(width: 2),
+              _navItem(context, Icons.apps_outlined, 'Apps & Tools', false, '/manager-apps-tools-items'),
+              const SizedBox(width: 2),
+              _navItemActive(Icons.work_outline, 'Planner'),
+              const SizedBox(width: 2),
+              _navItem(context, Icons.person_outline, 'Profile', false, '/manager-profile'),
             ],
           ),
         ),
@@ -685,27 +689,60 @@ class _ManagerPlannerScreenState extends State<ManagerPlannerScreen> {
   }
 
   Widget _navItem(BuildContext context, IconData icon, String label, bool active, String? route) {
-    return GestureDetector(
-      onTap: route != null ? () => Navigator.pushReplacementNamed(context, route) : null,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, color: active ? _link : _textPlaceholder, size: 24),
-          const SizedBox(height: 4),
-          Text(label, style: TextStyle(fontSize: 11, color: active ? _link : _textPlaceholder, fontWeight: active ? FontWeight.w600 : FontWeight.normal)),
-        ],
+    return Expanded(
+      child: GestureDetector(
+        onTap: route != null ? () => Navigator.pushReplacementNamed(context, route) : null,
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 8),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(icon, color: _textPlaceholder, size: 24),
+              const SizedBox(height: 4),
+              Text(
+                label,
+                style: const TextStyle(
+                  fontSize: 10,
+                  color: _textPlaceholder,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                textAlign: TextAlign.center,
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
 
   Widget _navItemActive(IconData icon, String label) {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Icon(icon, color: _link, size: 24),
-        const SizedBox(height: 4),
-        Text(label, style: const TextStyle(fontSize: 11, color: _link, fontWeight: FontWeight.w600)),
-      ],
+    return Expanded(
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 8),
+        decoration: BoxDecoration(
+          color: _link.withOpacity(0.1),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, color: _link, size: 24),
+            const SizedBox(height: 4),
+            Text(
+              label,
+              style: const TextStyle(
+                fontSize: 10,
+                color: _link,
+                fontWeight: FontWeight.w600,
+              ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

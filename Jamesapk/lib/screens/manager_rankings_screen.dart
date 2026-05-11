@@ -446,15 +446,19 @@ class _ManagerRankingsScreenState extends State<ManagerRankingsScreen> {
       child: SafeArea(
         top: false,
         child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 8),
+          padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
-              _navItem(context, Icons.home, 'Home', false, '/manager-dashboard'),
-              _navItem(context, Icons.chat_bubble_outline, 'StormChat', false, '/manager-stormchat'),
-              _navItemActive(Icons.bar_chart, 'Rank'),
-              _navItem(context, Icons.calendar_today, 'Planner', false, '/manager-planner'),
               _navItem(context, Icons.school_outlined, 'Training', false, '/manager-training'),
+              const SizedBox(width: 2),
+              _navItem(context, Icons.chat_bubble_outline, 'StormChat', false, '/manager-stormchat'),
+              const SizedBox(width: 2),
+              _navItem(context, Icons.apps_outlined, 'Apps & Tools', false, '/manager-apps-tools-items'),
+              const SizedBox(width: 2),
+              _navItem(context, Icons.work_outline, 'Planner', false, '/manager-planner'),
+              const SizedBox(width: 2),
+              _navItem(context, Icons.person_outline, 'Profile', false, '/manager-profile'),
             ],
           ),
         ),

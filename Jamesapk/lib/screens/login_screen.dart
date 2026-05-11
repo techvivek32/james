@@ -49,8 +49,8 @@ class _LoginScreenState extends State<LoginScreen> {
         // Sales users go to courses screen
         Navigator.pushReplacementNamed(context, '/courses');
       } else if (role == 'manager') {
-        // Manager users go to manager dashboard
-        Navigator.pushReplacementNamed(context, '/manager-dashboard');
+        // Manager users go to manager training
+        Navigator.pushReplacementNamed(context, '/manager-training');
       } else {
         // Block admin, marketing, and other roles
         setState(() { 
