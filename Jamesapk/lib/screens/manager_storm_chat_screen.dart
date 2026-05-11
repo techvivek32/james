@@ -327,9 +327,11 @@ class _ManagerStormChatScreenState extends State<ManagerStormChatScreen> {
   Widget _navItem(BuildContext context, IconData icon, String label, bool active, String? route) {
     return Expanded(
       child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
         onTap: route != null ? () => Navigator.pushReplacementNamed(context, route) : null,
         child: Container(
           padding: const EdgeInsets.symmetric(vertical: 8),
+          color: Colors.transparent,
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [

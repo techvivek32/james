@@ -396,6 +396,7 @@ class _ManagerProfileScreenState extends State<ManagerProfileScreen> {
   Widget _navItem(IconData icon, String label, bool active, String? route, BuildContext context) {
     return Expanded(
       child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
         onTap: route != null ? () => Navigator.pushReplacementNamed(context, route) : null,
         child: Container(
           padding: const EdgeInsets.symmetric(vertical: 8),
