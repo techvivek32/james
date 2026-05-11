@@ -23,8 +23,6 @@ class _ManagerTrainingScreenState extends State<ManagerTrainingScreen> {
 
   int _stormChatGroupCount = 0;
   String? _userId;
-  String? _userName;
-  String? _userHeadshot;
 
   @override
   void initState() {
@@ -40,8 +38,6 @@ class _ManagerTrainingScreenState extends State<ManagerTrainingScreen> {
         final user = jsonDecode(userStr);
         setState(() {
           _userId = user['_id'] ?? user['id'];
-          _userName = user['name'];
-          _userHeadshot = user['headshotUrl'];
         });
         await _fetchStormChatGroups();
       }
@@ -88,50 +84,17 @@ class _ManagerTrainingScreenState extends State<ManagerTrainingScreen> {
           child: Column(
             children: [
               Container(
+                width: double.infinity,
                 color: _white,
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                child: Row(
-                  children: [
-                    GestureDetector(
-                      onTap: () => Navigator.pushNamed(context, '/manager-profile'),
-                      child: CircleAvatar(
-                        radius: 18,
-                        backgroundColor: _border,
-                        backgroundImage: _userHeadshot != null && _userHeadshot!.isNotEmpty
-                            ? NetworkImage(_userHeadshot!.startsWith('http') 
-                                ? _userHeadshot! 
-                                : 'https://millerstorm.tech$_userHeadshot')
-                            : null,
-                        child: _userHeadshot == null || _userHeadshot!.isEmpty
-                            ? Icon(Icons.person, color: _textLight, size: 20)
-                            : null,
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            _userName ?? 'Manager',
-                            style: const TextStyle(
-                              color: _textDark,
-                              fontSize: 16,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                          const Text(
-                            'Training Center',
-                            style: TextStyle(
-                              color: _textLight,
-                              fontSize: 12,
-                              fontWeight: FontWeight.w400,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                child: const Text(
+                  'Miller Storm Training Center',
+                  textAlign: TextAlign.left,
+                  style: TextStyle(
+                    color: _textDark,
+                    fontSize: 18,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
               ),
               const Expanded(child: ManagerCoursesScreen()),

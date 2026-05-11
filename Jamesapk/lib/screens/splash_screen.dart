@@ -32,7 +32,7 @@ class _SplashScreenState extends State<SplashScreen> {
         if (role == 'sales') {
           Navigator.pushReplacementNamed(context, '/courses');
         } else if (role == 'manager') {
-          Navigator.pushReplacementNamed(context, '/manager-dashboard');
+          Navigator.pushReplacementNamed(context, '/manager-training');
         } else {
           Navigator.pushReplacementNamed(context, '/login');
         }
