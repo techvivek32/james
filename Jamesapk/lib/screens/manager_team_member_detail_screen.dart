@@ -333,7 +333,7 @@ class _ManagerTeamMemberDetailScreenState extends State<ManagerTeamMemberDetailS
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Text(
-              'Show Plan',
+              'Show Business Plan',
               style: TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.bold,
