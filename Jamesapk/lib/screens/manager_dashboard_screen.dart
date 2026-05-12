@@ -503,7 +503,7 @@ class _ManagerDashboardScreenState extends State<ManagerDashboardScreen> {
               const SizedBox(width: 2),
               _navItem(Icons.apps_outlined, 'Apps & Tools', '/manager-apps-tools-items'),
               const SizedBox(width: 2),
-              _navItem(Icons.work_outline, 'Planner', '/manager-planner'),
+              _navItem(Icons.group_outlined, 'View Team', '/manager-view-team'),
               const SizedBox(width: 2),
               _navItem(Icons.person_outline, 'Profile', '/manager-profile'),
             ],

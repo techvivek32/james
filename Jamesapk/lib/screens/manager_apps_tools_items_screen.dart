@@ -224,7 +224,7 @@ class _ManagerAppsToolsItemsScreenState extends State<ManagerAppsToolsItemsScree
               const SizedBox(width: 2),
               _navItemActive(Icons.apps_outlined, 'Apps & Tools'),
               const SizedBox(width: 2),
-              _navItem(Icons.work_outline, 'Planner', false, '/manager-planner', context),
+              _navItem(Icons.group_outlined, 'View Team', false, '/manager-view-team', context),
               const SizedBox(width: 2),
               _navItem(Icons.person_outline, 'Profile', false, '/manager-profile', context),
             ],

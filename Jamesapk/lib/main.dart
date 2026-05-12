@@ -15,6 +15,7 @@ import 'screens/manager_planner_screen.dart';
 import 'screens/manager_courses_screen.dart';
 import 'screens/manager_training_screen.dart';
 import 'screens/manager_profile_screen.dart';
+import 'screens/manager_view_team_screen.dart';
 import 'screens/profile_screen.dart';
 import 'screens/apps_tools_items_screen.dart';
 import 'screens/apps_tools_detail_screen.dart';
@@ -81,6 +82,8 @@ class MillerStormApp extends StatelessWidget {
             return MaterialPageRoute(builder: (_) => const ManagerStormChatScreen());
           case '/manager-rankings':
             return MaterialPageRoute(builder: (_) => const ManagerRankingsScreen());
+          case '/manager-view-team':
+            return MaterialPageRoute(builder: (_) => const ManagerViewTeamScreen());
           case '/manager-planner':
             return MaterialPageRoute(builder: (_) => const ManagerPlannerScreen());
           case '/manager-courses':

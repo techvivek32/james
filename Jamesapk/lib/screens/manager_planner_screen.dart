@@ -732,7 +732,7 @@ class _ManagerPlannerScreenState extends State<ManagerPlannerScreen> {
               _navItem(Icons.school_outlined, 'Training', '/manager-training', context),
               _navItem(Icons.chat_bubble_outline, 'StormChat', '/manager-stormchat', context),
               _navItem(Icons.apps_outlined, 'Apps & Tools', '/manager-apps-tools-items', context),
-              _navItemActive(Icons.work_outline, 'Planner'),
+              _navItem(Icons.group_outlined, 'View Team', '/manager-view-team', context),
               _navItem(Icons.person_outline, 'Profile', '/manager-profile', context),
             ],
           ),

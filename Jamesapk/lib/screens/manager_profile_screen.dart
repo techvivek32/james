@@ -383,7 +383,7 @@ class _ManagerProfileScreenState extends State<ManagerProfileScreen> {
               const SizedBox(width: 2),
               _navItem(Icons.apps_outlined, 'Apps & Tools', false, '/manager-apps-tools-items', context),
               const SizedBox(width: 2),
-              _navItem(Icons.work_outline, 'Planner', false, '/manager-planner', context),
+              _navItem(Icons.group_outlined, 'View Team', false, '/manager-view-team', context),
               const SizedBox(width: 2),
               _navItemActive(Icons.person_outline, 'Profile'),
             ],

@@ -314,7 +314,7 @@ class _ManagerStormChatScreenState extends State<ManagerStormChatScreen> {
               const SizedBox(width: 2),
               _navItem(context, Icons.apps_outlined, 'Apps & Tools', false, '/manager-apps-tools-items'),
               const SizedBox(width: 2),
-              _navItem(context, Icons.work_outline, 'Planner', false, '/manager-planner'),
+              _navItem(context, Icons.group_outlined, 'View Team', false, '/manager-view-team'),
               const SizedBox(width: 2),
               _navItem(context, Icons.person_outline, 'Profile', false, '/manager-profile'),
             ],
