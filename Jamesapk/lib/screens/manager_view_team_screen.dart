@@ -22,11 +22,39 @@ class _ManagerViewTeamScreenState extends State<ManagerViewTeamScreen> {
   String? _userId;
   bool _isLoading = true;
   List<dynamic> _teamMembers = [];
+  List<dynamic> _filteredMembers = [];
+  final TextEditingController _searchController = TextEditingController();
 
   @override
   void initState() {
     super.initState();
     _loadUserAndFetchData();
+    _searchController.addListener(_onSearchChanged);
+  }
+
+  @override
+  void dispose() {
+    _searchController.removeListener(_onSearchChanged);
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  void _onSearchChanged() {
+    _filterMembers(_searchController.text);
+  }
+
+  void _filterMembers(String query) {
+    setState(() {
+      if (query.isEmpty) {
+        _filteredMembers = _teamMembers;
+      } else {
+        _filteredMembers = _teamMembers.where((member) {
+          final name = (member['name'] ?? '').toString().toLowerCase();
+          final email = (member['email'] ?? '').toString().toLowerCase();
+          return name.contains(query.toLowerCase()) || email.contains(query.toLowerCase());
+        }).toList();
+      }
+    });
   }
 
   Future<void> _loadUserAndFetchData() async {
@@ -72,6 +100,7 @@ class _ManagerViewTeamScreenState extends State<ManagerViewTeamScreen> {
 
         setState(() {
           _teamMembers = team;
+          _filteredMembers = team;
           _isLoading = false;
         });
       }
@@ -112,17 +141,54 @@ class _ManagerViewTeamScreenState extends State<ManagerViewTeamScreen> {
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator(color: _primary))
-          : _teamMembers.isEmpty
-              ? _buildEmptyState()
-              : ListView.builder(
-                  padding: const EdgeInsets.all(16),
-                  itemCount: _teamMembers.length,
-                  itemBuilder: (context, index) {
-                    final member = _teamMembers[index];
-                    return _buildMemberCard(member);
-                  },
+          : Column(
+              children: [
+                _buildSearchBar(),
+                Expanded(
+                  child: _filteredMembers.isEmpty
+                      ? _buildEmptyState()
+                      : ListView.builder(
+                          padding: const EdgeInsets.symmetric(horizontal: 16),
+                          itemCount: _filteredMembers.length,
+                          itemBuilder: (context, index) {
+                            final member = _filteredMembers[index];
+                            return _buildMemberCard(member);
+                          },
+                        ),
                 ),
+              ],
+            ),
       bottomNavigationBar: _buildBottomNav(context),
+    );
+  }
+
+  Widget _buildSearchBar() {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      color: _white,
+      child: TextField(
+        controller: _searchController,
+        decoration: InputDecoration(
+          hintText: 'Search team members...',
+          hintStyle: TextStyle(color: _textPlaceholder, fontSize: 14),
+          prefixIcon: Icon(Icons.search, color: _textPlaceholder, size: 20),
+          filled: true,
+          fillColor: _bg,
+          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide.none,
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide.none,
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide(color: _primary.withOpacity(0.5), width: 1),
+          ),
+        ),
+      ),
     );
   }
 
@@ -143,80 +209,95 @@ class _ManagerViewTeamScreenState extends State<ManagerViewTeamScreen> {
   }
 
   Widget _buildMemberCard(dynamic member) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: _white,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
-          CircleAvatar(
-            radius: 25,
-            backgroundColor: _primary.withOpacity(0.1),
-            child: Text(
-              (member['name'] ?? 'U')[0].toUpperCase(),
-              style: const TextStyle(color: _primary, fontWeight: FontWeight.bold, fontSize: 20),
+    final headshotUrl = member['headshotUrl']?.toString() ?? '';
+    final fullImageUrl = headshotUrl.isNotEmpty 
+        ? (headshotUrl.startsWith('http') ? headshotUrl : 'https://millerstorm.tech$headshotUrl')
+        : '';
+
+    return GestureDetector(
+      onTap: () {
+        Navigator.pushNamed(
+          context,
+          '/manager-team-member-detail',
+          arguments: member,
+        );
+      },
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 12),
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: _white,
+          borderRadius: BorderRadius.circular(12),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.05),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
             ),
-          ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  member['name'] ?? 'Unknown User',
-                  style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                    color: _textDark,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  member['email'] ?? 'No email',
-                  style: TextStyle(
-                    fontSize: 13,
-                    color: _textLight,
-                  ),
-                ),
-                if (member['phone'] != null) ...[
-                  const SizedBox(height: 2),
+          ],
+        ),
+        child: Row(
+          children: [
+            CircleAvatar(
+              radius: 25,
+              backgroundColor: _primary.withOpacity(0.1),
+              backgroundImage: fullImageUrl.isNotEmpty ? NetworkImage(fullImageUrl) : null,
+              child: fullImageUrl.isEmpty ? Text(
+                (member['name'] ?? 'U')[0].toUpperCase(),
+                style: const TextStyle(color: _primary, fontWeight: FontWeight.bold, fontSize: 20),
+              ) : null,
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
                   Text(
-                    member['phone'],
+                    member['name'] ?? 'Unknown User',
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: _textDark,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    member['email'] ?? 'No email',
                     style: TextStyle(
                       fontSize: 13,
                       color: _textLight,
                     ),
                   ),
+                  if (member['phone'] != null) ...[
+                    const SizedBox(height: 2),
+                    Text(
+                      member['phone'],
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: _textLight,
+                      ),
+                    ),
+                  ],
                 ],
-              ],
-            ),
-          ),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-            decoration: BoxDecoration(
-              color: _primary.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: const Text(
-              'Sales',
-              style: TextStyle(
-                color: _primary,
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
               ),
             ),
-          ),
-        ],
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+              decoration: BoxDecoration(
+                color: _primary.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: const Text(
+                'Sales',
+                style: TextStyle(
+                  color: _primary,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

@@ -597,10 +597,17 @@ class _ManagerPlannerScreenState extends State<ManagerPlannerScreen> {
               CircleAvatar(
                 radius: 24,
                 backgroundColor: _border.withOpacity(0.3),
-                backgroundImage: (member['headshotUrl'] != null && member['headshotUrl'].isNotEmpty)
-                  ? NetworkImage('https://millerstorm.tech${member['headshotUrl']}')
+                backgroundImage: (member['headshotUrl'] != null && member['headshotUrl'].toString().isNotEmpty)
+                  ? NetworkImage(member['headshotUrl'].toString().startsWith('http') 
+                      ? member['headshotUrl'].toString() 
+                      : 'https://millerstorm.tech${member['headshotUrl']}')
                   : null,
-                child: (member['headshotUrl'] == null || member['headshotUrl'].isEmpty) ? const Icon(Icons.person, color: _textLight) : null,
+                child: (member['headshotUrl'] == null || member['headshotUrl'].toString().isEmpty) 
+                  ? Text(
+                      (member['name'] ?? 'U')[0].toUpperCase(),
+                      style: const TextStyle(color: _textLight, fontWeight: FontWeight.bold),
+                    ) 
+                  : null,
               ),
               const SizedBox(width: 12),
               Expanded(
