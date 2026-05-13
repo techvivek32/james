@@ -63,11 +63,34 @@ const CourseManagementPage: NextPage = () => {
   }
 
   async function doSave(toSave: Course[]) {
-    const res = await fetch("/api/courses/bulk", {
-      method: "PUT", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(cleanCourses(toSave))
-    });
-    if (!res.ok) throw new Error(await res.text());
+    console.log(`[Save] Starting save for ${toSave.length} courses`);
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
+    
+    try {
+      const res = await fetch("/api/courses/bulk", {
+        method: "PUT", 
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(cleanCourses(toSave)),
+        signal: controller.signal
+      });
+      clearTimeout(timeoutId);
+      
+      if (!res.ok) {
+        const errorText = await res.text();
+        console.error('[Save] API error:', errorText);
+        throw new Error(errorText);
+      }
+      
+      console.log('[Save] Successfully saved');
+    } catch (error) {
+      clearTimeout(timeoutId);
+      if (error instanceof Error && error.name === 'AbortError') {
+        console.error('[Save] Request timeout');
+        throw new Error('Save request timed out');
+      }
+      throw error;
+    }
   }
 
   async function handleCoursesChange(next: Course[]) {
@@ -76,7 +99,7 @@ const CourseManagementPage: NextPage = () => {
     setCourses(next);
     latestCoursesRef.current = next;
 
-    // Delete: save immediately, cancel any pending debounce
+    // Delete: save immediately
     if (isDelete) {
       if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
       setDeleting(true);
@@ -85,9 +108,8 @@ const CourseManagementPage: NextPage = () => {
       return;
     }
 
-    // Other changes: debounce 300ms
-    if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
-    saveTimerRef.current = setTimeout(() => doSave(latestCoursesRef.current).catch(err => console.error("Auto-save failed:", err)), 300);
+    // For other changes (like status toggle), save immediately with only the changed course
+    // No auto-save - let individual components handle their own saves
   }
 
   if (isLoading) {

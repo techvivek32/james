@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
@@ -22,8 +23,6 @@ class _ManagerTrainingScreenState extends State<ManagerTrainingScreen> {
 
   int _stormChatGroupCount = 0;
   String? _userId;
-  String? _userName;
-  String? _userHeadshot;
 
   @override
   void initState() {
@@ -39,8 +38,6 @@ class _ManagerTrainingScreenState extends State<ManagerTrainingScreen> {
         final user = jsonDecode(userStr);
         setState(() {
           _userId = user['_id'] ?? user['id'];
-          _userName = user['name'];
-          _userHeadshot = user['headshotUrl'];
         });
         await _fetchStormChatGroups();
       }
@@ -78,7 +75,7 @@ class _ManagerTrainingScreenState extends State<ManagerTrainingScreen> {
   Widget build(BuildContext context) {
     return WillPopScope(
       onWillPop: () async {
-        Navigator.pushReplacementNamed(context, '/manager-dashboard');
+        await SystemNavigator.pop();
         return false;
       },
       child: Scaffold(
@@ -87,50 +84,17 @@ class _ManagerTrainingScreenState extends State<ManagerTrainingScreen> {
           child: Column(
             children: [
               Container(
+                width: double.infinity,
                 color: _white,
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                child: Row(
-                  children: [
-                    GestureDetector(
-                      onTap: () => Navigator.pushNamed(context, '/manager-profile'),
-                      child: CircleAvatar(
-                        radius: 18,
-                        backgroundColor: _border,
-                        backgroundImage: _userHeadshot != null && _userHeadshot!.isNotEmpty
-                            ? NetworkImage(_userHeadshot!.startsWith('http') 
-                                ? _userHeadshot! 
-                                : 'https://millerstorm.tech$_userHeadshot')
-                            : null,
-                        child: _userHeadshot == null || _userHeadshot!.isEmpty
-                            ? Icon(Icons.person, color: _textLight, size: 20)
-                            : null,
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            _userName ?? 'Manager',
-                            style: const TextStyle(
-                              color: _textDark,
-                              fontSize: 16,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                          const Text(
-                            'Training Center',
-                            style: TextStyle(
-                              color: _textLight,
-                              fontSize: 12,
-                              fontWeight: FontWeight.w400,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                child: const Text(
+                  'Miller Storm Training Center',
+                  textAlign: TextAlign.left,
+                  style: TextStyle(
+                    color: _textDark,
+                    fontSize: 18,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
               ),
               const Expanded(child: ManagerCoursesScreen()),
@@ -152,15 +116,19 @@ class _ManagerTrainingScreenState extends State<ManagerTrainingScreen> {
       child: SafeArea(
         top: false,
         child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 8),
+          padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
-              _navItem(context, Icons.home, 'Home', false, '/manager-dashboard'),
-              _navItem(context, Icons.chat_bubble_outline, 'StormChat', false, '/manager-stormchat'),
-              _navItem(context, Icons.bar_chart, 'Rank', false, '/manager-rankings'),
-              _navItem(context, Icons.calendar_today, 'Planner', false, '/manager-planner'),
               _navItemActive(Icons.school_outlined, 'Training'),
+              const SizedBox(width: 2),
+              _navItem(context, Icons.chat_bubble_outline, 'StormChat', false, '/manager-stormchat'),
+              const SizedBox(width: 2),
+              _navItem(context, Icons.apps_outlined, 'Apps & Tools', false, '/manager-apps-tools-items'),
+              const SizedBox(width: 2),
+              _navItem(context, Icons.group_outlined, 'View Team', false, '/manager-view-team'),
+              const SizedBox(width: 2),
+              _navItem(context, Icons.person_outline, 'Profile', false, '/manager-profile'),
             ],
           ),
         ),
@@ -169,32 +137,61 @@ class _ManagerTrainingScreenState extends State<ManagerTrainingScreen> {
   }
 
   Widget _navItem(BuildContext context, IconData icon, String label, bool active, String? route) {
-    return GestureDetector(
-      onTap: route != null ? () => Navigator.pushReplacementNamed(context, route) : null,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, color: active ? _primary : _textPlaceholder, size: 24),
-            const SizedBox(height: 4),
-            Text(label, style: TextStyle(fontSize: 11, color: active ? _primary : _textPlaceholder, fontWeight: active ? FontWeight.w600 : FontWeight.normal)),
-          ],
+    return Expanded(
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: route != null ? () => Navigator.pushReplacementNamed(context, route) : null,
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 8),
+          color: Colors.transparent,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(icon, color: _textPlaceholder, size: 24),
+              const SizedBox(height: 4),
+              Text(
+                label,
+                style: const TextStyle(
+                  fontSize: 10,
+                  color: _textPlaceholder,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                textAlign: TextAlign.center,
+              ),
+            ],
+          ),
         ),
       ),
     );
   }
 
   Widget _navItemActive(IconData icon, String label) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, color: _primary, size: 24),
-          const SizedBox(height: 4),
-          Text(label, style: const TextStyle(fontSize: 11, color: _primary, fontWeight: FontWeight.w600)),
-        ],
+    return Expanded(
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 8),
+        decoration: BoxDecoration(
+          color: _primary.withOpacity(0.1),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, color: _primary, size: 24),
+            const SizedBox(height: 4),
+            Text(
+              label,
+              style: const TextStyle(
+                fontSize: 10,
+                color: _primary,
+                fontWeight: FontWeight.w600,
+              ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
       ),
     );
   }

@@ -71,6 +71,28 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         }
       }
 
+      // Extract mentions from message text
+      const mentionedUserIds: string[] = [];
+      if (message && messageType === 'text') {
+        // Import User model
+        const { UserModel } = await import('../../../../src/lib/models/User');
+        
+        // Get all group members
+        const groupMembers = await UserModel.find({
+          _id: { $in: group.members }
+        }).select('_id name');
+        
+        // For each member, check if their name is mentioned with @
+        for (const member of groupMembers) {
+          const memberName = member.name;
+          // Create regex to match @Name (case insensitive, with word boundary or space after)
+          const nameRegex = new RegExp(`@${memberName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(?=\\s|$)`, 'i');
+          if (nameRegex.test(message)) {
+            mentionedUserIds.push(member._id.toString());
+          }
+        }
+      }
+
       // Create message with reply fields if provided
       const messageData: any = {
         groupId,
@@ -79,7 +101,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         senderRole,
         message: message || '',
         messageType: messageType || 'text',
-        mediaUrl: mediaUrl || ''
+        mediaUrl: mediaUrl || '',
+        mentions: mentionedUserIds
       };
 
       // Add reply fields if they exist

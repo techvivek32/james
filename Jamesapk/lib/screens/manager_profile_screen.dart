@@ -29,14 +29,11 @@ class _ManagerProfileScreenState extends State<ManagerProfileScreen> {
   String _userWeaknesses = '';
   String _userHeadshotUrl = '';
   String? _userId;
-  bool _isEditMode = false;
   bool _isSaving = false;
   bool _isUploadingImage = false;
 
   final _nameController = TextEditingController();
   final _phoneController = TextEditingController();
-  final _strengthsController = TextEditingController();
-  final _weaknessesController = TextEditingController();
   final ImagePicker _picker = ImagePicker();
 
   final List<String> _availableTerritories = [
@@ -56,8 +53,6 @@ class _ManagerProfileScreenState extends State<ManagerProfileScreen> {
   void dispose() {
     _nameController.dispose();
     _phoneController.dispose();
-    _strengthsController.dispose();
-    _weaknessesController.dispose();
     super.dispose();
   }
 
@@ -86,6 +81,10 @@ class _ManagerProfileScreenState extends State<ManagerProfileScreen> {
               _userEmail = freshUser['email'] ?? '';
               _userRole = freshUser['role'] ?? 'Manager';
               _userPhone = freshUser['phone'] ?? '';
+              
+              // Initialize controllers
+              _nameController.text = _userName;
+              _phoneController.text = _userPhone;
               
               // Parse territory string (format: "DFW, Texas · Lubbock, Texas")
               if (freshUser['territory'] != null && freshUser['territory'].toString().isNotEmpty) {
@@ -118,6 +117,10 @@ class _ManagerProfileScreenState extends State<ManagerProfileScreen> {
           _userRole = user['role'] ?? 'Manager';
           _userPhone = user['phone'] ?? '';
           
+          // Initialize controllers
+          _nameController.text = _userName;
+          _phoneController.text = _userPhone;
+          
           // Parse territory string (format: "DFW, Texas · Lubbock, Texas")
           if (user['territory'] != null && user['territory'].toString().isNotEmpty) {
             _userTerritories = user['territory']
@@ -138,22 +141,6 @@ class _ManagerProfileScreenState extends State<ManagerProfileScreen> {
     } catch (e) {
       print('Error loading user data: $e');
     }
-  }
-
-  void _enterEditMode() {
-    setState(() {
-      _isEditMode = true;
-      _nameController.text = _userName;
-      _phoneController.text = _userPhone;
-      _strengthsController.text = _userStrengths;
-      _weaknessesController.text = _userWeaknesses;
-    });
-  }
-
-  void _cancelEdit() {
-    setState(() {
-      _isEditMode = false;
-    });
   }
 
   Future<void> _pickAndUploadImage() async {
@@ -259,8 +246,6 @@ class _ManagerProfileScreenState extends State<ManagerProfileScreen> {
           'name': _nameController.text,
           'phone': _phoneController.text,
           'territory': territoryString,
-          'strengths': _strengthsController.text,
-          'weaknesses': _weaknessesController.text,
         }),
       );
 
@@ -290,7 +275,6 @@ class _ManagerProfileScreenState extends State<ManagerProfileScreen> {
           
           _userStrengths = updatedUser['strengths'] ?? '';
           _userWeaknesses = updatedUser['weaknesses'] ?? '';
-          _isEditMode = false;
         });
 
         if (mounted) {
@@ -335,36 +319,144 @@ class _ManagerProfileScreenState extends State<ManagerProfileScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: _bg,
-      appBar: AppBar(
-        backgroundColor: _primary,
-        elevation: 0,
-        leading: IconButton(
-          icon: Icon(Icons.arrow_back, color: _white),
-          onPressed: () => Navigator.pop(context),
+    return WillPopScope(
+      onWillPop: () async {
+        Navigator.pushReplacementNamed(context, '/manager-training');
+        return false;
+      },
+      child: Scaffold(
+        backgroundColor: _bg,
+        appBar: AppBar(
+          backgroundColor: _primary,
+          elevation: 0,
+          title: Text(
+            'Profile',
+            style: const TextStyle(
+              color: _white,
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          actions: [
+            IconButton(
+              icon: const Icon(Icons.logout, color: _white),
+              onPressed: _logout,
+              tooltip: 'Logout',
+            ),
+          ],
         ),
-        title: Text(
-          _isEditMode ? 'Edit Profile' : 'Profile',
-          style: const TextStyle(
-            color: _white,
-            fontSize: 20,
-            fontWeight: FontWeight.bold,
+        body: Column(
+          children: [
+            Expanded(
+              child: _buildViewMode(),
+            ),
+            _buildBottomNav(context),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildBottomNav(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: _white,
+        border: const Border(top: BorderSide(color: _border, width: 1)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.04),
+            blurRadius: 8,
+            offset: const Offset(0, -2),
+          ),
+        ],
+      ),
+      child: SafeArea(
+        top: false,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
+            children: [
+              _navItem(Icons.school_outlined, 'Training', false, '/manager-training', context),
+              const SizedBox(width: 2),
+              _navItem(Icons.chat_bubble_outline, 'StormChat', false, '/manager-stormchat', context),
+              const SizedBox(width: 2),
+              _navItem(Icons.apps_outlined, 'Apps & Tools', false, '/manager-apps-tools-items', context),
+              const SizedBox(width: 2),
+              _navItem(Icons.group_outlined, 'View Team', false, '/manager-view-team', context),
+              const SizedBox(width: 2),
+              _navItemActive(Icons.person_outline, 'Profile'),
+            ],
           ),
         ),
-        actions: _isEditMode
-            ? [
-                TextButton(
-                  onPressed: _isSaving ? null : _cancelEdit,
-                  child: const Text(
-                    'Cancel',
-                    style: TextStyle(color: _white, fontSize: 16),
-                  ),
-                ),
-              ]
-            : null,
       ),
-      body: _isEditMode ? _buildEditMode() : _buildViewMode(),
+    );
+  }
+
+  Widget _navItem(IconData icon, String label, bool active, String? route, BuildContext context) {
+    return Expanded(
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: route != null ? () => Navigator.pushReplacementNamed(context, route) : null,
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 8),
+          decoration: BoxDecoration(
+            color: Colors.transparent,
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                icon,
+                color: const Color(0xFF9CA3AF),
+                size: 24,
+              ),
+              const SizedBox(height: 4),
+              Text(
+                label,
+                style: const TextStyle(
+                  fontSize: 10,
+                  color: Color(0xFF9CA3AF),
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                textAlign: TextAlign.center,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _navItemActive(IconData icon, String label) {
+    return Expanded(
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 8),
+        decoration: BoxDecoration(
+          color: _primary.withOpacity(0.1),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, color: _primary, size: 24),
+            const SizedBox(height: 4),
+            Text(
+              label,
+              style: const TextStyle(
+                fontSize: 10,
+                color: _primary,
+                fontWeight: FontWeight.w600,
+              ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
+      ),
     );
   }
 
@@ -376,240 +468,177 @@ class _ManagerProfileScreenState extends State<ManagerProfileScreen> {
         physics: const AlwaysScrollableScrollPhysics(),
         child: Column(
           children: [
-          Container(
-            width: double.infinity,
-            color: _primary,
-            padding: const EdgeInsets.only(bottom: 40),
-            child: Column(
-              children: [
-                Stack(
-                  children: [
-                    CircleAvatar(
-                      radius: 50,
-                      backgroundColor: _white.withOpacity(0.2),
-                      backgroundImage: _userHeadshotUrl.isNotEmpty
-                          ? NetworkImage('https://millerstorm.tech$_userHeadshotUrl')
-                          : null,
-                      child: _userHeadshotUrl.isEmpty
-                          ? Icon(Icons.person, color: _white, size: 50)
-                          : null,
-                    ),
-                    Positioned(
-                      bottom: 0,
-                      right: 0,
-                      child: GestureDetector(
-                        onTap: _isUploadingImage ? null : _pickAndUploadImage,
-                        child: Container(
-                          width: 36,
-                          height: 36,
-                          decoration: BoxDecoration(
-                            color: _white,
-                            shape: BoxShape.circle,
-                            border: Border.all(color: _primary, width: 2),
+            Container(
+              width: double.infinity,
+              decoration: BoxDecoration(
+                color: _primary,
+                borderRadius: const BorderRadius.only(
+                  bottomLeft: Radius.circular(26),
+                  bottomRight: Radius.circular(26),
+                ),
+              ),
+              padding: const EdgeInsets.all(20),
+              child: Row(
+                children: [
+                  Stack(
+                    children: [
+                      CircleAvatar(
+                        radius: 40,
+                        backgroundColor: _white.withOpacity(0.2),
+                        backgroundImage: _userHeadshotUrl.isNotEmpty
+                            ? NetworkImage('https://millerstorm.tech$_userHeadshotUrl')
+                            : null,
+                        child: _userHeadshotUrl.isEmpty
+                            ? Icon(Icons.person, color: _white, size: 40)
+                            : null,
+                      ),
+                      Positioned(
+                        bottom: 0,
+                        right: 0,
+                        child: GestureDetector(
+                          onTap: _isUploadingImage ? null : _pickAndUploadImage,
+                          child: Container(
+                            width: 30,
+                            height: 30,
+                            decoration: BoxDecoration(
+                              color: _white,
+                              shape: BoxShape.circle,
+                              border: Border.all(color: _primary, width: 2),
+                            ),
+                            child: _isUploadingImage
+                                ? Padding(
+                                    padding: const EdgeInsets.all(6),
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                      color: _primary,
+                                    ),
+                                  )
+                                : Icon(Icons.camera_alt, color: _primary, size: 14),
                           ),
-                          child: _isUploadingImage
-                              ? Padding(
-                                  padding: const EdgeInsets.all(8),
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                    color: _primary,
-                                  ),
-                                )
-                              : Icon(Icons.camera_alt, color: _primary, size: 18),
                         ),
                       ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 16),
-                Text(
-                  _userName,
-                  style: const TextStyle(
-                    color: _white,
-                    fontSize: 24,
-                    fontWeight: FontWeight.bold,
+                    ],
                   ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  _userEmail,
-                  style: TextStyle(
-                    color: _white.withOpacity(0.9),
-                    fontSize: 14,
-                  ),
-                ),
-                const SizedBox(height: 12),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: _white.withOpacity(0.2),
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: Text(
-                    _userRole.toUpperCase(),
-                    style: const TextStyle(
-                      color: _white,
-                      fontSize: 12,
-                      fontWeight: FontWeight.bold,
-                      letterSpacing: 0.5,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.all(20),
-            child: Column(
-              children: [
-                _buildMenuItem(
-                  icon: Icons.person_outline,
-                  title: 'Edit Profile',
-                  onTap: _enterEditMode,
-                ),
-                const SizedBox(height: 12),
-                _buildMenuItem(
-                  icon: Icons.notifications_outlined,
-                  title: 'Notifications',
-                  onTap: () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Coming Soon'),
-                        backgroundColor: Color(0xFFCB0002),
-                      ),
-                    );
-                  },
-                ),
-                const SizedBox(height: 12),
-                _buildMenuItem(
-                  icon: Icons.help_outline,
-                  title: 'Help & Support',
-                  onTap: () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Coming Soon'),
-                        backgroundColor: Color(0xFFCB0002),
-                      ),
-                    );
-                  },
-                ),
-                const SizedBox(height: 24),
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton(
-                    onPressed: _logout,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: _primary,
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                    ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: const [
-                        Icon(Icons.logout, color: _white, size: 20),
-                        SizedBox(width: 8),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
                         Text(
-                          'Logout',
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
+                          _userName,
+                          style: const TextStyle(
                             color: _white,
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          _userEmail,
+                          style: TextStyle(
+                            color: _white.withOpacity(0.9),
+                            fontSize: 13,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        const SizedBox(height: 8),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: _white.withOpacity(0.2),
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                          child: Text(
+                            _userRole.toUpperCase(),
+                            style: const TextStyle(
+                              color: _white,
+                              fontSize: 11,
+                              fontWeight: FontWeight.bold,
+                              letterSpacing: 0.5,
+                            ),
                           ),
                         ),
                       ],
                     ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
-          ),
-        ],
+            const SizedBox(height: 2),
+            Padding(
+              padding: const EdgeInsets.all(20),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _buildTextField(
+                    label: 'Full Name',
+                    controller: _nameController,
+                    icon: Icons.person_outline,
+                  ),
+                  const SizedBox(height: 16),
+                  _buildTextField(
+                    label: 'Email',
+                    controller: TextEditingController(text: _userEmail),
+                    icon: Icons.email_outlined,
+                    enabled: false,
+                    helperText: 'Email cannot be changed',
+                  ),
+                  const SizedBox(height: 16),
+                  _buildTextField(
+                    label: 'Phone',
+                    controller: _phoneController,
+                    icon: Icons.phone_outlined,
+                    hint: 'Your mobile number',
+                  ),
+                  const SizedBox(height: 16),
+                  _buildTerritoryField(),
+                  const SizedBox(height: 16),
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      onPressed: _isSaving ? null : _saveProfile,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: _primary,
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      child: _isSaving
+                          ? const SizedBox(
+                              height: 20,
+                              width: 20,
+                              child: CircularProgressIndicator(
+                                color: _white,
+                                strokeWidth: 2,
+                              ),
+                            )
+                          : const Text(
+                              'Save Changes',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                                color: _white,
+                              ),
+                            ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
         ),
       ),
     );
   }
 
-  Widget _buildEditMode() {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(20),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _buildTextField(
-            label: 'Full Name',
-            controller: _nameController,
-            icon: Icons.person_outline,
-          ),
-          const SizedBox(height: 16),
-          _buildTextField(
-            label: 'Email',
-            controller: TextEditingController(text: _userEmail),
-            icon: Icons.email_outlined,
-            enabled: false,
-            helperText: 'Email cannot be changed',
-          ),
-          const SizedBox(height: 16),
-          _buildTextField(
-            label: 'Phone',
-            controller: _phoneController,
-            icon: Icons.phone_outlined,
-            hint: 'Your mobile number',
-          ),
-          const SizedBox(height: 16),
-          _buildTerritoryField(),
-          const SizedBox(height: 16),
-          _buildTextField(
-            label: 'Strengths / Superpowers',
-            controller: _strengthsController,
-            icon: Icons.star_outline,
-            maxLines: 3,
-          ),
-          const SizedBox(height: 16),
-          _buildTextField(
-            label: 'Weaknesses / Insecurities',
-            controller: _weaknessesController,
-            icon: Icons.warning_amber_outlined,
-            maxLines: 3,
-          ),
-          const SizedBox(height: 32),
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton(
-              onPressed: _isSaving ? null : _saveProfile,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: _primary,
-                padding: const EdgeInsets.symmetric(vertical: 16),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
-              child: _isSaving
-                  ? const SizedBox(
-                      height: 20,
-                      width: 20,
-                      child: CircularProgressIndicator(
-                        color: _white,
-                        strokeWidth: 2,
-                      ),
-                    )
-                  : const Text(
-                      'Save Changes',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                        color: _white,
-                      ),
-                    ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
   Widget _buildTerritoryField() {
+    String displayText = _userTerritories.isEmpty ? 'Select Territory' : _userTerritories.join(', ');
+    bool _showTerritoryDropdown = false;
+    
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -622,38 +651,63 @@ class _ManagerProfileScreenState extends State<ManagerProfileScreen> {
           ),
         ),
         const SizedBox(height: 8),
-        Container(
-          decoration: BoxDecoration(
-            color: _white,
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: _border),
-          ),
-          child: Column(
-            children: _availableTerritories.map((territory) {
-              final isSelected = _userTerritories.contains(territory);
-              return CheckboxListTile(
-                value: isSelected,
-                onChanged: (bool? value) {
-                  setState(() {
-                    if (value == true) {
-                      _userTerritories.add(territory);
-                    } else {
-                      _userTerritories.remove(territory);
-                    }
-                  });
-                },
-                title: Text(
-                  territory,
-                  style: const TextStyle(
-                    fontSize: 16,
-                    color: _textDark,
+        GestureDetector(
+          onTap: () {
+            showDialog(
+              context: context,
+              builder: (context) => AlertDialog(
+                title: const Text('Select Territory'),
+                content: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: _availableTerritories.map((territory) {
+                      final isSelected = _userTerritories.contains(territory);
+                      return CheckboxListTile(
+                        value: isSelected,
+                        onChanged: (bool? value) {
+                          setState(() {
+                            if (value == true) {
+                              _userTerritories.add(territory);
+                            } else {
+                              _userTerritories.remove(territory);
+                            }
+                          });
+                          Navigator.pop(context);
+                        },
+                        title: Text(territory),
+                        activeColor: _primary,
+                      );
+                    }).toList(),
                   ),
                 ),
-                activeColor: _primary,
-                controlAffinity: ListTileControlAffinity.leading,
-                contentPadding: const EdgeInsets.symmetric(horizontal: 12),
-              );
-            }).toList(),
+              ),
+            );
+          },
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            decoration: BoxDecoration(
+              color: _white,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: _border),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Expanded(
+                  child: Text(
+                    displayText,
+                    style: TextStyle(
+                      fontSize: 16,
+                      color: _userTerritories.isEmpty ? _textLight : _textDark,
+                    ),
+                  ),
+                ),
+                Icon(
+                  Icons.arrow_drop_down,
+                  color: _textLight,
+                ),
+              ],
+            ),
           ),
         ),
       ],

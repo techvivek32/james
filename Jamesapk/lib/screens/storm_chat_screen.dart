@@ -14,6 +14,7 @@ class StormChatScreen extends StatefulWidget {
 class _StormChatScreenState extends State<StormChatScreen> {
   List<dynamic> groups = [];
   Map<String, int> unreadCounts = {};
+  Map<String, int> mentionCounts = {};
   bool isLoading = true;
   String? userId;
   String? userRole;
@@ -85,18 +86,28 @@ class _StormChatScreenState extends State<StormChatScreen> {
     
     try {
       final groupIds = groups.map((g) => g['_id']).join(',');
-      final response = await http.get(
+      
+      // Fetch unread counts
+      final unreadResponse = await http.get(
         Uri.parse('https://millerstorm.tech/api/storm-chat/unread-counts?userId=$userId&groupIds=$groupIds'),
       );
 
-      if (response.statusCode == 200) {
-        final counts = json.decode(response.body) as Map<String, dynamic>;
+      // Fetch mention counts
+      final mentionResponse = await http.get(
+        Uri.parse('https://millerstorm.tech/api/storm-chat/mention-counts?userId=$userId&groupIds=$groupIds'),
+      );
+
+      if (unreadResponse.statusCode == 200 && mentionResponse.statusCode == 200) {
+        final unreadData = json.decode(unreadResponse.body) as Map<String, dynamic>;
+        final mentionData = json.decode(mentionResponse.body) as Map<String, dynamic>;
+        
         setState(() {
-          unreadCounts = counts.map((key, value) => MapEntry(key, value as int));
+          unreadCounts = unreadData.map((key, value) => MapEntry(key, value as int));
+          mentionCounts = mentionData.map((key, value) => MapEntry(key, value as int));
         });
       }
     } catch (e) {
-      print('❌ Error fetching unread counts: $e');
+      print('❌ Error fetching counts: $e');
     }
   }
 
@@ -104,7 +115,7 @@ class _StormChatScreenState extends State<StormChatScreen> {
   Widget build(BuildContext context) {
     return WillPopScope(
       onWillPop: () async {
-        Navigator.pushReplacementNamed(context, '/training');
+        Navigator.pushReplacementNamed(context, '/courses');
         return false;
       },
       child: Scaffold(
@@ -202,6 +213,7 @@ class _StormChatScreenState extends State<StormChatScreen> {
     final onlyAdminCanChat = group['onlyAdminCanChat'] ?? false;
     final groupId = group['_id'];
     final unreadCount = unreadCounts[groupId] ?? 0;
+    final mentionCount = mentionCounts[groupId] ?? 0;
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
@@ -305,23 +317,45 @@ class _StormChatScreenState extends State<StormChatScreen> {
                     ],
                   ),
                 ),
-                if (unreadCount > 0)
-                  Container(
-                    margin: const EdgeInsets.only(right: 8),
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFCB0002),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Text(
-                      unreadCount > 99 ? '99+' : unreadCount.toString(),
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
+                // Badges
+                Row(
+                  children: [
+                    if (mentionCount > 0)
+                      Container(
+                        margin: const EdgeInsets.only(right: 6),
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFCB0002),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Text(
+                          '@${mentionCount > 99 ? '99+' : mentionCount}',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
                       ),
-                    ),
-                  ),
+                    if (unreadCount > 0)
+                      Container(
+                        margin: const EdgeInsets.only(right: 8),
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFCB0002),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Text(
+                          unreadCount > 99 ? '99+' : unreadCount.toString(),
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
                 const Icon(
                   Icons.chevron_right,
                   color: Colors.grey,
@@ -350,14 +384,17 @@ class _StormChatScreenState extends State<StormChatScreen> {
       child: SafeArea(
         top: false,
         child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 8),
+          padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
-              _navItem(context, Icons.school_outlined, 'Training', false, '/training'),
-              _navItem(context, Icons.emoji_events_outlined, 'Rankings', false, '/rankings'),
-              _navItem(context, Icons.work_outline, 'Planner', false, '/planner'),
+              _navItem(context, Icons.school_outlined, 'Training', false, '/courses'),
+              const SizedBox(width: 2),
               _navItemActive(Icons.chat_bubble_outline, 'StormChat'),
+              const SizedBox(width: 2),
+              _navItem(context, Icons.apps_outlined, 'Apps & Tools', false, '/apps-tools-items'),
+              const SizedBox(width: 2),
+              _navItem(context, Icons.person_outline, 'Profile', false, '/profile'),
             ],
           ),
         ),
@@ -366,50 +403,67 @@ class _StormChatScreenState extends State<StormChatScreen> {
   }
 
   Widget _navItem(BuildContext context, IconData icon, String label, bool active, String? route) {
-    return GestureDetector(
-      onTap: route != null ? () => Navigator.pushReplacementNamed(context, route) : null,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              icon,
-              color: active ? const Color(0xFFCB0002) : const Color(0xFF9CA3AF),
-              size: 24,
-            ),
-            const SizedBox(height: 4),
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 11,
-                color: active ? const Color(0xFFCB0002) : const Color(0xFF9CA3AF),
-                fontWeight: active ? FontWeight.w600 : FontWeight.normal,
+    return Expanded(
+      child: GestureDetector(
+        onTap: route != null ? () => Navigator.pushReplacementNamed(context, route) : null,
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 8),
+          decoration: BoxDecoration(
+            color: Colors.transparent,
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                icon,
+                color: const Color(0xFF9CA3AF),
+                size: 24,
               ),
-            ),
-          ],
+              const SizedBox(height: 4),
+              Text(
+                label,
+                style: const TextStyle(
+                  fontSize: 10,
+                  color: Color(0xFF9CA3AF),
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                textAlign: TextAlign.center,
+              ),
+            ],
+          ),
         ),
       ),
     );
   }
 
   Widget _navItemActive(IconData icon, String label) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, color: const Color(0xFFCB0002), size: 24),
-          const SizedBox(height: 4),
-          Text(
-            label,
-            style: const TextStyle(
-              fontSize: 11,
-              color: Color(0xFFCB0002),
-              fontWeight: FontWeight.w600,
+    return Expanded(
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 8),
+        decoration: BoxDecoration(
+          color: const Color(0xFFCB0002).withOpacity(0.1),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, color: const Color(0xFFCB0002), size: 24),
+            const SizedBox(height: 4),
+            Text(
+              label,
+              style: const TextStyle(
+                fontSize: 10,
+                color: Color(0xFFCB0002),
+                fontWeight: FontWeight.w600,
+              ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              textAlign: TextAlign.center,
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

@@ -15,10 +15,15 @@ import 'screens/manager_planner_screen.dart';
 import 'screens/manager_courses_screen.dart';
 import 'screens/manager_training_screen.dart';
 import 'screens/manager_profile_screen.dart';
+import 'screens/manager_view_team_screen.dart';
+import 'screens/manager_team_member_detail_screen.dart';
 import 'screens/profile_screen.dart';
-import 'screens/apps_tools_categories_screen.dart';
 import 'screens/apps_tools_items_screen.dart';
 import 'screens/apps_tools_detail_screen.dart';
+import 'screens/manager_apps_tools_items_screen.dart';
+import 'screens/manager_apps_tools_detail_screen.dart';
+import 'screens/manager_all_plans_screen.dart';
+import 'screens/ai_clone_chat_screen.dart';
 
 void main() {
   runApp(const MillerStormApp());
@@ -56,16 +61,33 @@ class MillerStormApp extends StatelessWidget {
             return MaterialPageRoute(builder: (_) => const PlannerScreen());
           case '/courses':
             return MaterialPageRoute(builder: (_) => CoursesScreen());
-          case '/apps-tools-categories':
-            return MaterialPageRoute(builder: (_) => const AppsToolsCategoriesScreen());
           case '/apps-tools-items':
-            return MaterialPageRoute(builder: (_) => const AppsToolsItemsScreen(), settings: settings);
+            return MaterialPageRoute(builder: (_) => const AppsToolsItemsScreen());
           case '/apps-tools-detail':
             return MaterialPageRoute(builder: (_) => const AppsToolsDetailScreen(), settings: settings);
+          case '/manager-apps-tools-items':
+            return MaterialPageRoute(builder: (_) => const ManagerAppsToolsItemsScreen());
+          case '/manager-apps-tools-detail':
+            return MaterialPageRoute(builder: (_) => const ManagerAppsToolsDetailScreen(), settings: settings);
+          case '/manager-all-plans':
+            final args = settings.arguments as Map<String, dynamic>;
+            return MaterialPageRoute(
+              builder: (_) => ManagerAllPlansScreen(
+                teamMembers: args['teamMembers'],
+                calculateMetrics: args['calculateMetrics'],
+                onSavePlan: args['onSavePlan'],
+                onRefresh: args['onRefresh'],
+              ),
+            );
           case '/manager-stormchat':
             return MaterialPageRoute(builder: (_) => const ManagerStormChatScreen());
           case '/manager-rankings':
             return MaterialPageRoute(builder: (_) => const ManagerRankingsScreen());
+          case '/manager-view-team':
+            return MaterialPageRoute(builder: (_) => const ManagerViewTeamScreen());
+          case '/manager-team-member-detail':
+            final member = settings.arguments as Map<String, dynamic>;
+            return MaterialPageRoute(builder: (_) => ManagerTeamMemberDetailScreen(member: member));
           case '/manager-planner':
             return MaterialPageRoute(builder: (_) => const ManagerPlannerScreen());
           case '/manager-courses':

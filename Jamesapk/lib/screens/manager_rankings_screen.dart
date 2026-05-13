@@ -446,15 +446,19 @@ class _ManagerRankingsScreenState extends State<ManagerRankingsScreen> {
       child: SafeArea(
         top: false,
         child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 8),
+          padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
-              _navItem(context, Icons.home, 'Home', false, '/manager-dashboard'),
-              _navItem(context, Icons.chat_bubble_outline, 'StormChat', false, '/manager-stormchat'),
-              _navItemActive(Icons.bar_chart, 'Rank'),
-              _navItem(context, Icons.calendar_today, 'Planner', false, '/manager-planner'),
               _navItem(context, Icons.school_outlined, 'Training', false, '/manager-training'),
+              const SizedBox(width: 2),
+              _navItem(context, Icons.chat_bubble_outline, 'StormChat', false, '/manager-stormchat'),
+              const SizedBox(width: 2),
+              _navItem(context, Icons.apps_outlined, 'Apps & Tools', false, '/manager-apps-tools-items'),
+              const SizedBox(width: 2),
+              _navItem(context, Icons.group_outlined, 'View Team', false, '/manager-view-team'),
+              const SizedBox(width: 2),
+              _navItem(context, Icons.person_outline, 'Profile', false, '/manager-profile'),
             ],
           ),
         ),
@@ -463,27 +467,40 @@ class _ManagerRankingsScreenState extends State<ManagerRankingsScreen> {
   }
 
   Widget _navItem(BuildContext context, IconData icon, String label, bool active, String? route) {
-    return GestureDetector(
-      onTap: route != null ? () => Navigator.pushReplacementNamed(context, route) : null,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, color: active ? _link : _textPlaceholder, size: 24),
-          const SizedBox(height: 4),
-          Text(label, style: TextStyle(fontSize: 11, color: active ? _link : _textPlaceholder, fontWeight: active ? FontWeight.w600 : FontWeight.normal)),
-        ],
+    return Expanded(
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: route != null ? () => Navigator.pushReplacementNamed(context, route) : null,
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 8),
+          color: Colors.transparent,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(icon, color: active ? _link : _textPlaceholder, size: 24),
+              const SizedBox(height: 4),
+              Text(label, style: TextStyle(fontSize: 11, color: active ? _link : _textPlaceholder, fontWeight: active ? FontWeight.w600 : FontWeight.normal), textAlign: TextAlign.center),
+            ],
+          ),
+        ),
       ),
     );
   }
 
   Widget _navItemActive(IconData icon, String label) {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Icon(icon, color: _link, size: 24),
-        const SizedBox(height: 4),
-        Text(label, style: const TextStyle(fontSize: 11, color: _link, fontWeight: FontWeight.w600)),
-      ],
+    return Expanded(
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 8),
+        decoration: BoxDecoration(color: _link.withOpacity(0.1), borderRadius: BorderRadius.circular(8)),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, color: _link, size: 24),
+            const SizedBox(height: 4),
+            Text(label, style: const TextStyle(fontSize: 11, color: _link, fontWeight: FontWeight.w600), textAlign: TextAlign.center),
+          ],
+        ),
+      ),
     );
   }
 }

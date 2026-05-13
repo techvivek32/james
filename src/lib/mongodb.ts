@@ -24,7 +24,12 @@ export async function connectMongo() {
     globalForMongoose.mongoose = {
       conn: null,
       promise: mongoose.connect(uri, {
-        dbName: "millerstorm"
+        dbName: "millerstorm",
+        serverSelectionTimeoutMS: 10000, // 10 second timeout
+        socketTimeoutMS: 45000, // 45 second socket timeout
+        maxPoolSize: 10,
+        minPoolSize: 2,
+        maxIdleTimeMS: 30000
       })
     };
   }

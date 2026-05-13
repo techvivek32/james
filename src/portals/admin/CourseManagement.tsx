@@ -117,6 +117,7 @@ export function CourseManagement(props: CourseEditorProps) {
   const [toastType, setToastType] = useState<'success' | 'error' | 'info'>('success');
   const [isSavingLesson, setIsSavingLesson] = useState(false);
   const [savingMessage, setSavingMessage] = useState<string>("");
+  const [isSavingCourse, setIsSavingCourse] = useState(false);
 
   // Add drag and drop styles
   const dragStyles = `
@@ -634,16 +635,17 @@ export function CourseManagement(props: CourseEditorProps) {
     setSavingMessage(type === 'quiz' ? 'Saving Quiz...' : 'Saving Lesson...');
     
     try {
-      // Build the updated courses list
-      const next = props.courses.map((course) => 
-        course.id === selectedCourse.id ? selectedCourse : course
-      );
-      // Update React state first
-      props.onCoursesChange(next);
+      // Save only the changed course, not all courses
+      const cleanedCourse = props.cleanCourses ? props.cleanCourses([selectedCourse])[0] : selectedCourse;
       
-      // Then directly call the API — don't rely on debounce
-      if (props.onForceSave) {
-        await props.onForceSave(next);
+      const res = await fetch("/api/courses/bulk", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify([cleanedCourse])
+      });
+      
+      if (!res.ok) {
+        throw new Error('Failed to save');
       }
       
       showToast(type === 'quiz' ? 'Quiz saved successfully!' : 'Lesson saved successfully!', 'success');
@@ -656,27 +658,55 @@ export function CourseManagement(props: CourseEditorProps) {
     }
   }
 
-  function saveCourse() {
-    if (isCreatingNewCourse && newCourseData) {
-      // Save new course
-      const next = [...props.courses, newCourseData];
-      props.onCoursesChange(next);
-      setSelectedCourseId(newCourseData.id);
-      setIsCreatingNewCourse(false);
-      setNewCourseData(null);
-      setOriginalCourse(JSON.parse(JSON.stringify(newCourseData)));
-      setHasChanges(false);
-      showToast('Course created successfully!', 'success');
-    } else if (selectedCourse && hasChanges) {
-      // Save existing course changes — explicitly trigger save
-      const next = props.courses.map((course) => course.id === selectedCourse.id ? selectedCourse : course);
-      props.onCoursesChange(next);
-      setOriginalCourse(JSON.parse(JSON.stringify(selectedCourse)));
-      setHasChanges(false);
-      console.log('Course saved:', selectedCourse.title);
-      showToast('Course saved successfully!', 'success');
+  async function saveCourse() {
+    setIsSavingCourse(true);
+    try {
+      if (isCreatingNewCourse && newCourseData) {
+        // Save new course - only save the new course, not all courses
+        const cleanedCourse = props.cleanCourses ? props.cleanCourses([newCourseData])[0] : newCourseData;
+        
+        const res = await fetch("/api/courses/bulk", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify([cleanedCourse])
+        });
+        
+        if (!res.ok) {
+          throw new Error('Failed to save course');
+        }
+        
+        setSelectedCourseId(newCourseData.id);
+        setIsCreatingNewCourse(false);
+        setNewCourseData(null);
+        setOriginalCourse(JSON.parse(JSON.stringify(newCourseData)));
+        setHasChanges(false);
+        showToast('Course created successfully!', 'success');
+      } else if (selectedCourse && hasChanges) {
+        // Save only the changed course, not all courses
+        const cleanedCourse = props.cleanCourses ? props.cleanCourses([selectedCourse])[0] : selectedCourse;
+        
+        const res = await fetch("/api/courses/bulk", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify([cleanedCourse])
+        });
+        
+        if (!res.ok) {
+          throw new Error('Failed to save course');
+        }
+        
+        setOriginalCourse(JSON.parse(JSON.stringify(selectedCourse)));
+        setHasChanges(false);
+        console.log('Course saved:', selectedCourse.title);
+        showToast('Course saved successfully!', 'success');
+      }
+      setViewMode("grid");
+    } catch (error) {
+      console.error('Save error:', error);
+      showToast('Failed to save course. Please try again.', 'error');
+    } finally {
+      setIsSavingCourse(false);
     }
-    setViewMode("grid");
   }
 
   function cancelChanges() {
@@ -2177,12 +2207,26 @@ export function CourseManagement(props: CourseEditorProps) {
                       <button
                         type="button"
                         className={selectedCourse.status === "published" ? "status-toggle status-toggle-on" : "status-toggle"}
-                        onClick={() =>
-                          updateCourse({
-                            ...selectedCourse,
-                            status: (selectedCourse.status ?? "draft") === "published" ? "draft" : "published"
-                          })
-                        }
+                        onClick={async () => {
+                          const newStatus: "draft" | "published" = (selectedCourse.status ?? "draft") === "published" ? "draft" : "published";
+                          const updatedCourse = { ...selectedCourse, status: newStatus };
+                          updateCourse(updatedCourse);
+                          
+                          // Save immediately with only this course
+                          try {
+                            const cleanedCourse = props.cleanCourses ? props.cleanCourses([updatedCourse])[0] : updatedCourse;
+                            const res = await fetch("/api/courses/bulk", {
+                              method: "PUT",
+                              headers: { "Content-Type": "application/json" },
+                              body: JSON.stringify([cleanedCourse])
+                            });
+                            if (!res.ok) throw new Error('Failed to save status');
+                            showToast(`Course ${newStatus === 'published' ? 'published' : 'unpublished'} successfully!`, 'success');
+                          } catch (error) {
+                            console.error('Status save error:', error);
+                            showToast('Failed to save status. Please try again.', 'error');
+                          }
+                        }}
                       >
                         <span className={selectedCourse.status === "published" ? "status-toggle-label status-toggle-label-on" : "status-toggle-label"}>
                           {selectedCourse.status === "published" ? "Published" : "Draft"}
@@ -2206,17 +2250,17 @@ export function CourseManagement(props: CourseEditorProps) {
                   </div>
                   <div className="course-actions">
                     <div style={{ display: "flex", gap: 8 }}>
-                      <button type="button" className="btn-secondary btn-cancel" onClick={cancelChanges}>
+                      <button type="button" className="btn-secondary btn-cancel" onClick={cancelChanges} disabled={isSavingCourse}>
                         Cancel
                       </button>
                       <button 
                         type="button" 
                         className="btn-primary btn-success" 
                         onClick={saveCourse}
-                        disabled={!hasChanges}
-                        style={!hasChanges ? { opacity: 0.5, cursor: "not-allowed" } : {}}
+                        disabled={!hasChanges || isSavingCourse}
+                        style={(!hasChanges || isSavingCourse) ? { opacity: 0.5, cursor: "not-allowed" } : {}}
                       >
-                        Save
+                        {isSavingCourse ? 'Saving...' : 'Save'}
                       </button>
                     </div>
                     <button type="button" className="btn-primary btn-success" onClick={() => {

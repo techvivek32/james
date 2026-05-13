@@ -98,10 +98,14 @@ export default async function handler(
         const coursesWithWebProgress = filteredCourses.map((course: any) => {
           const webProgress = webProgressData[course.id];
           
+          // Filter out draft lessons/pages - only show published ones
+          const publishedPages = course.pages?.filter((p: any) => p.status === 'published') || [];
+          const publishedFolders = course.folders?.filter((f: any) => f.status === 'published') || [];
+          
           if (webProgress) {
             // Use web's exact calculation - only count lesson pages (not quizzes)
             const completedPages = webProgress.completedPages?.length || 0;
-            const lessonPages = course.pages?.filter((p: any) => p.status === 'published' && !p.isQuiz) || [];
+            const lessonPages = publishedPages.filter((p: any) => !p.isQuiz);
             const totalPages = lessonPages.length;
             const progressPercent = totalPages > 0 ? Math.round((completedPages / totalPages) * 100) : 0;
             
@@ -109,6 +113,8 @@ export default async function handler(
             
             return {
               ...course,
+              pages: publishedPages,
+              folders: publishedFolders,
               progress: {
                 completedLessons: completedPages,
                 totalLessons: totalPages,
@@ -117,9 +123,11 @@ export default async function handler(
             };
           } else {
             console.log(`🌐 ${course.title}: No progress in web API`);
-            const lessonPages = course.pages?.filter((p: any) => p.status === 'published' && !p.isQuiz) || [];
+            const lessonPages = publishedPages.filter((p: any) => !p.isQuiz);
             return {
               ...course,
+              pages: publishedPages,
+              folders: publishedFolders,
               progress: {
                 completedLessons: 0,
                 totalLessons: lessonPages.length,
@@ -133,11 +141,23 @@ export default async function handler(
         res.status(200).json(coursesWithWebProgress);
       } else {
         console.log('⚠️ Web API failed, returning courses without progress');
-        res.status(200).json(filteredCourses);
+        // Filter out draft lessons/pages even when web API fails
+        const coursesWithFilteredPages = filteredCourses.map((course: any) => ({
+          ...course,
+          pages: course.pages?.filter((p: any) => p.status === 'published') || [],
+          folders: course.folders?.filter((f: any) => f.status === 'published') || []
+        }));
+        res.status(200).json(coursesWithFilteredPages);
       }
     } catch (error) {
       console.log('⚠️ Error calling web API:', error);
-      res.status(200).json(filteredCourses);
+      // Filter out draft lessons/pages even when web API fails
+      const coursesWithFilteredPages = filteredCourses.map((course: any) => ({
+        ...course,
+        pages: course.pages?.filter((p: any) => p.status === 'published') || [],
+        folders: course.folders?.filter((f: any) => f.status === 'published') || []
+      }));
+      res.status(200).json(coursesWithFilteredPages);
     }
     
     return;

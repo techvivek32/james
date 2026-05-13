@@ -49,10 +49,19 @@ export function BusinessPlanPage(props: {
   useEffect(() => {
     async function loadBusinessPlan() {
       try {
+        console.log('🔍 Loading business plan for user:', props.profile.id);
+        console.log('📋 Full profile:', props.profile);
+        
         const response = await fetch(`/api/business-plan?userId=${props.profile.id}`);
+        console.log('📡 API Response status:', response.status);
+        
         if (response.ok) {
           const data = await response.json();
+          console.log('📦 Received data:', data);
+          
           const userPlan = data.find((plan: any) => plan.userId === props.profile.id);
+          console.log('🎯 Found plan:', userPlan);
+          
           if (userPlan?.businessPlan) {
             setExistingPlan(userPlan.businessPlan);
             setIncomeGoal(userPlan.businessPlan.revenueGoal || 100000);
@@ -61,9 +70,12 @@ export function BusinessPlanPage(props: {
             setCommitted(userPlan.businessPlan.committed || false);
             setSaved(true);
           }
+        } else {
+          const errorData = await response.json();
+          console.error('❌ API Error:', errorData);
         }
       } catch (error) {
-        console.error('Failed to load business plan:', error);
+        console.error('❌ Failed to load business plan:', error);
       } finally {
         setLoading(false);
       }

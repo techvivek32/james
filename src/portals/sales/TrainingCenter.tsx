@@ -128,7 +128,13 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
       fetch('/api/course-ai-bots')
         .then(r => r.json())
         .then((bots: any[]) => {
+          console.log('All bots:', bots);
+          console.log('Selected course ID:', selectedCourse.id);
           const published = bots.find(b => b.status === 'published' && b.selectedCourses?.includes(selectedCourse.id));
+          console.log('Found published bot for this course:', published);
+          if (published) {
+            console.log('Bot selectedPages:', published.selectedPages);
+          }
           setCourseBot(published || null);
         })
         .catch(() => setCourseBot(null));
@@ -1623,20 +1629,32 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
           </div>
         </div>
 
-        {/* AI Chat toggle button */}
-        <button
-          onClick={() => setShowAIChat(p => !p)}
-          style={{
-            position: "fixed", bottom: "24px", right: "24px", zIndex: 500,
-            width: 52, height: 52, borderRadius: "50%", border: "none",
-            background: "#1f2937", color: "#fff", fontSize: "22px",
-            cursor: "pointer", boxShadow: "0 4px 16px rgba(0,0,0,0.25)",
-            display: "flex", alignItems: "center", justifyContent: "center",
-          }}
-          title={showAIChat ? "Hide AI Chat" : "Show AI Chat"}
-        >
-          {showAIChat ? "✕" : "🤖"}
-        </button>
+        {/* AI Chat toggle button - only show if bot is configured for this page */}
+        {(() => {
+          console.log('AI Chat Button Check:');
+          console.log('- courseBot:', courseBot);
+          console.log('- courseBot.selectedPages:', courseBot?.selectedPages);
+          console.log('- activePage:', activePage);
+          console.log('- activePage.id:', activePage?.id);
+          console.log('- activePage.title:', activePage?.title);
+          const shouldShow = courseBot && courseBot.selectedPages && activePage && courseBot.selectedPages.includes(activePage.id);
+          console.log('- Should show button:', shouldShow);
+          return shouldShow;
+        })() && (
+          <button
+            onClick={() => setShowAIChat(p => !p)}
+            style={{
+              position: "fixed", bottom: "24px", right: "24px", zIndex: 500,
+              width: 52, height: 52, borderRadius: "50%", border: "none",
+              background: "#1f2937", color: "#fff", fontSize: "22px",
+              cursor: "pointer", boxShadow: "0 4px 16px rgba(0,0,0,0.25)",
+              display: "flex", alignItems: "center", justifyContent: "center",
+            }}
+            title={showAIChat ? "Hide AI Chat" : "Show AI Chat"}
+          >
+            {showAIChat ? "✕" : "🤖"}
+          </button>
+        )}
 
         {/* AI Chat right panel */}
         {showAIChat && activePage && (
@@ -1657,8 +1675,8 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
                 videoUrl={activePage.videoUrl}
                 courseTitle={selectedCourse?.title}
                 allPages={pages}
-                trainingText={courseBot?.trainingText}
-                hasTraining={!!(courseBot?.trainingText && courseBot.trainingText.trim().length > 0)}
+                trainingText={activePage.body}
+                hasTraining={true}
               />
             </div>
           </div>

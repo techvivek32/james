@@ -8,6 +8,7 @@ import 'dart:io';
 import '../services/auth_service.dart';
 import 'storm_chat_group_info_screen.dart';
 import 'image_viewer_screen.dart';
+import 'video_viewer_screen.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 class StormChatRoomScreen extends StatefulWidget {
@@ -38,6 +39,15 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
   dynamic replyingTo; // Store the message being replied to
   String? _blinkingMessageId; // Track which message is blinking
   Timer? _blinkTimer;
+  bool _isDarkTheme = false; // Theme toggle state
+  
+  // Mention feature
+  bool _showMentionList = false;
+  List<dynamic> _filteredMembers = [];
+  List<dynamic> _allMembers = [];
+  int _mentionStartIndex = -1;
+  String _mentionQuery = '';
+  bool _loadingMembers = true;
 
   bool get canSendMessage {
     final onlyAdminCanChat = widget.group['onlyAdminCanChat'] ?? false;
@@ -69,12 +79,15 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
     _fetchMessages();
     _startPolling();
     _markAsRead();
+    _fetchGroupMembers(); // Fetch members immediately on screen load
+    _messageController.addListener(_onMessageTextChanged);
   }
 
   @override
   void dispose() {
     _pollTimer?.cancel();
     _blinkTimer?.cancel();
+    _messageController.removeListener(_onMessageTextChanged);
     _messageController.dispose();
     _scrollController.dispose();
     _markAsRead(); // Mark as read when leaving chat
@@ -89,6 +102,178 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
       });
       print('🔵 User loaded - Name: $userName');
     }
+  }
+
+  Future<void> _fetchGroupMembers() async {
+    setState(() {
+      _loadingMembers = true;
+    });
+    
+    try {
+      final members = List<String>.from(widget.group['members'] ?? []);
+      
+      if (members.isEmpty) {
+        setState(() {
+          _allMembers = [];
+          _loadingMembers = false;
+        });
+        return;
+      }
+      
+      // Fetch all members in a single API call
+      final memberIds = members.join(',');
+      final response = await http.get(
+        Uri.parse('https://millerstorm.tech/api/users/by-mongo-ids?ids=$memberIds'),
+      );
+      
+      if (response.statusCode == 200) {
+        final memberDetails = json.decode(response.body) as List;
+        
+        setState(() {
+          _allMembers = memberDetails;
+          _loadingMembers = false;
+          // Update filtered members if mention list is showing
+          if (_showMentionList) {
+            _filteredMembers = _mentionQuery.isEmpty 
+                ? List.from(_allMembers)
+                : _allMembers.where((member) {
+                    final name = (member['name'] ?? '').toLowerCase();
+                    return name.contains(_mentionQuery);
+                  }).toList();
+          }
+        });
+      } else {
+        setState(() {
+          _loadingMembers = false;
+        });
+      }
+    } catch (e) {
+      print('❌ Error fetching group members: $e');
+      setState(() {
+        _loadingMembers = false;
+      });
+    }
+  }
+
+  void _onMessageTextChanged() {
+    final text = _messageController.text;
+    final cursorPosition = _messageController.selection.baseOffset;
+    
+    if (cursorPosition < 0 || text.isEmpty) {
+      setState(() {
+        _showMentionList = false;
+        _filteredMembers = [];
+      });
+      return;
+    }
+    
+    if (!text.contains('@')) {
+      setState(() {
+        _showMentionList = false;
+        _filteredMembers = [];
+      });
+      return;
+    }
+    
+    // Find the last @ before cursor
+    int lastAtIndex = -1;
+    for (int i = cursorPosition - 1; i >= 0; i--) {
+      if (text[i] == '@') {
+        lastAtIndex = i;
+        break;
+      }
+      if (text[i] == ' ' || text[i] == '\n') {
+        break;
+      }
+    }
+    
+    if (lastAtIndex != -1) {
+      final query = text.substring(lastAtIndex + 1, cursorPosition).toLowerCase().trim();
+      
+      // Filter members - if query is empty, show all members
+      final filtered = query.isEmpty 
+          ? List.from(_allMembers)
+          : _allMembers.where((member) {
+              final name = (member['name'] ?? '').toLowerCase();
+              return name.contains(query);
+            }).toList();
+      
+      setState(() {
+        _showMentionList = true;
+        _mentionStartIndex = lastAtIndex;
+        _mentionQuery = query;
+        _filteredMembers = filtered;
+      });
+    } else {
+      setState(() {
+        _showMentionList = false;
+        _mentionStartIndex = -1;
+        _mentionQuery = '';
+        _filteredMembers = [];
+      });
+    }
+  }
+
+  // Build styled text with red @ mentions
+  TextSpan _buildStyledText(String text) {
+    final List<TextSpan> spans = [];
+    final RegExp mentionRegExp = RegExp(r'@\w+');
+    int start = 0;
+    final textColor = _isDarkTheme ? Colors.white : const Color(0xFF111827);
+
+    for (final Match match in mentionRegExp.allMatches(text)) {
+      // Add text before the mention
+      if (match.start > start) {
+        spans.add(TextSpan(
+          text: text.substring(start, match.start),
+          style: TextStyle(color: textColor, fontSize: 16),
+        ));
+      }
+
+      // Add the mention in red
+      spans.add(TextSpan(
+        text: match.group(0),
+        style: const TextStyle(
+          color: Color(0xFFCB0002),
+          fontSize: 16,
+          fontWeight: FontWeight.w600,
+        ),
+      ));
+
+      start = match.end;
+    }
+
+    // Add remaining text
+    if (start < text.length) {
+      spans.add(TextSpan(
+        text: text.substring(start),
+        style: TextStyle(color: textColor, fontSize: 16),
+      ));
+    }
+
+    return TextSpan(children: spans);
+  }
+
+  void _insertMention(String name) {
+    final text = _messageController.text;
+    final cursorPosition = _messageController.selection.baseOffset;
+    
+    // Replace from @ to cursor with the mention
+    final beforeMention = text.substring(0, _mentionStartIndex);
+    final afterMention = text.substring(cursorPosition);
+    final newText = '$beforeMention@$name $afterMention';
+    
+    _messageController.text = newText;
+    _messageController.selection = TextSelection.fromPosition(
+      TextPosition(offset: beforeMention.length + name.length + 2),
+    );
+    
+    setState(() {
+      _showMentionList = false;
+      _mentionStartIndex = -1;
+      _mentionQuery = '';
+      _filteredMembers = [];
+    });
   }
 
   void _startPolling() {
@@ -309,25 +494,51 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
   }
 
   Future<void> _uploadFile(File file, String type) async {
-    setState(() {
-      isUploading = true;
-    });
+    final fileSize = await file.length();
+    final fileSizeMB = fileSize / (1024 * 1024);
+
+    if (type == 'video' && fileSizeMB > 500) {
+      _showError('Video size exceeds 500MB limit (${fileSizeMB.toStringAsFixed(1)}MB)');
+      return;
+    }
+    if (type == 'image' && fileSizeMB > 30) {
+      _showError('Image size exceeds 30MB limit');
+      return;
+    }
+
+    setState(() { isUploading = true; });
 
     try {
+      final fileName = file.path.split('/').last;
+      final mimeType = type == 'video' ? 'video/mp4' : 'image/jpeg';
+
       var request = http.MultipartRequest(
         'POST',
-        Uri.parse('https://millerstorm.tech/api/upload-image'),
+        Uri.parse('https://millerstorm.tech/api/direct-upload'),
       );
-      request.files.add(await http.MultipartFile.fromPath('file', file.path));
+      request.headers['Accept'] = 'application/json';
+      request.files.add(
+        await http.MultipartFile.fromPath(
+          'file',
+          file.path,
+          filename: fileName,
+        ),
+      );
 
-      var streamedResponse = await request.send();
-      var response = await http.Response.fromStream(streamedResponse);
+      print('📤 Uploading $type: $fileName (${fileSizeMB.toStringAsFixed(1)}MB)');
+
+      final streamedResponse = await request.send().timeout(
+        const Duration(minutes: 15),
+        onTimeout: () => throw Exception('Upload timed out after 15 minutes'),
+      );
+      final response = await http.Response.fromStream(streamedResponse);
+
+      print('📤 Upload response: ${response.statusCode} - ${response.body}');
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         final url = data['url'];
 
-        // Send message with media
         await http.post(
           Uri.parse('https://millerstorm.tech/api/storm-chat/messages/${widget.group['_id']}'),
           headers: {'Content-Type': 'application/json'},
@@ -335,7 +546,7 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
             'senderId': widget.userId,
             'senderName': userName,
             'senderRole': widget.userRole,
-            'message': file.path.split('/').last,
+            'message': fileName,
             'messageType': type,
             'mediaUrl': url,
           }),
@@ -343,15 +554,18 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
 
         await _fetchMessages();
       } else {
-        _showError('Failed to upload file');
+        String errorMsg = 'Upload failed (${response.statusCode})';
+        try {
+          final errorData = json.decode(response.body);
+          if (errorData['error'] != null) errorMsg = errorData['error'];
+        } catch (_) {}
+        _showError(errorMsg);
       }
     } catch (e) {
-      print('Error uploading file: $e');
-      _showError('Failed to upload file');
+      print('❌ Upload error: $e');
+      _showError('Upload failed: ${e.toString().replaceAll('Exception: ', '')}');
     } finally {
-      setState(() {
-        isUploading = false;
-      });
+      setState(() { isUploading = false; });
     }
   }
 
@@ -392,8 +606,15 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // Theme colors
+    final bgColor = _isDarkTheme ? Colors.black : const Color(0xFFF5F7FA);
+    final inputAreaColor = _isDarkTheme ? const Color(0xFF1C1C1E) : const Color(0xFFFFFFFF);
+    final textFieldColor = _isDarkTheme ? const Color(0xFF2C2C2E) : const Color(0xFFF3F4F6);
+    final mentionListColor = _isDarkTheme ? const Color(0xFF1C1C1E) : const Color(0xFFFFFFFF);
+    final inputTextColor = _isDarkTheme ? Colors.white : const Color(0xFF111827);
+    
     return Scaffold(
-      backgroundColor: const Color(0xFFFAFAFA),
+      backgroundColor: bgColor,
       appBar: AppBar(
         backgroundColor: const Color(0xFFCB0002),
         elevation: 0,
@@ -461,6 +682,19 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
             ],
           ),
         ),
+        actions: [
+          IconButton(
+            icon: Icon(
+              _isDarkTheme ? Icons.light_mode : Icons.dark_mode,
+              color: Colors.white,
+            ),
+            onPressed: () {
+              setState(() {
+                _isDarkTheme = !_isDarkTheme;
+              });
+            },
+          ),
+        ],
       ),
       body: Column(
         children: [
@@ -501,9 +735,14 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
           
           // Input
           Container(
-            padding: const EdgeInsets.all(12),
+            padding: EdgeInsets.only(
+              left: 12,
+              right: 12,
+              top: 12,
+              bottom: 12 + MediaQuery.of(context).padding.bottom,
+            ),
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: inputAreaColor,
               boxShadow: [
                 BoxShadow(
                   color: Colors.black.withOpacity(0.05),
@@ -514,6 +753,80 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
             ),
             child: Column(
               children: [
+                // Mention list
+                if (_showMentionList)
+                  Container(
+                    constraints: const BoxConstraints(maxHeight: 200),
+                    margin: const EdgeInsets.only(bottom: 8),
+                    decoration: BoxDecoration(
+                      color: mentionListColor,
+                      borderRadius: BorderRadius.circular(12),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.1),
+                          blurRadius: 8,
+                          offset: const Offset(0, -2),
+                        ),
+                      ],
+                    ),
+                    child: _loadingMembers
+                        ? const Padding(
+                            padding: EdgeInsets.all(16),
+                            child: Center(
+                              child: CircularProgressIndicator(
+                                color: Color(0xFFCB0002),
+                                strokeWidth: 2,
+                              ),
+                            ),
+                          )
+                        : _filteredMembers.isEmpty
+                            ? Padding(
+                                padding: const EdgeInsets.all(16),
+                                child: Text(
+                                  'No members found',
+                                  style: const TextStyle(
+                                    color: Color(0xFF6B7280),
+                                    fontSize: 14,
+                                  ),
+                                  textAlign: TextAlign.center,
+                                ),
+                              )
+                            : ListView.builder(
+                                shrinkWrap: true,
+                                itemCount: _filteredMembers.length,
+                                itemBuilder: (context, index) {
+                                  final member = _filteredMembers[index];
+                                  final name = member['name'] ?? 'Unknown';
+                                  final headshotUrl = member['headshotUrl'] ?? '';
+                                  
+                                  return ListTile(
+                                    dense: true,
+                                    leading: CircleAvatar(
+                                      radius: 18,
+                                      backgroundColor: const Color(0xFFF3F4F6),
+                                      backgroundImage: headshotUrl.isNotEmpty
+                                          ? NetworkImage('https://millerstorm.tech$headshotUrl')
+                                          : null,
+                                      child: headshotUrl.isEmpty
+                                          ? Text(
+                                              name[0].toUpperCase(),
+                                              style: const TextStyle(color: Color(0xFF6B7280), fontSize: 14),
+                                            )
+                                          : null,
+                                    ),
+                                    title: Text(
+                                      name,
+                                      style: TextStyle(
+                                        color: _isDarkTheme ? Colors.white : const Color(0xFF111827),
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                    ),
+                                    onTap: () => _insertMention(name),
+                                  );
+                                },
+                              ),
+                  ),
                 // Reply preview
                 if (replyingTo != null)
                   Container(
@@ -597,30 +910,45 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
                             onPressed: isUploading ? null : _pickAndUploadMedia,
                           ),
                           Expanded(
-                            child: TextField(
-                              controller: _messageController,
-                              decoration: InputDecoration(
-                                hintText: 'Type a message...',
-                                border: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(24),
-                                  borderSide: const BorderSide(color: Color(0xFFE5E7EB)),
-                                ),
-                                enabledBorder: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(24),
-                                  borderSide: const BorderSide(color: Color(0xFFE5E7EB)),
-                                ),
-                                focusedBorder: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(24),
-                                  borderSide: const BorderSide(color: Color(0xFFCB0002)),
-                                ),
-                                contentPadding: const EdgeInsets.symmetric(
-                                  horizontal: 16,
-                                  vertical: 10,
-                                ),
+                            child: Container(
+                              decoration: BoxDecoration(
+                                color: textFieldColor,
+                                borderRadius: BorderRadius.circular(24),
                               ),
-                              maxLines: null,
-                              textInputAction: TextInputAction.send,
-                              onSubmitted: (_) => _sendMessage(),
+                              child: TextField(
+                                controller: _messageController,
+                                style: TextStyle(
+                                  color: inputTextColor,
+                                  fontSize: 16,
+                                ),
+                                decoration: InputDecoration(
+                                  hintText: 'Type a message...',
+                                  hintStyle: const TextStyle(
+                                    color: Color(0xFF9CA3AF),
+                                  ),
+                                  border: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(24),
+                                    borderSide: BorderSide.none,
+                                  ),
+                                  enabledBorder: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(24),
+                                    borderSide: BorderSide.none,
+                                  ),
+                                  focusedBorder: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(24),
+                                    borderSide: const BorderSide(color: Color(0xFFCB0002), width: 2),
+                                  ),
+                                  contentPadding: const EdgeInsets.symmetric(
+                                    horizontal: 16,
+                                    vertical: 10,
+                                  ),
+                                  filled: true,
+                                  fillColor: textFieldColor,
+                                ),
+                                maxLines: null,
+                                textInputAction: TextInputAction.send,
+                                onSubmitted: (_) => _sendMessage(),
+                              ),
                             ),
                           ),
                           const SizedBox(width: 8),
@@ -653,6 +981,11 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
     final showDate = index == 0 ||
         _formatDate(messages[index - 1]['createdAt']) != _formatDate(message['createdAt']);
     final isBlinking = _blinkingMessageId == message['_id'];
+    
+    // Theme colors for message bubbles
+    final messageBubbleOther = _isDarkTheme ? const Color(0xFF2C2C2E) : const Color(0xFFF3F4F6);
+    final dateChipColor = _isDarkTheme ? const Color(0xFF2C2C2E) : const Color(0xFFF3F4F6);
+    final dateTextColor = _isDarkTheme ? const Color(0xFF9CA3AF) : const Color(0xFF6B7280);
 
     return Column(
       children: [
@@ -662,14 +995,14 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
               decoration: BoxDecoration(
-                color: const Color(0xFFF3F4F6),
+                color: dateChipColor,
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Text(
                 _formatDate(message['createdAt']),
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 12,
-                  color: Color(0xFF6B7280),
+                  color: dateTextColor,
                 ),
               ),
             ),
@@ -713,7 +1046,7 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                         decoration: BoxDecoration(
-                          color: isMyMessage ? const Color(0xFFCB0002) : const Color(0xFFF3F4F6),
+                          color: isMyMessage ? const Color(0xFFCB0002) : messageBubbleOther,
                           borderRadius: BorderRadius.only(
                             topLeft: const Radius.circular(16),
                             topRight: const Radius.circular(16),
@@ -808,18 +1141,21 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
 
   Widget _buildMessageContent(dynamic message, bool isMyMessage) {
     final messageType = message['messageType'] ?? 'text';
-    final textColor = isMyMessage ? Colors.white : const Color(0xFF111827);
+    final textColor = isMyMessage ? Colors.white : (_isDarkTheme ? Colors.white : const Color(0xFF111827));
 
     if (messageType == 'text') {
-      return _buildTextWithLinks(message['message'] ?? '', textColor);
+      return _buildTextWithLinks(message['message'] ?? '', textColor, isMyMessage);
     } else if (messageType == 'image' && message['mediaUrl'] != null) {
+      final imageUrl = message['mediaUrl'].toString().startsWith('http')
+          ? message['mediaUrl'].toString()
+          : 'https://millerstorm.tech${message['mediaUrl']}';
       return GestureDetector(
         onTap: () {
           Navigator.push(
             context,
             MaterialPageRoute(
               builder: (context) => ImageViewerScreen(
-                imageUrl: message['mediaUrl'],
+                imageUrl: imageUrl,
               ),
             ),
           );
@@ -827,9 +1163,27 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
         child: ClipRRect(
           borderRadius: BorderRadius.circular(8),
           child: Image.network(
-            'https://millerstorm.tech${message['mediaUrl']}',
+            imageUrl,
             width: 200,
+            height: 150,
             fit: BoxFit.cover,
+            loadingBuilder: (context, child, loadingProgress) {
+              if (loadingProgress == null) return child;
+              return Container(
+                width: 200,
+                height: 150,
+                color: Colors.grey[200],
+                child: Center(
+                  child: CircularProgressIndicator(
+                    value: loadingProgress.expectedTotalBytes != null
+                        ? loadingProgress.cumulativeBytesLoaded / loadingProgress.expectedTotalBytes!
+                        : null,
+                    color: const Color(0xFFCB0002),
+                    strokeWidth: 2,
+                  ),
+                ),
+              );
+            },
             errorBuilder: (context, error, stackTrace) {
               return Container(
                 width: 200,
@@ -853,15 +1207,64 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
         ),
       );
     } else if (messageType == 'video' && message['mediaUrl'] != null) {
-      return Container(
-        width: 200,
-        height: 150,
-        decoration: BoxDecoration(
-          color: Colors.black,
-          borderRadius: BorderRadius.circular(8),
-        ),
-        child: const Center(
-          child: Icon(Icons.play_circle_outline, size: 48, color: Colors.white),
+      final videoUrl = message['mediaUrl'];
+      print('🎥 Video message URL: $videoUrl');
+      
+      return GestureDetector(
+        onTap: () {
+          print('🎥 Opening video viewer for: $videoUrl');
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => VideoViewerScreen(
+                videoUrl: videoUrl,
+                fileName: message['message'],
+              ),
+            ),
+          );
+        },
+        child: Stack(
+          alignment: Alignment.center,
+          children: [
+            Container(
+              width: 200,
+              height: 150,
+              decoration: BoxDecoration(
+                color: Colors.black87,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.grey[700]!, width: 1),
+              ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(8),
+                child: Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: const [
+                      Icon(Icons.videocam, size: 48, color: Colors.white70),
+                      SizedBox(height: 8),
+                      Text(
+                        'Video',
+                        style: TextStyle(fontSize: 12, color: Colors.white70),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+            Container(
+              width: 60,
+              height: 60,
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.9),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(
+                Icons.play_arrow,
+                size: 40,
+                color: Color(0xFFCB0002),
+              ),
+            ),
+          ],
         ),
       );
     }
@@ -872,7 +1275,7 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
     );
   }
 
-  Widget _buildTextWithLinks(String text, Color textColor) {
+  Widget _buildTextWithLinks(String text, Color textColor, bool isMyMessage) {
     final RegExp urlRegExp = RegExp(
       r'https?://[^\s]+',
       caseSensitive: false,
@@ -881,76 +1284,162 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
     final List<TextSpan> spans = [];
     int start = 0;
 
+    // Build a list of all possible user names from members AND message senders
+    final Set<String> allUserNames = {};
+    
+    // Add all member names
+    for (final member in _allMembers) {
+      final memberName = member['name'] ?? '';
+      if (memberName.isNotEmpty) {
+        allUserNames.add(memberName);
+      }
+    }
+    
+    // Add all sender names from messages (to catch users not in member list)
+    for (final message in messages) {
+      final senderName = message['senderName'] ?? '';
+      if (senderName.isNotEmpty) {
+        allUserNames.add(senderName);
+      }
+    }
+    
+    // Add current user name
+    if (userName != null && userName!.isNotEmpty) {
+      allUserNames.add(userName!);
+    }
+
+    // Build a list of all possible mentions
+    final List<MapEntry<int, String>> allMatches = [];
+    
+    // Add URL matches
     for (final Match match in urlRegExp.allMatches(text)) {
-      // Add text before the URL
-      if (match.start > start) {
+      allMatches.add(MapEntry(match.start, 'url:${match.group(0)}'));
+    }
+    
+    // Check for mentions based on actual user names
+    for (final name in allUserNames) {
+      final mentionText = '@$name';
+      int index = 0;
+      
+      // Find all occurrences of this user's mention in the text
+      while (index < text.length) {
+        index = text.indexOf(mentionText, index);
+        if (index == -1) break;
+        
+        // Check if this is a valid mention (not part of a longer word)
+        final endIndex = index + mentionText.length;
+        final isValidEnd = endIndex >= text.length || 
+                          !RegExp(r'[a-zA-Z]').hasMatch(text[endIndex]);
+        
+        if (isValidEnd) {
+          allMatches.add(MapEntry(index, 'mention:$mentionText'));
+        }
+        
+        index = endIndex;
+      }
+    }
+    
+    // Sort by position and remove overlapping matches
+    allMatches.sort((a, b) => a.key.compareTo(b.key));
+    
+    // Remove overlapping matches (keep the first one)
+    final List<MapEntry<int, String>> filteredMatches = [];
+    int lastEnd = 0;
+    for (final match in allMatches) {
+      final position = match.key;
+      if (position >= lastEnd) {
+        filteredMatches.add(match);
+        final content = match.value.substring(match.value.indexOf(':') + 1);
+        lastEnd = position + content.length;
+      }
+    }
+
+    for (final entry in filteredMatches) {
+      final position = entry.key;
+      final value = entry.value;
+      final type = value.split(':')[0];
+      final content = value.substring(value.indexOf(':') + 1);
+      
+      // Add text before this match
+      if (position > start) {
         spans.add(TextSpan(
-          text: text.substring(start, match.start),
+          text: text.substring(start, position),
           style: TextStyle(fontSize: 14, color: textColor),
         ));
       }
 
-      // Add the clickable URL
-      final String url = match.group(0)!;
-      spans.add(TextSpan(
-        text: url,
-        style: TextStyle(
-          fontSize: 14,
-          color: textColor == Colors.white ? Colors.lightBlueAccent : Colors.blue,
-          decoration: TextDecoration.underline,
-        ),
-        recognizer: TapGestureRecognizer()
-          ..onTap = () async {
-            try {
-              final Uri uri = Uri.parse(url);
-              // Try to launch with external application first
-              bool launched = false;
-              
-              // Try external application mode
-              if (await canLaunchUrl(uri)) {
-                launched = await launchUrl(
-                  uri,
-                  mode: LaunchMode.externalApplication,
-                );
-              }
-              
-              // If external app fails, try platform default
-              if (!launched && await canLaunchUrl(uri)) {
-                launched = await launchUrl(
-                  uri,
-                  mode: LaunchMode.platformDefault,
-                );
-              }
-              
-              // If still not launched, show error
-              if (!launched) {
+      if (type == 'url') {
+        // Add clickable URL
+        spans.add(TextSpan(
+          text: content,
+          style: TextStyle(
+            fontSize: 14,
+            color: textColor == Colors.white ? Colors.lightBlueAccent : Colors.blue,
+            decoration: TextDecoration.underline,
+          ),
+          recognizer: TapGestureRecognizer()
+            ..onTap = () async {
+              try {
+                final Uri uri = Uri.parse(content);
+                bool launched = false;
+                
+                if (await canLaunchUrl(uri)) {
+                  launched = await launchUrl(
+                    uri,
+                    mode: LaunchMode.externalApplication,
+                  );
+                }
+                
+                if (!launched && await canLaunchUrl(uri)) {
+                  launched = await launchUrl(
+                    uri,
+                    mode: LaunchMode.platformDefault,
+                  );
+                }
+                
+                if (!launched) {
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text('Could not launch $content'),
+                        backgroundColor: Colors.red,
+                      ),
+                    );
+                  }
+                }
+              } catch (e) {
+                print('Error launching URL: $e');
                 if (context.mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
-                      content: Text('Could not launch $url'),
+                      content: Text('Error: ${e.toString()}'),
                       backgroundColor: Colors.red,
                     ),
                   );
                 }
               }
-            } catch (e) {
-              print('Error launching URL: $e');
-              if (context.mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text('Error: ${e.toString()}'),
-                    backgroundColor: Colors.red,
-                  ),
-                );
-              }
-            }
-          },
-      ));
+            },
+        ));
+      } else if (type == 'mention') {
+        // Add mention - white for my messages, white in dark theme for others, red in light theme for others
+        final mentionColor = isMyMessage 
+            ? Colors.white 
+            : (_isDarkTheme ? Colors.white : const Color(0xFFCB0002));
+        
+        spans.add(TextSpan(
+          text: content,
+          style: TextStyle(
+            fontSize: 14,
+            color: mentionColor,
+            fontWeight: FontWeight.w600,
+          ),
+        ));
+      }
 
-      start = match.end;
+      start = position + content.length;
     }
 
-    // Add remaining text after the last URL
+    // Add remaining text after the last match
     if (start < text.length) {
       spans.add(TextSpan(
         text: text.substring(start),

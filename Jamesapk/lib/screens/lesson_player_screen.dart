@@ -50,94 +50,15 @@ class _LessonPlayerScreenState extends State<LessonPlayerScreen> {
   bool _quizSubmitted = false;
   Map<String, dynamic>? _quizScore;
   List<dynamic> _savedQuizResults = [];
-
+  
   // AI Chat state
-  bool _showAIChat = false;
-  final List<Map<String, String>> _chatMessages = [];
-  final TextEditingController _chatController = TextEditingController();
-  bool _isChatLoading = false;
   Map<String, dynamic>? _courseBot;
+  bool _showAIChat = false;
 
   @override
   void initState() {
     super.initState();
     _fetchLessonData();
-    _fetchCourseBot();
-  }
-
-  @override
-  void dispose() {
-    SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
-    SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
-    _chatController.dispose();
-    super.dispose();
-  }
-
-  Future<void> _fetchCourseBot() async {
-    try {
-      final response = await http.get(
-        Uri.parse('https://millerstorm.tech/api/course-ai-bots'),
-      );
-      if (response.statusCode == 200) {
-        final bots = jsonDecode(response.body) as List;
-        final published = bots.firstWhere(
-          (b) => b['status'] == 'published' && (b['selectedCourses'] as List?)?.contains(widget.courseId) == true,
-          orElse: () => null,
-        );
-        setState(() {
-          _courseBot = published;
-        });
-      }
-    } catch (e) {
-      print('Error fetching course bot: $e');
-    }
-  }
-
-  Future<void> _sendChatMessage() async {
-    if (_chatController.text.trim().isEmpty || _isChatLoading) return;
-
-    final userMessage = _chatController.text.trim();
-    setState(() {
-      _chatMessages.add({'role': 'user', 'content': userMessage});
-      _isChatLoading = true;
-    });
-    _chatController.clear();
-
-    try {
-      final response = await http.post(
-        Uri.parse('https://millerstorm.tech/api/chat'),
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({
-          'messages': _chatMessages,
-          'lessonTitle': widget.lessonTitle,
-          'lessonContent': _lesson?['body'],
-          'videoUrl': _lesson?['videoUrl'],
-          'courseTitle': widget.courseTitle,
-          'trainingText': _courseBot?['trainingText'],
-          'hasTraining': _courseBot != null && (_courseBot!['trainingText']?.toString().trim().isNotEmpty ?? false),
-        }),
-      );
-
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        setState(() {
-          _chatMessages.add({'role': 'assistant', 'content': data['message']});
-        });
-      } else {
-        setState(() {
-          _chatMessages.add({'role': 'assistant', 'content': 'Sorry, I couldn\'t process your request.'});
-        });
-      }
-    } catch (e) {
-      print('Chat error: $e');
-      setState(() {
-        _chatMessages.add({'role': 'assistant', 'content': 'Sorry, I couldn\'t process your request.'});
-      });
-    } finally {
-      setState(() {
-        _isChatLoading = false;
-      });
-    }
   }
 
   Future<void> _fetchLessonData() async {
@@ -146,6 +67,9 @@ class _LessonPlayerScreenState extends State<LessonPlayerScreen> {
       final userId = user?['id'] ?? '';
       
       print('🎥 Fetching lesson: ${widget.lessonId} from course: ${widget.courseId}');
+      
+      // Fetch course AI bot configuration
+      _fetchCourseBot();
       
       // Get course data with lesson details
       final response = await http.get(
@@ -166,25 +90,40 @@ class _LessonPlayerScreenState extends State<LessonPlayerScreen> {
           lessons = lessons.where((page) => widget.playlistModules!.contains(page['id'])).toList();
         }
         
-        // Sort pages by folder order to ensure quizzes appear in correct sequence
+        // Sort pages by folder order and page order within folders
         final folders = courseData['folders'] as List<dynamic>? ?? [];
         if (folders.isNotEmpty) {
-          // Create a map of folderId to folder index for sorting
+          // Create a map of folderId to folder index
           final folderIndexMap = <String, int>{};
           for (var i = 0; i < folders.length; i++) {
             folderIndexMap[folders[i]['id']] = i;
           }
           
-          // Sort pages: first by folder order, then pages without folders at the end
+          // Create a map of pageId to its original index for stable sorting
+          final pageIndexMap = <String, int>{};
+          for (var i = 0; i < lessons.length; i++) {
+            pageIndexMap[lessons[i]['id']] = i;
+          }
+          
+          // Sort pages: by folder order, then by original page order within folder
           lessons.sort((a, b) {
             final aFolderId = a['folderId'];
             final bFolderId = b['folderId'];
             
-            // If both have folders, sort by folder index
+            // If both have folders
             if (aFolderId != null && bFolderId != null) {
-              final aIndex = folderIndexMap[aFolderId] ?? 999;
-              final bIndex = folderIndexMap[bFolderId] ?? 999;
-              return aIndex.compareTo(bIndex);
+              final aFolderIndex = folderIndexMap[aFolderId] ?? 999;
+              final bFolderIndex = folderIndexMap[bFolderId] ?? 999;
+              
+              // If same folder, sort by original page order
+              if (aFolderIndex == bFolderIndex) {
+                final aPageIndex = pageIndexMap[a['id']] ?? 999;
+                final bPageIndex = pageIndexMap[b['id']] ?? 999;
+                return aPageIndex.compareTo(bPageIndex);
+              }
+              
+              // Different folders, sort by folder order
+              return aFolderIndex.compareTo(bFolderIndex);
             }
             
             // Pages with folders come before pages without folders
@@ -192,7 +131,9 @@ class _LessonPlayerScreenState extends State<LessonPlayerScreen> {
             if (aFolderId == null && bFolderId != null) return 1;
             
             // Both without folders, maintain original order
-            return 0;
+            final aPageIndex = pageIndexMap[a['id']] ?? 999;
+            final bPageIndex = pageIndexMap[b['id']] ?? 999;
+            return aPageIndex.compareTo(bPageIndex);
           });
         }
         
@@ -259,10 +200,7 @@ class _LessonPlayerScreenState extends State<LessonPlayerScreen> {
           print('➡️ Next will be: ${lessons[currentIndex + 1]['title']} (isQuiz: ${lessons[currentIndex + 1]['isQuiz']})');
         }
         
-        // Initialize video player only if not a quiz and has video
-        if (lesson?['isQuiz'] != true && lesson?['videoUrl'] != null) {
-          _initializeVideoPlayer(lesson!['videoUrl']);
-        }
+        // Video player is handled by _IsolatedVideoPlayer widget — no init needed.
       } else {
         setState(() {
           _isLoading = false;
@@ -276,68 +214,42 @@ class _LessonPlayerScreenState extends State<LessonPlayerScreen> {
     }
   }
 
-  void _initializeVideoPlayer(String videoUrl) {
-    String embedUrl = _getEmbedUrl(videoUrl);
-    
-    print('🎥 Initializing video player with URL: $embedUrl');
-    
-    _webViewController = WebViewController()
-      ..setJavaScriptMode(JavaScriptMode.unrestricted)
-      ..setBackgroundColor(Colors.black)
-      ..enableZoom(false)
-      ..setUserAgent('Mozilla/5.0 (Linux; Android 10) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.120 Mobile Safari/537.36')
-      ..addJavaScriptChannel(
-        'VideoEndChannel',
-        onMessageReceived: (JavaScriptMessage message) {
-          print('🎬 Video ended - auto-advancing to next lesson');
-          _markCompleteAndNext();
-        },
-      )
-      ..setNavigationDelegate(
-        NavigationDelegate(
-          onPageStarted: (String url) {
-            print('🔄 Video page started loading: $url');
-          },
-          onPageFinished: (String url) {
-            print('✅ Video page loaded: $url');
-            // Inject JavaScript to detect video end and auto-advance
-            _webViewController?.runJavaScript('''
-              // Disable media session handlers that cause auto-pause
-              if ('mediaSession' in navigator) {
-                navigator.mediaSession.setActionHandler('pause', null);
-                navigator.mediaSession.setActionHandler('stop', null);
-              }
-              
-              // Find and configure video elements
-              setTimeout(function() {
-                var videos = document.querySelectorAll('video');
-                videos.forEach(function(video) {
-                  video.setAttribute('playsinline', 'true');
-                  video.setAttribute('webkit-playsinline', 'true');
-                  video.removeAttribute('controls');
-                  
-                  // Listen for video end event
-                  video.addEventListener('ended', function() {
-                    console.log('Video ended - notifying Flutter');
-                    if (window.VideoEndChannel) {
-                      window.VideoEndChannel.postMessage('ended');
-                    }
-                  });
-                  
-                  // Re-add controls after a delay
-                  setTimeout(function() {
-                    video.setAttribute('controls', 'true');
-                  }, 1000);
-                });
-              }, 2000);
-            ''');
-          },
-          onWebResourceError: (WebResourceError error) {
-            print('❌ Video load error: ${error.description}');
-          },
-        ),
-      )
-      ..loadRequest(Uri.parse(embedUrl));
+  // Video player is handled by _IsolatedVideoPlayer widget below.
+  // No manual initialization needed here.
+
+  String _buildVideoHtml(String embedUrl) {
+    return '''
+<!DOCTYPE html>
+<html>
+<head>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { width: 100%; height: 100%; background: #000; overflow: hidden; }
+  iframe { position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: none; }
+</style>
+</head>
+<body>
+<iframe
+  id="player"
+  src="$embedUrl"
+  allow="autoplay; fullscreen; picture-in-picture; encrypted-media"
+  allowfullscreen
+  webkitallowfullscreen
+  mozallowfullscreen>
+</iframe>
+<script src="https://player.vimeo.com/api/player.js"></script>
+<script>
+  var iframe = document.getElementById('player');
+  var player = new Vimeo.Player(iframe);
+  player.on('ended', function() {
+    if (window.VideoEndChannel) {
+      window.VideoEndChannel.postMessage('ended');
+    }
+  });
+</script>
+</body>
+</html>''';
   }
 
   String _getEmbedUrl(String videoUrl) {
@@ -350,17 +262,17 @@ class _LessonPlayerScreenState extends State<LessonPlayerScreen> {
       if (vimeoMatch != null) {
         final videoId = vimeoMatch.group(1);
         final hash = vimeoMatch.group(2);
-        // Use Vimeo player with autoplay enabled and playsinline enabled
+        // Use Vimeo player with playsinline enabled
         final embedUrl = hash != null 
-          ? 'https://player.vimeo.com/video/$videoId?h=$hash&autoplay=1&playsinline=1&controls=1'
-          : 'https://player.vimeo.com/video/$videoId?autoplay=1&playsinline=1&controls=1';
+          ? 'https://player.vimeo.com/video/$videoId?h=$hash&autoplay=1&playsinline=1&controls=1&muted=0&autopause=0'
+          : 'https://player.vimeo.com/video/$videoId?autoplay=1&playsinline=1&controls=1&muted=0&autopause=0';
         print('✅ Vimeo embed URL: $embedUrl');
         return embedUrl;
       }
     } else if (videoUrl.contains('youtube.com') || videoUrl.contains('youtu.be')) {
       final youtubeMatch = RegExp(r'(?:youtube\.com/watch\?v=|youtu\.be/)([^&\n?#]+)').firstMatch(videoUrl);
       if (youtubeMatch != null) {
-        final embedUrl = 'https://www.youtube.com/embed/${youtubeMatch.group(1)}?autoplay=1&playsinline=1&controls=1';
+        final embedUrl = 'https://www.youtube.com/embed/${youtubeMatch.group(1)}?playsinline=1&controls=1&rel=0';
         print('✅ YouTube embed URL: $embedUrl');
         return embedUrl;
       }
@@ -500,6 +412,34 @@ class _LessonPlayerScreenState extends State<LessonPlayerScreen> {
     }
   }
 
+  Future<void> _fetchCourseBot() async {
+    try {
+      final response = await http.get(
+        Uri.parse('https://millerstorm.tech/api/course-ai-bots'),
+      );
+      
+      if (response.statusCode == 200) {
+        final bots = jsonDecode(response.body) as List<dynamic>;
+        final publishedBot = bots.firstWhere(
+          (bot) => bot['status'] == 'published' && 
+                   (bot['selectedCourses'] as List<dynamic>?)?.contains(widget.courseId) == true,
+          orElse: () => null,
+        );
+        
+        setState(() {
+          _courseBot = publishedBot;
+        });
+        
+        print('🤖 Course bot loaded: ${publishedBot != null}');
+        if (publishedBot != null) {
+          print('🤖 Bot selectedPages: ${publishedBot['selectedPages']}');
+        }
+      }
+    } catch (e) {
+      print('❌ Error fetching course bot: $e');
+    }
+  }
+
   Future<void> _launchUrl(String url) async {
     try {
       final uri = Uri.parse(url);
@@ -510,22 +450,46 @@ class _LessonPlayerScreenState extends State<LessonPlayerScreen> {
       print('❌ Error launching URL: $e');
     }
   }
+  
+  void _showAIChatDialog() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      isDismissible: true,
+      useSafeArea: true,
+      builder: (context) => _AIChat(
+        lessonTitle: _lesson?['title'] ?? widget.lessonTitle,
+        lessonContent: _lesson?['body'] ?? '',
+        courseTitle: widget.courseTitle,
+      ),
+    );
+  }
 
   Widget _buildVideoPlayer() {
-    // Don't show video section if no video URL
     if (_lesson?['videoUrl'] == null) {
       return const SizedBox.shrink();
     }
+
+    final embedUrl = _getEmbedUrl(_lesson!['videoUrl']);
+    _webViewController ??= WebViewController()
+      ..setJavaScriptMode(JavaScriptMode.unrestricted)
+      ..setBackgroundColor(Colors.black)
+      ..setUserAgent('Mozilla/5.0 (Linux; Android 11; Pixel 5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/90.0.4430.91 Mobile Safari/537.36')
+      ..addJavaScriptChannel(
+        'VideoEndChannel',
+        onMessageReceived: (JavaScriptMessage message) {
+          print('🎬 Video ended - auto-advancing');
+          _markCompleteAndNext();
+        },
+      )
+      ..loadHtmlString(_buildVideoHtml(embedUrl));
 
     return Container(
       height: _isFullscreen ? MediaQuery.of(context).size.height : 220,
       width: double.infinity,
       color: Colors.black,
-      child: _webViewController != null
-          ? WebViewWidget(controller: _webViewController!)
-          : const Center(
-              child: CircularProgressIndicator(color: Colors.white),
-            ),
+      child: WebViewWidget(controller: _webViewController!),
     );
   }
 
@@ -1023,7 +987,6 @@ class _LessonPlayerScreenState extends State<LessonPlayerScreen> {
   void dispose() {
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
     SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
-    _chatController.dispose();
     super.dispose();
   }
 
@@ -1066,20 +1029,6 @@ class _LessonPlayerScreenState extends State<LessonPlayerScreen> {
             ),
           ],
         ),
-        actions: [
-          IconButton(
-            icon: Icon(
-              Icons.smart_toy_outlined,
-              color: _showAIChat ? _primary : _textDark,
-            ),
-            tooltip: 'AI Coach',
-            onPressed: () {
-              setState(() {
-                _showAIChat = !_showAIChat;
-              });
-            },
-          ),
-        ],
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator(color: _primary))
@@ -1090,27 +1039,35 @@ class _LessonPlayerScreenState extends State<LessonPlayerScreen> {
                     // Video Player (only if not quiz and has video)
                     if (_lesson?['isQuiz'] != true && _lesson?['videoUrl'] != null)
                       _buildVideoPlayer(),
-
+                    
                     // Content below video
                     Expanded(
                       child: SingleChildScrollView(
-                        padding: const EdgeInsets.fromLTRB(16, 16, 16, 80),
+                        padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
                         child: Column(
                           children: [
+                            // Quiz or Lesson content
                             if (_lesson?['isQuiz'] == true)
                               _buildQuizContent()
                             else
                               _buildLessonContent(),
+                            
+                            // Resources (only for lessons)
                             if (_lesson?['isQuiz'] != true)
                               _buildResourceLinks(),
                           ],
                         ),
                       ),
                     ),
-
+                    
                     // Bottom action bar
                     Container(
-                      padding: const EdgeInsets.all(16),
+                      padding: EdgeInsets.only(
+                        left: 16,
+                        right: 16,
+                        top: 16,
+                        bottom: 16 + MediaQuery.of(context).padding.bottom,
+                      ),
                       decoration: BoxDecoration(
                         color: _white,
                         boxShadow: [
@@ -1123,6 +1080,7 @@ class _LessonPlayerScreenState extends State<LessonPlayerScreen> {
                       ),
                       child: Row(
                         children: [
+                          // Progress indicator
                           Expanded(
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
@@ -1138,9 +1096,7 @@ class _LessonPlayerScreenState extends State<LessonPlayerScreen> {
                                 ),
                                 const SizedBox(height: 4),
                                 LinearProgressIndicator(
-                                  value: _allLessons.isNotEmpty
-                                      ? (_currentLessonIndex + 1) / _allLessons.length
-                                      : 0,
+                                  value: _allLessons.isNotEmpty ? (_currentLessonIndex + 1) / _allLessons.length : 0,
                                   backgroundColor: _border,
                                   valueColor: AlwaysStoppedAnimation<Color>(_primary),
                                   minHeight: 3,
@@ -1148,25 +1104,22 @@ class _LessonPlayerScreenState extends State<LessonPlayerScreen> {
                               ],
                             ),
                           ),
+                          
                           const SizedBox(width: 16),
+                          
+                          // Quiz submit or Next button
                           if (_lesson?['isQuiz'] == true && !_quizSubmitted)
                             GestureDetector(
                               onTap: () {
-                                final questions =
-                                    _lesson!['quizQuestions'] as List<dynamic>? ?? [];
+                                final questions = _lesson!['quizQuestions'] as List<dynamic>? ?? [];
                                 if (_selectedAnswers.length == questions.length) {
                                   _submitQuiz();
                                 }
                               },
                               child: Container(
-                                padding: const EdgeInsets.symmetric(
-                                    horizontal: 24, vertical: 12),
+                                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
                                 decoration: BoxDecoration(
-                                  color: _selectedAnswers.length ==
-                                          (_lesson!['quizQuestions']
-                                                  as List<dynamic>? ??
-                                              [])
-                                              .length
+                                  color: _selectedAnswers.length == (_lesson!['quizQuestions'] as List<dynamic>? ?? []).length
                                       ? _primary
                                       : _border,
                                   borderRadius: BorderRadius.circular(20),
@@ -1185,8 +1138,7 @@ class _LessonPlayerScreenState extends State<LessonPlayerScreen> {
                             GestureDetector(
                               onTap: _markCompleteAndNext,
                               child: Container(
-                                padding: const EdgeInsets.symmetric(
-                                    horizontal: 24, vertical: 12),
+                                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
                                 decoration: BoxDecoration(
                                   color: _primary,
                                   borderRadius: BorderRadius.circular(20),
@@ -1195,9 +1147,7 @@ class _LessonPlayerScreenState extends State<LessonPlayerScreen> {
                                   mainAxisSize: MainAxisSize.min,
                                   children: [
                                     Text(
-                                      _currentLessonIndex < _allLessons.length - 1
-                                          ? 'Next'
-                                          : 'Complete',
+                                      _currentLessonIndex < _allLessons.length - 1 ? 'Next' : 'Complete',
                                       style: const TextStyle(
                                         color: _white,
                                         fontSize: 14,
@@ -1206,8 +1156,8 @@ class _LessonPlayerScreenState extends State<LessonPlayerScreen> {
                                     ),
                                     const SizedBox(width: 4),
                                     Icon(
-                                      _currentLessonIndex < _allLessons.length - 1
-                                          ? Icons.arrow_forward
+                                      _currentLessonIndex < _allLessons.length - 1 
+                                          ? Icons.arrow_forward 
                                           : Icons.check,
                                       color: _white,
                                       size: 16,
@@ -1221,228 +1171,566 @@ class _LessonPlayerScreenState extends State<LessonPlayerScreen> {
                     ),
                   ],
                 ),
-
-                // AI Chat Panel — slides in from right
-                if (_showAIChat)
+                
+                // Floating AI Chat button (only show if bot is configured for this lesson)
+                if (_courseBot != null && 
+                    _lesson != null && 
+                    (_courseBot!['selectedPages'] as List<dynamic>?)?.contains(_lesson!['id']) == true)
                   Positioned(
-                    top: 0,
-                    right: 0,
-                    bottom: 0,
-                    width: MediaQuery.of(context).size.width * 0.88,
-                    child: _buildAIChatPanel(),
+                    right: 16,
+                    bottom: 100 + MediaQuery.of(context).padding.bottom,
+                    child: GestureDetector(
+                      onTap: _showAIChatDialog,
+                      child: Container(
+                        width: 56,
+                        height: 56,
+                        decoration: BoxDecoration(
+                          color: _textDark,
+                          shape: BoxShape.circle,
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.25),
+                              blurRadius: 16,
+                              offset: const Offset(0, 4),
+                            ),
+                          ],
+                        ),
+                        child: const Center(
+                          child: Text(
+                            '🤖',
+                            style: TextStyle(fontSize: 26),
+                          ),
+                        ),
+                      ),
+                    ),
                   ),
               ],
             ),
     );
   }
+}
 
-  Widget _buildAIChatPanel() {
-    final ScrollController scrollController = ScrollController();
 
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (scrollController.hasClients) {
-        scrollController.animateTo(
-          scrollController.position.maxScrollExtent,
+// AI Chat Widget
+class _AIChat extends StatefulWidget {
+  final String lessonTitle;
+  final String lessonContent;
+  final String courseTitle;
+
+  const _AIChat({
+    required this.lessonTitle,
+    required this.lessonContent,
+    required this.courseTitle,
+  });
+
+  @override
+  State<_AIChat> createState() => _AIChatState();
+}
+
+class _AIChatState extends State<_AIChat> {
+  static const _bg = Color(0xFFF3F4F6);
+  static const _white = Color(0xFFFFFFFF);
+  static const _primary = Color(0xFFCB0002);
+  static const _textDark = Color(0xFF111827);
+  static const _textMedium = Color(0xFF374151);
+  static const _textLight = Color(0xFF6B7280);
+  static const _border = Color(0xFFD1D5DB);
+
+  final TextEditingController _messageController = TextEditingController();
+  final ScrollController _scrollController = ScrollController();
+  final List<Map<String, String>> _messages = [];
+  bool _isLoading = false;
+  String? _userId;
+  String? _currentChatId;
+  List<dynamic> _chatHistory = [];
+  bool _showHistory = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadUserAndHistory();
+  }
+
+  Future<void> _loadUserAndHistory() async {
+    final user = await AuthService.getStoredUser();
+    _userId = user?['id'];
+    if (_userId != null) {
+      await _fetchChatHistory();
+    }
+  }
+
+  Future<void> _fetchChatHistory() async {
+    try {
+      final response = await http.get(
+        Uri.parse('https://millerstorm.tech/api/lesson-chat-history?userId=$_userId&lessonTitle=${Uri.encodeComponent(widget.lessonTitle)}'),
+      );
+      
+      if (response.statusCode == 200) {
+        final chats = jsonDecode(response.body) as List<dynamic>;
+        setState(() {
+          _chatHistory = chats;
+        });
+      }
+    } catch (e) {
+      print('❌ Error fetching chat history: $e');
+    }
+  }
+
+  Future<void> _saveChatHistory() async {
+    if (_userId == null || _messages.isEmpty) return;
+    
+    try {
+      _currentChatId ??= 'lesson-chat-${DateTime.now().millisecondsSinceEpoch}';
+      
+      final title = _messages.isNotEmpty && _messages[0]['role'] == 'user'
+          ? _messages[0]['content']!.substring(0, _messages[0]['content']!.length > 50 ? 50 : _messages[0]['content']!.length)
+          : 'New Chat';
+      
+      await http.post(
+        Uri.parse('https://millerstorm.tech/api/lesson-chat-history'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'userId': _userId,
+          'chatId': _currentChatId,
+          'lessonTitle': widget.lessonTitle,
+          'title': title,
+          'messages': _messages,
+        }),
+      );
+    } catch (e) {
+      print('❌ Error saving chat history: $e');
+    }
+  }
+
+  void _loadChat(dynamic chat) {
+    setState(() {
+      _currentChatId = chat['chatId'];
+      _messages.clear();
+      final messages = chat['messages'] as List<dynamic>? ?? [];
+      for (var msg in messages) {
+        _messages.add({
+          'role': msg['role'].toString(),
+          'content': msg['content'].toString(),
+        });
+      }
+      _showHistory = false;
+    });
+    _scrollToBottom();
+  }
+
+  Future<void> _deleteChat(String chatId) async {
+    try {
+      await http.delete(
+        Uri.parse('https://millerstorm.tech/api/lesson-chat-history'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'userId': _userId,
+          'chatId': chatId,
+        }),
+      );
+      await _fetchChatHistory();
+      
+      if (_currentChatId == chatId) {
+        setState(() {
+          _messages.clear();
+          _currentChatId = null;
+        });
+      }
+    } catch (e) {
+      print('❌ Error deleting chat: $e');
+    }
+  }
+
+  void _startNewChat() {
+    setState(() {
+      _messages.clear();
+      _currentChatId = null;
+      _showHistory = false;
+    });
+  }
+
+  @override
+  void dispose() {
+    _messageController.dispose();
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  void _scrollToBottom() {
+    if (_scrollController.hasClients) {
+      Future.delayed(const Duration(milliseconds: 100), () {
+        _scrollController.animateTo(
+          _scrollController.position.maxScrollExtent,
           duration: const Duration(milliseconds: 300),
           curve: Curves.easeOut,
         );
-      }
-    });
+      });
+    }
+  }
 
-    return Container(
-      decoration: BoxDecoration(
-        color: _white,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.15),
-            blurRadius: 16,
-            offset: const Offset(-4, 0),
-          ),
-        ],
-      ),
-      child: Column(
-        children: [
-          // Header
-          Container(
-            padding: const EdgeInsets.fromLTRB(16, 12, 8, 12),
-            decoration: const BoxDecoration(
-              border: Border(bottom: BorderSide(color: Color(0xFFE5E7EB))),
+  Future<void> _sendMessage() async {
+    final message = _messageController.text.trim();
+    if (message.isEmpty || _isLoading) return;
+
+    setState(() {
+      _messages.add({'role': 'user', 'content': message});
+      _isLoading = true;
+    });
+    _messageController.clear();
+    _scrollToBottom();
+
+    try {
+      final response = await http.post(
+        Uri.parse('https://millerstorm.tech/api/chat'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'messages': _messages,
+          'lessonTitle': widget.lessonTitle,
+          'lessonContent': widget.lessonContent,
+          'courseTitle': widget.courseTitle,
+          'trainingText': widget.lessonContent,
+          'hasTraining': true,
+        }),
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        setState(() {
+          _messages.add({'role': 'assistant', 'content': data['message']});
+        });
+        
+        // Save chat history after successful response
+        await _saveChatHistory();
+      } else {
+        setState(() {
+          _messages.add({
+            'role': 'assistant',
+            'content': 'Sorry, I couldn\'t process your request. Please try again.'
+          });
+        });
+      }
+    } catch (e) {
+      print('❌ Chat error: $e');
+      setState(() {
+        _messages.add({
+          'role': 'assistant',
+          'content': 'Sorry, I couldn\'t process your request. Please try again.'
+        });
+      });
+    } finally {
+      setState(() {
+        _isLoading = false;
+      });
+      _scrollToBottom();
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return DraggableScrollableSheet(
+      initialChildSize: 0.9,
+      minChildSize: 0.5,
+      maxChildSize: 0.95,
+      builder: (context, scrollController) => Padding(
+        padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+        child: Container(
+          decoration: const BoxDecoration(
+            color: _white,
+            borderRadius: BorderRadius.only(
+              topLeft: Radius.circular(20),
+              topRight: Radius.circular(20),
             ),
-            child: Row(
-              children: [
-                Container(
-                  width: 32,
-                  height: 32,
-                  decoration: BoxDecoration(
-                    color: _primary.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: const Icon(Icons.smart_toy_outlined, color: _primary, size: 18),
+          ),
+          child: Column(
+          children: [
+            // Header
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF8FAFC),
+                borderRadius: const BorderRadius.only(
+                  topLeft: Radius.circular(20),
+                  topRight: Radius.circular(20),
                 ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        'Lesson AI Coach',
-                        style: TextStyle(
-                          fontWeight: FontWeight.w600,
-                          fontSize: 14,
-                          color: _textDark,
+                border: const Border(
+                  bottom: BorderSide(color: _border, width: 1),
+                ),
+              ),
+              child: Row(
+                children: [
+                  if (!_showHistory)
+                    IconButton(
+                      icon: const Icon(Icons.history, color: _textDark),
+                      onPressed: () {
+                        setState(() {
+                          _showHistory = true;
+                        });
+                      },
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(),
+                    ),
+                  if (_showHistory)
+                    IconButton(
+                      icon: const Icon(Icons.arrow_back, color: _textDark),
+                      onPressed: () {
+                        setState(() {
+                          _showHistory = false;
+                        });
+                      },
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(),
+                    ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          _showHistory ? 'Chat History' : 'Lesson AI Coach',
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                            color: _textDark,
+                          ),
+                        ),
+                        if (!_showHistory)
+                          const SizedBox(height: 2),
+                        if (!_showHistory)
+                          Text(
+                            'Ask questions about ${widget.lessonTitle}',
+                            style: const TextStyle(
+                              fontSize: 12,
+                              color: _textLight,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                      ],
+                    ),
+                  ),
+                  if (!_showHistory && _messages.isNotEmpty)
+                    IconButton(
+                      icon: const Icon(Icons.add, color: _textDark),
+                      onPressed: _startNewChat,
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(),
+                    ),
+                  const SizedBox(width: 8),
+                  IconButton(
+                    icon: const Icon(Icons.close, color: _textLight),
+                    onPressed: () => Navigator.pop(context),
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(),
+                  ),
+                ],
+              ),
+            ),
+
+            // Messages or History
+            Expanded(
+              child: _showHistory
+                  ? _chatHistory.isEmpty
+                      ? const Center(
+                          child: Padding(
+                            padding: EdgeInsets.all(24),
+                            child: Text(
+                              'No chat history yet',
+                              style: TextStyle(
+                                fontSize: 14,
+                                color: _textLight,
+                              ),
+                            ),
+                          ),
+                        )
+                      : ListView.builder(
+                          padding: const EdgeInsets.all(16),
+                          itemCount: _chatHistory.length,
+                          itemBuilder: (context, index) {
+                            final chat = _chatHistory[index];
+                            return Container(
+                              margin: const EdgeInsets.only(bottom: 12),
+                              decoration: BoxDecoration(
+                                color: _white,
+                                border: Border.all(color: _border),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: ListTile(
+                                title: Text(
+                                  chat['title'] ?? 'Chat',
+                                  style: const TextStyle(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w500,
+                                    color: _textDark,
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                                subtitle: Text(
+                                  '${(chat['messages'] as List?)?.length ?? 0} messages',
+                                  style: const TextStyle(
+                                    fontSize: 12,
+                                    color: _textLight,
+                                  ),
+                                ),
+                                trailing: IconButton(
+                                  icon: const Icon(Icons.delete, color: _textLight, size: 20),
+                                  onPressed: () => _deleteChat(chat['chatId']),
+                                ),
+                                onTap: () => _loadChat(chat),
+                              ),
+                            );
+                          },
+                        )
+                  : _messages.isEmpty
+                  ? Center(
+                      child: SingleChildScrollView(
+                        padding: const EdgeInsets.all(24),
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Container(
+                              width: 80,
+                              height: 80,
+                              decoration: BoxDecoration(
+                                color: _primary.withOpacity(0.1),
+                                shape: BoxShape.circle,
+                              ),
+                              child: const Icon(
+                                Icons.smart_toy,
+                                size: 40,
+                                color: _primary,
+                              ),
+                            ),
+                            const SizedBox(height: 16),
+                            const Text(
+                              'Ask me anything!',
+                              style: TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.w600,
+                                color: _textDark,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              'I can help answer questions about this lesson.',
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                fontSize: 14,
+                                color: _textLight,
+                              ),
+                            ),
+                          ],
                         ),
                       ),
-                      Text(
-                        'Ask about ${widget.lessonTitle}',
-                        style: const TextStyle(fontSize: 11, color: _textLight),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ],
-                  ),
-                ),
-                IconButton(
-                  icon: const Icon(Icons.close, color: _textLight, size: 20),
-                  onPressed: () => setState(() => _showAIChat = false),
-                ),
-              ],
-            ),
-          ),
+                    )
+                  : ListView.builder(
+                      controller: _scrollController,
+                      padding: const EdgeInsets.all(16),
+                      itemCount: _messages.length + (_isLoading ? 1 : 0),
+                      itemBuilder: (context, index) {
+                        if (index == _messages.length && _isLoading) {
+                          return Container(
+                            margin: const EdgeInsets.only(bottom: 12),
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFEFF6FF),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: const Text(
+                              'Thinking...',
+                              style: TextStyle(
+                                fontSize: 13,
+                                color: _textLight,
+                              ),
+                            ),
+                          );
+                        }
 
-          // Messages
-          Expanded(
-            child: _chatMessages.isEmpty
-                ? Center(
-                    child: Padding(
-                      padding: const EdgeInsets.all(24),
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(Icons.chat_bubble_outline,
-                              size: 48, color: _textLight.withOpacity(0.4)),
-                          const SizedBox(height: 12),
-                          const Text(
-                            'Ask me anything about this lesson!',
-                            textAlign: TextAlign.center,
-                            style: TextStyle(color: _textLight, fontSize: 13),
-                          ),
-                        ],
-                      ),
-                    ),
-                  )
-                : ListView.builder(
-                    controller: scrollController,
-                    padding: const EdgeInsets.all(12),
-                    itemCount: _chatMessages.length + (_isChatLoading ? 1 : 0),
-                    itemBuilder: (context, index) {
-                      if (index == _chatMessages.length) {
+                        final message = _messages[index];
+                        final isUser = message['role'] == 'user';
+
                         return Container(
-                          margin: const EdgeInsets.only(bottom: 8),
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 12, vertical: 10),
+                          margin: const EdgeInsets.only(bottom: 12),
+                          padding: const EdgeInsets.all(12),
                           decoration: BoxDecoration(
-                            color: const Color(0xFFEFF6FF),
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: const Text(
-                            'Thinking...',
-                            style: TextStyle(
-                                fontSize: 13, color: _textLight),
-                          ),
-                        );
-                      }
-                      final msg = _chatMessages[index];
-                      final isUser = msg['role'] == 'user';
-                      return Align(
-                        alignment: isUser
-                            ? Alignment.centerRight
-                            : Alignment.centerLeft,
-                        child: Container(
-                          margin: const EdgeInsets.only(bottom: 8),
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 12, vertical: 10),
-                          constraints: BoxConstraints(
-                            maxWidth:
-                                MediaQuery.of(context).size.width * 0.7,
-                          ),
-                          decoration: BoxDecoration(
-                            color: isUser
-                                ? const Color(0xFF1F2937)
-                                : const Color(0xFFEFF6FF),
-                            borderRadius: BorderRadius.circular(12),
+                            color: isUser ? _textDark : const Color(0xFFEFF6FF),
+                            borderRadius: BorderRadius.circular(8),
                           ),
                           child: Text(
-                            msg['content'] ?? '',
+                            message['content'] ?? '',
                             style: TextStyle(
                               fontSize: 13,
                               color: isUser ? _white : _textDark,
                             ),
                           ),
-                        ),
-                      );
-                    },
-                  ),
-          ),
+                        );
+                      },
+                    ),
+            ),
 
-          // Input
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: const BoxDecoration(
-              border: Border(top: BorderSide(color: Color(0xFFE5E7EB))),
-            ),
-            child: Row(
-              children: [
-                Expanded(
-                  child: TextField(
-                    controller: _chatController,
-                    style: const TextStyle(fontSize: 13),
-                    maxLines: null,
-                    textInputAction: TextInputAction.send,
-                    onSubmitted: (_) => _sendChatMessage(),
-                    decoration: InputDecoration(
-                      hintText: 'Ask the coach...',
-                      hintStyle:
-                          const TextStyle(fontSize: 13, color: _textLight),
-                      contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 12, vertical: 10),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(10),
-                        borderSide:
-                            const BorderSide(color: Color(0xFFE5E7EB)),
-                      ),
-                      enabledBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(10),
-                        borderSide:
-                            const BorderSide(color: Color(0xFFE5E7EB)),
-                      ),
-                      focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(10),
-                        borderSide: BorderSide(color: _primary),
-                      ),
-                    ),
+            // Input area
+            if (!_showHistory)
+              Container(
+                padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+                decoration: const BoxDecoration(
+                  color: _white,
+                  border: Border(
+                    top: BorderSide(color: _border, width: 1),
                   ),
                 ),
-                const SizedBox(width: 8),
-                GestureDetector(
-                  onTap: _sendChatMessage,
-                  child: Container(
-                    width: 40,
-                    height: 40,
-                    decoration: BoxDecoration(
-                      color: _isChatLoading ? _border : const Color(0xFF1F2937),
-                      borderRadius: BorderRadius.circular(10),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      decoration: BoxDecoration(
+                        color: _white,
+                        border: Border.all(color: _border),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: TextField(
+                        controller: _messageController,
+                        maxLines: null,
+                        keyboardType: TextInputType.multiline,
+                        textInputAction: TextInputAction.newline,
+                        decoration: const InputDecoration(
+                          hintText: 'Ask the coach a question...',
+                          hintStyle: TextStyle(fontSize: 13, color: _textLight),
+                          border: InputBorder.none,
+                          contentPadding: EdgeInsets.all(12),
+                        ),
+                        style: const TextStyle(fontSize: 13, color: _textDark),
+                      ),
                     ),
-                    child: Icon(
-                      _isChatLoading ? Icons.hourglass_empty : Icons.send,
-                      color: _white,
-                      size: 18,
+                    const SizedBox(height: 8),
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton(
+                        onPressed: _isLoading ? null : _sendMessage,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: _textDark,
+                          disabledBackgroundColor: _border,
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                        ),
+                        child: Text(
+                          _isLoading ? 'Thinking...' : 'Send',
+                          style: const TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                            color: _white,
+                          ),
+                        ),
+                      ),
                     ),
-                  ),
+                  ],
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }

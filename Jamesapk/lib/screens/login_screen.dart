@@ -46,11 +46,11 @@ class _LoginScreenState extends State<LoginScreen> {
       
       // Only allow sales and manager roles
       if (role == 'sales') {
-        // Sales users go to training screen
-        Navigator.pushReplacementNamed(context, '/training');
+        // Sales users go to courses screen
+        Navigator.pushReplacementNamed(context, '/courses');
       } else if (role == 'manager') {
-        // Manager users go to manager dashboard
-        Navigator.pushReplacementNamed(context, '/manager-dashboard');
+        // Manager users go to manager training
+        Navigator.pushReplacementNamed(context, '/manager-training');
       } else {
         // Block admin, marketing, and other roles
         setState(() { 

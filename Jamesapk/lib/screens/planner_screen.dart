@@ -468,49 +468,83 @@ class _PlannerScreenState extends State<PlannerScreen> {
   }
 
   Widget _navItem(IconData icon, String label, bool active, String route) {
-    return GestureDetector(
-      onTap: () => Navigator.pushReplacementNamed(context, route),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, color: active ? _link : _textPlaceholder, size: 24),
-            const SizedBox(height: 4),
-            Text(label, style: TextStyle(fontSize: 11, color: active ? _link : _textPlaceholder)),
-          ],
+    return Flexible(
+      child: GestureDetector(
+        onTap: () => Navigator.pushReplacementNamed(context, route),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(icon, color: active ? _link : _textPlaceholder, size: 24),
+              const SizedBox(height: 4),
+              Text(
+                label,
+                style: TextStyle(
+                  fontSize: 10,
+                  color: active ? _link : _textPlaceholder,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                textAlign: TextAlign.center,
+              ),
+            ],
+          ),
         ),
       ),
     );
   }
 
   Widget _navItemWithBadge(IconData icon, String label, int badge, String route) {
-    return GestureDetector(
-      onTap: () => Navigator.pushReplacementNamed(context, route),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, color: _textPlaceholder, size: 24),
-            const SizedBox(height: 4),
-            Text(label, style: const TextStyle(fontSize: 11, color: _textPlaceholder)),
-          ],
+    return Flexible(
+      child: GestureDetector(
+        onTap: () => Navigator.pushReplacementNamed(context, route),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(icon, color: _textPlaceholder, size: 24),
+              const SizedBox(height: 4),
+              Text(
+                label,
+                style: const TextStyle(
+                  fontSize: 10,
+                  color: _textPlaceholder,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                textAlign: TextAlign.center,
+              ),
+            ],
+          ),
         ),
       ),
     );
   }
 
   Widget _navItemActive() {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(Icons.work_outline, color: _link, size: 24),
-          const SizedBox(height: 4),
-          const Text('Planner', style: TextStyle(fontSize: 11, color: _link, fontWeight: FontWeight.w600)),
-        ],
+    return Flexible(
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.work_outline, color: _link, size: 24),
+            const SizedBox(height: 4),
+            const Text(
+              'Planner',
+              style: TextStyle(
+                fontSize: 10,
+                color: _link,
+                fontWeight: FontWeight.w600,
+              ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
       ),
     );
   }

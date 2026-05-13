@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import 'ai_clone_chat_screen.dart';
 
 class TrainingScreen extends StatefulWidget {
   const TrainingScreen({super.key});
@@ -28,6 +29,8 @@ class _TrainingScreenState extends State<TrainingScreen> {
   String _userHeadshotUrl = '';
   int _stormChatGroupCount = 0;
   String? _userId;
+  List<dynamic> _bots = [];
+  bool _loadingBots = false;
 
   @override
   void initState() {
@@ -35,6 +38,7 @@ class _TrainingScreenState extends State<TrainingScreen> {
     _loadUserData();
     _setGreeting();
     _fetchStormChatGroups();
+    _fetchBots();
   }
 
   void _setGreeting() {
@@ -96,6 +100,35 @@ class _TrainingScreenState extends State<TrainingScreen> {
     }
   }
 
+  Future<void> _fetchBots() async {
+    setState(() {
+      _loadingBots = true;
+    });
+
+    try {
+      final response = await http.get(
+        Uri.parse('https://millerstorm.tech/api/ai-bots'),
+      );
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body) as List;
+        setState(() {
+          _bots = data;
+          _loadingBots = false;
+        });
+      } else {
+        setState(() {
+          _loadingBots = false;
+        });
+      }
+    } catch (e) {
+      print('Error fetching bots: $e');
+      setState(() {
+        _loadingBots = false;
+      });
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return WillPopScope(
@@ -120,6 +153,8 @@ class _TrainingScreenState extends State<TrainingScreen> {
                     _buildBootcampCard(),
                     const SizedBox(height: 24),
                     _buildAICoaches(),
+                    const SizedBox(height: 20),
+                    _buildJaysAIClone(),
                     const SizedBox(height: 16),
                   ],
                 ),
@@ -301,9 +336,151 @@ class _TrainingScreenState extends State<TrainingScreen> {
           iconColor: Color(0xFF16A34A),
           title: 'Apps & Tools',
           subtitle: 'Utilities',
-          onTap: () => Navigator.pushNamed(context, '/apps-tools-categories'),
+          onTap: () => Navigator.pushNamed(context, '/apps-tools-items'),
         ),
       ],
+    );
+  }
+
+  Widget _buildJaysAIClone() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            const Icon(Icons.smart_toy_outlined, color: _link, size: 22),
+            const SizedBox(width: 8),
+            const Text('AI Assistants', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: _textDark)),
+          ],
+        ),
+        const SizedBox(height: 12),
+        Container(
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            color: _white,
+            borderRadius: BorderRadius.circular(16),
+            boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 8)],
+          ),
+          child: _loadingBots
+              ? const Center(
+                  child: Padding(
+                    padding: EdgeInsets.all(20),
+                    child: CircularProgressIndicator(color: _primary),
+                  ),
+                )
+              : _bots.isEmpty
+                  ? Center(
+                      child: Padding(
+                        padding: const EdgeInsets.all(20),
+                        child: Column(
+                          children: [
+                            Icon(Icons.smart_toy_outlined, size: 48, color: _textLight.withOpacity(0.5)),
+                            const SizedBox(height: 12),
+                            const Text(
+                              'No AI assistants available',
+                              style: TextStyle(fontSize: 14, color: _textLight),
+                            ),
+                          ],
+                        ),
+                      ),
+                    )
+                  : Column(
+                      children: _bots.asMap().entries.map((entry) {
+                        final index = entry.key;
+                        final bot = entry.value;
+                        return Column(
+                          children: [
+                            if (index > 0)
+                              Container(
+                                height: 1,
+                                margin: const EdgeInsets.symmetric(vertical: 12),
+                                color: const Color(0xFFF3F4F6),
+                              ),
+                            _buildBotListItem(bot),
+                          ],
+                        );
+                      }).toList(),
+                    ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildBotListItem(dynamic bot) {
+    final name = bot['name'] ?? 'Unknown Bot';
+    final description = bot['description'] ?? '';
+    final imageUrl = bot['imageUrl'] ?? '';
+
+    return GestureDetector(
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => AiCloneChatScreen(bot: bot),
+          ),
+        );
+      },
+      child: Row(
+        children: [
+          Container(
+            width: 48,
+            height: 48,
+            decoration: BoxDecoration(
+              color: const Color(0xFFFEF2F2),
+              borderRadius: BorderRadius.circular(12),
+              image: imageUrl.isNotEmpty
+                  ? DecorationImage(
+                      image: NetworkImage('https://millerstorm.tech$imageUrl'),
+                      fit: BoxFit.cover,
+                    )
+                  : null,
+            ),
+            child: imageUrl.isEmpty
+                ? const Icon(
+                    Icons.smart_toy,
+                    size: 24,
+                    color: _link,
+                  )
+                : null,
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  name,
+                  style: const TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w600,
+                    color: _textDark,
+                  ),
+                ),
+                if (description.isNotEmpty) const SizedBox(height: 3),
+                if (description.isNotEmpty)
+                  Text(
+                    description,
+                    style: const TextStyle(
+                      fontSize: 13,
+                      color: _textLight,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 8),
+          Container(
+            padding: const EdgeInsets.all(6),
+            decoration: BoxDecoration(
+              color: const Color(0xFFF3F4F6),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: const Icon(Icons.arrow_forward_ios, color: _textLight, size: 14),
+          ),
+        ],
+      ),
     );
   }
 
@@ -439,10 +616,10 @@ class _TrainingScreenState extends State<TrainingScreen> {
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
-              _navItem(Icons.school_outlined, 'Training', true, null, context),
-              _navItem(Icons.emoji_events_outlined, 'Rankings', false, '/rankings', context),
-              _navItem(Icons.work_outline, 'Planner', false, '/planner', context),
+              _navItem(Icons.school_outlined, 'Training', true, '/courses', context),
               _navItemWithBadge(Icons.chat_bubble_outline, 'StormChat', _stormChatGroupCount, context),
+              _navItem(Icons.apps_outlined, 'Apps & Tools', false, '/apps-tools-items', context),
+              _navItem(Icons.person_outline, 'Profile', false, '/profile', context),
             ],
           ),
         ),
@@ -451,34 +628,57 @@ class _TrainingScreenState extends State<TrainingScreen> {
   }
 
   Widget _navItem(IconData icon, String label, bool active, String? route, BuildContext context) {
-    return GestureDetector(
-      onTap: route != null ? () => Navigator.pushReplacementNamed(context, route) : null,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, color: active ? _link : _textPlaceholder, size: 24),
-            const SizedBox(height: 4),
-            Text(label, style: TextStyle(fontSize: 11, color: active ? _link : _textPlaceholder, fontWeight: active ? FontWeight.w600 : FontWeight.normal)),
-          ],
+    return Flexible(
+      child: GestureDetector(
+        onTap: route != null ? () => Navigator.pushReplacementNamed(context, route) : null,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(icon, color: active ? _link : _textPlaceholder, size: 24),
+              const SizedBox(height: 4),
+              Text(
+                label,
+                style: TextStyle(
+                  fontSize: 10,
+                  color: active ? _link : _textPlaceholder,
+                  fontWeight: active ? FontWeight.w600 : FontWeight.normal,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                textAlign: TextAlign.center,
+              ),
+            ],
+          ),
         ),
       ),
     );
   }
 
   Widget _navItemWithBadge(IconData icon, String label, int badge, BuildContext context) {
-    return GestureDetector(
-      onTap: () => Navigator.pushReplacementNamed(context, '/stormchat'),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, color: _textPlaceholder, size: 24),
-            const SizedBox(height: 4),
-            Text(label, style: const TextStyle(fontSize: 11, color: _textPlaceholder)),
-          ],
+    return Flexible(
+      child: GestureDetector(
+        onTap: () => Navigator.pushReplacementNamed(context, '/stormchat'),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(icon, color: _textPlaceholder, size: 24),
+              const SizedBox(height: 4),
+              Text(
+                label,
+                style: const TextStyle(
+                  fontSize: 10,
+                  color: _textPlaceholder,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                textAlign: TextAlign.center,
+              ),
+            ],
+          ),
         ),
       ),
     );

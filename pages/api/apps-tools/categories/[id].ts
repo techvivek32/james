@@ -23,6 +23,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         updateData.status = status;
       }
 
+      // Update the category
       const category = await AppToolCategory.findByIdAndUpdate(
         id,
         updateData,

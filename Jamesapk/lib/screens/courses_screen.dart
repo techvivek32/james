@@ -21,14 +21,14 @@ class _CoursesScreenState extends State<CoursesScreen> with SingleTickerProvider
   static const _blue = Color(0xFF2563EB);
 
   List<dynamic> _courses = [];
+  List<dynamic> _filteredCourses = [];
   List<dynamic> _myPlaylists = [];
   List<dynamic> _assignedPlaylists = [];
   bool _isLoading = true;
   late TabController _tabController;
   String? _userId;
-  String _searchQuery = '';
-  bool _isSearching = false;
   final TextEditingController _searchController = TextEditingController();
+  String _searchQuery = '';
 
   @override
   void initState() {
@@ -75,6 +75,7 @@ class _CoursesScreenState extends State<CoursesScreen> with SingleTickerProvider
         
         setState(() {
           _courses = courses;
+          _filteredCourses = courses;
           _isLoading = false;
         });
       } else {
@@ -84,6 +85,21 @@ class _CoursesScreenState extends State<CoursesScreen> with SingleTickerProvider
       print('Error fetching courses: $e');
       setState(() => _isLoading = false);
     }
+  }
+
+  void _filterCourses(String query) {
+    setState(() {
+      _searchQuery = query.toLowerCase();
+      if (_searchQuery.isEmpty) {
+        _filteredCourses = _courses;
+      } else {
+        _filteredCourses = _courses.where((course) {
+          final title = (course['title'] ?? '').toLowerCase();
+          final description = (course['description'] ?? '').toLowerCase();
+          return title.contains(_searchQuery) || description.contains(_searchQuery);
+        }).toList();
+      }
+    });
   }
 
   Future<void> _fetchMyPlaylists() async {
@@ -136,50 +152,20 @@ class _CoursesScreenState extends State<CoursesScreen> with SingleTickerProvider
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: _bg,
-      appBar: AppBar(
+    return WillPopScope(
+      onWillPop: () async {
+        // Prevent back button from exiting app
+        return false;
+      },
+      child: Scaffold(
+        backgroundColor: _bg,
+        appBar: AppBar(
         backgroundColor: _white,
         elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: _textDark),
-          onPressed: () => Navigator.pop(context),
+        title: const Text(
+          'Miller Storm Training Center',
+          style: TextStyle(color: _textDark, fontSize: 18, fontWeight: FontWeight.w700),
         ),
-        title: _isSearching
-            ? TextField(
-                controller: _searchController,
-                autofocus: true,
-                style: const TextStyle(fontSize: 16, color: _textDark),
-                decoration: const InputDecoration(
-                  hintText: 'Search courses...',
-                  border: InputBorder.none,
-                  hintStyle: TextStyle(color: _textLight),
-                ),
-                onChanged: (val) => setState(() => _searchQuery = val),
-              )
-            : const Text(
-                'Training Center',
-                style: TextStyle(color: _textDark, fontSize: 18, fontWeight: FontWeight.w700),
-              ),
-        actions: [
-          IconButton(
-            icon: Icon(
-              _isSearching ? Icons.close : Icons.search,
-              color: _textDark,
-            ),
-            onPressed: () {
-              setState(() {
-                if (_isSearching) {
-                  _isSearching = false;
-                  _searchQuery = '';
-                  _searchController.clear();
-                } else {
-                  _isSearching = true;
-                }
-              });
-            },
-          ),
-        ],
         bottom: TabBar(
           controller: _tabController,
           labelColor: _blue,
@@ -193,13 +179,21 @@ class _CoursesScreenState extends State<CoursesScreen> with SingleTickerProvider
           ],
         ),
       ),
-      body: TabBarView(
-        controller: _tabController,
+      body: Column(
         children: [
-          _buildCoursesTab(),
-          _buildMyPlaylistsTab(),
-          _buildAssignedPlaylistsTab(),
+          Expanded(
+            child: TabBarView(
+              controller: _tabController,
+              children: [
+                _buildCoursesTab(),
+                _buildMyPlaylistsTab(),
+                _buildAssignedPlaylistsTab(),
+              ],
+            ),
+          ),
+          _buildBottomNav(),
         ],
+      ),
       ),
     );
   }
@@ -208,63 +202,99 @@ class _CoursesScreenState extends State<CoursesScreen> with SingleTickerProvider
     if (_isLoading) {
       return const Center(child: CircularProgressIndicator(color: _primary));
     }
-
-    final filtered = _searchQuery.isEmpty
-        ? _courses
-        : _courses.where((c) =>
-            (c['title'] ?? '').toString().toLowerCase().contains(_searchQuery.toLowerCase())).toList();
-
-    if (filtered.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.search_off, size: 64, color: _textLight.withOpacity(0.3)),
-            const SizedBox(height: 12),
-            Text(
-              _searchQuery.isEmpty ? 'No courses available' : 'No results for "$_searchQuery"',
-              style: const TextStyle(fontSize: 15, color: _textLight),
+    return Column(
+      children: [
+        Container(
+          color: _white,
+          padding: const EdgeInsets.all(16),
+          child: TextField(
+            controller: _searchController,
+            onChanged: _filterCourses,
+            decoration: InputDecoration(
+              hintText: 'Search courses...',
+              hintStyle: TextStyle(color: _textLight, fontSize: 14),
+              prefixIcon: const Icon(Icons.search, color: _textLight),
+              suffixIcon: _searchQuery.isNotEmpty
+                  ? IconButton(
+                      icon: const Icon(Icons.clear, color: _textLight),
+                      onPressed: () {
+                        _searchController.clear();
+                        _filterCourses('');
+                      },
+                    )
+                  : null,
+              filled: true,
+              fillColor: _bg,
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide.none,
+              ),
+              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             ),
-          ],
+          ),
         ),
-      );
-    }
-
-    return RefreshIndicator(
-      color: _primary,
-      onRefresh: () async {
-        setState(() => _isLoading = true);
-        await _loadData();
-      },
-      child: ListView.builder(
-        padding: const EdgeInsets.all(16),
-        itemCount: filtered.length,
-        itemBuilder: (context, index) {
-          final course = filtered[index];
-          return Padding(
-            padding: const EdgeInsets.only(bottom: 16),
-            child: GestureDetector(
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => CourseDetailScreen(
-                      courseId: course['id'] ?? '',
-                      courseTitle: course['title'] ?? 'Course',
+        Expanded(
+          child: _filteredCourses.isEmpty
+              ? Center(
+                  child: Padding(
+                    padding: const EdgeInsets.all(32),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.search_off, size: 64, color: _textLight.withOpacity(0.3)),
+                        const SizedBox(height: 16),
+                        Text(
+                          _searchQuery.isEmpty ? 'No courses available' : 'No courses found',
+                          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color: _textDark),
+                        ),
+                        if (_searchQuery.isNotEmpty) const SizedBox(height: 8),
+                        if (_searchQuery.isNotEmpty) Text(
+                          'Try searching with different keywords',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(fontSize: 14, color: _textLight),
+                        ),
+                      ],
                     ),
                   ),
-                ).then((_) => _loadData());
-              },
-              child: _buildCourseCard(
-                course['title'] ?? 'Untitled',
-                '${course['progress']?['progressPercent'] ?? 0}%',
-                _getCourseIcon(course['icon']),
-                course['coverImageUrl'],
-              ),
-            ),
-          );
-        },
-      ),
+                )
+              : RefreshIndicator(
+                  color: _primary,
+                  onRefresh: () async {
+                    setState(() => _isLoading = true);
+                    await _loadData();
+                  },
+                  child: ListView.builder(
+                    padding: const EdgeInsets.all(16),
+                    itemCount: _filteredCourses.length,
+                    itemBuilder: (context, index) {
+                      final course = _filteredCourses[index];
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: 16),
+                        child: GestureDetector(
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => CourseDetailScreen(
+                                  courseId: course['id'] ?? '',
+                                  courseTitle: course['title'] ?? 'Course',
+                                ),
+                              ),
+                            ).then((_) => _loadData());
+                          },
+                          child: _buildCourseCard(
+                            course['title'] ?? 'Untitled',
+                            '${course['progress']?['progressPercent'] ?? 0}%',
+                            _getCourseIcon(course['icon']),
+                            course['coverImageUrl'],
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+        ),
+      ],
     );
   }
 
@@ -537,6 +567,7 @@ class _CoursesScreenState extends State<CoursesScreen> with SingleTickerProvider
                                 width: double.infinity,
                                 height: 160,
                                 fit: BoxFit.cover,
+                                cacheWidth: 400,
                                 errorBuilder: (context, error, stackTrace) {
                                   return Container(
                                     decoration: BoxDecoration(
@@ -557,6 +588,7 @@ class _CoursesScreenState extends State<CoursesScreen> with SingleTickerProvider
                                 width: double.infinity,
                                 height: 160,
                                 fit: BoxFit.cover,
+                                cacheWidth: 400,
                                 errorBuilder: (context, error, stackTrace) {
                                   return Container(
                                     decoration: BoxDecoration(
@@ -611,6 +643,81 @@ class _CoursesScreenState extends State<CoursesScreen> with SingleTickerProvider
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildBottomNav() {
+    return Container(
+      decoration: BoxDecoration(
+        color: _white,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 10,
+            offset: const Offset(0, -2),
+          ),
+        ],
+      ),
+      child: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
+            children: [
+              _navItemActive(Icons.school, 'Training'),
+              const SizedBox(width: 2),
+              _navItem(Icons.chat_bubble, 'StormChat', '/stormchat'),
+              const SizedBox(width: 2),
+              _navItem(Icons.apps, 'Apps & Tools', '/apps-tools-items'),
+              const SizedBox(width: 2),
+              _navItem(Icons.person, 'Profile', '/profile'),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _navItem(IconData icon, String label, String route) {
+    return Expanded(
+      child: GestureDetector(
+        onTap: () => Navigator.pushReplacementNamed(context, route),
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 8),
+          decoration: BoxDecoration(
+            color: Colors.transparent,
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(icon, color: _textLight, size: 24),
+              const SizedBox(height: 4),
+              Text(label, style: const TextStyle(fontSize: 11, color: _textLight)),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _navItemActive(IconData icon, String label) {
+    return Expanded(
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 8),
+        decoration: BoxDecoration(
+          color: _primary.withOpacity(0.1),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, color: _primary, size: 24),
+            const SizedBox(height: 4),
+            Text(label, style: const TextStyle(fontSize: 11, color: _primary, fontWeight: FontWeight.w600)),
+          ],
+        ),
       ),
     );
   }

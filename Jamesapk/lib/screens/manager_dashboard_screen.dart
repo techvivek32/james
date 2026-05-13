@@ -493,15 +493,19 @@ class _ManagerDashboardScreenState extends State<ManagerDashboardScreen> {
       child: SafeArea(
         top: false,
         child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 8),
+          padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
-              _navItemActive(Icons.home, 'Home'),
-              _navItem(Icons.chat_bubble_outline, 'StormChat', '/manager-stormchat'),
-              _navItem(Icons.bar_chart, 'Rank', '/manager-rankings'),
-              _navItem(Icons.calendar_today, 'Planner', '/manager-planner'),
               _navItem(Icons.school_outlined, 'Training', '/manager-training'),
+              const SizedBox(width: 2),
+              _navItem(Icons.chat_bubble_outline, 'StormChat', '/manager-stormchat'),
+              const SizedBox(width: 2),
+              _navItem(Icons.apps_outlined, 'Apps & Tools', '/manager-apps-tools-items'),
+              const SizedBox(width: 2),
+              _navItem(Icons.group_outlined, 'View Team', '/manager-view-team'),
+              const SizedBox(width: 2),
+              _navItem(Icons.person_outline, 'Profile', '/manager-profile'),
             ],
           ),
         ),
@@ -510,40 +514,46 @@ class _ManagerDashboardScreenState extends State<ManagerDashboardScreen> {
   }
 
   Widget _navItem(IconData icon, String label, String route) {
-    return GestureDetector(
-      onTap: () => Navigator.pushReplacementNamed(context, route),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, color: _textPlaceholder, size: 24),
-          const SizedBox(height: 4),
-          Text(
-            label,
-            style: TextStyle(
-              fontSize: 11,
-              color: _textPlaceholder,
-            ),
+    return Expanded(
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: () => Navigator.pushReplacementNamed(context, route),
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 8),
+          color: Colors.transparent,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(icon, color: _textPlaceholder, size: 24),
+              const SizedBox(height: 4),
+              Text(
+                label,
+                style: TextStyle(
+                  fontSize: 11,
+                  color: _textPlaceholder,
+                ),
+              ),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }
 
   Widget _navItemActive(IconData icon, String label) {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Icon(icon, color: _primary, size: 24),
-        const SizedBox(height: 4),
-        Text(
-          label,
-          style: TextStyle(
-            fontSize: 11,
-            color: _primary,
-            fontWeight: FontWeight.w600,
-          ),
+    return Expanded(
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 8),
+        decoration: BoxDecoration(color: _primary.withOpacity(0.1), borderRadius: BorderRadius.circular(8)),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, color: _primary, size: 24),
+            const SizedBox(height: 4),
+            Text(label, style: const TextStyle(fontSize: 11, color: _primary, fontWeight: FontWeight.w600), textAlign: TextAlign.center),
+          ],
         ),
-      ],
+      ),
     );
   }
 
