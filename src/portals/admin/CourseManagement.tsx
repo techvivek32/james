@@ -118,6 +118,7 @@ export function CourseManagement(props: CourseEditorProps) {
   const [isSavingLesson, setIsSavingLesson] = useState(false);
   const [savingMessage, setSavingMessage] = useState<string>("");
   const [isSavingCourse, setIsSavingCourse] = useState(false);
+  const [isSavingModule, setIsSavingModule] = useState(false);
 
   // Add drag and drop styles
   const dragStyles = `
@@ -1019,6 +1020,8 @@ export function CourseManagement(props: CourseEditorProps) {
     const folders: CourseFolder[] = course.folders ?? [];
     const status: CourseFolder["status"] = newFolderPublished ? "published" : "draft";
 
+    setIsSavingModule(true);
+
     let nextCourse: Course;
     if (editingFolderId) {
       const nextFolders = folders.map((folder) =>
@@ -1052,6 +1055,8 @@ export function CourseManagement(props: CourseEditorProps) {
     } catch (error) {
       console.error('Save error:', error);
       showToast('Failed to save module. Please try again.', 'error');
+    } finally {
+      setIsSavingModule(false);
     }
 
     setIsFolderModalOpen(false);
@@ -1503,12 +1508,18 @@ export function CourseManagement(props: CourseEditorProps) {
         </div>
       )}
       {isFolderModalOpen && selectedCourse && (
-        <div className="overlay">
+        <div className="overlay" style={{ zIndex: 9998 }}>
           <div className="dialog">
             <div className="dialog-title">{editingFolderId ? "Edit Module  " : "Add Module  "}</div>
             <label className="field">
               <span className="field-label">Name</span>
-              <input className="field-input" value={newFolderName} maxLength={50} onChange={(event) => setNewFolderName(event.target.value)} />
+              <input 
+                className="field-input" 
+                value={newFolderName} 
+                maxLength={50} 
+                onChange={(event) => setNewFolderName(event.target.value)} 
+                disabled={isSavingModule}
+              />
               <div className="field-helper">{newFolderName.length} / 50</div>
             </label>
             <div className="dialog-footer">
@@ -1516,6 +1527,7 @@ export function CourseManagement(props: CourseEditorProps) {
                 type="button"
                 className={newFolderPublished ? "status-toggle status-toggle-on dialog-publish-toggle" : "status-toggle dialog-publish-toggle"}
                 onClick={() => setNewFolderPublished(!newFolderPublished)}
+                disabled={isSavingModule}
               >
                 <span className={newFolderPublished ? "status-toggle-label status-toggle-label-on" : "status-toggle-label"}>Published</span>
                 <span className="status-toggle-track">
@@ -1532,15 +1544,35 @@ export function CourseManagement(props: CourseEditorProps) {
                     setNewFolderPublished(true);
                     setEditingFolderId(null);
                   }}
+                  disabled={isSavingModule}
                 >
                   Cancel
                 </button>
-                <button type="button" className="btn-primary btn-success" disabled={!newFolderName.trim()} onClick={() => addFolderForCourse(selectedCourse)}>
-                  {editingFolderId ? "Save" : "Add"}
+                <button 
+                  type="button" 
+                  className="btn-primary btn-success" 
+                  disabled={!newFolderName.trim() || isSavingModule} 
+                  onClick={() => addFolderForCourse(selectedCourse)}
+                  style={isSavingModule ? { opacity: 0.7, cursor: 'not-allowed' } : {}}
+                >
+                  {isSavingModule ? 'Saving...' : (editingFolderId ? "Save" : "Add")}
                 </button>
               </div>
             </div>
           </div>
+        </div>
+      )}
+      {isSavingModule && (
+        <div style={{ position: "fixed", inset: 0, zIndex: 9999, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+          <div style={{ background: "#fff", borderRadius: "14px", padding: "32px 40px", textAlign: "center", boxShadow: "0 20px 60px rgba(0,0,0,0.3)" }}>
+            <div style={{ fontSize: "36px", marginBottom: "12px" }}>💾</div>
+            <div style={{ fontWeight: 700, fontSize: "16px", color: "#1f2937", marginBottom: "6px" }}>Saving module...</div>
+            <div style={{ fontSize: "13px", color: "#6b7280" }}>Please wait, do not close this page</div>
+            <div style={{ marginTop: "16px", display: "flex", justifyContent: "center" }}>
+              <div style={{ width: 32, height: 32, border: "3px solid #e5e7eb", borderTop: "3px solid #1f2937", borderRadius: "50%", animation: "spin 0.8s linear infinite" }} />
+            </div>
+          </div>
+          <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
         </div>
       )}
       {isChangeModuleModalOpen && selectedCourse && (
