@@ -1015,22 +1015,43 @@ export function CourseManagement(props: CourseEditorProps) {
     updateCourse({ ...selectedCourse, folders });
   }
 
-  function addFolderForCourse(course: Course) {
+  async function addFolderForCourse(course: Course) {
     const folders: CourseFolder[] = course.folders ?? [];
     const status: CourseFolder["status"] = newFolderPublished ? "published" : "draft";
 
+    let nextCourse: Course;
     if (editingFolderId) {
       const nextFolders = folders.map((folder) =>
         folder.id === editingFolderId
           ? { ...folder, title: newFolderName.trim() || "Untitled folder", status }
           : folder
       );
-      const nextCourse: Course = { ...course, folders: nextFolders };
-      updateCourse(nextCourse);
+      nextCourse = { ...course, folders: nextFolders };
     } else {
       const newFolder: CourseFolder = { id: `folder-${Date.now()}`, title: newFolderName.trim() || "Untitled folder", status };
-      const nextCourse: Course = { ...course, folders: [...folders, newFolder] };
-      updateCourse(nextCourse);
+      nextCourse = { ...course, folders: [...folders, newFolder] };
+    }
+
+    // Update local state
+    updateCourse(nextCourse);
+
+    // Save to database immediately
+    try {
+      const cleanedCourse = props.cleanCourses ? props.cleanCourses([nextCourse])[0] : nextCourse;
+      const res = await fetch("/api/courses/bulk", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify([cleanedCourse])
+      });
+      
+      if (!res.ok) {
+        throw new Error('Failed to save module');
+      }
+      
+      showToast(editingFolderId ? 'Module updated successfully!' : 'Module added successfully!', 'success');
+    } catch (error) {
+      console.error('Save error:', error);
+      showToast('Failed to save module. Please try again.', 'error');
     }
 
     setIsFolderModalOpen(false);
