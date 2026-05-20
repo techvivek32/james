@@ -1565,7 +1565,6 @@ export function CourseManagement(props: CourseEditorProps) {
       {isSavingModule && (
         <div style={{ position: "fixed", inset: 0, zIndex: 9999, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center" }}>
           <div style={{ background: "#fff", borderRadius: "14px", padding: "32px 40px", textAlign: "center", boxShadow: "0 20px 60px rgba(0,0,0,0.3)" }}>
-            <div style={{ fontSize: "36px", marginBottom: "12px" }}>💾</div>
             <div style={{ fontWeight: 700, fontSize: "16px", color: "#1f2937", marginBottom: "6px" }}>Saving module...</div>
             <div style={{ fontSize: "13px", color: "#6b7280" }}>Please wait, do not close this page</div>
             <div style={{ marginTop: "16px", display: "flex", justifyContent: "center" }}>
