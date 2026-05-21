@@ -145,8 +145,19 @@ export function CourseLeaderboard() {
 
       if (!fullCourse) { setRows([]); return; }
 
+      // Get published folders
+      const publishedFolderIds = new Set(
+        (fullCourse.folders || [])
+          .filter((f: any) => f.status === "published")
+          .map((f: any) => f.id)
+      );
+      
+      // Filter lessons: must be published, not a quiz, and either has no folder or is in a published folder
       const lessonPages = (fullCourse.pages || []).filter(
-        (p: any) => p.status === "published" && !p.isQuiz
+        (p: any) => 
+          p.status === "published" && 
+          !p.isQuiz && 
+          (!p.folderId || publishedFolderIds.has(p.folderId))
       );
       const total = lessonPages.length;
       const lessonIds = new Set(lessonPages.map((p: any) => p.id));
@@ -202,9 +213,22 @@ export function CourseLeaderboard() {
 
       // Build lesson list from raw course data
       const raw = allCoursesRaw.find((c: any) => c.id === selectedCourse.id);
+      
+      // Get published folders
+      const publishedFolderIds = new Set(
+        (raw?.folders || [])
+          .filter((f: any) => f.status === "published")
+          .map((f: any) => f.id)
+      );
+      
+      // Filter lessons: must be published, not a quiz, and either has no folder or is in a published folder
       const lessons: LessonPage[] = raw
         ? (raw.pages || [])
-            .filter((p: any) => p.status === "published" && !p.isQuiz)
+            .filter((p: any) => 
+              p.status === "published" && 
+              !p.isQuiz && 
+              (!p.folderId || publishedFolderIds.has(p.folderId))
+            )
             .map((p: any) => ({ id: p.id, title: p.title || `Lesson ${p.order ?? ""}` }))
         : [];
       setOverrideLessons(lessons);
