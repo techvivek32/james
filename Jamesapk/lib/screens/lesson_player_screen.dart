@@ -280,12 +280,18 @@ class _LessonPlayerScreenState extends State<LessonPlayerScreen> {
 </style>
 </head>
 <body>
-<video id="player" controls autoplay playsinline webkit-playsinline>
+<video id="player" controls autoplay playsinline webkit-playsinline x-webkit-airplay="allow" style="width:100%;height:100%;object-fit:contain;">
   <source src="$embedUrl" type="video/mp4">
   Your browser does not support the video tag.
 </video>
 <script>
   var video = document.getElementById('player');
+  video.setAttribute('playsinline', '');
+  video.setAttribute('webkit-playsinline', '');
+  video.muted = false;
+  video.play().catch(function(e) {
+    console.log('Autoplay blocked:', e);
+  });
   video.onended = function() {
     if (window.VideoEndChannel) {
       window.VideoEndChannel.postMessage('ended');
