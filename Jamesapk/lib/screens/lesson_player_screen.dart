@@ -3,6 +3,8 @@ import 'package:flutter/services.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:webview_flutter/webview_flutter.dart';
+import 'package:webview_flutter_android/webview_flutter_android.dart';
+import 'package:webview_flutter_wkwebview/webview_flutter_wkwebview.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:flutter_html/flutter_html.dart';
 import 'package:cached_network_image/cached_network_image.dart';
@@ -58,7 +60,37 @@ class _LessonPlayerScreenState extends State<LessonPlayerScreen> {
   @override
   void initState() {
     super.initState();
+    _initWebViewController();
     _fetchLessonData();
+  }
+
+  void _initWebViewController() {
+    late final PlatformWebViewControllerCreationParams params;
+    if (WebViewPlatform.instance is WebKitWebViewPlatform) {
+      params = WebKitWebViewControllerCreationParams(
+        allowsInlineMediaPlayback: true,
+        mediaTypesRequiringUserAction: const <PlaybackMediaTypes>{},
+      );
+    } else {
+      params = const PlatformWebViewControllerCreationParams();
+    }
+
+    _webViewController = WebViewController.fromPlatformCreationParams(params)
+      ..setJavaScriptMode(JavaScriptMode.unrestricted)
+      ..setBackgroundColor(Colors.black)
+      ..addJavaScriptChannel(
+        'VideoEndChannel',
+        onMessageReceived: (JavaScriptMessage message) {
+          print('🎬 Video ended - auto-advancing');
+          _markCompleteAndNext();
+        },
+      );
+    
+    // Set Android-specific settings if on Android
+    if (WebViewPlatform.instance is AndroidWebViewPlatform) {
+      final androidController = _webViewController!.platform as AndroidWebViewController;
+      androidController.setMediaPlaybackRequiresUserGesture(false);
+    }
   }
 
   Future<void> _fetchLessonData() async {
@@ -188,6 +220,15 @@ class _LessonPlayerScreenState extends State<LessonPlayerScreen> {
             }
           }
         });
+
+        // Load video into WebView if available
+        if (lesson != null && lesson['videoUrl'] != null) {
+          final embedUrl = _getEmbedUrl(lesson['videoUrl']);
+          _webViewController?.loadHtmlString(
+            _buildVideoHtml(embedUrl),
+            baseUrl: 'https://millerstorm.tech',
+          );
+        }
         
         print('✅ Lesson loaded: ${lesson?['title']}');
         print('🎥 Video URL: ${lesson?['videoUrl']}');
@@ -218,6 +259,43 @@ class _LessonPlayerScreenState extends State<LessonPlayerScreen> {
   // No manual initialization needed here.
 
   String _buildVideoHtml(String embedUrl) {
+    final isDirectVideo = embedUrl.contains('/uploads/') || 
+                          embedUrl.endsWith('.mp4') || 
+                          embedUrl.endsWith('.mov') || 
+                          embedUrl.endsWith('.webm') ||
+                          embedUrl.contains('.mp4?') ||
+                          embedUrl.contains('.mov?') ||
+                          embedUrl.contains('.webm?');
+    
+    if (isDirectVideo) {
+      return '''
+<!DOCTYPE html>
+<html>
+<head>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { width: 100%; height: 100%; background: #000; overflow: hidden; display: flex; align-items: center; justify-content: center; }
+  video { width: 100%; height: 100%; object-fit: contain; }
+</style>
+</head>
+<body>
+<video id="player" controls autoplay playsinline webkit-playsinline>
+  <source src="$embedUrl" type="video/mp4">
+  Your browser does not support the video tag.
+</video>
+<script>
+  var video = document.getElementById('player');
+  video.onended = function() {
+    if (window.VideoEndChannel) {
+      window.VideoEndChannel.postMessage('ended');
+    }
+  };
+</script>
+</body>
+</html>''';
+    }
+
     return '''
 <!DOCTYPE html>
 <html>
@@ -238,15 +316,26 @@ class _LessonPlayerScreenState extends State<LessonPlayerScreen> {
   webkitallowfullscreen
   mozallowfullscreen>
 </iframe>
-<script src="https://player.vimeo.com/api/player.js"></script>
+${embedUrl.contains('vimeo.com') ? '<script src="https://player.vimeo.com/api/player.js"></script>' : ''}
 <script>
   var iframe = document.getElementById('player');
-  var player = new Vimeo.Player(iframe);
-  player.on('ended', function() {
-    if (window.VideoEndChannel) {
-      window.VideoEndChannel.postMessage('ended');
+  
+  function initPlayer() {
+    if (window.Vimeo) {
+      var player = new Vimeo.Player(iframe);
+      player.on('ended', function() {
+        if (window.VideoEndChannel) {
+          window.VideoEndChannel.postMessage('ended');
+        }
+      });
     }
-  });
+  }
+
+  if (window.Vimeo) {
+    initPlayer();
+  } else {
+    iframe.onload = initPlayer;
+  }
 </script>
 </body>
 </html>''';
@@ -255,6 +344,13 @@ class _LessonPlayerScreenState extends State<LessonPlayerScreen> {
   String _getEmbedUrl(String videoUrl) {
     print('🔗 Original video URL: $videoUrl');
     
+    // Handle relative URLs for uploaded files
+    if (videoUrl.startsWith('/uploads/')) {
+      final absoluteUrl = 'https://millerstorm.tech$videoUrl';
+      print('✅ Absolute uploaded video URL: $absoluteUrl');
+      return absoluteUrl;
+    }
+
     // Convert various video URL formats to embeddable URLs
     if (videoUrl.contains('vimeo.com')) {
       // Extract video ID and hash from various Vimeo URL formats
@@ -270,16 +366,33 @@ class _LessonPlayerScreenState extends State<LessonPlayerScreen> {
         return embedUrl;
       }
     } else if (videoUrl.contains('youtube.com') || videoUrl.contains('youtu.be')) {
-      final youtubeMatch = RegExp(r'(?:youtube\.com/watch\?v=|youtu\.be/)([^&\n?#]+)').firstMatch(videoUrl);
+      final youtubeMatch = RegExp(r'(?:youtube\.com/watch\?v=|youtu\.be/|youtube\.com/embed/)([^&\n?#]+)').firstMatch(videoUrl);
       if (youtubeMatch != null) {
-        final embedUrl = 'https://www.youtube.com/embed/${youtubeMatch.group(1)}?playsinline=1&controls=1&rel=0';
+        final videoId = youtubeMatch.group(1);
+        final embedUrl = 'https://www.youtube.com/embed/$videoId?playsinline=1&controls=1&rel=0&autoplay=1';
         print('✅ YouTube embed URL: $embedUrl');
+        return embedUrl;
+      }
+    } else if (videoUrl.contains('loom.com')) {
+      final loomMatch = RegExp(r'loom\.com/share/([a-zA-Z0-9]+)').firstMatch(videoUrl);
+      if (loomMatch != null) {
+        final videoId = loomMatch.group(1);
+        final embedUrl = 'https://www.loom.com/embed/$videoId?autoplay=1&playsinline=1';
+        print('✅ Loom embed URL: $embedUrl');
+        return embedUrl;
+      }
+    } else if (videoUrl.contains('wistia.com')) {
+      final wistiaMatch = RegExp(r'wistia\.com/medias/([a-zA-Z0-9]+)').firstMatch(videoUrl);
+      if (wistiaMatch != null) {
+        final videoId = wistiaMatch.group(1);
+        final embedUrl = 'https://fast.wistia.net/embed/iframe/$videoId?autoplay=1&playsinline=1';
+        print('✅ Wistia embed URL: $embedUrl');
         return embedUrl;
       }
     }
     
-    // If it's already an embed URL or other format, use as is
-    print('✅ Using original URL');
+    // If it's already an absolute URL but not from a known provider, use as is
+    print('✅ Using original URL: $videoUrl');
     return videoUrl;
   }
 
@@ -470,20 +583,6 @@ class _LessonPlayerScreenState extends State<LessonPlayerScreen> {
     if (_lesson?['videoUrl'] == null) {
       return const SizedBox.shrink();
     }
-
-    final embedUrl = _getEmbedUrl(_lesson!['videoUrl']);
-    _webViewController ??= WebViewController()
-      ..setJavaScriptMode(JavaScriptMode.unrestricted)
-      ..setBackgroundColor(Colors.black)
-      ..setUserAgent('Mozilla/5.0 (Linux; Android 11; Pixel 5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/90.0.4430.91 Mobile Safari/537.36')
-      ..addJavaScriptChannel(
-        'VideoEndChannel',
-        onMessageReceived: (JavaScriptMessage message) {
-          print('🎬 Video ended - auto-advancing');
-          _markCompleteAndNext();
-        },
-      )
-      ..loadHtmlString(_buildVideoHtml(embedUrl));
 
     return Container(
       height: _isFullscreen ? MediaQuery.of(context).size.height : 220,
