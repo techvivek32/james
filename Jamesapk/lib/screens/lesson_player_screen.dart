@@ -503,6 +503,7 @@ ${embedUrl.contains('vimeo.com') ? '<script src="https://player.vimeo.com/api/pl
       if (_currentLessonIndex < _allLessons.length - 1) {
         final nextLesson = _allLessons[_currentLessonIndex + 1];
         print('🔄 Navigating to next: ${nextLesson['title']} (isQuiz: ${nextLesson['isQuiz']})');
+        _stopVideo();
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(
@@ -1088,8 +1089,15 @@ ${embedUrl.contains('vimeo.com') ? '<script src="https://player.vimeo.com/api/pl
     );
   }
 
+  void _stopVideo() {
+    _webViewController?.runJavaScript(
+      'try { var v = document.querySelector("video"); if(v){ v.pause(); v.src=""; } var i = document.querySelector("iframe"); if(i){ i.src=""; } } catch(e){}'
+    );
+  }
+
   @override
   void dispose() {
+    _stopVideo();
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
     SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
     super.dispose();
@@ -1111,7 +1119,10 @@ ${embedUrl.contains('vimeo.com') ? '<script src="https://player.vimeo.com/api/pl
         elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: _textDark),
-          onPressed: () => Navigator.pop(context),
+          onPressed: () {
+            _stopVideo();
+            Navigator.pop(context);
+          },
         ),
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
