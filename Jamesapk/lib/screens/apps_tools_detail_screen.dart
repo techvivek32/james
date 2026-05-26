@@ -169,7 +169,7 @@ class AppsToolsDetailScreen extends StatelessWidget {
                       if (appStoreLink.isNotEmpty)
                         _buildLinkButton(context, 'Download on App Store', appStoreLink, Icons.apple),
                       if (playStoreLink.isNotEmpty)
-                        _buildLinkButton(context, 'Get it on Google Play', playStoreLink, Icons.android),
+                        _buildLinkButton(context, 'Download App', playStoreLink, Icons.android),
                     ],
                     SizedBox(height: MediaQuery.of(context).padding.bottom + 40),
                   ],

@@ -24,6 +24,7 @@ import 'screens/manager_apps_tools_items_screen.dart';
 import 'screens/manager_apps_tools_detail_screen.dart';
 import 'screens/manager_all_plans_screen.dart';
 import 'screens/ai_clone_chat_screen.dart';
+import 'screens/register_screen.dart';
 
 void main() {
   runApp(const MillerStormApp());
@@ -49,6 +50,8 @@ class MillerStormApp extends StatelessWidget {
             return MaterialPageRoute(builder: (_) => const SplashScreen());
           case '/login':
             return MaterialPageRoute(builder: (_) => const LoginScreen());
+          case '/register':
+            return MaterialPageRoute(builder: (_) => const RegisterScreen());
           case '/training':
             return MaterialPageRoute(builder: (_) => const TrainingScreen());
           case '/manager-dashboard':
