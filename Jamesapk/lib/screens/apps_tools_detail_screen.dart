@@ -45,7 +45,6 @@ class AppsToolsDetailScreen extends StatelessWidget {
     final description = item['description']?.toString() ?? '';
     final webLink = item['webLink']?.toString() ?? '';
     final appStoreLink = item['appStoreLink']?.toString() ?? '';
-    final playStoreLink = item['playStoreLink']?.toString() ?? '';
     final link = item['link']?.toString() ?? '';
 
     return Scaffold(
@@ -152,7 +151,7 @@ class AppsToolsDetailScreen extends StatelessWidget {
                       ),
                     ],
                     const SizedBox(height: 24),
-                    if (webLink.isNotEmpty || appStoreLink.isNotEmpty || playStoreLink.isNotEmpty || link.isNotEmpty) ...[
+                    if (webLink.isNotEmpty || appStoreLink.isNotEmpty || link.isNotEmpty) ...[
                       const Text(
                         'Available On',
                         style: TextStyle(
@@ -168,8 +167,6 @@ class AppsToolsDetailScreen extends StatelessWidget {
                         _buildLinkButton(context, 'View Link', link, Icons.link),
                       if (appStoreLink.isNotEmpty)
                         _buildLinkButton(context, 'Download on App Store', appStoreLink, Icons.apple),
-                      if (playStoreLink.isNotEmpty)
-                        _buildLinkButton(context, 'Download App', playStoreLink, Icons.android),
                     ],
                     SizedBox(height: MediaQuery.of(context).padding.bottom + 40),
                   ],
