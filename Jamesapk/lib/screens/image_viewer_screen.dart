@@ -35,19 +35,19 @@ class ImageViewerScreen extends StatelessWidget {
           style: const TextStyle(color: Colors.white, fontSize: 16),
         ),
         actions: [
-        IconButton(
-          icon: const Icon(Icons.share, color: Colors.white),
-          onPressed: () => _shareImage(context),
-        ),
-        IconButton(
-          icon: const Icon(Icons.download, color: Colors.white),
-          onPressed: () => _downloadImage(context),
-        ),
-        IconButton(
-          icon: const Icon(Icons.more_vert, color: Colors.white),
-          onPressed: () => _showMoreOptions(context),
-        ),
-      ],
+          IconButton(
+            icon: const Icon(Icons.share, color: Colors.white),
+            onPressed: () => _shareImage(context),
+          ),
+          IconButton(
+            icon: const Icon(Icons.download, color: Colors.white),
+            onPressed: () => _downloadImage(context),
+          ),
+          IconButton(
+            icon: const Icon(Icons.more_vert, color: Colors.white),
+            onPressed: () => _showMoreOptions(context),
+          ),
+        ],
       ),
       body: Center(
         child: InteractiveViewer(
