@@ -197,6 +197,9 @@ class _LessonPlayerScreenState extends State<LessonPlayerScreen> {
           }
         }
 
+        // Debug: Print entire lesson data
+        print('📄 Lesson data: ${jsonEncode(lesson)}');
+        
         setState(() {
           _course = courseData;
           _lesson = lesson;
@@ -354,6 +357,13 @@ ${embedUrl.contains('vimeo.com') ? '<script src="https://player.vimeo.com/api/pl
     if (videoUrl.startsWith('/uploads/')) {
       final absoluteUrl = 'https://millerstorm.tech$videoUrl';
       print('✅ Absolute uploaded video URL: $absoluteUrl');
+      return absoluteUrl;
+    }
+    
+    // Handle relative URLs that don't start with /uploads/
+    if (!videoUrl.startsWith('http://') && !videoUrl.startsWith('https://')) {
+      final absoluteUrl = 'https://millerstorm.tech$videoUrl';
+      print('✅ Absolute relative URL: $absoluteUrl');
       return absoluteUrl;
     }
 
@@ -587,15 +597,45 @@ ${embedUrl.contains('vimeo.com') ? '<script src="https://player.vimeo.com/api/pl
   }
 
   Widget _buildVideoPlayer() {
-    if (_lesson?['videoUrl'] == null) {
+    final hasVideoUrl = _lesson?['videoUrl'] != null && _lesson!['videoUrl'].toString().trim().isNotEmpty;
+    
+    if (!hasVideoUrl) {
+      // Check if there's a video in the lesson body as a fallback
+      final body = _lesson?['body']?.toString() ?? '';
+      if (body.contains('<video') || body.contains('data-video-type')) {
+        print('🎥 Video found in lesson body, showing debug info');
+      }
       return const SizedBox.shrink();
     }
+
+    final videoUrl = _lesson!['videoUrl'].toString();
+    print('🎥 Building video player for: $videoUrl');
 
     return Container(
       height: _isFullscreen ? MediaQuery.of(context).size.height : 220,
       width: double.infinity,
       color: Colors.black,
-      child: WebViewWidget(controller: _webViewController!),
+      child: Stack(
+        children: [
+          WebViewWidget(controller: _webViewController!),
+          // Debug overlay - will only show in debug mode
+          if (false) 
+            Positioned(
+              bottom: 10,
+              left: 10,
+              child: Container(
+                padding: const EdgeInsets.all(8),
+                color: Colors.black54,
+                child: Text(
+                  'Video: $videoUrl',
+                  style: const TextStyle(color: Colors.white, fontSize: 10),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ),
+        ],
+      ),
     );
   }
 
