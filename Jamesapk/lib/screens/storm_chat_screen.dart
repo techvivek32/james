@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../services/auth_service.dart';
+import '../widgets/notification_bell.dart';
 import 'storm_chat_room_screen.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
@@ -128,8 +129,8 @@ class _StormChatScreenState extends State<StormChatScreen> {
                 padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: const [
-                    Text(
+                  children: [
+                    const Text(
                       'StormChat',
                       style: TextStyle(
                         fontSize: 28,
@@ -137,6 +138,7 @@ class _StormChatScreenState extends State<StormChatScreen> {
                         color: Color(0xFF111827),
                       ),
                     ),
+                    if (userId != null) NotificationBell(userId: userId!),
                   ],
                 ),
               ),

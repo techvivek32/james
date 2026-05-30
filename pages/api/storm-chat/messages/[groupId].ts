@@ -2,6 +2,7 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { connectMongo } from '../../../../src/lib/mongodb';
 import ChatMessage from '../../../../src/lib/models/ChatMessage';
 import ChatGroup from '../../../../src/lib/models/ChatGroup';
+import { NotificationModel } from '../../../../src/lib/models/Notification';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   await connectMongo();
@@ -113,6 +114,60 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       }
 
       const newMessage = await ChatMessage.create(messageData);
+
+      // Create notifications for group members
+      const notificationPromises: Promise<any>[] = [];
+
+      // 1. Mention notifications
+      for (const mentionedUserId of mentionedUserIds) {
+        if (mentionedUserId !== senderId) {
+          notificationPromises.push(
+            NotificationModel.create({
+              id: `notif-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+              userId: mentionedUserId,
+              type: 'stormchat_mention',
+              title: `You were mentioned by ${senderName}`,
+              message: messageType === 'text' 
+                ? (message?.substring(0, 100) || 'New message')
+                : (messageType === 'image' ? 'Shared an image' : 'New message'),
+              read: false,
+              metadata: {
+                groupId,
+                groupName: group.name,
+                messageId: newMessage._id
+              }
+            })
+          );
+        }
+      }
+
+      // 2. New message notifications for other members
+      for (const memberId of group.members) {
+        if (memberId !== senderId && !mentionedUserIds.includes(memberId)) {
+          notificationPromises.push(
+            NotificationModel.create({
+              id: `notif-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+              userId: memberId,
+              type: 'stormchat_message',
+              title: `New message in ${group.name}`,
+              message: `${senderName}: ${
+                messageType === 'text' 
+                  ? (message?.substring(0, 100) || 'New message')
+                  : (messageType === 'image' ? 'Shared an image' : 'New message')
+              }`,
+              read: false,
+              metadata: {
+                groupId,
+                groupName: group.name,
+                messageId: newMessage._id
+              }
+            })
+          );
+        }
+      }
+
+      // Wait for all notifications to be created
+      await Promise.all(notificationPromises);
 
       res.status(201).json(newMessage);
     } catch (error) {
