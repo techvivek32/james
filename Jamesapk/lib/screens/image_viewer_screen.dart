@@ -138,25 +138,34 @@ class ImageViewerScreen extends StatelessWidget {
   void _shareImage(BuildContext context) async {
     try {
       final url = imageUrl.startsWith('http') ? imageUrl : 'https://millerstorm.tech$imageUrl';
+      print('Sharing image from URL: $url');
       
       // Download image temporarily for sharing
       final response = await http.get(Uri.parse(url));
+      print('Response status: ${response.statusCode}');
+      print('Response body length: ${response.bodyBytes.length}');
+      
       if (response.statusCode == 200) {
         final tempDir = await getTemporaryDirectory();
         final fileName = 'share_image_${DateTime.now().millisecondsSinceEpoch}.jpg';
         final file = File('${tempDir.path}/$fileName');
+        print('Writing to file: ${file.path}');
         await file.writeAsBytes(response.bodyBytes);
+        print('File exists: ${await file.exists()}');
+        print('File length: ${await file.length()}');
         
-        await Share.shareXFiles(
+        final result = await Share.shareXFiles(
           [XFile(file.path)],
           text: 'Shared from StormChat',
         );
+        print('Share result: $result');
       }
-    } catch (e) {
+    } catch (e, stackTrace) {
       print('Share error: $e');
+      print('Stack trace: $stackTrace');
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Failed to share image'),
+        SnackBar(
+          content: Text('Failed to share image: ${e.toString()}'),
           backgroundColor: Colors.red,
         ),
       );
