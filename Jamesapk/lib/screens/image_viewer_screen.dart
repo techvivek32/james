@@ -7,6 +7,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:image_gallery_saver/image_gallery_saver.dart';
+import 'package:open_file/open_file.dart';
 
 class ImageViewerScreen extends StatelessWidget {
   final String imageUrl;
@@ -200,6 +201,30 @@ class ImageViewerScreen extends StatelessWidget {
     }
   }
 
+  void _editImage(BuildContext context) async {
+    try {
+      final url = imageUrl.startsWith('http') ? imageUrl : 'https://millerstorm.tech$imageUrl';
+      final response = await http.get(Uri.parse(url));
+      
+      if (response.statusCode == 200) {
+        final tempDir = await getTemporaryDirectory();
+        final fileName = 'edit_image_${DateTime.now().millisecondsSinceEpoch}.jpg';
+        final file = File('${tempDir.path}/$fileName');
+        await file.writeAsBytes(response.bodyBytes);
+        
+        await OpenFile.open(file.path);
+      }
+    } catch (e) {
+      print('Edit error: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Failed to open image for editing'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
   void _showMoreOptions(BuildContext context) {
     showModalBottomSheet(
       context: context,
@@ -208,6 +233,14 @@ class ImageViewerScreen extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
+            ListTile(
+              leading: const Icon(Icons.edit, color: Colors.white),
+              title: const Text('Edit', style: TextStyle(color: Colors.white)),
+              onTap: () {
+                Navigator.pop(context);
+                _editImage(context);
+              },
+            ),
             ListTile(
               leading: const Icon(Icons.download, color: Colors.white),
               title: const Text('Download', style: TextStyle(color: Colors.white)),
