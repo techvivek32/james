@@ -10,7 +10,7 @@ import 'package:image_gallery_saver/image_gallery_saver.dart';
 import 'package:open_file/open_file.dart';
 import 'package:image_editor_plus/image_editor_plus.dart';
 
-class ImageViewerScreen extends StatelessWidget {
+class ImageViewerScreen extends StatefulWidget {
   final String imageUrl;
   final String? fileName;
 
@@ -19,6 +19,13 @@ class ImageViewerScreen extends StatelessWidget {
     required this.imageUrl,
     this.fileName,
   }) : super(key: key);
+
+  @override
+  State<ImageViewerScreen> createState() => _ImageViewerScreenState();
+}
+
+class _ImageViewerScreenState extends State<ImageViewerScreen> {
+  final GlobalKey _shareButtonKey = GlobalKey();
 
   @override
   Widget build(BuildContext context) {
@@ -32,11 +39,12 @@ class ImageViewerScreen extends StatelessWidget {
           onPressed: () => Navigator.pop(context),
         ),
         title: Text(
-          fileName ?? 'Image',
+          widget.fileName ?? 'Image',
           style: const TextStyle(color: Colors.white, fontSize: 16),
         ),
         actions: [
           IconButton(
+            key: _shareButtonKey,
             icon: const Icon(Icons.share, color: Colors.white),
             onPressed: () => _shareImage(context),
           ),
@@ -57,7 +65,7 @@ class ImageViewerScreen extends StatelessWidget {
           minScale: 0.5,
           maxScale: 4.0,
           child: Image.network(
-            imageUrl.startsWith('http') ? imageUrl : 'https://millerstorm.tech$imageUrl',
+            widget.imageUrl.startsWith('http') ? widget.imageUrl : 'https://millerstorm.tech${widget.imageUrl}',
             fit: BoxFit.contain,
             loadingBuilder: (context, child, loadingProgress) {
               if (loadingProgress == null) return child;
@@ -114,7 +122,7 @@ class ImageViewerScreen extends StatelessWidget {
         ),
       );
 
-      final url = imageUrl.startsWith('http') ? imageUrl : 'https://millerstorm.tech$imageUrl';
+      final url = widget.imageUrl.startsWith('http') ? widget.imageUrl : 'https://millerstorm.tech${widget.imageUrl}';
       final response = await http.get(Uri.parse(url));
       final result = await ImageGallerySaver.saveImage(
         Uint8List.fromList(response.bodyBytes),
@@ -159,7 +167,7 @@ class ImageViewerScreen extends StatelessWidget {
         ),
       );
       
-      final url = imageUrl.startsWith('http') ? imageUrl : 'https://millerstorm.tech$imageUrl';
+      final url = widget.imageUrl.startsWith('http') ? widget.imageUrl : 'https://millerstorm.tech${widget.imageUrl}';
       print('Sharing image from URL: $url');
       
       // Download image temporarily for sharing
@@ -176,9 +184,16 @@ class ImageViewerScreen extends StatelessWidget {
         print('File exists: ${await file.exists()}');
         print('File length: ${await file.length()}');
         
+        // Get share position origin for iOS
+        final RenderBox? box = _shareButtonKey.currentContext?.findRenderObject() as RenderBox?;
+        final sharePositionOrigin = box == null
+            ? null
+            : box.localToGlobal(Offset.zero) & box.size;
+        
         final result = await Share.shareXFiles(
           [XFile(file.path)],
           text: 'Shared from StormChat',
+          sharePositionOrigin: sharePositionOrigin,
         );
         print('Share result: $result');
       }
@@ -196,7 +211,7 @@ class ImageViewerScreen extends StatelessWidget {
 
   void _editImage(BuildContext context) async {
     try {
-      final url = imageUrl.startsWith('http') ? imageUrl : 'https://millerstorm.tech$imageUrl';
+      final url = widget.imageUrl.startsWith('http') ? widget.imageUrl : 'https://millerstorm.tech${widget.imageUrl}';
       final response = await http.get(Uri.parse(url));
       
       if (response.statusCode == 200) {
@@ -305,9 +320,9 @@ class ImageViewerScreen extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('URL: $imageUrl', style: const TextStyle(color: Colors.white70)),
-            if (fileName != null)
-              Text('Name: $fileName', style: const TextStyle(color: Colors.white70)),
+            Text('URL: ${widget.imageUrl}', style: const TextStyle(color: Colors.white70)),
+            if (widget.fileName != null)
+              Text('Name: ${widget.fileName}', style: const TextStyle(color: Colors.white70)),
           ],
         ),
         actions: [
