@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../services/notification_service.dart' as ns;
+import '../services/notification_service.dart';
 import '../screens/storm_chat_room_screen.dart';
 import 'package:intl/intl.dart';
 
@@ -14,7 +14,7 @@ class NotificationBell extends StatefulWidget {
 }
 
 class _NotificationBellState extends State<NotificationBell> {
-  List<ns.Notification> _notifications = [];
+  List<Notification> _notifications = [];
   int _unreadCount = 0;
   bool _isLoading = true;
 
@@ -25,7 +25,7 @@ class _NotificationBellState extends State<NotificationBell> {
   }
 
   Future<void> _fetchNotifications() async {
-    final notifications = await ns.NotificationService.fetchNotifications(widget.userId);
+    final notifications = await NotificationService.fetchNotifications(widget.userId);
     setState(() {
       _notifications = notifications;
       _unreadCount = notifications.where((n) => !n.read).length;
@@ -33,9 +33,9 @@ class _NotificationBellState extends State<NotificationBell> {
     });
   }
 
-  Future<void> _handleNotificationTap(ns.Notification notification) async {
+  Future<void> _handleNotificationTap(Notification notification) async {
     // Delete the notification
-    await ns.NotificationService.deleteNotification(notification.id);
+    await NotificationService.deleteNotification(notification.id);
     
     // Refresh the list
     await _fetchNotifications();
@@ -53,9 +53,10 @@ class _NotificationBellState extends State<NotificationBell> {
             context,
             MaterialPageRoute(
               builder: (context) => StormChatRoomScreen(
-                group: {'_id': groupId, 'name': groupName ?? 'Chat'},
+                groupId: groupId,
+                groupName: groupName ?? 'Chat',
                 userId: widget.userId,
-                userRole: widget.userRole ?? 'member',
+                userRole: widget.userRole,
               ),
             ),
           );
