@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'services/notification_service.dart';
 import 'screens/splash_screen.dart';
 import 'screens/login_screen.dart';
 import 'screens/training_screen.dart';
@@ -27,10 +26,7 @@ import 'screens/manager_all_plans_screen.dart';
 import 'screens/ai_clone_chat_screen.dart';
 import 'screens/register_screen.dart';
 
-void main() async {
-  WidgetsFlutterBinding.ensureInitialized();
-  // Initialize OneSignal - you'll need to add your App ID first
-  await NotificationService.initOneSignal();
+void main() {
   runApp(const MillerStormApp());
 }
 

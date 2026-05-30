@@ -34,10 +34,12 @@ class _NotificationBellState extends State<NotificationBell> {
   }
 
   Future<void> _handleNotificationTap(Notification notification) async {
-    if (!notification.read) {
-      await NotificationService.markAsRead(notification.id);
-      await _fetchNotifications();
-    }
+    // Delete the notification
+    await NotificationService.deleteNotification(notification.id);
+    
+    // Refresh the list
+    await _fetchNotifications();
+    
     // Handle navigation based on notification type
     if (notification.type == 'stormchat_message' || notification.type == 'stormchat_mention') {
       // Get group info from metadata

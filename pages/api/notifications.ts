@@ -31,6 +31,13 @@ export default async function handler(
     return;
   }
 
-  res.setHeader("Allow", "GET, POST, PUT");
+  if (req.method === "DELETE") {
+    const { id } = req.body;
+    await NotificationModel.deleteOne({ id });
+    res.status(200).json({ success: true });
+    return;
+  }
+
+  res.setHeader("Allow", "GET, POST, PUT, DELETE");
   res.status(405).end();
 }

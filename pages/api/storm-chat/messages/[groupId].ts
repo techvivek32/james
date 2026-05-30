@@ -3,41 +3,6 @@ import { connectMongo } from '../../../../src/lib/mongodb';
 import ChatMessage from '../../../../src/lib/models/ChatMessage';
 import ChatGroup from '../../../../src/lib/models/ChatGroup';
 import { NotificationModel } from '../../../../src/lib/models/Notification';
-import fetch from 'node-fetch';
-
-// Replace with your OneSignal App ID and REST API Key
-const ONE_SIGNAL_APP_ID = process.env.ONE_SIGNAL_APP_ID || 'YOUR_ONESIGNAL_APP_ID';
-const ONE_SIGNAL_REST_API_KEY = process.env.ONE_SIGNAL_REST_API_KEY || 'YOUR_ONESIGNAL_REST_API_KEY';
-
-async function sendOneSignalNotification(
-  title: string,
-  message: string,
-  data?: any
-) {
-  try {
-    const response = await fetch('https://onesignal.com/api/v1/notifications', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Basic ${ONE_SIGNAL_REST_API_KEY}`,
-      },
-      body: JSON.stringify({
-        app_id: ONE_SIGNAL_APP_ID,
-        contents: { en: message },
-        headings: { en: title },
-        included_segments: ['Subscribed Users'], // For testing - later you can target specific users
-        data: data,
-      }),
-    });
-    
-    const result = await response.json();
-    console.log('OneSignal notification sent:', result);
-    return result;
-  } catch (error) {
-    console.error('Error sending OneSignal notification:', error);
-    return null;
-  }
-}
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   await connectMongo();
@@ -203,20 +168,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
       // Wait for all notifications to be created
       await Promise.all(notificationPromises);
-
-      // Send OneSignal push notifications (for testing - sends to all subscribed users)
-      // Later you can target specific users using OneSignal External User IDs
-      await sendOneSignalNotification(
-        mentionedUserIds.length > 0 
-          ? `You were mentioned in ${group.name}` 
-          : `New message in ${group.name}`,
-        `${senderName}: ${messageType === 'text' ? (message?.substring(0, 100) || 'New message') : (messageType === 'image' ? 'Shared an image' : 'New message')}`,
-        {
-          type: 'stormchat',
-          groupId: groupId,
-          groupName: group.name,
-        }
-      );
 
       res.status(201).json(newMessage);
     } catch (error) {
