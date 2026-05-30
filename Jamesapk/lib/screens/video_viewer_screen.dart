@@ -305,73 +305,21 @@ class _VideoViewerScreenState extends State<VideoViewerScreen> {
           ? widget.videoUrl 
           : 'https://millerstorm.tech${widget.videoUrl}';
       
-      showModalBottomSheet(
-        context: context,
-        backgroundColor: Colors.grey[900],
-        builder: (context) => SafeArea(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Padding(
-                padding: EdgeInsets.all(16),
-                child: Text(
-                  'Share Video',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
-              ListTile(
-                leading: const Icon(Icons.share, color: Colors.white),
-                title: const Text('Share via Apps', style: TextStyle(color: Colors.white)),
-                subtitle: const Text('WhatsApp, Telegram, etc.', style: TextStyle(color: Colors.white70)),
-                onTap: () async {
-                  Navigator.pop(context);
-                  try {
-                    final response = await http.get(Uri.parse(url));
-                    if (response.statusCode == 200) {
-                      final tempDir = await getTemporaryDirectory();
-                      final fileName = 'share_video_${DateTime.now().millisecondsSinceEpoch}.mp4';
-                      final file = File('${tempDir.path}/$fileName');
-                      await file.writeAsBytes(response.bodyBytes);
-                      
-                      await Share.shareXFiles(
-                        [XFile(file.path)],
-                        text: 'Shared from StormChat',
-                      );
-                    }
-                  } catch (e) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Failed to share video'),
-                        backgroundColor: Colors.red,
-                      ),
-                    );
-                  }
-                },
-              ),
-              ListTile(
-                leading: const Icon(Icons.link, color: Colors.white),
-                title: const Text('Copy Link', style: TextStyle(color: Colors.white)),
-                subtitle: const Text('Copy video URL', style: TextStyle(color: Colors.white70)),
-                onTap: () {
-                  Navigator.pop(context);
-                  Clipboard.setData(ClipboardData(text: url));
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Video URL copied to clipboard'),
-                      backgroundColor: Colors.green,
-                    ),
-                  );
-                },
-              ),
-            ],
-          ),
-        ),
-      );
+      // Download video temporarily for sharing
+      final response = await http.get(Uri.parse(url));
+      if (response.statusCode == 200) {
+        final tempDir = await getTemporaryDirectory();
+        final fileName = 'share_video_${DateTime.now().millisecondsSinceEpoch}.mp4';
+        final file = File('${tempDir.path}/$fileName');
+        await file.writeAsBytes(response.bodyBytes);
+        
+        await Share.shareXFiles(
+          [XFile(file.path)],
+          text: 'Shared from StormChat',
+        );
+      }
     } catch (e) {
+      print('Share error: $e');
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Failed to share video'),
@@ -389,14 +337,6 @@ class _VideoViewerScreenState extends State<VideoViewerScreen> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            ListTile(
-              leading: const Icon(Icons.share, color: Colors.white),
-              title: const Text('Share', style: TextStyle(color: Colors.white)),
-              onTap: () {
-                Navigator.pop(context);
-                _shareVideo(context);
-              },
-            ),
             ListTile(
               leading: const Icon(Icons.download, color: Colors.white),
               title: const Text('Download', style: TextStyle(color: Colors.white)),
