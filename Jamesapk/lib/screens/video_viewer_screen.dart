@@ -6,6 +6,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:video_player/video_player.dart';
+import 'package:image_gallery_saver/image_gallery_saver.dart';
 
 class VideoViewerScreen extends StatefulWidget {
   final String videoUrl;
@@ -220,32 +221,37 @@ class _VideoViewerScreenState extends State<VideoViewerScreen> {
         ),
       );
 
+      // Request permissions
       if (Platform.isAndroid) {
         PermissionStatus status;
-        
         status = await Permission.photos.status;
         if (!status.isGranted) {
           status = await Permission.photos.request();
         }
-        
         if (!status.isGranted) {
           status = await Permission.storage.status;
           if (!status.isGranted) {
             status = await Permission.storage.request();
           }
         }
-        
-        if (!status.isGranted) {
-          status = await Permission.manageExternalStorage.status;
-          if (!status.isGranted) {
-            status = await Permission.manageExternalStorage.request();
-          }
-        }
-        
         if (!status.isGranted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
               content: Text('Storage permission required to download'),
+              backgroundColor: Colors.red,
+            ),
+          );
+          return;
+        }
+      } else if (Platform.isIOS) {
+        PermissionStatus status = await Permission.photos.status;
+        if (!status.isGranted) {
+          status = await Permission.photos.request();
+        }
+        if (!status.isGranted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Photos permission required to download'),
               backgroundColor: Colors.red,
             ),
           );
@@ -258,47 +264,26 @@ class _VideoViewerScreenState extends State<VideoViewerScreen> {
           : 'https://millerstorm.tech${widget.videoUrl}';
       final response = await http.get(Uri.parse(url));
       
-      if (response.statusCode == 200) {
-        Directory? directory;
-        
-        if (Platform.isAndroid) {
-          final paths = [
-            '/storage/emulated/0/Download',
-            '/storage/emulated/0/Downloads',
-            '/sdcard/Download',
-            '/sdcard/Downloads',
-          ];
-          
-          for (final path in paths) {
-            final dir = Directory(path);
-            if (await dir.exists()) {
-              directory = dir;
-              break;
-            }
-          }
-          
-          if (directory == null) {
-            directory = await getExternalStorageDirectory();
-          }
-        } else {
-          directory = await getApplicationDocumentsDirectory();
-        }
-        
-        final fileName = 'StormChat_${DateTime.now().millisecondsSinceEpoch}.mp4';
-        final file = File('${directory!.path}/$fileName');
-        
-        await file.writeAsBytes(response.bodyBytes);
-        
+      // Save to temp file first
+      final tempDir = await getTemporaryDirectory();
+      final file = File('${tempDir.path}/StormChat_${DateTime.now().millisecondsSinceEpoch}.mp4');
+      await file.writeAsBytes(response.bodyBytes);
+      
+      final result = await ImageGallerySaver.saveFile(file.path);
+      
+      if (result['isSuccess']) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Video saved to ${Platform.isAndroid ? "Downloads" : "Documents"} folder'),
+          const SnackBar(
+            content: Text('Video saved to Gallery'),
             backgroundColor: Colors.green,
-            duration: const Duration(seconds: 3),
-            action: SnackBarAction(
-              label: 'OK',
-              textColor: Colors.white,
-              onPressed: () {},
-            ),
+            duration: Duration(seconds: 3),
+          ),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Failed to save video to Gallery'),
+            backgroundColor: Colors.red,
           ),
         );
       }

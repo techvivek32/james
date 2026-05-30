@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'dart:io';
+import 'dart:typed_data';
 import 'package:http/http.dart' as http;
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'package:image_gallery_saver/image_gallery_saver.dart';
 
 class ImageViewerScreen extends StatelessWidget {
   final String imageUrl;
@@ -96,34 +98,19 @@ class ImageViewerScreen extends StatelessWidget {
         ),
       );
 
-      // Request storage permission based on Android version
+      // Request permissions
       if (Platform.isAndroid) {
-        // For Android 13+ (API 33+), we need photos permission
-        // For Android 10-12, we need storage permission
         PermissionStatus status;
-        
-        // Try photos permission first (Android 13+)
         status = await Permission.photos.status;
         if (!status.isGranted) {
           status = await Permission.photos.request();
         }
-        
-        // If photos permission not available, try storage (Android 10-12)
         if (!status.isGranted) {
           status = await Permission.storage.status;
           if (!status.isGranted) {
             status = await Permission.storage.request();
           }
         }
-        
-        // If still not granted, try manageExternalStorage for Android 11+
-        if (!status.isGranted) {
-          status = await Permission.manageExternalStorage.status;
-          if (!status.isGranted) {
-            status = await Permission.manageExternalStorage.request();
-          }
-        }
-        
         if (!status.isGranted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
@@ -133,55 +120,43 @@ class ImageViewerScreen extends StatelessWidget {
           );
           return;
         }
+      } else if (Platform.isIOS) {
+        PermissionStatus status = await Permission.photos.status;
+        if (!status.isGranted) {
+          status = await Permission.photos.request();
+        }
+        if (!status.isGranted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Photos permission required to download'),
+              backgroundColor: Colors.red,
+            ),
+          );
+          return;
+        }
       }
 
       final url = imageUrl.startsWith('http') ? imageUrl : 'https://millerstorm.tech$imageUrl';
       final response = await http.get(Uri.parse(url));
+      final result = await ImageGallerySaver.saveImage(
+        Uint8List.fromList(response.bodyBytes),
+        quality: 100,
+        name: 'StormChat_${DateTime.now().millisecondsSinceEpoch}',
+      );
       
-      if (response.statusCode == 200) {
-        Directory? directory;
-        
-        if (Platform.isAndroid) {
-          // Try multiple paths for Android
-          final paths = [
-            '/storage/emulated/0/Download',
-            '/storage/emulated/0/Downloads',
-            '/sdcard/Download',
-            '/sdcard/Downloads',
-          ];
-          
-          for (final path in paths) {
-            final dir = Directory(path);
-            if (await dir.exists()) {
-              directory = dir;
-              break;
-            }
-          }
-          
-          // Fallback to external storage directory
-          if (directory == null) {
-            directory = await getExternalStorageDirectory();
-          }
-        } else {
-          // Save to Documents on iOS
-          directory = await getApplicationDocumentsDirectory();
-        }
-        
-        final fileName = 'StormChat_${DateTime.now().millisecondsSinceEpoch}.jpg';
-        final file = File('${directory!.path}/$fileName');
-        
-        await file.writeAsBytes(response.bodyBytes);
-        
+      if (result['isSuccess']) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Image saved to ${Platform.isAndroid ? "Downloads" : "Documents"} folder'),
+          const SnackBar(
+            content: Text('Image saved to Gallery'),
             backgroundColor: Colors.green,
-            duration: const Duration(seconds: 3),
-            action: SnackBarAction(
-              label: 'OK',
-              textColor: Colors.white,
-              onPressed: () {},
-            ),
+            duration: Duration(seconds: 3),
+          ),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Failed to save image to Gallery'),
+            backgroundColor: Colors.red,
           ),
         );
       }
