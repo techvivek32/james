@@ -93,6 +93,20 @@ class ImageViewerScreen extends StatelessWidget {
 
   void _downloadImage(BuildContext context) async {
     try {
+      // Request storage permission
+      if (Theme.of(context).platform == TargetPlatform.android) {
+        final status = await Permission.storage.request();
+        if (!status.isGranted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Storage permission required to download images'),
+              backgroundColor: Colors.red,
+            ),
+          );
+          return;
+        }
+      }
+
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Downloading image...'),
