@@ -793,13 +793,17 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
                               ],
                             ),
                           )
-                        : ListView.builder(
-                            controller: _scrollController,
-                            padding: const EdgeInsets.all(16),
-                            itemCount: messages.length,
-                            itemBuilder: (context, index) {
-                              return _buildMessage(messages[index], index);
-                            },
+                        : RefreshIndicator(
+                            color: const Color(0xFFCB0002),
+                            onRefresh: _fetchMessages,
+                            child: ListView.builder(
+                              controller: _scrollController,
+                              padding: const EdgeInsets.all(16),
+                              itemCount: messages.length,
+                              itemBuilder: (context, index) {
+                                return _buildMessage(messages[index], index);
+                              },
+                            ),
                           ),
               ),
           

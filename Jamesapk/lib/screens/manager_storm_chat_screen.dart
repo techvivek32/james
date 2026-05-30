@@ -160,7 +160,11 @@ class _ManagerStormChatScreenState extends State<ManagerStormChatScreen> {
   Widget _buildGroupsList() {
     return RefreshIndicator(
       color: const Color(0xFFCB0002),
-      onRefresh: _fetchGroups,
+      onRefresh: () async {
+        setState(() => isLoading = true);
+        await _fetchGroups();
+        await _fetchUnreadCounts();
+      },
       child: ListView.builder(
         padding: const EdgeInsets.all(16),
         itemCount: groups.length,
