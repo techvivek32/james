@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'dart:convert';
 import 'dart:typed_data';
 import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import '../services/auth_service.dart';
 import 'course_detail_screen.dart';
 
@@ -25,10 +27,13 @@ class _CoursesScreenState extends State<CoursesScreen> with SingleTickerProvider
   List<dynamic> _myPlaylists = [];
   List<dynamic> _assignedPlaylists = [];
   bool _isLoading = true;
+  bool _hasCachedData = false;
   late TabController _tabController;
   String? _userId;
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = '';
+  static const String _cacheKey = 'courses_cache';
+  static const String _cacheTimeKey = 'courses_cache_time';
 
   @override
   void initState() {
@@ -47,11 +52,58 @@ class _CoursesScreenState extends State<CoursesScreen> with SingleTickerProvider
   Future<void> _loadData() async {
     final user = await AuthService.getStoredUser();
     _userId = user?['id'] ?? user?['_id'] ?? '';
+    
+    // First load cached data immediately (fast!)
+    await _loadCachedCourses();
+    
+    // Then fetch fresh data in background
     await Future.wait([
       _fetchCourses(),
       _fetchMyPlaylists(),
       _fetchAssignedPlaylists(),
     ]);
+  }
+
+  Future<void> _loadCachedCourses() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final cachedJson = prefs.getString(_cacheKey);
+      final cacheTime = prefs.getInt(_cacheTimeKey);
+      
+      if (cachedJson != null && cacheTime != null) {
+        // Check if cache is less than 1 hour old
+        if (DateTime.now().millisecondsSinceEpoch - cacheTime < 3600000) {
+          final data = jsonDecode(cachedJson);
+          List<dynamic> courses = data is List ? data : [];
+          courses.sort((a, b) {
+            final orderA = a['order'] ?? 999;
+            final orderB = b['order'] ?? 999;
+            return orderA.compareTo(orderB);
+          });
+          
+          if (mounted) {
+            setState(() {
+              _courses = courses;
+              _filteredCourses = courses;
+              _hasCachedData = true;
+              _isLoading = false;
+            });
+          }
+        }
+      }
+    } catch (e) {
+      print('Error loading cached courses: $e');
+    }
+  }
+
+  Future<void> _saveCachedCourses(List<dynamic> courses) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(_cacheKey, jsonEncode(courses));
+      await prefs.setInt(_cacheTimeKey, DateTime.now().millisecondsSinceEpoch);
+    } catch (e) {
+      print('Error saving cached courses: $e');
+    }
   }
 
   Future<void> _fetchCourses() async {
@@ -73,17 +125,28 @@ class _CoursesScreenState extends State<CoursesScreen> with SingleTickerProvider
           return orderA.compareTo(orderB);
         });
         
-        setState(() {
-          _courses = courses;
-          _filteredCourses = courses;
-          _isLoading = false;
-        });
-      } else {
-        setState(() => _isLoading = false);
+        // Save to cache
+        await _saveCachedCourses(courses);
+        
+        if (mounted) {
+          setState(() {
+            _courses = courses;
+            _filteredCourses = courses;
+            _isLoading = false;
+          });
+        }
+      } else if (!_hasCachedData) {
+        if (mounted) {
+          setState(() => _isLoading = false);
+        }
       }
     } catch (e) {
       print('Error fetching courses: $e');
-      setState(() => _isLoading = false);
+      if (!_hasCachedData) {
+        if (mounted) {
+          setState(() => _isLoading = false);
+        }
+      }
     }
   }
 
@@ -583,13 +646,23 @@ class _CoursesScreenState extends State<CoursesScreen> with SingleTickerProvider
                                   );
                                 },
                               )
-                            : Image.network(
-                                coverImageUrl,
+                            : CachedNetworkImage(
+                                imageUrl: coverImageUrl,
                                 width: double.infinity,
                                 height: 160,
                                 fit: BoxFit.cover,
-                                cacheWidth: 400,
-                                errorBuilder: (context, error, stackTrace) {
+                                memCacheWidth: 400,
+                                placeholder: (context, url) => Container(
+                                  decoration: BoxDecoration(
+                                    gradient: LinearGradient(
+                                      colors: [_primary.withOpacity(0.6), _primary.withOpacity(0.4)],
+                                      begin: Alignment.topLeft,
+                                      end: Alignment.bottomRight,
+                                    ),
+                                  ),
+                                  child: Center(child: CircularProgressIndicator(color: _white, strokeWidth: 2)),
+                                ),
+                                errorWidget: (context, url, error) {
                                   return Container(
                                     decoration: BoxDecoration(
                                       gradient: LinearGradient(
