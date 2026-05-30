@@ -36,12 +36,12 @@ class ImageViewerScreen extends StatelessWidget {
         ),
         actions: [
           IconButton(
-            icon: const Icon(Icons.download, color: Colors.white),
-            onPressed: () => _downloadImage(context),
-          ),
-          IconButton(
             icon: const Icon(Icons.share, color: Colors.white),
             onPressed: () => _shareImage(context),
+          ),
+          IconButton(
+            icon: const Icon(Icons.download, color: Colors.white),
+            onPressed: () => _downloadImage(context),
           ),
           IconButton(
             icon: const Icon(Icons.more_vert, color: Colors.white),
