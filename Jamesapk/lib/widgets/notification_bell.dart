@@ -53,10 +53,9 @@ class _NotificationBellState extends State<NotificationBell> {
             context,
             MaterialPageRoute(
               builder: (context) => StormChatRoomScreen(
-                id: groupId,
-                name: groupName ?? 'Chat',
+                group: {'id': groupId, 'name': groupName ?? 'Chat'},
                 userId: widget.userId,
-                userRole: widget.userRole,
+                userRole: widget.userRole ?? '',
               ),
             ),
           );
