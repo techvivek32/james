@@ -211,11 +211,19 @@ class _ImageViewerScreenState extends State<ImageViewerScreen> {
 
   void _editImage(BuildContext context) async {
     try {
+      // Show loading indicator while downloading image
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Preparing image...'),
+          backgroundColor: Colors.blue,
+        ),
+      );
+
       final url = widget.imageUrl.startsWith('http') ? widget.imageUrl : 'https://millerstorm.tech${widget.imageUrl}';
       final response = await http.get(Uri.parse(url));
       
       if (response.statusCode == 200) {
-        // Open image editor
+        // Open image editor with all basic features enabled
         final editedImage = await Navigator.push(
           context,
           MaterialPageRoute(
@@ -227,6 +235,14 @@ class _ImageViewerScreenState extends State<ImageViewerScreen> {
         
         // If user saved the edited image
         if (editedImage != null) {
+          // Show saving indicator
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Saving edited image...'),
+              backgroundColor: Colors.blue,
+            ),
+          );
+
           // Save edited image to gallery
           final result = await ImageGallerySaver.saveImage(
             editedImage,
@@ -237,7 +253,7 @@ class _ImageViewerScreenState extends State<ImageViewerScreen> {
           if (result['isSuccess']) {
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(
-                content: Text('Edited image saved to Gallery'),
+                content: Text('Edited image saved to Gallery!'),
                 backgroundColor: Colors.green,
                 duration: Duration(seconds: 3),
               ),
@@ -251,6 +267,13 @@ class _ImageViewerScreenState extends State<ImageViewerScreen> {
             );
           }
         }
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Failed to load image for editing'),
+            backgroundColor: Colors.red,
+          ),
+        );
       }
     } catch (e, stackTrace) {
       print('Edit error: $e');
