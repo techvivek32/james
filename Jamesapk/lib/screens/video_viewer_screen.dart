@@ -221,44 +221,6 @@ class _VideoViewerScreenState extends State<VideoViewerScreen> {
         ),
       );
 
-      // Request permissions
-      if (Platform.isAndroid) {
-        PermissionStatus status;
-        status = await Permission.photos.status;
-        if (!status.isGranted) {
-          status = await Permission.photos.request();
-        }
-        if (!status.isGranted) {
-          status = await Permission.storage.status;
-          if (!status.isGranted) {
-            status = await Permission.storage.request();
-          }
-        }
-        if (!status.isGranted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Storage permission required to download'),
-              backgroundColor: Colors.red,
-            ),
-          );
-          return;
-        }
-      } else if (Platform.isIOS) {
-        PermissionStatus status = await Permission.photos.status;
-        if (!status.isGranted) {
-          status = await Permission.photos.request();
-        }
-        if (!status.isGranted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Photos permission required to download'),
-              backgroundColor: Colors.red,
-            ),
-          );
-          return;
-        }
-      }
-
       final url = widget.videoUrl.startsWith('http') 
           ? widget.videoUrl 
           : 'https://millerstorm.tech${widget.videoUrl}';

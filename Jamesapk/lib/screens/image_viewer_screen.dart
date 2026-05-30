@@ -99,44 +99,6 @@ class ImageViewerScreen extends StatelessWidget {
         ),
       );
 
-      // Request permissions
-      if (Platform.isAndroid) {
-        PermissionStatus status;
-        status = await Permission.photos.status;
-        if (!status.isGranted) {
-          status = await Permission.photos.request();
-        }
-        if (!status.isGranted) {
-          status = await Permission.storage.status;
-          if (!status.isGranted) {
-            status = await Permission.storage.request();
-          }
-        }
-        if (!status.isGranted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Storage permission required to download'),
-              backgroundColor: Colors.red,
-            ),
-          );
-          return;
-        }
-      } else if (Platform.isIOS) {
-        PermissionStatus status = await Permission.photos.status;
-        if (!status.isGranted) {
-          status = await Permission.photos.request();
-        }
-        if (!status.isGranted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Photos permission required to download'),
-              backgroundColor: Colors.red,
-            ),
-          );
-          return;
-        }
-      }
-
       final url = imageUrl.startsWith('http') ? imageUrl : 'https://millerstorm.tech$imageUrl';
       final response = await http.get(Uri.parse(url));
       final result = await ImageGallerySaver.saveImage(
