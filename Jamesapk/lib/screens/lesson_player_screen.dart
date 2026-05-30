@@ -8,6 +8,7 @@ import 'package:webview_flutter_wkwebview/webview_flutter_wkwebview.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:flutter_html/flutter_html.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../services/auth_service.dart';
 
 class LessonPlayerScreen extends StatefulWidget {
@@ -45,6 +46,8 @@ class _LessonPlayerScreenState extends State<LessonPlayerScreen> {
   int _currentLessonIndex = 0;
   bool _isLoading = true;
   bool _isFullscreen = false;
+  bool _videoError = false;
+  bool _videoLoading = true;
   WebViewController? _webViewController;
   
   // Quiz state
@@ -70,6 +73,7 @@ class _LessonPlayerScreenState extends State<LessonPlayerScreen> {
       params = WebKitWebViewControllerCreationParams(
         allowsInlineMediaPlayback: true,
         mediaTypesRequiringUserAction: const <PlaybackMediaTypes>{},
+        allowsPictureInPictureMediaPlayback: true,
       );
     } else {
       params = const PlatformWebViewControllerCreationParams();
@@ -78,6 +82,23 @@ class _LessonPlayerScreenState extends State<LessonPlayerScreen> {
     _webViewController = WebViewController.fromPlatformCreationParams(params)
       ..setJavaScriptMode(JavaScriptMode.unrestricted)
       ..setBackgroundColor(Colors.black)
+      ..setNavigationDelegate(
+        NavigationDelegate(
+          onPageStarted: (_) {
+            if (mounted) setState(() => _videoLoading = true);
+          },
+          onPageFinished: (_) {
+            if (mounted) setState(() => _videoLoading = false);
+          },
+          onWebResourceError: (error) {
+            print('🎥 WebView error: ${error.description}');
+            if (mounted) setState(() {
+              _videoLoading = false;
+              _videoError = true;
+            });
+          },
+        ),
+      )
       ..addJavaScriptChannel(
         'VideoEndChannel',
         onMessageReceived: (JavaScriptMessage message) {
@@ -87,7 +108,7 @@ class _LessonPlayerScreenState extends State<LessonPlayerScreen> {
       );
     
     // Set Android-specific settings if on Android
-    if (WebViewPlatform.instance is AndroidWebViewPlatform) {
+    if (WebViewPlatform.instance is AndroidWebViewController) {
       final androidController = _webViewController!.platform as AndroidWebViewController;
       androidController.setMediaPlaybackRequiresUserGesture(false);
     }
@@ -173,9 +194,6 @@ class _LessonPlayerScreenState extends State<LessonPlayerScreen> {
         if (widget.playlistModules != null) {
           print('🎵 Playlist mode: showing ${lessons.length} modules');
         }
-        for (var i = 0; i < lessons.length; i++) {
-          print('  [$i] ${lessons[i]['title']} - isQuiz: ${lessons[i]['isQuiz']} - folderId: ${lessons[i]['folderId']}');
-        }
         
         final currentIndex = lessons.indexWhere((page) => page['id'] == widget.lessonId);
         final lesson = currentIndex >= 0 ? lessons[currentIndex] : null;
@@ -197,9 +215,6 @@ class _LessonPlayerScreenState extends State<LessonPlayerScreen> {
           }
         }
 
-        // Debug: Print entire lesson data
-        print('📄 Lesson data: ${jsonEncode(lesson)}');
-        
         setState(() {
           _course = courseData;
           _lesson = lesson;
@@ -207,6 +222,8 @@ class _LessonPlayerScreenState extends State<LessonPlayerScreen> {
           _currentLessonIndex = currentIndex >= 0 ? currentIndex : 0;
           _savedQuizResults = savedQuizResults;
           _isLoading = false;
+          _videoError = false;
+          _videoLoading = true;
           
           // If this is a quiz, check if user already completed it
           if (lesson?['isQuiz'] == true) {
@@ -225,7 +242,7 @@ class _LessonPlayerScreenState extends State<LessonPlayerScreen> {
         });
 
         // Load video into WebView if available
-        if (lesson != null && lesson['videoUrl'] != null) {
+        if (lesson != null && lesson['videoUrl'] != null && lesson['videoUrl'].toString().trim().isNotEmpty) {
           final embedUrl = _getEmbedUrl(lesson['videoUrl']);
           _webViewController?.loadHtmlString(
             _buildVideoHtml(embedUrl),
@@ -234,32 +251,14 @@ class _LessonPlayerScreenState extends State<LessonPlayerScreen> {
         }
         
         print('✅ Lesson loaded: ${lesson?['title']}');
-        print('🎥 Video URL: ${lesson?['videoUrl']}');
-        print('📝 Is Quiz: ${lesson?['isQuiz']}');
-        print('📍 Current index: $currentIndex of ${lessons.length}');
-        if (widget.playlistModules != null) {
-          print('🎵 Playlist: ${widget.playlistModules!.length} total modules');
-        }
-        if (currentIndex < lessons.length - 1) {
-          print('➡️ Next will be: ${lessons[currentIndex + 1]['title']} (isQuiz: ${lessons[currentIndex + 1]['isQuiz']})');
-        }
-        
-        // Video player is handled by _IsolatedVideoPlayer widget — no init needed.
       } else {
-        setState(() {
-          _isLoading = false;
-        });
+        setState(() => _isLoading = false);
       }
     } catch (e) {
       print('❌ Error fetching lesson: $e');
-      setState(() {
-        _isLoading = false;
-      });
+      setState(() => _isLoading = false);
     }
   }
-
-  // Video player is handled by _IsolatedVideoPlayer widget below.
-  // No manual initialization needed here.
 
   String _buildVideoHtml(String embedUrl) {
     final isDirectVideo = embedUrl.contains('/uploads/') || 
@@ -280,26 +279,39 @@ class _LessonPlayerScreenState extends State<LessonPlayerScreen> {
   * { margin: 0; padding: 0; box-sizing: border-box; }
   html, body { width: 100%; height: 100%; background: #000; overflow: hidden; display: flex; align-items: center; justify-content: center; }
   video { width: 100%; height: 100%; object-fit: contain; }
+  .error { color: white; text-align: center; padding: 20px; font-family: system-ui; }
+  .retry { background: #CB0002; color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; margin-top: 10px; font-size: 16px; }
 </style>
 </head>
 <body>
-<video id="player" controls autoplay playsinline webkit-playsinline x-webkit-airplay="allow" style="width:100%;height:100%;object-fit:contain;">
-  <source src="$embedUrl" type="video/mp4">
-  Your browser does not support the video tag.
-</video>
+<div id="container">
+  <video id="player" controls playsinline webkit-playsinline x-webkit-airplay="allow" preload="auto">
+    <source src="$embedUrl" type="video/mp4">
+    <div class="error">
+      <p>Video couldn't load</p>
+      <button class="retry" onclick="location.reload()">Retry</button>
+    </div>
+  </video>
+</div>
 <script>
   var video = document.getElementById('player');
   video.setAttribute('playsinline', '');
   video.setAttribute('webkit-playsinline', '');
-  video.muted = false;
-  video.play().catch(function(e) {
-    console.log('Autoplay blocked:', e);
-  });
+  
+  video.onerror = function() {
+    console.log('Video error');
+  };
+  
   video.onended = function() {
     if (window.VideoEndChannel) {
       window.VideoEndChannel.postMessage('ended');
     }
   };
+  
+  // Try to autoplay, but handle user gesture requirement
+  video.play().catch(function(e) {
+    console.log('Autoplay blocked, waiting for user interaction');
+  });
 </script>
 </body>
 </html>''';
@@ -376,8 +388,8 @@ ${embedUrl.contains('vimeo.com') ? '<script src="https://player.vimeo.com/api/pl
         final hash = vimeoMatch.group(2);
         // Use Vimeo player with playsinline enabled
         final embedUrl = hash != null 
-          ? 'https://player.vimeo.com/video/$videoId?h=$hash&autoplay=1&playsinline=1&controls=1&muted=0&autopause=0'
-          : 'https://player.vimeo.com/video/$videoId?autoplay=1&playsinline=1&controls=1&muted=0&autopause=0';
+          ? 'https://player.vimeo.com/video/$videoId?h=$hash&autoplay=1&playsinline=1&controls=1&muted=0&autopause=0&title=0&byline=0&portrait=0'
+          : 'https://player.vimeo.com/video/$videoId?autoplay=1&playsinline=1&controls=1&muted=0&autopause=0&title=0&byline=0&portrait=0';
         print('✅ Vimeo embed URL: $embedUrl');
         return embedUrl;
       }
@@ -385,7 +397,7 @@ ${embedUrl.contains('vimeo.com') ? '<script src="https://player.vimeo.com/api/pl
       final youtubeMatch = RegExp(r'(?:youtube\.com/watch\?v=|youtu\.be/|youtube\.com/embed/)([^&\n?#]+)').firstMatch(videoUrl);
       if (youtubeMatch != null) {
         final videoId = youtubeMatch.group(1);
-        final embedUrl = 'https://www.youtube.com/embed/$videoId?playsinline=1&controls=1&rel=0&autoplay=1';
+        final embedUrl = 'https://www.youtube.com/embed/$videoId?playsinline=1&controls=1&rel=0&autoplay=1&modestbranding=1';
         print('✅ YouTube embed URL: $embedUrl');
         return embedUrl;
       }
@@ -393,7 +405,7 @@ ${embedUrl.contains('vimeo.com') ? '<script src="https://player.vimeo.com/api/pl
       final loomMatch = RegExp(r'loom\.com/share/([a-zA-Z0-9]+)').firstMatch(videoUrl);
       if (loomMatch != null) {
         final videoId = loomMatch.group(1);
-        final embedUrl = 'https://www.loom.com/embed/$videoId?autoplay=1&playsinline=1';
+        final embedUrl = 'https://www.loom.com/embed/$videoId?autoplay=1&playsinline=1&hide_owner=true&hide_share=true&hide_title=true';
         print('✅ Loom embed URL: $embedUrl');
         return embedUrl;
       }
@@ -432,7 +444,7 @@ ${embedUrl.contains('vimeo.com') ? '<script src="https://player.vimeo.com/api/pl
   Future<void> _submitQuiz() async {
     if (_lesson == null || _lesson!['quizQuestions'] == null) return;
     
-    final questions = _lesson!['quizQuestions'] as List<dynamic>;
+    final questions = _lesson!['quizQuestions'] as List<dynamic>? ?? [];
     int correct = 0;
     
     for (var q in questions) {
@@ -552,7 +564,7 @@ ${embedUrl.contains('vimeo.com') ? '<script src="https://player.vimeo.com/api/pl
         final bots = jsonDecode(response.body) as List<dynamic>;
         final publishedBot = bots.firstWhere(
           (bot) => bot['status'] == 'published' && 
-                   (bot['selectedCourses'] as List<dynamic>?)?.contains(widget.courseId) == true,
+                  (bot['selectedCourses'] as List<dynamic>?)?.contains(widget.courseId) == true,
           orElse: () => null,
         );
         
@@ -561,9 +573,6 @@ ${embedUrl.contains('vimeo.com') ? '<script src="https://player.vimeo.com/api/pl
         });
         
         print('🤖 Course bot loaded: ${publishedBot != null}');
-        if (publishedBot != null) {
-          print('🤖 Bot selectedPages: ${publishedBot['selectedPages']}');
-        }
       }
     } catch (e) {
       print('❌ Error fetching course bot: $e');
@@ -600,16 +609,8 @@ ${embedUrl.contains('vimeo.com') ? '<script src="https://player.vimeo.com/api/pl
     final hasVideoUrl = _lesson?['videoUrl'] != null && _lesson!['videoUrl'].toString().trim().isNotEmpty;
     
     if (!hasVideoUrl) {
-      // Check if there's a video in the lesson body as a fallback
-      final body = _lesson?['body']?.toString() ?? '';
-      if (body.contains('<video') || body.contains('data-video-type')) {
-        print('🎥 Video found in lesson body, showing debug info');
-      }
       return const SizedBox.shrink();
     }
-
-    final videoUrl = _lesson!['videoUrl'].toString();
-    print('🎥 Building video player for: $videoUrl');
 
     return Container(
       height: _isFullscreen ? MediaQuery.of(context).size.height : 220,
@@ -618,19 +619,73 @@ ${embedUrl.contains('vimeo.com') ? '<script src="https://player.vimeo.com/api/pl
       child: Stack(
         children: [
           WebViewWidget(controller: _webViewController!),
-          // Debug overlay - will only show in debug mode
-          if (false) 
+          
+          // Loading indicator
+          if (_videoLoading)
+            Container(
+              color: Colors.black,
+              child: const Center(
+                child: CircularProgressIndicator(color: Colors.white),
+              ),
+            ),
+          
+          // Error state
+          if (_videoError)
+            Container(
+              color: Colors.black,
+              padding: const EdgeInsets.all(20),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Icon(Icons.error_outline, color: Colors.white, size: 48),
+                  const SizedBox(height: 12),
+                  const Text(
+                    'Video couldn\'t load',
+                    style: TextStyle(color: Colors.white, fontSize: 16),
+                  ),
+                  const SizedBox(height: 16),
+                  ElevatedButton(
+                    onPressed: () {
+                      setState(() {
+                        _videoError = false;
+                        _videoLoading = true;
+                      });
+                      if (_lesson != null && _lesson!['videoUrl'] != null) {
+                        final embedUrl = _getEmbedUrl(_lesson!['videoUrl']);
+                        _webViewController?.loadHtmlString(
+                          _buildVideoHtml(embedUrl),
+                          baseUrl: 'https://millerstorm.tech',
+                        );
+                      }
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: _primary,
+                      foregroundColor: Colors.white,
+                    ),
+                    child: const Text('Retry'),
+                  ),
+                ],
+              ),
+            ),
+          
+          // Fullscreen button
+          if (!_isFullscreen && !_videoLoading && !_videoError)
             Positioned(
-              bottom: 10,
-              left: 10,
-              child: Container(
-                padding: const EdgeInsets.all(8),
-                color: Colors.black54,
-                child: Text(
-                  'Video: $videoUrl',
-                  style: const TextStyle(color: Colors.white, fontSize: 10),
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
+              top: 8,
+              right: 8,
+              child: GestureDetector(
+                onTap: _toggleFullscreen,
+                child: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.black54,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: const Icon(
+                    Icons.fullscreen,
+                    color: Colors.white,
+                    size: 24,
+                  ),
                 ),
               ),
             ),
@@ -644,7 +699,7 @@ ${embedUrl.contains('vimeo.com') ? '<script src="https://player.vimeo.com/api/pl
       return const SizedBox();
     }
 
-    final questions = _lesson!['quizQuestions'] as List<dynamic>;
+    final questions = _lesson!['quizQuestions'] as List<dynamic>? ?? [];
     
     return Container(
       width: double.infinity,
@@ -665,7 +720,7 @@ ${embedUrl.contains('vimeo.com') ? '<script src="https://player.vimeo.com/api/pl
               margin: const EdgeInsets.only(bottom: 16),
               decoration: BoxDecoration(
                 color: _quizScore!['correct'] == _quizScore!['total']
-                    ? const Color(0xFFD1FAE5)
+                    ? const Color(0xFFD1FAEC)
                     : const Color(0xFFFEF3C7),
                 borderRadius: BorderRadius.circular(8),
               ),
@@ -730,7 +785,7 @@ ${embedUrl.contains('vimeo.com') ? '<script src="https://player.vimeo.com/api/pl
                     if (showResult) {
                       if (isCorrect) {
                         borderColor = const Color(0xFF10B981);
-                        bgColor = const Color(0xFFD1FAE5);
+                        bgColor = const Color(0xFFD1FAEC);
                       } else if (isSelected) {
                         borderColor = const Color(0xFFEF4444);
                         bgColor = const Color(0xFFFEE2E2);
@@ -838,7 +893,7 @@ ${embedUrl.contains('vimeo.com') ? '<script src="https://player.vimeo.com/api/pl
     // Fix image URLs to be absolute
     htmlContent = htmlContent.replaceAll(
       RegExp(r'<img\s+src="/uploads/'),
-      '<img src="https://millerstorm.tech/uploads/'
+      '<img src="https://millerstorm.tech/uploads/',
     );
     
     // Check if content is empty after cleanup
@@ -961,7 +1016,7 @@ ${embedUrl.contains('vimeo.com') ? '<script src="https://player.vimeo.com/api/pl
         },
         extensions: [
           TagExtension(
-            tagsToExtend: {"img"},
+            tagsToExtend: const {"img"},
             builder: (extensionContext) {
               final src = extensionContext.attributes['src'] ?? '';
               print('🖼️ Image src: $src');
@@ -978,6 +1033,8 @@ ${embedUrl.contains('vimeo.com') ? '<script src="https://player.vimeo.com/api/pl
                   child: CachedNetworkImage(
                     imageUrl: src,
                     fit: BoxFit.cover,
+                    cacheWidth: 800,
+                    maxWidthDiskCache: 800,
                     placeholder: (context, url) {
                       print('⏳ Loading image: $url');
                       return Container(
@@ -997,16 +1054,11 @@ ${embedUrl.contains('vimeo.com') ? '<script src="https://player.vimeo.com/api/pl
                         child: Column(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            Icon(Icons.image_not_supported, color: _textLight, size: 48),
+                            const Icon(Icons.image_not_supported, color: _textLight, size: 48),
                             const SizedBox(height: 8),
-                            Text(
+                            const Text(
                               'Image not available',
                               style: TextStyle(color: _textLight, fontSize: 14),
-                            ),
-                            Text(
-                              url,
-                              style: TextStyle(color: _textLight, fontSize: 10),
-                              textAlign: TextAlign.center,
                             ),
                           ],
                         ),
@@ -1131,7 +1183,7 @@ ${embedUrl.contains('vimeo.com') ? '<script src="https://player.vimeo.com/api/pl
 
   void _stopVideo() {
     _webViewController?.runJavaScript(
-      'try { var v = document.querySelector("video"); if(v){ v.pause(); v.src=""; } var i = document.querySelector("iframe"); if(i){ i.src=""; } } catch(e){}'
+      'try { var v = document.querySelector("video"); if(v){ v.pause(); v.src=""; } var i = document.querySelector("iframe"); if(i){ i.src=""; } } catch(e){}',
     );
   }
 
@@ -1193,7 +1245,7 @@ ${embedUrl.contains('vimeo.com') ? '<script src="https://player.vimeo.com/api/pl
                 Column(
                   children: [
                     // Video Player (only if not quiz and has video)
-                    if (_lesson?['isQuiz'] != true && _lesson?['videoUrl'] != null)
+                    if (_lesson?['isQuiz'] != true && _lesson?['videoUrl'] != null && _lesson!['videoUrl'].toString().trim().isNotEmpty)
                       _buildVideoPlayer(),
                     
                     // Content below video
@@ -1462,7 +1514,7 @@ class _AIChatState extends State<_AIChat> {
     setState(() {
       _currentChatId = chat['chatId'];
       _messages.clear();
-      final messages = chat['messages'] as List<dynamic>? ?? [];
+      final messages = chat['messages'] as List? ?? [];
       for (var msg in messages) {
         _messages.add({
           'role': msg['role'].toString(),
@@ -1598,292 +1650,292 @@ class _AIChatState extends State<_AIChat> {
             ),
           ),
           child: Column(
-          children: [
-            // Header
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: const Color(0xFFF8FAFC),
-                borderRadius: const BorderRadius.only(
-                  topLeft: Radius.circular(20),
-                  topRight: Radius.circular(20),
-                ),
-                border: const Border(
-                  bottom: BorderSide(color: _border, width: 1),
-                ),
-              ),
-              child: Row(
-                children: [
-                  if (!_showHistory)
-                    IconButton(
-                      icon: const Icon(Icons.history, color: _textDark),
-                      onPressed: () {
-                        setState(() {
-                          _showHistory = true;
-                        });
-                      },
-                      padding: EdgeInsets.zero,
-                      constraints: const BoxConstraints(),
-                    ),
-                  if (_showHistory)
-                    IconButton(
-                      icon: const Icon(Icons.arrow_back, color: _textDark),
-                      onPressed: () {
-                        setState(() {
-                          _showHistory = false;
-                        });
-                      },
-                      padding: EdgeInsets.zero,
-                      constraints: const BoxConstraints(),
-                    ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          _showHistory ? 'Chat History' : 'Lesson AI Coach',
-                          style: const TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600,
-                            color: _textDark,
-                          ),
-                        ),
-                        if (!_showHistory)
-                          const SizedBox(height: 2),
-                        if (!_showHistory)
-                          Text(
-                            'Ask questions about ${widget.lessonTitle}',
-                            style: const TextStyle(
-                              fontSize: 12,
-                              color: _textLight,
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                      ],
-                    ),
-                  ),
-                  if (!_showHistory && _messages.isNotEmpty)
-                    IconButton(
-                      icon: const Icon(Icons.add, color: _textDark),
-                      onPressed: _startNewChat,
-                      padding: EdgeInsets.zero,
-                      constraints: const BoxConstraints(),
-                    ),
-                  const SizedBox(width: 8),
-                  IconButton(
-                    icon: const Icon(Icons.close, color: _textLight),
-                    onPressed: () => Navigator.pop(context),
-                    padding: EdgeInsets.zero,
-                    constraints: const BoxConstraints(),
-                  ),
-                ],
-              ),
-            ),
-
-            // Messages or History
-            Expanded(
-              child: _showHistory
-                  ? _chatHistory.isEmpty
-                      ? const Center(
-                          child: Padding(
-                            padding: EdgeInsets.all(24),
-                            child: Text(
-                              'No chat history yet',
-                              style: TextStyle(
-                                fontSize: 14,
-                                color: _textLight,
-                              ),
-                            ),
-                          ),
-                        )
-                      : ListView.builder(
-                          padding: const EdgeInsets.all(16),
-                          itemCount: _chatHistory.length,
-                          itemBuilder: (context, index) {
-                            final chat = _chatHistory[index];
-                            return Container(
-                              margin: const EdgeInsets.only(bottom: 12),
-                              decoration: BoxDecoration(
-                                color: _white,
-                                border: Border.all(color: _border),
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              child: ListTile(
-                                title: Text(
-                                  chat['title'] ?? 'Chat',
-                                  style: const TextStyle(
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.w500,
-                                    color: _textDark,
-                                  ),
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                                subtitle: Text(
-                                  '${(chat['messages'] as List?)?.length ?? 0} messages',
-                                  style: const TextStyle(
-                                    fontSize: 12,
-                                    color: _textLight,
-                                  ),
-                                ),
-                                trailing: IconButton(
-                                  icon: const Icon(Icons.delete, color: _textLight, size: 20),
-                                  onPressed: () => _deleteChat(chat['chatId']),
-                                ),
-                                onTap: () => _loadChat(chat),
-                              ),
-                            );
-                          },
-                        )
-                  : _messages.isEmpty
-                  ? Center(
-                      child: SingleChildScrollView(
-                        padding: const EdgeInsets.all(24),
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Container(
-                              width: 80,
-                              height: 80,
-                              decoration: BoxDecoration(
-                                color: _primary.withOpacity(0.1),
-                                shape: BoxShape.circle,
-                              ),
-                              child: const Icon(
-                                Icons.smart_toy,
-                                size: 40,
-                                color: _primary,
-                              ),
-                            ),
-                            const SizedBox(height: 16),
-                            const Text(
-                              'Ask me anything!',
-                              style: TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.w600,
-                                color: _textDark,
-                              ),
-                            ),
-                            const SizedBox(height: 8),
-                            Text(
-                              'I can help answer questions about this lesson.',
-                              textAlign: TextAlign.center,
-                              style: TextStyle(
-                                fontSize: 14,
-                                color: _textLight,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    )
-                  : ListView.builder(
-                      controller: _scrollController,
-                      padding: const EdgeInsets.all(16),
-                      itemCount: _messages.length + (_isLoading ? 1 : 0),
-                      itemBuilder: (context, index) {
-                        if (index == _messages.length && _isLoading) {
-                          return Container(
-                            margin: const EdgeInsets.only(bottom: 12),
-                            padding: const EdgeInsets.all(12),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFFEFF6FF),
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: const Text(
-                              'Thinking...',
-                              style: TextStyle(
-                                fontSize: 13,
-                                color: _textLight,
-                              ),
-                            ),
-                          );
-                        }
-
-                        final message = _messages[index];
-                        final isUser = message['role'] == 'user';
-
-                        return Container(
-                          margin: const EdgeInsets.only(bottom: 12),
-                          padding: const EdgeInsets.all(12),
-                          decoration: BoxDecoration(
-                            color: isUser ? _textDark : const Color(0xFFEFF6FF),
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: Text(
-                            message['content'] ?? '',
-                            style: TextStyle(
-                              fontSize: 13,
-                              color: isUser ? _white : _textDark,
-                            ),
-                          ),
-                        );
-                      },
-                    ),
-            ),
-
-            // Input area
-            if (!_showHistory)
+            children: [
+              // Header
               Container(
-                padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
-                decoration: const BoxDecoration(
-                  color: _white,
-                  border: Border(
-                    top: BorderSide(color: _border, width: 1),
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF8FAFC),
+                  borderRadius: const BorderRadius.only(
+                    topLeft: Radius.circular(20),
+                    topRight: Radius.circular(20),
+                  ),
+                  border: const Border(
+                    bottom: BorderSide(color: _border, width: 1),
                   ),
                 ),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
+                child: Row(
                   children: [
-                    Container(
-                      decoration: BoxDecoration(
-                        color: _white,
-                        border: Border.all(color: _border),
-                        borderRadius: BorderRadius.circular(8),
+                    if (!_showHistory)
+                      IconButton(
+                        icon: const Icon(Icons.history, color: _textDark),
+                        onPressed: () {
+                          setState(() {
+                            _showHistory = true;
+                          });
+                        },
+                        padding: EdgeInsets.zero,
+                        constraints: const BoxConstraints(),
                       ),
-                      child: TextField(
-                        controller: _messageController,
-                        maxLines: null,
-                        keyboardType: TextInputType.multiline,
-                        textInputAction: TextInputAction.newline,
-                        decoration: const InputDecoration(
-                          hintText: 'Ask the coach a question...',
-                          hintStyle: TextStyle(fontSize: 13, color: _textLight),
-                          border: InputBorder.none,
-                          contentPadding: EdgeInsets.all(12),
-                        ),
-                        style: const TextStyle(fontSize: 13, color: _textDark),
+                    if (_showHistory)
+                      IconButton(
+                        icon: const Icon(Icons.arrow_back, color: _textDark),
+                        onPressed: () {
+                          setState(() {
+                            _showHistory = false;
+                          });
+                        },
+                        padding: EdgeInsets.zero,
+                        constraints: const BoxConstraints(),
+                      ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            _showHistory ? 'Chat History' : 'Lesson AI Coach',
+                            style: const TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                              color: _textDark,
+                            ),
+                          ),
+                          if (!_showHistory)
+                            const SizedBox(height: 2),
+                          if (!_showHistory)
+                            Text(
+                              'Ask questions about ${widget.lessonTitle}',
+                              style: const TextStyle(
+                                fontSize: 12,
+                                color: _textLight,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                        ],
                       ),
                     ),
-                    const SizedBox(height: 8),
-                    SizedBox(
-                      width: double.infinity,
-                      child: ElevatedButton(
-                        onPressed: _isLoading ? null : _sendMessage,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: _textDark,
-                          disabledBackgroundColor: _border,
-                          padding: const EdgeInsets.symmetric(vertical: 12),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                        ),
-                        child: Text(
-                          _isLoading ? 'Thinking...' : 'Send',
-                          style: const TextStyle(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w600,
-                            color: _white,
-                          ),
-                        ),
+                    if (!_showHistory && _messages.isNotEmpty)
+                      IconButton(
+                        icon: const Icon(Icons.add, color: _textDark),
+                        onPressed: _startNewChat,
+                        padding: EdgeInsets.zero,
+                        constraints: const BoxConstraints(),
                       ),
+                    const SizedBox(width: 8),
+                    IconButton(
+                      icon: const Icon(Icons.close, color: _textLight),
+                      onPressed: () => Navigator.pop(context),
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(),
                     ),
                   ],
                 ),
               ),
+
+              // Messages or History
+              Expanded(
+                child: _showHistory
+                    ? _chatHistory.isEmpty
+                        ? const Center(
+                            child: Padding(
+                              padding: EdgeInsets.all(24),
+                              child: Text(
+                                'No chat history yet',
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  color: _textLight,
+                                ),
+                              ),
+                            ),
+                          )
+                        : ListView.builder(
+                            padding: const EdgeInsets.all(16),
+                            itemCount: _chatHistory.length,
+                            itemBuilder: (context, index) {
+                              final chat = _chatHistory[index];
+                              return Container(
+                                margin: const EdgeInsets.only(bottom: 12),
+                                decoration: BoxDecoration(
+                                  color: _white,
+                                  border: Border.all(color: _border),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: ListTile(
+                                  title: Text(
+                                    chat['title'] ?? 'Chat',
+                                    style: const TextStyle(
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w500,
+                                      color: _textDark,
+                                    ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                  subtitle: Text(
+                                    '${(chat['messages'] as List?)?.length ?? 0} messages',
+                                    style: const TextStyle(
+                                      fontSize: 12,
+                                      color: _textLight,
+                                    ),
+                                  ),
+                                  trailing: IconButton(
+                                    icon: const Icon(Icons.delete, color: _textLight, size: 20),
+                                    onPressed: () => _deleteChat(chat['chatId']),
+                                  ),
+                                  onTap: () => _loadChat(chat),
+                                ),
+                              );
+                            },
+                          )
+                    : _messages.isEmpty
+                    ? Center(
+                        child: SingleChildScrollView(
+                          padding: const EdgeInsets.all(24),
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Container(
+                                width: 80,
+                                height: 80,
+                                decoration: BoxDecoration(
+                                  color: _primary.withOpacity(0.1),
+                                  shape: BoxShape.circle,
+                                ),
+                                child: const Icon(
+                                  Icons.smart_toy,
+                                  size: 40,
+                                  color: _primary,
+                                ),
+                              ),
+                              const SizedBox(height: 16),
+                              const Text(
+                                'Ask me anything!',
+                                style: TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.w600,
+                                  color: _textDark,
+                                ),
+                              ),
+                              const SizedBox(height: 8),
+                              Text(
+                                'I can help answer questions about this lesson.',
+                                textAlign: TextAlign.center,
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  color: _textLight,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      )
+                    : ListView.builder(
+                        controller: _scrollController,
+                        padding: const EdgeInsets.all(16),
+                        itemCount: _messages.length + (_isLoading ? 1 : 0),
+                        itemBuilder: (context, index) {
+                          if (index == _messages.length && _isLoading) {
+                            return Container(
+                              margin: const EdgeInsets.only(bottom: 12),
+                              padding: const EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFEFF6FF),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: const Text(
+                                'Thinking...',
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  color: _textLight,
+                                ),
+                              ),
+                            );
+                          }
+
+                          final message = _messages[index];
+                          final isUser = message['role'] == 'user';
+
+                          return Container(
+                            margin: const EdgeInsets.only(bottom: 12),
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: isUser ? _textDark : const Color(0xFFEFF6FF),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Text(
+                              message['content'] ?? '',
+                              style: TextStyle(
+                                fontSize: 13,
+                                color: isUser ? _white : _textDark,
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+              ),
+
+              // Input area
+              if (!_showHistory)
+                Container(
+                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+                  decoration: const BoxDecoration(
+                    color: _white,
+                    border: Border(
+                      top: BorderSide(color: _border, width: 1),
+                    ),
+                  ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Container(
+                        decoration: BoxDecoration(
+                          color: _white,
+                          border: Border.all(color: _border),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: TextField(
+                          controller: _messageController,
+                          maxLines: null,
+                          keyboardType: TextInputType.multiline,
+                          textInputAction: TextInputAction.newline,
+                          decoration: const InputDecoration(
+                            hintText: 'Ask the coach a question...',
+                            hintStyle: TextStyle(fontSize: 13, color: _textLight),
+                            border: InputBorder.none,
+                            contentPadding: EdgeInsets.all(12),
+                          ),
+                          style: const TextStyle(fontSize: 13, color: _textDark),
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      SizedBox(
+                        width: double.infinity,
+                        child: ElevatedButton(
+                          onPressed: _isLoading ? null : _sendMessage,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: _textDark,
+                            disabledBackgroundColor: _border,
+                            padding: const EdgeInsets.symmetric(vertical: 12),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                          ),
+                          child: Text(
+                            _isLoading ? 'Thinking...' : 'Send',
+                            style: const TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                              color: _white,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
             ],
           ),
         ),
