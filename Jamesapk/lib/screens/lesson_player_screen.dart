@@ -73,7 +73,6 @@ class _LessonPlayerScreenState extends State<LessonPlayerScreen> {
       params = WebKitWebViewControllerCreationParams(
         allowsInlineMediaPlayback: true,
         mediaTypesRequiringUserAction: const <PlaybackMediaTypes>{},
-        allowsPictureInPictureMediaPlayback: true,
       );
     } else {
       params = const PlatformWebViewControllerCreationParams();
@@ -1033,7 +1032,7 @@ ${embedUrl.contains('vimeo.com') ? '<script src="https://player.vimeo.com/api/pl
                   child: CachedNetworkImage(
                     imageUrl: src,
                     fit: BoxFit.cover,
-                    cacheWidth: 800,
+                    memCacheWidth: 800,
                     maxWidthDiskCache: 800,
                     placeholder: (context, url) {
                       print('⏳ Loading image: $url');
