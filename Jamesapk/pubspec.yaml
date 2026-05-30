@@ -45,6 +45,7 @@ dependencies:
   video_player: ^2.8.2
   image_gallery_saver: ^2.0.3
   open_file: ^3.5.0
+  image_editor_plus: ^1.0.6
 
 dev_dependencies:
   flutter_test:

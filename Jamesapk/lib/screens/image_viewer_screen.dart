@@ -8,6 +8,7 @@ import 'package:share_plus/share_plus.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:image_gallery_saver/image_gallery_saver.dart';
 import 'package:open_file/open_file.dart';
+import 'package:image_editor_plus/image_editor_plus.dart';
 
 class ImageViewerScreen extends StatelessWidget {
   final String imageUrl;
@@ -185,18 +186,49 @@ class ImageViewerScreen extends StatelessWidget {
       final response = await http.get(Uri.parse(url));
       
       if (response.statusCode == 200) {
-        final tempDir = await getTemporaryDirectory();
-        final fileName = 'edit_image_${DateTime.now().millisecondsSinceEpoch}.jpg';
-        final file = File('${tempDir.path}/$fileName');
-        await file.writeAsBytes(response.bodyBytes);
+        // Open image editor
+        final editedImage = await Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => ImageEditor(
+              image: response.bodyBytes,
+            ),
+          ),
+        );
         
-        await OpenFile.open(file.path);
+        // If user saved the edited image
+        if (editedImage != null) {
+          // Save edited image to gallery
+          final result = await ImageGallerySaver.saveImage(
+            editedImage,
+            quality: 100,
+            name: 'StormChat_Edited_${DateTime.now().millisecondsSinceEpoch}',
+          );
+          
+          if (result['isSuccess']) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Edited image saved to Gallery'),
+                backgroundColor: Colors.green,
+                duration: Duration(seconds: 3),
+              ),
+            );
+          } else {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Failed to save edited image'),
+                backgroundColor: Colors.red,
+              ),
+            );
+          }
+        }
       }
-    } catch (e) {
+    } catch (e, stackTrace) {
       print('Edit error: $e');
+      print('Stack trace: $stackTrace');
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Failed to open image for editing'),
+        SnackBar(
+          content: Text('Failed to edit image: ${e.toString()}'),
           backgroundColor: Colors.red,
         ),
       );
