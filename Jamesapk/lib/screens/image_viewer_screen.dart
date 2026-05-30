@@ -35,19 +35,19 @@ class ImageViewerScreen extends StatelessWidget {
           style: const TextStyle(color: Colors.white, fontSize: 16),
         ),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.download, color: Colors.white),
-            onPressed: () => _downloadImage(context),
-          ),
-          IconButton(
-            icon: const Icon(Icons.share, color: Colors.white),
-            onPressed: () => _shareImage(context),
-          ),
-          IconButton(
-            icon: const Icon(Icons.more_vert, color: Colors.white),
-            onPressed: () => _showMoreOptions(context),
-          ),
-        ],
+        IconButton(
+          icon: const Icon(Icons.share, color: Colors.white),
+          onPressed: () => _shareImage(context),
+        ),
+        IconButton(
+          icon: const Icon(Icons.download, color: Colors.white),
+          onPressed: () => _downloadImage(context),
+        ),
+        IconButton(
+          icon: const Icon(Icons.more_vert, color: Colors.white),
+          onPressed: () => _showMoreOptions(context),
+        ),
+      ],
       ),
       body: Center(
         child: InteractiveViewer(
@@ -137,6 +137,13 @@ class ImageViewerScreen extends StatelessWidget {
 
   void _shareImage(BuildContext context) async {
     try {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Preparing to share...'),
+          backgroundColor: Colors.blue,
+        ),
+      );
+      
       final url = imageUrl.startsWith('http') ? imageUrl : 'https://millerstorm.tech$imageUrl';
       print('Sharing image from URL: $url');
       
@@ -210,6 +217,14 @@ class ImageViewerScreen extends StatelessWidget {
               onTap: () {
                 Navigator.pop(context);
                 _editImage(context);
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.share, color: Colors.white),
+              title: const Text('Share', style: TextStyle(color: Colors.white)),
+              onTap: () {
+                Navigator.pop(context);
+                _shareImage(context);
               },
             ),
             ListTile(
