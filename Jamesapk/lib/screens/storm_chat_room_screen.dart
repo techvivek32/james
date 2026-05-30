@@ -40,6 +40,8 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
   String? _blinkingMessageId; // Track which message is blinking
   Timer? _blinkTimer;
   bool _isDarkTheme = false; // Theme toggle state
+  bool _showScrollToBottomButton = false;
+  bool _hasNewMessages = false;
   
   // Mention feature
   bool _showMentionList = false;
@@ -81,6 +83,7 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
     _markAsRead();
     _fetchGroupMembers(); // Fetch members immediately on screen load
     _messageController.addListener(_onMessageTextChanged);
+    _scrollController.addListener(_onScroll);
   }
 
   @override
@@ -88,11 +91,67 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
     _pollTimer?.cancel();
     _blinkTimer?.cancel();
     _messageController.removeListener(_onMessageTextChanged);
-    _messageController.dispose();
+    _scrollController.removeListener(_onScroll);
+    _saveScrollPosition();
     _scrollController.dispose();
     _markAsRead(); // Mark as read when leaving chat
     super.dispose();
   }
+
+  Future<void> _saveScrollPosition() async {
+    final prefs = await SharedPreferences.getInstance();
+    if (_scrollController.hasClients) {
+      await prefs.setDouble('storm_chat_scroll_${widget.group['_id']}', _scrollController.position.pixels);
+    }
+  }
+
+  Future<void> _loadScrollPosition() async {
+    final prefs = await SharedPreferences.getInstance();
+    final savedPosition = prefs.getDouble('storm_chat_scroll_${widget.group['_id']}');
+    if (savedPosition != null && _scrollController.hasClients) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _scrollController.jumpTo(savedPosition);
+      });
+    }
+  }
+
+  void _onScroll() {
+    if (_scrollController.hasClients) {
+      final maxScroll = _scrollController.position.maxScrollExtent;
+      final currentScroll = _scrollController.position.pixels;
+      final isAtBottom = (maxScroll - currentScroll) < 100;
+      
+      setState(() {
+        _showScrollToBottomButton = !isAtBottom;
+        if (isAtBottom) {
+          _hasNewMessages = false;
+        }
+      });
+      
+      // Save scroll position periodically
+      if (currentScroll % 100 < 10) { // Approximate to reduce writes
+        _saveScrollPosition();
+      }
+    }
+  }
+
+  void _scrollToBottom() {
+    if (_scrollController.hasClients) {
+      setState(() {
+        _hasNewMessages = false;
+        _showScrollToBottomButton = false;
+      });
+      Future.delayed(const Duration(milliseconds: 100), () {
+        _scrollController.animateTo(
+          _scrollController.position.maxScrollExtent,
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeOut,
+        );
+      });
+    }
+  }
+
+
 
   Future<void> _loadUserName() async {
     final user = await AuthService.getStoredUser();
@@ -308,19 +367,35 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
         
         // Check if user is at bottom before updating
         bool wasAtBottom = false;
+        bool hadMessages = messages.isNotEmpty;
         if (_scrollController.hasClients) {
           final maxScroll = _scrollController.position.maxScrollExtent;
           final currentScroll = _scrollController.position.pixels;
           wasAtBottom = (maxScroll - currentScroll) < 100;
         }
         
+        // Check for new messages
+        bool hasNewMessages = false;
+        if (hadMessages && data.length > messages.length) {
+          hasNewMessages = true;
+        }
+        
         setState(() {
           messages = data;
           if (!silent) isLoading = false;
+          if (hasNewMessages && !wasAtBottom) {
+            _hasNewMessages = true;
+            _showScrollToBottomButton = true;
+          }
         });
         
-        // Only scroll to bottom on initial load or if user was already at bottom
-        if (!silent || wasAtBottom) {
+        // On initial load, load saved position or go to bottom
+        if (!silent) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            _loadScrollPosition();
+          });
+        } else if (wasAtBottom) {
+          // If user was at bottom and new messages come, scroll to bottom
           WidgetsBinding.instance.addPostFrameCallback((_) {
             if (_scrollController.hasClients) {
               _scrollController.jumpTo(_scrollController.position.maxScrollExtent);
@@ -346,17 +421,7 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
     }
   }
 
-  void _scrollToBottom() {
-    if (_scrollController.hasClients) {
-      Future.delayed(const Duration(milliseconds: 100), () {
-        _scrollController.animateTo(
-          _scrollController.position.maxScrollExtent,
-          duration: const Duration(milliseconds: 300),
-          curve: Curves.easeOut,
-        );
-      });
-    }
-  }
+
 
   void _scrollToMessage(String messageId) {
     // Find the index of the message
@@ -696,42 +761,44 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
           ),
         ],
       ),
-      body: Column(
+      body: Stack(
         children: [
-          // Messages
-          Expanded(
-            child: isLoading
-                ? const Center(
-                    child: CircularProgressIndicator(color: Color(0xFFCB0002)),
-                  )
-                : messages.isEmpty
-                    ? Center(
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: const [
-                            Icon(Icons.chat_bubble_outline, size: 64, color: Colors.grey),
-                            SizedBox(height: 16),
-                            Text(
-                              'No messages yet',
-                              style: TextStyle(fontSize: 16, color: Colors.grey),
-                            ),
-                            SizedBox(height: 8),
-                            Text(
-                              'Start the conversation!',
-                              style: TextStyle(fontSize: 14, color: Colors.grey),
-                            ),
-                          ],
-                        ),
+          Column(
+            children: [
+              // Messages
+              Expanded(
+                child: isLoading
+                    ? const Center(
+                        child: CircularProgressIndicator(color: Color(0xFFCB0002)),
                       )
-                    : ListView.builder(
-                        controller: _scrollController,
-                        padding: const EdgeInsets.all(16),
-                        itemCount: messages.length,
-                        itemBuilder: (context, index) {
-                          return _buildMessage(messages[index], index);
-                        },
-                      ),
-          ),
+                    : messages.isEmpty
+                        ? Center(
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: const [
+                                Icon(Icons.chat_bubble_outline, size: 64, color: Colors.grey),
+                                SizedBox(height: 16),
+                                Text(
+                                  'No messages yet',
+                                  style: TextStyle(fontSize: 16, color: Colors.grey),
+                                ),
+                                SizedBox(height: 8),
+                                Text(
+                                  'Start the conversation!',
+                                  style: TextStyle(fontSize: 14, color: Colors.grey),
+                                ),
+                              ],
+                            ),
+                          )
+                        : ListView.builder(
+                            controller: _scrollController,
+                            padding: const EdgeInsets.all(16),
+                            itemCount: messages.length,
+                            itemBuilder: (context, index) {
+                              return _buildMessage(messages[index], index);
+                            },
+                          ),
+              ),
           
           // Input
           Container(
@@ -971,6 +1038,51 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
               ],
             ),
           ),
+        ],
+      ),
+          // Scroll to bottom button
+          if (_showScrollToBottomButton)
+            Positioned(
+              bottom: 100,
+              right: 16,
+              child: GestureDetector(
+                onTap: _scrollToBottom,
+                child: Stack(
+                  alignment: Alignment.topRight,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFCB0002),
+                        shape: BoxShape.circle,
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.2),
+                            blurRadius: 8,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
+                      ),
+                      child: const Icon(
+                        Icons.arrow_downward,
+                        color: Colors.white,
+                        size: 24,
+                      ),
+                    ),
+                    if (_hasNewMessages)
+                      Container(
+                        width: 12,
+                        height: 12,
+                        margin: const EdgeInsets.only(right: 2, top: 2),
+                        decoration: const BoxDecoration(
+                          color: Colors.green,
+                          shape: BoxShape.circle,
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            ),
         ],
       ),
     );
