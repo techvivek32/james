@@ -42,6 +42,7 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
   bool _isDarkTheme = false; // Theme toggle state
   bool _showScrollToBottomButton = false;
   bool _hasNewMessages = false;
+  dynamic _longPressedMessage;
   
   // Mention feature
   bool _showMentionList = false;
@@ -1126,128 +1127,237 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
               replyingTo = message;
             });
           },
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 250),
-            decoration: BoxDecoration(
-              color: isBlinking ? Colors.yellow.withOpacity(0.3) : Colors.transparent,
-              borderRadius: BorderRadius.circular(16),
-            ),
-            child: Align(
-              alignment: isMyMessage ? Alignment.centerRight : Alignment.centerLeft,
-              child: Container(
-                constraints: BoxConstraints(
-                  maxWidth: MediaQuery.of(context).size.width * 0.7,
-                ),
-                margin: const EdgeInsets.only(bottom: 8),
-                child: Column(
-                  crossAxisAlignment: isMyMessage ? CrossAxisAlignment.end : CrossAxisAlignment.start,
-                  children: [
-                    if (!isMyMessage)
-                      Padding(
-                        padding: const EdgeInsets.only(left: 8, bottom: 4),
-                        child: Text(
-                          message['senderName'] ?? 'Unknown',
-                          style: const TextStyle(
-                            fontSize: 11,
-                            color: Color(0xFF6B7280),
+          child: GestureDetector(
+            onLongPress: () {
+              setState(() {
+                _longPressedMessage = message;
+              });
+              _showMessageOptions(context, message);
+            },
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 250),
+              decoration: BoxDecoration(
+                color: isBlinking ? Colors.yellow.withOpacity(0.3) : Colors.transparent,
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Align(
+                alignment: isMyMessage ? Alignment.centerRight : Alignment.centerLeft,
+                child: Container(
+                  constraints: BoxConstraints(
+                    maxWidth: MediaQuery.of(context).size.width * 0.7,
+                  ),
+                  margin: const EdgeInsets.only(bottom: 8),
+                  child: Column(
+                    crossAxisAlignment: isMyMessage ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+                    children: [
+                      if (!isMyMessage)
+                        Padding(
+                          padding: const EdgeInsets.only(left: 8, bottom: 4),
+                          child: Text(
+                            message['senderName'] ?? 'Unknown',
+                            style: const TextStyle(
+                              fontSize: 11,
+                              color: Color(0xFF6B7280),
+                            ),
                           ),
                         ),
-                      ),
-                    // Different styling for different message types
-                    if (message['messageType'] == 'text')
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                        decoration: BoxDecoration(
-                          color: isMyMessage ? const Color(0xFFCB0002) : messageBubbleOther,
-                          borderRadius: BorderRadius.only(
-                            topLeft: const Radius.circular(16),
-                            topRight: const Radius.circular(16),
-                            bottomLeft: Radius.circular(isMyMessage ? 16 : 4),
-                            bottomRight: Radius.circular(isMyMessage ? 4 : 16),
+                      // Different styling for different message types
+                      if (message['messageType'] == 'text')
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                          decoration: BoxDecoration(
+                            color: isMyMessage ? const Color(0xFFCB0002) : messageBubbleOther,
+                            borderRadius: BorderRadius.only(
+                              topLeft: const Radius.circular(16),
+                              topRight: const Radius.circular(16),
+                              bottomLeft: Radius.circular(isMyMessage ? 16 : 4),
+                              bottomRight: Radius.circular(isMyMessage ? 4 : 16),
+                            ),
                           ),
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            // Show reply preview inside the bubble
-                            if (message['replyTo'] != null && 
-                                message['replyTo'].toString().isNotEmpty &&
-                                message['replyToMessage'] != null &&
-                                message['replyToMessage'].toString().isNotEmpty)
-                              GestureDetector(
-                                onTap: () {
-                                  _scrollToMessage(message['replyTo']);
-                                },
-                                child: Container(
-                                  margin: const EdgeInsets.only(bottom: 6),
-                                  padding: const EdgeInsets.all(8),
-                                  decoration: BoxDecoration(
-                                    color: isMyMessage
-                                        ? Colors.white.withOpacity(0.2)
-                                        : Colors.white,
-                                    borderRadius: BorderRadius.circular(8),
-                                    border: Border(
-                                      left: BorderSide(
-                                        color: isMyMessage ? Colors.white : const Color(0xFFCB0002),
-                                        width: 3,
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              // Show reply preview inside the bubble
+                              if (message['replyTo'] != null && 
+                                  message['replyTo'].toString().isNotEmpty &&
+                                  message['replyToMessage'] != null &&
+                                  message['replyToMessage'].toString().isNotEmpty)
+                                GestureDetector(
+                                  onTap: () {
+                                    _scrollToMessage(message['replyTo']);
+                                  },
+                                  child: Container(
+                                    margin: const EdgeInsets.only(bottom: 6),
+                                    padding: const EdgeInsets.all(8),
+                                    decoration: BoxDecoration(
+                                      color: isMyMessage
+                                          ? Colors.white.withOpacity(0.2)
+                                          : Colors.white,
+                                      borderRadius: BorderRadius.circular(8),
+                                      border: Border(
+                                        left: BorderSide(
+                                          color: isMyMessage ? Colors.white : const Color(0xFFCB0002),
+                                          width: 3,
+                                        ),
                                       ),
                                     ),
-                                  ),
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        message['replyToSender'] ?? 'Unknown',
-                                        style: TextStyle(
-                                          fontSize: 11,
-                                          fontWeight: FontWeight.w600,
-                                          color: isMyMessage ? Colors.white : const Color(0xFFCB0002),
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          message['replyToSender'] ?? 'Unknown',
+                                          style: TextStyle(
+                                            fontSize: 11,
+                                            fontWeight: FontWeight.w600,
+                                            color: isMyMessage ? Colors.white : const Color(0xFFCB0002),
+                                          ),
                                         ),
-                                      ),
-                                      const SizedBox(height: 2),
-                                      Text(
-                                        message['replyToMessage'] ?? '',
-                                        style: TextStyle(
-                                          fontSize: 12,
-                                          color: isMyMessage
-                                              ? Colors.white.withOpacity(0.8)
-                                              : const Color(0xFF6B7280),
+                                        const SizedBox(height: 2),
+                                        Text(
+                                          message['replyToMessage'] ?? '',
+                                          style: TextStyle(
+                                            fontSize: 12,
+                                            color: isMyMessage
+                                                ? Colors.white.withOpacity(0.8)
+                                                : const Color(0xFF6B7280),
+                                          ),
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
                                         ),
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
-                                      ),
-                                    ],
+                                      ],
+                                    ),
                                   ),
                                 ),
-                              ),
-                            _buildMessageContent(message, isMyMessage),
-                          ],
+                              _buildMessageContent(message, isMyMessage),
+                            ],
+                          ),
+                        )
+                      else
+                        // No background for images/videos
+                        _buildMessageContent(message, isMyMessage),
+                      Padding(
+                        padding: EdgeInsets.only(
+                          left: isMyMessage ? 0 : 8,
+                          right: isMyMessage ? 8 : 0,
+                          top: 4,
                         ),
-                      )
-                    else
-                      // No background for images/videos
-                      _buildMessageContent(message, isMyMessage),
-                    Padding(
-                      padding: EdgeInsets.only(
-                        left: isMyMessage ? 0 : 8,
-                        right: isMyMessage ? 8 : 0,
-                        top: 4,
-                      ),
-                      child: Text(
-                        _formatTime(message['createdAt']),
-                        style: const TextStyle(
-                          fontSize: 10,
-                          color: Color(0xFF9CA3AF),
+                        child: Text(
+                          _formatTime(message['createdAt']),
+                          style: const TextStyle(
+                            fontSize: 10,
+                            color: Color(0xFF9CA3AF),
+                          ),
                         ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
             ),
           ),
         ),
       ],
+    );
+  }
+
+  void _showMessageOptions(BuildContext context, dynamic message) {
+    final isMyMessage = message['senderId'] == widget.userId;
+    final textColor = _isDarkTheme ? Colors.white : Colors.black;
+    final bgColor = _isDarkTheme ? const Color(0xFF1C1C1E) : Colors.white;
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (context) => Container(
+        decoration: BoxDecoration(
+          color: bgColor,
+          borderRadius: const BorderRadius.only(
+            topLeft: Radius.circular(16),
+            topRight: Radius.circular(16),
+          ),
+        ),
+        child: SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Emoji bar
+              Container(
+                padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  children: [
+                    _buildEmojiOption('❤️', () => _addReaction(message, '❤️')),
+                    _buildEmojiOption('👍', () => _addReaction(message, '👍')),
+                    _buildEmojiOption('👎', () => _addReaction(message, '👎')),
+                    _buildEmojiOption('😂', () => _addReaction(message, '😂')),
+                    _buildEmojiOption('🎉', () => _addReaction(message, '🎉')),
+                    _buildEmojiOption('🔥', () => _addReaction(message, '🔥')),
+                    _buildEmojiOption('😢', () => _addReaction(message, '😢')),
+                    _buildEmojiOption('➕', () => _showMoreEmojis(context, message)),
+                  ],
+                ),
+              ),
+              const Divider(height: 1),
+              // Options
+              ListTile(
+                leading: Icon(Icons.reply, color: textColor),
+                title: Text('Reply', style: TextStyle(color: textColor)),
+                onTap: () {
+                  Navigator.pop(context);
+                  setState(() {
+                    replyingTo = message;
+                  });
+                },
+              ),
+              if (message['messageType'] == 'text')
+                ListTile(
+                  leading: Icon(Icons.copy, color: textColor),
+                  title: Text('Copy text', style: TextStyle(color: textColor)),
+                  onTap: () {
+                    Navigator.pop(context);
+                    Clipboard.setData(ClipboardData(text: message['message'] ?? ''));
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Text copied to clipboard')),
+                    );
+                  },
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildEmojiOption(String emoji, VoidCallback onTap) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.all(8),
+        decoration: BoxDecoration(
+          color: _isDarkTheme ? const Color(0xFF2C2C2E) : const Color(0xFFF3F4F6),
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: Text(
+          emoji,
+          style: const TextStyle(fontSize: 24),
+        ),
+      ),
+    );
+  }
+
+  void _addReaction(dynamic message, String emoji) {
+    Navigator.pop(context);
+    // TODO: Add API call to save reaction to backend
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Added reaction: $emoji')),
+    );
+  }
+
+  void _showMoreEmojis(BuildContext context, dynamic message) {
+    Navigator.pop(context);
+    // TODO: Show more emojis picker
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('More emojis coming soon!')),
     );
   }
 
