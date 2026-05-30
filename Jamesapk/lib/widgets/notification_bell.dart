@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 import '../services/notification_service.dart';
+import '../screens/storm_chat_room_screen.dart';
 import 'package:intl/intl.dart';
 
 class NotificationBell extends StatefulWidget {
   final String userId;
+  final String? userRole;
 
-  const NotificationBell({super.key, required this.userId});
+  const NotificationBell({super.key, required this.userId, this.userRole});
 
   @override
   State<NotificationBell> createState() => _NotificationBellState();
@@ -14,7 +16,6 @@ class NotificationBell extends StatefulWidget {
 class _NotificationBellState extends State<NotificationBell> {
   List<Notification> _notifications = [];
   int _unreadCount = 0;
-  bool _showDropdown = false;
   bool _isLoading = true;
 
   @override
@@ -37,12 +38,28 @@ class _NotificationBellState extends State<NotificationBell> {
       await NotificationService.markAsRead(notification.id);
       await _fetchNotifications();
     }
-    setState(() {
-      _showDropdown = false;
-    });
     // Handle navigation based on notification type
     if (notification.type == 'stormchat_message' || notification.type == 'stormchat_mention') {
-      // Navigate to chat group
+      // Get group info from metadata
+      final groupId = notification.metadata?['groupId']?.toString();
+      final groupName = notification.metadata?['groupName']?.toString();
+      
+      if (groupId != null && groupId.isNotEmpty) {
+        // Navigate to chat room
+        if (mounted) {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => StormChatRoomScreen(
+                groupId: groupId,
+                groupName: groupName ?? 'Chat',
+                userId: widget.userId,
+                userRole: widget.userRole,
+              ),
+            ),
+          );
+        }
+      }
     }
   }
 

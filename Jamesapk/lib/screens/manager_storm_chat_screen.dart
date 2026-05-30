@@ -116,16 +116,16 @@ class _ManagerStormChatScreenState extends State<ManagerStormChatScreen> {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const Text(
-                    'StormChat',
-                    style: TextStyle(
-                      fontSize: 28,
-                      fontWeight: FontWeight.w800,
-                      color: Color(0xFF111827),
+                    const Text(
+                      'StormChat',
+                      style: TextStyle(
+                        fontSize: 28,
+                        fontWeight: FontWeight.w800,
+                        color: Color(0xFF111827),
+                      ),
                     ),
-                  ),
-                  if (userId != null) NotificationBell(userId: userId!),
-                ],
+                    if (userId != null) NotificationBell(userId: userId!, userRole: userRole),
+                  ],
               ),
             ),
             const SizedBox(height: 12),
