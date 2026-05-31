@@ -485,9 +485,8 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
         body['replyTo'] = replyData['_id'];
         body['replyToMessage'] = replyData['message'];
         body['replyToSender'] = replyData['senderName'];
-        print('🔵 Sending reply to: ${replyData['_id']}');
-        print('🔵 Reply to message: ${replyData['message']}');
-        print('🔵 Reply to sender: ${replyData['senderName']}');
+        body['replyToMessageType'] = replyData['messageType'] ?? 'text';
+        body['replyToMediaUrl'] = replyData['mediaUrl'] ?? '';
       }
 
       print('🔵 Sending message body: ${json.encode(body)}');
@@ -946,6 +945,26 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
                     ),
                     child: Row(
                       children: [
+                        if (replyingTo['messageType'] == 'image' &&
+                            (replyingTo['mediaUrl'] ?? '').toString().isNotEmpty) ...[
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(4),
+                            child: Image.network(
+                              (replyingTo['mediaUrl'] as String).startsWith('http')
+                                  ? replyingTo['mediaUrl']
+                                  : 'https://millerstorm.tech${replyingTo['mediaUrl']}',
+                              width: 48,
+                              height: 48,
+                              fit: BoxFit.cover,
+                              errorBuilder: (_, __, ___) => const SizedBox(
+                                width: 48,
+                                height: 48,
+                                child: Icon(Icons.image, size: 28, color: Color(0xFF6B7280)),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                        ],
                         Expanded(
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
@@ -960,7 +979,11 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
                               ),
                               const SizedBox(height: 2),
                               Text(
-                                replyingTo['message'] ?? '',
+                                replyingTo['messageType'] == 'image'
+                                    ? '📷 Photo'
+                                    : replyingTo['messageType'] == 'video'
+                                        ? '🎥 Video'
+                                        : replyingTo['message'] ?? '',
                                 style: const TextStyle(
                                   fontSize: 13,
                                   color: Color(0xFF6B7280),
@@ -1128,6 +1151,19 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
     final showDate = index == 0 ||
         _formatDate(messages[index - 1]['createdAt']) != _formatDate(message['createdAt']);
     final isBlinking = _blinkingMessageId == message['_id'];
+
+    // Look up original replied-to message from local list (server may not return these fields)
+    final replyToId = message['replyTo']?.toString() ?? '';
+    dynamic originalMsg;
+    if (replyToId.isNotEmpty) {
+      try {
+        originalMsg = messages.firstWhere((m) => m['_id'] == replyToId);
+      } catch (_) {
+        originalMsg = null;
+      }
+    }
+    final effectiveReplyType = message['replyToMessageType'] ?? originalMsg?['messageType'] ?? 'text';
+    final effectiveReplyMediaUrl = (message['replyToMediaUrl'] ?? originalMsg?['mediaUrl'] ?? '').toString();
     
     // Theme colors for message bubbles
     final messageBubbleOther = _isDarkTheme ? const Color(0xFF2C2C2E) : const Color(0xFFF3F4F6);
@@ -1238,28 +1274,58 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
                                             ),
                                           ),
                                         ),
-                                        child: Column(
+                                        child: Row(
                                           crossAxisAlignment: CrossAxisAlignment.start,
                                           children: [
-                                            Text(
-                                              message['replyToSender'] ?? 'Unknown',
-                                              style: TextStyle(
-                                                fontSize: 11,
-                                                fontWeight: FontWeight.w600,
-                                                color: isMyMessage ? Colors.white : const Color(0xFFCB0002),
+                                            if (effectiveReplyType == 'image' && effectiveReplyMediaUrl.isNotEmpty) ...[
+                                              ClipRRect(
+                                                borderRadius: BorderRadius.circular(4),
+                                                child: Image.network(
+                                                  effectiveReplyMediaUrl.startsWith('http')
+                                                      ? effectiveReplyMediaUrl
+                                                      : 'https://millerstorm.tech$effectiveReplyMediaUrl',
+                                                  width: 40,
+                                                  height: 40,
+                                                  fit: BoxFit.cover,
+                                                  errorBuilder: (_, __, ___) => const SizedBox(
+                                                    width: 40,
+                                                    height: 40,
+                                                    child: Icon(Icons.image, size: 24, color: Colors.white54),
+                                                  ),
+                                                ),
                                               ),
-                                            ),
-                                            const SizedBox(height: 2),
-                                            Text(
-                                              message['replyToMessage'] ?? '',
-                                              style: TextStyle(
-                                                fontSize: 12,
-                                                color: isMyMessage
-                                                    ? Colors.white.withOpacity(0.8)
-                                                    : const Color(0xFF6B7280),
+                                              const SizedBox(width: 6),
+                                            ],
+                                            Expanded(
+                                              child: Column(
+                                                crossAxisAlignment: CrossAxisAlignment.start,
+                                                children: [
+                                                  Text(
+                                                    message['replyToSender'] ?? 'Unknown',
+                                                    style: TextStyle(
+                                                      fontSize: 11,
+                                                      fontWeight: FontWeight.w600,
+                                                      color: isMyMessage ? Colors.white : const Color(0xFFCB0002),
+                                                    ),
+                                                  ),
+                                                  const SizedBox(height: 2),
+                                                  Text(
+                                                    effectiveReplyType == 'image'
+                                                        ? '📷 Photo'
+                                                        : effectiveReplyType == 'video'
+                                                            ? '🎥 Video'
+                                                            : message['replyToMessage'] ?? '',
+                                                    style: TextStyle(
+                                                      fontSize: 12,
+                                                      color: isMyMessage
+                                                          ? Colors.white.withOpacity(0.8)
+                                                          : const Color(0xFF6B7280),
+                                                    ),
+                                                    maxLines: 1,
+                                                    overflow: TextOverflow.ellipsis,
+                                                  ),
+                                                ],
                                               ),
-                                              maxLines: 1,
-                                              overflow: TextOverflow.ellipsis,
                                             ),
                                           ],
                                         ),
@@ -1400,10 +1466,10 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
             mainAxisSize: MainAxisSize.min,
             children: [
               // Emoji bar
-              Container(
+              SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
                 padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
                 child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                   children: [
                     _buildEmojiOption('❤️', () => _addReaction(message, '❤️')),
                     _buildEmojiOption('👍', () => _addReaction(message, '👍')),
