@@ -6,7 +6,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:video_player/video_player.dart';
-import 'package:image_gallery_saver/image_gallery_saver.dart';
+import 'package:gal/gal.dart';
 
 class VideoViewerScreen extends StatefulWidget {
   final String videoUrl;
@@ -231,24 +231,14 @@ class _VideoViewerScreenState extends State<VideoViewerScreen> {
       final file = File('${tempDir.path}/StormChat_${DateTime.now().millisecondsSinceEpoch}.mp4');
       await file.writeAsBytes(response.bodyBytes);
       
-      final result = await ImageGallerySaver.saveFile(file.path);
-      
-      if (result['isSuccess']) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Video saved to Gallery'),
-            backgroundColor: Colors.green,
-            duration: Duration(seconds: 3),
-          ),
-        );
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Failed to save video to Gallery'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
+      await Gal.putVideo(file.path);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Video saved to Gallery'),
+          backgroundColor: Colors.green,
+          duration: Duration(seconds: 3),
+        ),
+      );
     } catch (e) {
       print('Download error: $e');
       ScaffoldMessenger.of(context).showSnackBar(

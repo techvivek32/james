@@ -6,8 +6,7 @@ import 'package:http/http.dart' as http;
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:permission_handler/permission_handler.dart';
-import 'package:image_gallery_saver/image_gallery_saver.dart';
-import 'package:open_file/open_file.dart';
+import 'package:gal/gal.dart';
 import 'package:image_editor_plus/image_editor_plus.dart';
 
 class ImageViewerScreen extends StatefulWidget {
@@ -53,8 +52,8 @@ class _ImageViewerScreenState extends State<ImageViewerScreen> {
             onPressed: () => _downloadImage(context),
           ),
           IconButton(
-            icon: const Icon(Icons.more_vert, color: Colors.white),
-            onPressed: () => _showMoreOptions(context),
+            icon: const Icon(Icons.edit, color: Colors.white),
+            onPressed: () => _editImage(),
           ),
         ],
       ),
@@ -124,28 +123,17 @@ class _ImageViewerScreenState extends State<ImageViewerScreen> {
 
       final url = widget.imageUrl.startsWith('http') ? widget.imageUrl : 'https://millerstorm.tech${widget.imageUrl}';
       final response = await http.get(Uri.parse(url));
-      final result = await ImageGallerySaver.saveImage(
+      await Gal.putImageBytes(
         Uint8List.fromList(response.bodyBytes),
-        quality: 100,
-        name: 'StormChat_${DateTime.now().millisecondsSinceEpoch}',
+        album: 'StormChat',
       );
-      
-      if (result['isSuccess']) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Image saved to Gallery'),
-            backgroundColor: Colors.green,
-            duration: Duration(seconds: 3),
-          ),
-        );
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Failed to save image to Gallery'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Image saved to Gallery'),
+          backgroundColor: Colors.green,
+          duration: Duration(seconds: 3),
+        ),
+      );
     } catch (e) {
       print('Download error: $e');
       ScaffoldMessenger.of(context).showSnackBar(
@@ -209,76 +197,65 @@ class _ImageViewerScreenState extends State<ImageViewerScreen> {
     }
   }
 
-  void _editImage(BuildContext context) async {
+  void _editImage() async {
+    // Store references before any async gap
+    final messenger = ScaffoldMessenger.of(context);
+    final navigator = Navigator.of(context);
+
     try {
-      // Show loading indicator while downloading image
-      ScaffoldMessenger.of(context).showSnackBar(
+      messenger.showSnackBar(
         const SnackBar(
           content: Text('Preparing image...'),
           backgroundColor: Colors.blue,
+          duration: Duration(seconds: 1),
         ),
       );
 
-      final url = widget.imageUrl.startsWith('http') ? widget.imageUrl : 'https://millerstorm.tech${widget.imageUrl}';
+      final url = widget.imageUrl.startsWith('http')
+          ? widget.imageUrl
+          : 'https://millerstorm.tech${widget.imageUrl}';
       final response = await http.get(Uri.parse(url));
-      
-      if (response.statusCode == 200) {
-        // Open image editor with all basic features enabled
-        final editedImage = await Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => ImageEditor(
-              image: response.bodyBytes,
-            ),
-          ),
-        );
-        
-        // If user saved the edited image
-        if (editedImage != null) {
-          // Show saving indicator
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Saving edited image...'),
-              backgroundColor: Colors.blue,
-            ),
-          );
+      if (!mounted) return;
 
-          // Save edited image to gallery
-          final result = await ImageGallerySaver.saveImage(
-            editedImage,
-            quality: 100,
-            name: 'StormChat_Edited_${DateTime.now().millisecondsSinceEpoch}',
-          );
-          
-          if (result['isSuccess']) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('Edited image saved to Gallery!'),
-                backgroundColor: Colors.green,
-                duration: Duration(seconds: 3),
-              ),
-            );
-          } else {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('Failed to save edited image'),
-                backgroundColor: Colors.red,
-              ),
-            );
-          }
-        }
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(
+      if (response.statusCode != 200) {
+        messenger.showSnackBar(
           const SnackBar(
             content: Text('Failed to load image for editing'),
             backgroundColor: Colors.red,
           ),
         );
+        return;
       }
-    } catch (e, stackTrace) {
+
+      final editedImage = await navigator.push(
+        MaterialPageRoute(
+          builder: (context) => ImageEditor(image: response.bodyBytes),
+        ),
+      );
+      if (!mounted) return;
+
+      if (editedImage != null) {
+        messenger.showSnackBar(
+          const SnackBar(
+            content: Text('Saving edited image...'),
+            backgroundColor: Colors.blue,
+            duration: Duration(seconds: 1),
+          ),
+        );
+        await Gal.putImageBytes(editedImage, album: 'StormChat');
+        if (!mounted) return;
+        messenger.showSnackBar(
+          const SnackBar(
+            content: Text('Edited image saved to Gallery!'),
+            backgroundColor: Colors.green,
+            duration: Duration(seconds: 3),
+          ),
+        );
+      }
+    } catch (e) {
       print('Edit error: $e');
-      print('Stack trace: $stackTrace');
-      ScaffoldMessenger.of(context).showSnackBar(
+      if (!mounted) return;
+      messenger.showSnackBar(
         SnackBar(
           content: Text('Failed to edit image: ${e.toString()}'),
           backgroundColor: Colors.red,
@@ -300,7 +277,7 @@ class _ImageViewerScreenState extends State<ImageViewerScreen> {
               title: const Text('Edit', style: TextStyle(color: Colors.white)),
               onTap: () {
                 Navigator.pop(context);
-                _editImage(context);
+                _editImage();
               },
             ),
             ListTile(
