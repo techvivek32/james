@@ -174,6 +174,39 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       console.error('Error sending message:', error);
       res.status(500).json({ error: 'Failed to send message' });
     }
+  } else if (req.method === 'PATCH') {
+    // Add or remove a reaction on a message
+    try {
+      const { messageId, emoji, userId, userName } = req.body;
+
+      if (!messageId || !emoji || !userId) {
+        return res.status(400).json({ error: 'messageId, emoji and userId are required' });
+      }
+
+      const msg = await ChatMessage.findById(messageId);
+      if (!msg) return res.status(404).json({ error: 'Message not found' });
+
+      const reactions = (msg as any).reactions || [];
+      const existingIndex = reactions.findIndex(
+        (r: any) => r.userId === userId && r.emoji === emoji
+      );
+
+      if (existingIndex !== -1) {
+        // Toggle off — remove existing reaction
+        reactions.splice(existingIndex, 1);
+      } else {
+        // Add new reaction
+        reactions.push({ emoji, userId, userName });
+      }
+
+      (msg as any).reactions = reactions;
+      await msg.save();
+
+      return res.status(200).json(msg);
+    } catch (error) {
+      console.error('Error saving reaction:', error);
+      res.status(500).json({ error: 'Failed to save reaction' });
+    }
   } else {
     res.status(405).json({ error: 'Method not allowed' });
   }

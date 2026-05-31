@@ -1532,34 +1532,52 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
 
   void _addReaction(dynamic message, String emoji) {
     Navigator.pop(context);
-    
-    setState(() {
-      // Find the message index
-      final messageIndex = messages.indexWhere((m) => m['_id'] == message['_id']);
-      if (messageIndex != -1) {
-        // Make a copy of the message
-        final updatedMessage = Map<String, dynamic>.from(messages[messageIndex]);
-        
-        // Initialize reactions list if needed
-        if (updatedMessage['reactions'] == null) {
-          updatedMessage['reactions'] = [];
+
+    final messageId = message['_id'];
+    final messageIndex = messages.indexWhere((m) => m['_id'] == messageId);
+
+    // Optimistic update
+    if (messageIndex != -1) {
+      setState(() {
+        final updated = Map<String, dynamic>.from(messages[messageIndex]);
+        final reactions = List<dynamic>.from(updated['reactions'] ?? []);
+        final existing = reactions.indexWhere(
+          (r) => r['userId'] == widget.userId && r['emoji'] == emoji,
+        );
+        if (existing != -1) {
+          reactions.removeAt(existing);
+        } else {
+          reactions.add({'emoji': emoji, 'userId': widget.userId, 'userName': userName});
         }
-        
-        // Add the new reaction
-        (updatedMessage['reactions'] as List).add({
-          'emoji': emoji,
-          'userId': widget.userId,
-          'userName': userName,
-        });
-        
-        // Update the message in the list
-        messages[messageIndex] = updatedMessage;
+        updated['reactions'] = reactions;
+        messages[messageIndex] = updated;
+      });
+    }
+
+    // Save to server
+    http.patch(
+      Uri.parse('https://millerstorm.tech/api/storm-chat/messages/${widget.group['_id']}'),
+      headers: {'Content-Type': 'application/json'},
+      body: json.encode({
+        'messageId': messageId,
+        'emoji': emoji,
+        'userId': widget.userId,
+        'userName': userName,
+      }),
+    ).then((response) {
+      if (response.statusCode == 200) {
+        // Server confirmed — update local message with server response
+        final serverMsg = json.decode(response.body);
+        if (mounted) {
+          setState(() {
+            final idx = messages.indexWhere((m) => m['_id'] == messageId);
+            if (idx != -1) messages[idx] = serverMsg;
+          });
+        }
       }
+    }).catchError((e) {
+      print('Reaction save error: $e');
     });
-    
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Added reaction: $emoji')),
-    );
   }
 
   void _showMoreEmojis(BuildContext context, dynamic message) {
