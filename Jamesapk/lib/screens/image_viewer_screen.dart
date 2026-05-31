@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'dart:io';
+import 'dart:convert';
 import 'dart:typed_data';
 import 'package:http/http.dart' as http;
 import 'package:path_provider/path_provider.dart';
@@ -12,11 +13,19 @@ import 'package:image_editor_plus/image_editor_plus.dart';
 class ImageViewerScreen extends StatefulWidget {
   final String imageUrl;
   final String? fileName;
+  final String? groupId;
+  final String? userId;
+  final String? userName;
+  final String? userRole;
 
   const ImageViewerScreen({
     Key? key,
     required this.imageUrl,
     this.fileName,
+    this.groupId,
+    this.userId,
+    this.userName,
+    this.userRole,
   }) : super(key: key);
 
   @override
@@ -242,11 +251,59 @@ class _ImageViewerScreenState extends State<ImageViewerScreen> {
             duration: Duration(seconds: 1),
           ),
         );
+
+        // Save to gallery
         await Gal.putImageBytes(editedImage, album: 'StormChat');
+        if (!mounted) return;
+
+        // If opened from a chat room, upload and send back as new message
+        if (widget.groupId != null && widget.userId != null) {
+          try {
+            final tempDir = await getTemporaryDirectory();
+            final tempFile = File(
+              '${tempDir.path}/edited_${DateTime.now().millisecondsSinceEpoch}.jpg',
+            );
+            await tempFile.writeAsBytes(editedImage);
+
+            final uploadRequest = http.MultipartRequest(
+              'POST',
+              Uri.parse('https://millerstorm.tech/api/upload-image'),
+            );
+            uploadRequest.files.add(
+              await http.MultipartFile.fromPath('file', tempFile.path),
+            );
+            final uploadStream = await uploadRequest.send();
+            final uploadResponse = await http.Response.fromStream(uploadStream);
+
+            if (!mounted) return;
+            if (uploadResponse.statusCode == 200) {
+              final uploadData = jsonDecode(uploadResponse.body);
+              final uploadedUrl = uploadData['url'];
+
+              await http.post(
+                Uri.parse(
+                  'https://millerstorm.tech/api/storm-chat/messages/${widget.groupId}',
+                ),
+                headers: {'Content-Type': 'application/json'},
+                body: jsonEncode({
+                  'senderId': widget.userId,
+                  'senderName': widget.userName,
+                  'senderRole': widget.userRole,
+                  'message': 'edited_image.jpg',
+                  'messageType': 'image',
+                  'mediaUrl': uploadedUrl,
+                }),
+              );
+            }
+          } catch (e) {
+            print('Send to chat error: $e');
+          }
+        }
+
         if (!mounted) return;
         messenger.showSnackBar(
           const SnackBar(
-            content: Text('Edited image saved to Gallery!'),
+            content: Text('Edited image saved & sent to chat!'),
             backgroundColor: Colors.green,
             duration: Duration(seconds: 3),
           ),

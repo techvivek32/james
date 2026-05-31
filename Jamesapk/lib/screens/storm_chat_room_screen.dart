@@ -12,6 +12,9 @@ import 'storm_chat_group_info_screen.dart';
 import 'image_viewer_screen.dart';
 import 'video_viewer_screen.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'dart:typed_data';
+import 'package:path_provider/path_provider.dart';
+import 'package:image_editor_plus/image_editor_plus.dart';
 
 class StormChatRoomScreen extends StatefulWidget {
   final dynamic group;
@@ -529,7 +532,7 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
                 Navigator.pop(context);
                 final XFile? image = await picker.pickImage(source: ImageSource.gallery);
                 if (image != null) {
-                  _uploadFile(File(image.path), 'image');
+                  _editAndSendImage(File(image.path));
                 }
               },
             ),
@@ -540,7 +543,7 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
                 Navigator.pop(context);
                 final XFile? image = await picker.pickImage(source: ImageSource.camera);
                 if (image != null) {
-                  _uploadFile(File(image.path), 'image');
+                  _editAndSendImage(File(image.path));
                 }
               },
             ),
@@ -559,6 +562,31 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
         ),
       ),
     );
+  }
+
+  Future<void> _editAndSendImage(File imageFile) async {
+    try {
+      final bytes = await imageFile.readAsBytes();
+      final editedBytes = await Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => ImageEditor(image: bytes),
+        ),
+      );
+      if (!mounted) return;
+      if (editedBytes != null) {
+        final tempDir = await getTemporaryDirectory();
+        final tempFile = File(
+          '${tempDir.path}/send_${DateTime.now().millisecondsSinceEpoch}.jpg',
+        );
+        await tempFile.writeAsBytes(editedBytes);
+        _uploadFile(tempFile, 'image');
+      }
+      // if editedBytes is null user cancelled — don't send
+    } catch (e) {
+      print('Edit before send error: $e');
+      _uploadFile(imageFile, 'image');
+    }
   }
 
   Future<void> _uploadFile(File file, String type) async {
@@ -1493,6 +1521,10 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
             MaterialPageRoute(
               builder: (context) => ImageViewerScreen(
                 imageUrl: imageUrl,
+                groupId: widget.group['_id'],
+                userId: widget.userId,
+                userName: userName,
+                userRole: widget.userRole,
               ),
             ),
           );
