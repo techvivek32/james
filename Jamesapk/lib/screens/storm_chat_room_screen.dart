@@ -35,6 +35,7 @@ class StormChatRoomScreen extends StatefulWidget {
 class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
   List<dynamic> messages = [];
   final TextEditingController _messageController = TextEditingController();
+  final FocusNode _messageFocusNode = FocusNode();
   final ScrollController _scrollController = ScrollController();
   bool isLoading = true;
   bool isSending = false;
@@ -48,6 +49,7 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
   bool _showScrollToBottomButton = false;
   bool _hasNewMessages = false;
   dynamic _longPressedMessage;
+  String? _emojiTrayMessageId;
   
   // Mention feature
   bool _showMentionList = false;
@@ -97,6 +99,7 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
     _pollTimer?.cancel();
     _blinkTimer?.cancel();
     _messageController.removeListener(_onMessageTextChanged);
+    _messageFocusNode.dispose();
     _scrollController.removeListener(_onScroll);
     _saveScrollPosition();
     _scrollController.dispose();
@@ -820,7 +823,13 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
                               ],
                             ),
                           )
-                        : RefreshIndicator(
+                        : GestureDetector(
+                            onTap: () {
+                              if (_emojiTrayMessageId != null) {
+                                setState(() => _emojiTrayMessageId = null);
+                              }
+                            },
+                            child: RefreshIndicator(
                             color: const Color(0xFFCB0002),
                             onRefresh: _fetchMessages,
                             child: ListView.builder(
@@ -832,6 +841,7 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
                               },
                             ),
                           ),
+                          ), // GestureDetector
               ),
           
           // Input
@@ -1070,6 +1080,7 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
                                   filled: true,
                                   fillColor: textFieldColor,
                                 ),
+                                focusNode: _messageFocusNode,
                                 maxLines: null,
                                 textInputAction: TextInputAction.send,
                                 onSubmitted: (_) => _sendMessage(),
@@ -1196,13 +1207,14 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
             setState(() {
               replyingTo = message;
             });
+            _messageFocusNode.requestFocus();
           },
           child: GestureDetector(
             onLongPress: () {
               setState(() {
                 _longPressedMessage = message;
+                _emojiTrayMessageId = message['_id'];
               });
-              _showMessageOptions(context, message);
             },
             child: AnimatedContainer(
               duration: const Duration(milliseconds: 250),
@@ -1212,9 +1224,63 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
               ),
               child: Align(
                 alignment: isMyMessage ? Alignment.centerRight : Alignment.centerLeft,
-                child: Stack(
-                  clipBehavior: Clip.none,
+                child: Column(
+                  crossAxisAlignment: isMyMessage ? CrossAxisAlignment.end : CrossAxisAlignment.start,
                   children: [
+                    // Floating emoji tray above message on long press
+                    if (_emojiTrayMessageId == message['_id'])
+                      GestureDetector(
+                        onTap: () {},
+                        child: Container(
+                          margin: const EdgeInsets.only(bottom: 6),
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                          decoration: BoxDecoration(
+                            color: _isDarkTheme ? const Color(0xFF2C2C2E) : Colors.white,
+                            borderRadius: BorderRadius.circular(28),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.18),
+                                blurRadius: 12,
+                                offset: const Offset(0, 4),
+                              ),
+                            ],
+                          ),
+                          child: SingleChildScrollView(
+                            scrollDirection: Axis.horizontal,
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                for (final e in ['❤️','👍','👎','😂','🎉','🔥','😢'])
+                                  GestureDetector(
+                                    onTap: () {
+                                      setState(() => _emojiTrayMessageId = null);
+                                      _addReaction(message, e);
+                                    },
+                                    child: Padding(
+                                      padding: const EdgeInsets.symmetric(horizontal: 5),
+                                      child: Text(e, style: const TextStyle(fontSize: 26)),
+                                    ),
+                                  ),
+                                GestureDetector(
+                                  onTap: () {
+                                    setState(() => _emojiTrayMessageId = null);
+                                    _showMessageOptions(context, message);
+                                  },
+                                  child: Padding(
+                                    padding: const EdgeInsets.symmetric(horizontal: 5),
+                                    child: Icon(Icons.more_horiz,
+                                      size: 26,
+                                      color: _isDarkTheme ? Colors.white70 : Colors.black54),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                    Stack(
+                      clipBehavior: Clip.none,
+                      children: [
                     Container(
                       constraints: BoxConstraints(
                         maxWidth: MediaQuery.of(context).size.width * 0.7,
@@ -1358,7 +1424,9 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
                     // Reactions display
                     _buildReactions(message, isMyMessage),
                   ],
-                ),
+                ), // Stack
+                  ], // Column children
+                ), // Column
               ),
             ),
           ),
@@ -1385,18 +1453,10 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
     if (reactionCounts.isEmpty) return const SizedBox();
     
     return Positioned(
-      bottom: -8,
-      left: isMyMessage ? null : 12,
-      right: isMyMessage ? 12 : null,
-      child: GestureDetector(
-        onTap: () {
-          setState(() {
-            _longPressedMessage = message;
-          });
-          _showMessageOptions(context, message);
-        },
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      bottom: 6,
+      left: 8,
+      child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
           decoration: BoxDecoration(
             color: _isDarkTheme ? const Color(0xFF2C2C2E) : Colors.white,
             borderRadius: BorderRadius.circular(16),
@@ -1417,29 +1477,128 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
             children: reactionCounts.entries.map((entry) {
               final emoji = entry.key;
               final count = entry.value;
-              return Padding(
-                padding: EdgeInsets.only(right: entry != reactionCounts.entries.last ? 4 : 0),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      emoji,
-                      style: const TextStyle(fontSize: 16),
-                    ),
-                    const SizedBox(width: 2),
-                    Text(
-                      count.toString(),
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: _isDarkTheme ? Colors.white70 : Colors.black54,
-                        fontWeight: FontWeight.w500,
+              return GestureDetector(
+                onTap: () => _showReactionDetails(message, emoji),
+                child: Container(
+                  margin: EdgeInsets.only(right: entry != reactionCounts.entries.last ? 4 : 0),
+                  padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(emoji, style: const TextStyle(fontSize: 14)),
+                      const SizedBox(width: 2),
+                      Text(
+                        count.toString(),
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: _isDarkTheme ? Colors.white70 : Colors.black54,
+                          fontWeight: FontWeight.w500,
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               );
             }).toList(),
           ),
+        ),
+    );
+  }
+
+  void _showReactionDetails(dynamic message, String emoji) {
+    final reactions = (message['reactions'] as List? ?? [])
+        .where((r) => r['emoji'] == emoji)
+        .toList();
+    final iReacted = reactions.any((r) => r['userId'] == widget.userId);
+    final bgColor = _isDarkTheme ? const Color(0xFF1C1C1E) : Colors.white;
+    final textColor = _isDarkTheme ? Colors.white : Colors.black87;
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (ctx) => Container(
+        decoration: BoxDecoration(
+          color: bgColor,
+          borderRadius: const BorderRadius.only(
+            topLeft: Radius.circular(16),
+            topRight: Radius.circular(16),
+          ),
+        ),
+        padding: const EdgeInsets.only(top: 12, bottom: 24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Handle
+            Container(
+              width: 36, height: 4,
+              decoration: BoxDecoration(
+                color: Colors.grey[400],
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            const SizedBox(height: 12),
+            // Header
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Row(
+                children: [
+                  Text(emoji, style: const TextStyle(fontSize: 28)),
+                  const SizedBox(width: 8),
+                  Text(
+                    '${reactions.length} ${reactions.length == 1 ? 'reaction' : 'reactions'}',
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: textColor),
+                  ),
+                ],
+              ),
+            ),
+            const Divider(height: 20),
+            // User list
+            ...reactions.map((r) {
+              final isMe = r['userId'] == widget.userId;
+              return ListTile(
+                leading: CircleAvatar(
+                  radius: 20,
+                  backgroundColor: const Color(0xFFF3F4F6),
+                  child: Text(
+                    ((r['userName'] as String? ?? '?')[0]).toUpperCase(),
+                    style: const TextStyle(fontWeight: FontWeight.w600, color: Color(0xFF374151)),
+                  ),
+                ),
+                title: Text(
+                  isMe ? '${r['userName']} (You)' : r['userName'] ?? 'Unknown',
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                    color: textColor,
+                  ),
+                ),
+                trailing: isMe
+                    ? GestureDetector(
+                        onTap: () {
+                          Navigator.pop(ctx);
+                          _addReaction(message, emoji); // toggles off
+                        },
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFFEE2E2),
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          child: const Text(
+                            'Remove',
+                            style: TextStyle(
+                              fontSize: 13,
+                              color: Color(0xFFCB0002),
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                      )
+                    : null,
+              );
+            }).toList(),
+          ],
         ),
       ),
     );
@@ -1471,13 +1630,13 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
                 padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
                 child: Row(
                   children: [
-                    _buildEmojiOption('❤️', () => _addReaction(message, '❤️')),
-                    _buildEmojiOption('👍', () => _addReaction(message, '👍')),
-                    _buildEmojiOption('👎', () => _addReaction(message, '👎')),
-                    _buildEmojiOption('😂', () => _addReaction(message, '😂')),
-                    _buildEmojiOption('🎉', () => _addReaction(message, '🎉')),
-                    _buildEmojiOption('🔥', () => _addReaction(message, '🔥')),
-                    _buildEmojiOption('😢', () => _addReaction(message, '😢')),
+                    _buildEmojiOption('❤️', () { Navigator.pop(context); _addReaction(message, '❤️'); }),
+                    _buildEmojiOption('👍', () { Navigator.pop(context); _addReaction(message, '👍'); }),
+                    _buildEmojiOption('👎', () { Navigator.pop(context); _addReaction(message, '👎'); }),
+                    _buildEmojiOption('😂', () { Navigator.pop(context); _addReaction(message, '😂'); }),
+                    _buildEmojiOption('🎉', () { Navigator.pop(context); _addReaction(message, '🎉'); }),
+                    _buildEmojiOption('🔥', () { Navigator.pop(context); _addReaction(message, '🔥'); }),
+                    _buildEmojiOption('😢', () { Navigator.pop(context); _addReaction(message, '😢'); }),
                     _buildEmojiOption('➕', () => _showMoreEmojis(context, message)),
                   ],
                 ),
@@ -1531,7 +1690,6 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
   }
 
   void _addReaction(dynamic message, String emoji) {
-    Navigator.pop(context);
 
     final messageId = message['_id'];
     final messageIndex = messages.indexWhere((m) => m['_id'] == messageId);
@@ -1971,8 +2129,8 @@ class _SwipeableMessageState extends State<_SwipeableMessage>
     if (!_dragUnderway) return;
     _dragUnderway = false;
 
-    // If swiped more than 60px, trigger reply
-    if (_dragExtent > 60) {
+    // If swiped more than 40px, trigger reply
+    if (_dragExtent > 40) {
       widget.onSwipeRight();
     }
 
@@ -1999,7 +2157,7 @@ class _SwipeableMessageState extends State<_SwipeableMessage>
               bottom: 0,
               child: Center(
                 child: Opacity(
-                  opacity: (_dragExtent / 80).clamp(0.0, 1.0),
+                  opacity: (_dragExtent / 40).clamp(0.0, 1.0),
                   child: Icon(
                     Icons.reply,
                     color: Colors.grey[600],
