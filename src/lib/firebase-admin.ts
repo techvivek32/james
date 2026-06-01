@@ -77,7 +77,7 @@ export async function sendPushNotification(
     const response = await admin.messaging().send(message);
     console.log(`[PUSH] ✅ Sent to ${fcmToken.substring(0, 10)}... | Title: "${title}" | Msg: "${body.substring(0, 30)}..."`);
     return true;
-  } catch (error) {
+  } catch (error: any) {
     console.error(`[PUSH] ❌ Failed to send:`, error.message);
     return false;
   }
@@ -138,7 +138,7 @@ export async function sendPushNotificationToMultiple(
     }
     
     return true;
-  } catch (error) {
+  } catch (error: any) {
     console.error(`[PUSH] ❌ Multicast critical error:`, error.message);
     return false;
   }
