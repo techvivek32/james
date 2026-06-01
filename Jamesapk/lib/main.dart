@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'firebase_options.dart';
 import 'services/firebase_messaging_service.dart';
 import 'screens/splash_screen.dart';
 import 'screens/login_screen.dart';
@@ -30,8 +31,22 @@ import 'screens/register_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await Firebase.initializeApp();
-  await FirebaseMessagingService.initialize();
+  
+  try {
+    // Initialize Firebase with platform-specific options
+    await Firebase.initializeApp(
+      options: DefaultFirebaseOptions.currentPlatform,
+    );
+    print('✅ Firebase initialized');
+    
+    // Initialize messaging service only if Firebase is initialized
+    await FirebaseMessagingService.initialize();
+    print('✅ Firebase Messaging initialized');
+  } catch (e) {
+    print('⚠️ Firebase initialization failed: $e');
+    print('⚠️ App will run without push notifications');
+  }
+  
   runApp(const MillerStormApp());
 }
 
