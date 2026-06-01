@@ -26,19 +26,19 @@
 	<string>$(FLUTTER_BUILD_NUMBER)</string>
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>
+	<key>LSRequiresIPhoneOS</key>
+	<true/>
 	<key>NSAppTransportSecurity</key>
 	<dict>
 		<key>NSAllowsArbitraryLoads</key>
 		<true/>
 	</dict>
-	<key>LSRequiresIPhoneOS</key>
-	<true/>
-	<key>NSPhotoLibraryUsageDescription</key>
-	<string>MillerStorm uses the photo library so users can upload roofing job photos, inspection images, and claim documentation inside team chats and project workflows.</string>
-	<key>NSPhotoLibraryAddUsageDescription</key>
-	<string>MillerStorm saves roofing inspection photos and project documentation to your photo library for record keeping.</string>
 	<key>NSCameraUsageDescription</key>
 	<string>MillerStorm uses the camera to capture roofing inspection photos and videos for project communication and insurance documentation.</string>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>MillerStorm saves roofing inspection photos and project documentation to your photo library for record keeping.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>MillerStorm uses the photo library so users can upload roofing job photos, inspection images, and claim documentation inside team chats and project workflows.</string>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>
@@ -62,6 +62,10 @@
 	</dict>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>remote-notification</string>
+	</array>
 	<key>UILaunchStoryboardName</key>
 	<string>LaunchScreen</string>
 	<key>UIMainStoryboardFile</key>
