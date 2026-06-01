@@ -11,7 +11,8 @@ module.exports = {
       max_memory_restart: '3G',
       env: {
         NODE_ENV: 'production',
-        PORT: 6789
+        PORT: 6789,
+        FIREBASE_SERVICE_ACCOUNT_PATH: '/var/www/millerstorm/firebase-service-account.json'
       },
       error_file: '/var/www/millerstorm/logs/err.log',
       out_file: '/var/www/millerstorm/logs/out.log',

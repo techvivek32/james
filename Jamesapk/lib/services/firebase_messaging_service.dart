@@ -1,9 +1,11 @@
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'dart:io';
 import 'auth_service.dart';
+import '../firebase_options.dart';
 
 class FirebaseMessagingService {
   static final FirebaseMessaging _firebaseMessaging = FirebaseMessaging.instance;
@@ -22,6 +24,13 @@ class FirebaseMessagingService {
 
     if (settings.authorizationStatus == AuthorizationStatus.authorized ||
         settings.authorizationStatus == AuthorizationStatus.provisional) {
+
+      // iOS: show notification banner/sound/badge even when app is in foreground
+      await FirebaseMessaging.instance.setForegroundNotificationPresentationOptions(
+        alert: true,
+        badge: true,
+        sound: true,
+      );
 
       // Initialize local notifications
       const androidSettings = AndroidInitializationSettings('@mipmap/ic_launcher');
@@ -173,5 +182,6 @@ class FirebaseMessagingService {
 
 @pragma('vm:entry-point')
 Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
+  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
   print('📨 Background message: ${message.notification?.title}');
 }

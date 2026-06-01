@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
+import 'package:millerstorm_app/services/firebase_messaging_service.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -28,7 +29,10 @@ class _SplashScreenState extends State<SplashScreen> {
       if (userStr != null) {
         final user = jsonDecode(userStr);
         final role = user['role'] as String?;
-        
+
+        // Refresh FCM token on every app open so all users stay up to date
+        FirebaseMessagingService.saveTokenAfterLogin();
+
         if (role == 'sales') {
           Navigator.pushReplacementNamed(context, '/courses');
         } else if (role == 'manager') {
