@@ -139,7 +139,15 @@ export default async function handler(
   }
 
   if (req.method === "PATCH") {
-    const { action, featureToggles } = req.body;
+    const { action, featureToggles, fcmToken } = req.body;
+
+    // Save fcmToken (from Flutter app)
+    if (fcmToken !== undefined) {
+      await UserModel.findOneAndUpdate({ id }, { fcmToken });
+      console.log(`[FCM] Token updated for user ${id}`);
+      res.status(200).json({ success: true });
+      return;
+    }
 
     // Save feature toggles only
     if (!action && featureToggles) {

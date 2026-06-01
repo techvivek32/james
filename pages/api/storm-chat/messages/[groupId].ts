@@ -81,8 +81,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         
         // Get all group members
         const groupMembers = await UserModel.find({
-          _id: { $in: group.members }
-        }).select('_id name');
+          id: { $in: group.members }
+        }).select('id name');
         
         // For each member, check if their name is mentioned with @
         for (const member of groupMembers) {
@@ -90,7 +90,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           // Create regex to match @Name (case insensitive, with word boundary or space after)
           const nameRegex = new RegExp(`@${memberName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(?=\\s|$)`, 'i');
           if (nameRegex.test(message)) {
-            mentionedUserIds.push(member._id.toString());
+            mentionedUserIds.push(member.id);
           }
         }
       }
@@ -176,7 +176,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         
         // Get FCM tokens for mentioned users
         const mentionedUsers = await UserModel.find({
-          _id: { $in: mentionedUserIds },
+          id: { $in: mentionedUserIds },
           fcmToken: { $exists: true, $ne: null, $nin: ['', null] }
         }).select('fcmToken');
         
@@ -204,7 +204,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         );
         
         const otherUsers = await UserModel.find({
-          _id: { $in: otherMemberIds },
+          id: { $in: otherMemberIds },
           fcmToken: { $exists: true, $ne: null, $nin: ['', null] }
         }).select('fcmToken');
         
