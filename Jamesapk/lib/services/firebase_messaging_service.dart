@@ -2,12 +2,13 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+import 'dart:io';
 import 'auth_service.dart';
 
 class FirebaseMessagingService {
   static final FirebaseMessaging _firebaseMessaging = FirebaseMessaging.instance;
   static final FlutterLocalNotificationsPlugin _localNotifications = FlutterLocalNotificationsPlugin();
-  
+
   static Future<void> initialize() async {
     // Request permission
     NotificationSettings settings = await _firebaseMessaging.requestPermission(
@@ -17,9 +18,11 @@ class FirebaseMessagingService {
       provisional: false,
     );
 
-    if (settings.authorizationStatus == AuthorizationStatus.authorized) {
-      print('✅ Notification permission granted');
-      
+    print('NOTIFICATION PERMISSION => ${settings.authorizationStatus}');
+
+    if (settings.authorizationStatus == AuthorizationStatus.authorized ||
+        settings.authorizationStatus == AuthorizationStatus.provisional) {
+
       // Initialize local notifications
       const androidSettings = AndroidInitializationSettings('@mipmap/ic_launcher');
       const iosSettings = DarwinInitializationSettings(
@@ -27,64 +30,86 @@ class FirebaseMessagingService {
         requestBadgePermission: true,
         requestSoundPermission: true,
       );
-      const initSettings = InitializationSettings(
-        android: androidSettings,
-        iOS: iosSettings,
-      );
-      
       await _localNotifications.initialize(
-        initSettings,
+        const InitializationSettings(android: androidSettings, iOS: iosSettings),
         onDidReceiveNotificationResponse: _onNotificationTapped,
       );
 
-      // Create notification channel for Android
-      const androidChannel = AndroidNotificationChannel(
-        'stormchat_channel',
-        'StormChat Messages',
-        description: 'Notifications for StormChat messages',
-        importance: Importance.high,
-        playSound: true,
-      );
-      
+      // Android notification channel
       await _localNotifications
           .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>()
-          ?.createNotificationChannel(androidChannel);
+          ?.createNotificationChannel(const AndroidNotificationChannel(
+            'stormchat_channel',
+            'StormChat Messages',
+            description: 'Notifications for StormChat messages',
+            importance: Importance.high,
+            playSound: true,
+          ));
 
-      // Get FCM token
-      String? token = await _firebaseMessaging.getToken();
-      if (token != null) {
-        print('📱 FCM Token: $token');
-        await _saveFCMToken(token);
-      }
+      // iOS: wait for APNS token before getting FCM token
+      await _getAndSaveFCMToken();
 
       // Listen for token refresh
-      _firebaseMessaging.onTokenRefresh.listen(_saveFCMToken);
+      _firebaseMessaging.onTokenRefresh.listen((token) {
+        print('FCM TOKEN REFRESHED => $token');
+        _saveFCMToken(token);
+      });
 
-      // Handle foreground messages
       FirebaseMessaging.onMessage.listen(_handleForegroundMessage);
-
-      // Handle background messages
       FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
-
-      // Handle notification taps when app is in background
       FirebaseMessaging.onMessageOpenedApp.listen(_handleNotificationTap);
     } else {
-      print('❌ Notification permission denied');
+      print('NOTIFICATION PERMISSION DENIED => ${settings.authorizationStatus}');
+    }
+  }
+
+  /// iOS requires APNS token to be available before FCM token can be fetched.
+  /// This method retries up to 5 times with a delay.
+  static Future<void> _getAndSaveFCMToken() async {
+    if (Platform.isIOS) {
+      String? apnsToken;
+      for (int i = 0; i < 5; i++) {
+        apnsToken = await _firebaseMessaging.getAPNSToken();
+        print('APNS TOKEN (attempt ${i + 1}) => $apnsToken');
+        if (apnsToken != null) break;
+        await Future.delayed(const Duration(seconds: 2));
+      }
+      if (apnsToken == null) {
+        print('APNS TOKEN => null after retries. FCM token cannot be fetched on iOS.');
+        return;
+      }
+    }
+
+    final fcmToken = await _firebaseMessaging.getToken();
+    print('FCM TOKEN => $fcmToken');
+
+    if (fcmToken != null) {
+      await _saveFCMToken(fcmToken);
+    } else {
+      print('FCM TOKEN => null, token not saved');
     }
   }
 
   static Future<void> _saveFCMToken(String token) async {
     try {
       final user = await AuthService.getStoredUser();
-      if (user == null) return;
+      if (user == null) {
+        print('FCM SAVE SKIPPED => No logged in user. Token will be saved after login.');
+        return;
+      }
 
       final userId = user['id'] ?? user['_id'];
-      
+      print('USER ID => $userId');
+      print('FCM TOKEN => $token');
+
       final response = await http.patch(
         Uri.parse('https://millerstorm.tech/api/users/$userId'),
         headers: {'Content-Type': 'application/json'},
         body: json.encode({'fcmToken': token}),
       );
+
+      print('API STATUS => ${response.statusCode}');
+      print('API RESPONSE => ${response.body}');
 
       if (response.statusCode == 200) {
         print('✅ FCM token saved to backend');
@@ -96,12 +121,14 @@ class FirebaseMessagingService {
     }
   }
 
+  /// Call this after user logs in so token gets saved immediately
+  static Future<void> saveTokenAfterLogin() async {
+    await _getAndSaveFCMToken();
+  }
+
   static Future<void> _handleForegroundMessage(RemoteMessage message) async {
     print('📨 Foreground message: ${message.notification?.title}');
-    
     final notification = message.notification;
-    final android = message.notification?.android;
-
     if (notification != null) {
       await _localNotifications.show(
         notification.hashCode,
@@ -131,26 +158,19 @@ class FirebaseMessagingService {
   static void _onNotificationTapped(NotificationResponse response) {
     if (response.payload != null) {
       final data = json.decode(response.payload!);
-      _handleNotificationTap(RemoteMessage(
-        data: data,
-      ));
+      _handleNotificationTap(RemoteMessage(data: data));
     }
   }
 
   static void _handleNotificationTap(RemoteMessage message) {
     print('🔔 Notification tapped: ${message.data}');
-    
-    // Navigate to chat room
     final groupId = message.data['groupId'];
     if (groupId != null) {
-      // TODO: Navigate to chat room
-      // You can use a global navigator key or event bus
       print('Navigate to group: $groupId');
     }
   }
 }
 
-// Top-level function for background message handling
 @pragma('vm:entry-point')
 Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   print('📨 Background message: ${message.notification?.title}');

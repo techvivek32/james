@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../services/auth_service.dart';
+import '../services/firebase_messaging_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 
@@ -44,12 +45,12 @@ class _LoginScreenState extends State<LoginScreen> {
       // Check role and navigate accordingly
       final role = user['role'] as String?;
       
-      // Only allow sales and manager roles
+      // Save FCM token now that user is logged in
+      FirebaseMessagingService.saveTokenAfterLogin();
+      
       if (role == 'sales') {
-        // Sales users go to courses screen
         Navigator.pushReplacementNamed(context, '/courses');
       } else if (role == 'manager') {
-        // Manager users go to manager training
         Navigator.pushReplacementNamed(context, '/manager-training');
       } else {
         // Block admin, marketing, and other roles
