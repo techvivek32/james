@@ -68,7 +68,8 @@ const userSchema = new Schema(
     videoUrl: String,
     webPage: webPageSchema,
     publicProfile: { type: publicProfileSchema, required: true },
-    featureToggles: { type: Schema.Types.Mixed, required: true }
+    featureToggles: { type: Schema.Types.Mixed, required: true },
+    fcmToken: { type: String, default: '' }
   },
   { timestamps: true }
 );

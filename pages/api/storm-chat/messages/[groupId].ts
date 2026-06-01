@@ -3,6 +3,7 @@ import { connectMongo } from '../../../../src/lib/mongodb';
 import ChatMessage from '../../../../src/lib/models/ChatMessage';
 import ChatGroup from '../../../../src/lib/models/ChatGroup';
 import { NotificationModel } from '../../../../src/lib/models/Notification';
+import { sendPushNotificationToMultiple } from '../../../../src/lib/firebase-admin';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   await connectMongo();
@@ -168,6 +169,68 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
       // Wait for all notifications to be created
       await Promise.all(notificationPromises);
+
+      // Send push notifications
+      try {
+        const { UserModel } = await import('../../../../src/lib/models/User');
+        
+        // Get FCM tokens for mentioned users
+        const mentionedUsers = await UserModel.find({
+          _id: { $in: mentionedUserIds },
+          fcmToken: { $exists: true, $ne: null, $ne: '' }
+        }).select('fcmToken');
+        
+        const mentionTokens = mentionedUsers.map((u: any) => u.fcmToken).filter(Boolean);
+        
+        if (mentionTokens.length > 0) {
+          await sendPushNotificationToMultiple(
+            mentionTokens,
+            `You were mentioned by ${senderName}`,
+            messageType === 'text' 
+              ? (message?.substring(0, 100) || 'New message')
+              : (messageType === 'image' ? 'Shared an image' : 'New message'),
+            {
+              groupId: groupId as string,
+              groupName: group.name,
+              messageId: newMessage._id.toString(),
+              type: 'mention'
+            }
+          );
+        }
+        
+        // Get FCM tokens for other members
+        const otherMemberIds = group.members.filter(
+          (id: string) => id !== senderId && !mentionedUserIds.includes(id)
+        );
+        
+        const otherUsers = await UserModel.find({
+          _id: { $in: otherMemberIds },
+          fcmToken: { $exists: true, $ne: null, $ne: '' }
+        }).select('fcmToken');
+        
+        const otherTokens = otherUsers.map((u: any) => u.fcmToken).filter(Boolean);
+        
+        if (otherTokens.length > 0) {
+          await sendPushNotificationToMultiple(
+            otherTokens,
+            `New message in ${group.name}`,
+            `${senderName}: ${
+              messageType === 'text' 
+                ? (message?.substring(0, 100) || 'New message')
+                : (messageType === 'image' ? 'Shared an image' : 'New message')
+            }`,
+            {
+              groupId: groupId as string,
+              groupName: group.name,
+              messageId: newMessage._id.toString(),
+              type: 'message'
+            }
+          );
+        }
+      } catch (pushError) {
+        console.error('Error sending push notifications:', pushError);
+        // Don't fail the request if push notifications fail
+      }
 
       res.status(201).json(newMessage);
     } catch (error) {

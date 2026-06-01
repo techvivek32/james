@@ -4,3 +4,6 @@ dist/
 .env
 .env.*.local
 *.log
+firebase-service-account.json
+*.plist
+google-services.json
