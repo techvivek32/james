@@ -177,7 +177,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         // Get FCM tokens for mentioned users
         const mentionedUsers = await UserModel.find({
           _id: { $in: mentionedUserIds },
-          fcmToken: { $exists: true, $ne: null, $ne: '' }
+          fcmToken: { $exists: true, $ne: null, $nin: ['', null] }
         }).select('fcmToken');
         
         const mentionTokens = mentionedUsers.map((u: any) => u.fcmToken).filter(Boolean);
@@ -205,7 +205,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         
         const otherUsers = await UserModel.find({
           _id: { $in: otherMemberIds },
-          fcmToken: { $exists: true, $ne: null, $ne: '' }
+          fcmToken: { $exists: true, $ne: null, $nin: ['', null] }
         }).select('fcmToken');
         
         const otherTokens = otherUsers.map((u: any) => u.fcmToken).filter(Boolean);

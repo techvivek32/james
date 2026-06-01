@@ -7,6 +7,16 @@ export function initializeFirebase() {
 
   try {
     const serviceAccountPath = process.env.FIREBASE_SERVICE_ACCOUNT_PATH || './firebase-service-account.json';
+    
+    // Check if file exists (only needed at runtime, not build time)
+    if (typeof window === 'undefined') {
+      const fs = require('fs');
+      if (!fs.existsSync(serviceAccountPath)) {
+        console.warn('⚠️  Firebase service account file not found. Push notifications will not work.');
+        return null;
+      }
+    }
+    
     const serviceAccount = require(serviceAccountPath);
 
     firebaseApp = admin.initializeApp({
