@@ -22,10 +22,9 @@ import FirebaseMessaging
       options: [.alert, .badge, .sound],
       completionHandler: { granted, error in
         print("APNS PERMISSION => granted=\(granted), error=\(String(describing: error))")
-        if granted {
-          DispatchQueue.main.async {
-            UIApplication.shared.registerForRemoteNotifications()
-          }
+        // Always register, even if granted is false (for provisional)
+        DispatchQueue.main.async {
+          UIApplication.shared.registerForRemoteNotifications()
         }
       }
     )

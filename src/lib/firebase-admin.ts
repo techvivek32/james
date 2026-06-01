@@ -75,10 +75,10 @@ export async function sendPushNotification(
     };
 
     const response = await admin.messaging().send(message);
-    console.log('✅ Push notification sent:', response);
+    console.log(`[PUSH] ✅ Sent to ${fcmToken.substring(0, 10)}... | Title: "${title}" | Msg: "${body.substring(0, 30)}..."`);
     return true;
   } catch (error) {
-    console.error('❌ Error sending push notification:', error);
+    console.error(`[PUSH] ❌ Failed to send:`, error.message);
     return false;
   }
 }
@@ -127,10 +127,19 @@ export async function sendPushNotificationToMultiple(
     };
 
     const response = await admin.messaging().sendEachForMulticast(message);
-    console.log(`✅ Push notifications sent: ${response.successCount}/${fcmTokens.length}`);
+    console.log(`[PUSH] ✅ Multicast: ${response.successCount} success, ${response.failureCount} failed | Title: "${title}"`);
+    
+    if (response.failureCount > 0) {
+      response.responses.forEach((res, idx) => {
+        if (!res.success) {
+          console.error(`[PUSH] ❌ Token ${fcmTokens[idx].substring(0, 10)}... error:`, res.error?.message);
+        }
+      });
+    }
+    
     return true;
   } catch (error) {
-    console.error('❌ Error sending push notifications:', error);
+    console.error(`[PUSH] ❌ Multicast critical error:`, error.message);
     return false;
   }
 }
