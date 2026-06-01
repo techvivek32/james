@@ -70,24 +70,25 @@ class _CoursesScreenState extends State<CoursesScreen> with SingleTickerProvider
       final cachedJson = prefs.getString(_cacheKey);
       final cacheTime = prefs.getInt(_cacheTimeKey);
       
-      if (cachedJson != null) {
-        // Always show cached data immediately (stale-while-revalidate pattern)
-        // Cache valid for 24 hours instead of 1 hour
-        final data = jsonDecode(cachedJson);
-        List<dynamic> courses = data is List ? data : [];
-        courses.sort((a, b) {
-          final orderA = a['order'] ?? 999;
-          final orderB = b['order'] ?? 999;
-          return orderA.compareTo(orderB);
-        });
-        
-        if (mounted) {
-          setState(() {
-            _courses = courses;
-            _filteredCourses = courses;
-            _hasCachedData = true;
-            _isLoading = false; // Show cached data immediately
+      if (cachedJson != null && cacheTime != null) {
+        // Check if cache is less than 1 hour old
+        if (DateTime.now().millisecondsSinceEpoch - cacheTime < 3600000) {
+          final data = jsonDecode(cachedJson);
+          List<dynamic> courses = data is List ? data : [];
+          courses.sort((a, b) {
+            final orderA = a['order'] ?? 999;
+            final orderB = b['order'] ?? 999;
+            return orderA.compareTo(orderB);
           });
+          
+          if (mounted) {
+            setState(() {
+              _courses = courses;
+              _filteredCourses = courses;
+              _hasCachedData = true;
+              _isLoading = false;
+            });
+          }
         }
       }
     } catch (e) {
