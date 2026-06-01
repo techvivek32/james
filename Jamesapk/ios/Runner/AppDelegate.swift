@@ -9,30 +9,35 @@ import FirebaseMessaging
     _ application: UIApplication,
     didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?
   ) -> Bool {
+    // Register plugins FIRST so Flutter engine is ready
+    GeneratedPluginRegistrant.register(with: self)
+
     FirebaseApp.configure()
-    
-    // Set Messaging delegate so APNS token is forwarded to Firebase
+
+    // Set delegate AFTER Firebase configure but BEFORE registerForRemoteNotifications
     Messaging.messaging().delegate = self
-    
     UNUserNotificationCenter.current().delegate = self
-    let authOptions: UNAuthorizationOptions = [.alert, .badge, .sound]
+
     UNUserNotificationCenter.current().requestAuthorization(
-      options: authOptions,
+      options: [.alert, .badge, .sound],
       completionHandler: { granted, error in
         print("APNS PERMISSION => granted=\(granted), error=\(String(describing: error))")
+        if granted {
+          DispatchQueue.main.async {
+            UIApplication.shared.registerForRemoteNotifications()
+          }
+        }
       }
     )
-    
-    application.registerForRemoteNotifications()
-    GeneratedPluginRegistrant.register(with: self)
+
     return super.application(application, didFinishLaunchingWithOptions: launchOptions)
   }
 
-  // Called when APNS token is received
   override func application(_ application: UIApplication,
                              didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data) {
     let tokenString = deviceToken.map { String(format: "%02.2hhx", $0) }.joined()
     print("APNS TOKEN => \(tokenString)")
+    // Forward to Firebase - plugin also does this but explicit is safer
     Messaging.messaging().apnsToken = deviceToken
     super.application(application, didRegisterForRemoteNotificationsWithDeviceToken: deviceToken)
   }
@@ -42,7 +47,6 @@ import FirebaseMessaging
     print("APNS REGISTRATION FAILED => \(error.localizedDescription)")
   }
 
-  // Called when FCM token is refreshed
   func messaging(_ messaging: Messaging, didReceiveRegistrationToken fcmToken: String?) {
     print("FCM TOKEN (native) => \(fcmToken ?? "nil")")
   }
