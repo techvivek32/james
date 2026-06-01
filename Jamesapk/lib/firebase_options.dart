@@ -54,11 +54,11 @@ class DefaultFirebaseOptions {
   }
 
   static const FirebaseOptions ios = FirebaseOptions(
-    apiKey: 'YOUR_IOS_API_KEY',
-    appId: 'YOUR_IOS_APP_ID',
-    messagingSenderId: 'YOUR_SENDER_ID',
-    projectId: 'YOUR_PROJECT_ID',
-    storageBucket: 'YOUR_PROJECT_ID.appspot.com',
-    iosBundleId: 'com.millerstorm.millerstorm_app',
+    apiKey: 'AIzaSyAOKb45RQkP6_v5ryS-Co522KsiOvAo934',
+    appId: '1:2006320977:ios:2913644a930980b5d7f570',
+    messagingSenderId: '2006320977',
+    projectId: 'millerstorm-e531a',
+    storageBucket: 'millerstorm-e531a.firebasestorage.app',
+    iosBundleId: 'com.millerstorm.app',
   );
 }
