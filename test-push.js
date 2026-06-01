@@ -41,60 +41,60 @@ async function testPush() {
       console.log('✅ Firebase Admin Initialized');
     }
 
-    // 4. CONNECT TO MONGODB TO GET A TOKEN
+    // 4. CONNECT TO MONGODB TO GET TOKENS
     await mongoose.connect(MONGODB_URI);
     const db = mongoose.connection.db;
     const usersCollection = db.collection('users');
 
-    // Get a user with a token (latest one updated)
-    const user = await usersCollection.findOne(
-      { fcmToken: { $exists: true, $ne: '', $ne: null } },
-      { sort: { updatedAt: -1 } }
-    );
+    // Get ALL users with a token
+    const users = await usersCollection.find(
+      { fcmToken: { $exists: true, $ne: '', $ne: null } }
+    ).toArray();
 
-    if (!user) {
-      console.error('❌ Error: No user found in database with an FCM token.');
-      console.log('Please log in to the app on a physical device first so the token gets saved.');
+    if (users.length === 0) {
+      console.error('❌ Error: No users found in database with an FCM token.');
+      console.log('Please log in to the app on physical devices first.');
       return;
     }
 
-    console.log(`📱 Found Token for User: ${user.name} (${user.email})`);
-    console.log(`Token: ${user.fcmToken.substring(0, 25)}...`);
+    console.log(`📱 Found ${users.length} User(s) with tokens.`);
 
-    // 5. SEND TEST MESSAGE WITH ENHANCED IOS PAYLOAD
-    const message = {
-      notification: {
-        title: '🔥 Test Notification',
-        body: 'If you see this, push notifications are WORKING!',
-      },
-      data: {
-        type: 'test',
-        click_action: 'FLUTTER_NOTIFICATION_CLICK',
-      },
-      token: user.fcmToken,
-      apns: {
-        payload: {
-          aps: {
-            sound: 'default',
-            badge: 1,
-            'content-available': 1,
-            'mutable-content': 1,
+    // 5. SEND TEST MESSAGES
+    for (const user of users) {
+      console.log(`\n--- Sending to: ${user.name} (${user.email}) ---`);
+      console.log(`Token: ${user.fcmToken.substring(0, 25)}...`);
+
+      const message = {
+        notification: {
+          title: '🔥 Multi-User Test',
+          body: `Hi ${user.name}, this is a test from the server!`,
+        },
+        data: {
+          type: 'test',
+          click_action: 'FLUTTER_NOTIFICATION_CLICK',
+        },
+        token: user.fcmToken,
+        apns: {
+          payload: {
+            aps: {
+              sound: 'default',
+              badge: 1,
+              'content-available': 1,
+              'mutable-content': 1,
+            },
           },
         },
-      },
-      android: {
-        priority: 'high',
-        notification: {
-          sound: 'default',
-          channelId: 'stormchat_channel',
-        }
-      }
-    };
+      };
 
-    console.log('📡 Sending to Firebase...');
-    const response = await admin.messaging().send(message);
-    console.log('✅ SUCCESS! Firebase Response:', response);
-    console.log('\n--- CHECK YOUR DEVICE NOW ---');
+      try {
+        const response = await admin.messaging().send(message);
+        console.log('✅ SUCCESS! Response:', response);
+      } catch (err) {
+        console.error(`❌ FAILED for ${user.name}:`, err.message);
+      }
+    }
+
+    console.log('\n--- ALL MESSAGES PROCESSED ---');
     console.log('If you still don\'t see it on your iPhone:');
     console.log('1. Check Settings > Miller Storm > Notifications (Must be ON)');
     console.log('2. Ensure you are using a PHYSICAL iPhone (not simulator)');
