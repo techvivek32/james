@@ -27,8 +27,8 @@ export async function connectMongo() {
         dbName: "millerstorm",
         serverSelectionTimeoutMS: 10000, // 10 second timeout
         socketTimeoutMS: 45000, // 45 second socket timeout
-        maxPoolSize: 10,
-        minPoolSize: 2,
+        maxPoolSize: 50, // Increased from 10 for better concurrency
+        minPoolSize: 5,  // Increased from 2
         maxIdleTimeMS: 30000
       })
     };

@@ -2,6 +2,7 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { connectMongo } from "../../../src/lib/mongodb";
 import { CourseModel } from "../../../src/lib/models/Course";
 import { UserModel } from "../../../src/lib/models/User";
+import { UserProgressModel } from "../../../src/lib/models/UserProgress";
 
 export default async function handler(
   req: NextApiRequest,
@@ -25,8 +26,10 @@ export default async function handler(
     
     console.log('📚 Courses API called with userId:', userId, 'userRole:', userRole);
     
-    // Fetch all course data (needed for lessons, quizzes, etc.)
-    const courses = await CourseModel.find({}).lean();
+    // Fetch course data with field projection (exclude large body content)
+    const courses = await CourseModel.find({})
+      .select('id title tagline description icon status coverImageUrl accessMode order folders pages')
+      .lean();
     console.log('📚 Total courses in DB:', courses.length);
     
     // If no user context, return all courses (for admin)
@@ -80,83 +83,74 @@ export default async function handler(
     
     console.log('📚 Filtered courses count:', filteredCourses.length);
     
-    // Use web's EXACT API - no custom logic
+    // Query database directly instead of nested API call (PERFORMANCE FIX)
     try {
-      const courseIds = filteredCourses.map(c => c.id).join(',');
-      console.log('🌐 Using web API directly for:', courseIds);
+      const courseIds = filteredCourses.map(c => c.id);
       
-      // Call web's existing course-progress API (same as web uses)
-      const webApiUrl = `https://millerstorm.tech/api/course-progress?userId=${userId}&courseIds=${courseIds}`;
-      console.log('🌐 Calling web API:', webApiUrl);
+      // Fetch progress records directly from database
+      const progressRecords = await UserProgressModel.find({ 
+        userId, 
+        courseId: { $in: courseIds } 
+      }).lean();
       
-      const webResponse = await fetch(webApiUrl);
-      
-      if (webResponse.ok) {
-        const webProgressData = await webResponse.json();
-        console.log('✅ Got web API response');
-        
-        const coursesWithWebProgress = filteredCourses.map((course: any) => {
-          const webProgress = webProgressData[course.id];
-          
-          // Filter out draft lessons/pages - only show published ones
-          const publishedPages = course.pages?.filter((p: any) => p.status === 'published') || [];
-          const publishedFolders = course.folders?.filter((f: any) => f.status === 'published') || [];
-          
-          if (webProgress) {
-            // Use web's exact calculation - only count lesson pages (not quizzes)
-            const completedPages = webProgress.completedPages?.length || 0;
-            const lessonPages = publishedPages.filter((p: any) => !p.isQuiz);
-            const totalPages = lessonPages.length;
-            const progressPercent = totalPages > 0 ? Math.round((completedPages / totalPages) * 100) : 0;
-            
-            console.log(`🌐 ${course.title}: ${progressPercent}% (${completedPages}/${totalPages} lessons)`);
-            
-            return {
-              ...course,
-              pages: publishedPages,
-              folders: publishedFolders,
-              progress: {
-                completedLessons: completedPages,
-                totalLessons: totalPages,
-                progressPercent: progressPercent
-              }
-            };
-          } else {
-            console.log(`🌐 ${course.title}: No progress in web API`);
-            const lessonPages = publishedPages.filter((p: any) => !p.isQuiz);
-            return {
-              ...course,
-              pages: publishedPages,
-              folders: publishedFolders,
-              progress: {
-                completedLessons: 0,
-                totalLessons: lessonPages.length,
-                progressPercent: 0
-              }
-            };
-          }
+      // Create progress map for fast lookup
+      const progressMap = new Map();
+      progressRecords.forEach(record => {
+        progressMap.set(record.courseId, {
+          completedPages: record.completedPages || [],
+          courseCompleted: record.courseCompleted || false
         });
+      });
+      
+      console.log(`📊 Loaded progress for ${progressRecords.length} courses`);
+      
+      // Build response with progress data
+      const coursesWithProgress = filteredCourses.map((course: any) => {
+        const progress = progressMap.get(course.id);
         
-        console.log('🌐 Returning courses with web API data');
-        res.status(200).json(coursesWithWebProgress);
-      } else {
-        console.log('⚠️ Web API failed, returning courses without progress');
-        // Filter out draft lessons/pages even when web API fails
-        const coursesWithFilteredPages = filteredCourses.map((course: any) => ({
+        // Filter out draft lessons/pages - only show published ones
+        const publishedPages = course.pages?.filter((p: any) => p.status === 'published') || [];
+        const publishedFolders = course.folders?.filter((f: any) => f.status === 'published') || [];
+        
+        // Calculate progress - only count lesson pages (not quizzes)
+        const lessonPages = publishedPages.filter((p: any) => !p.isQuiz);
+        const completedPages = progress?.completedPages?.length || 0;
+        const totalPages = lessonPages.length;
+        const progressPercent = totalPages > 0 ? Math.round((completedPages / totalPages) * 100) : 0;
+        
+        console.log(`📊 ${course.title}: ${progressPercent}% (${completedPages}/${totalPages} lessons)`);
+        
+        return {
           ...course,
-          pages: course.pages?.filter((p: any) => p.status === 'published') || [],
-          folders: course.folders?.filter((f: any) => f.status === 'published') || []
-        }));
-        res.status(200).json(coursesWithFilteredPages);
-      }
+          pages: publishedPages,
+          folders: publishedFolders,
+          progress: {
+            completedLessons: completedPages,
+            totalLessons: totalPages,
+            progressPercent: progressPercent
+          }
+        };
+      });
+      
+      console.log('✅ Returning courses with progress data');
+      res.status(200).json(coursesWithProgress);
     } catch (error) {
-      console.log('⚠️ Error calling web API:', error);
-      // Filter out draft lessons/pages even when web API fails
-      const coursesWithFilteredPages = filteredCourses.map((course: any) => ({
-        ...course,
-        pages: course.pages?.filter((p: any) => p.status === 'published') || [],
-        folders: course.folders?.filter((f: any) => f.status === 'published') || []
-      }));
+      console.log('⚠️ Error loading progress:', error);
+      // Return courses without progress on error
+      const coursesWithFilteredPages = filteredCourses.map((course: any) => {
+        const publishedPages = course.pages?.filter((p: any) => p.status === 'published') || [];
+        const lessonPages = publishedPages.filter((p: any) => !p.isQuiz);
+        return {
+          ...course,
+          pages: publishedPages,
+          folders: course.folders?.filter((f: any) => f.status === 'published') || [],
+          progress: {
+            completedLessons: 0,
+            totalLessons: lessonPages.length,
+            progressPercent: 0
+          }
+        };
+      });
       res.status(200).json(coursesWithFilteredPages);
     }
     
