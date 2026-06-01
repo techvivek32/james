@@ -9,10 +9,10 @@ import FirebaseMessaging
     _ application: UIApplication,
     didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?
   ) -> Bool {
+    FirebaseApp.configure()
+
     // Register plugins FIRST so Flutter engine is ready
     GeneratedPluginRegistrant.register(with: self)
-
-    FirebaseApp.configure()
 
     // Set delegate AFTER Firebase configure but BEFORE registerForRemoteNotifications
     Messaging.messaging().delegate = self
