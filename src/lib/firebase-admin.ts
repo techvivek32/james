@@ -1,4 +1,5 @@
 import * as admin from 'firebase-admin';
+import * as fs from 'fs';
 
 let firebaseApp: admin.app.App | null = null;
 
@@ -9,15 +10,14 @@ export function initializeFirebase() {
     const serviceAccountPath = process.env.FIREBASE_SERVICE_ACCOUNT_PATH || './firebase-service-account.json';
     
     // Check if file exists (only needed at runtime, not build time)
-    if (typeof window === 'undefined') {
-      const fs = require('fs');
-      if (!fs.existsSync(serviceAccountPath)) {
-        console.warn('⚠️  Firebase service account file not found. Push notifications will not work.');
-        return null;
-      }
+    if (!fs.existsSync(serviceAccountPath)) {
+      console.warn('⚠️  Firebase service account file not found. Push notifications will not work.');
+      return null;
     }
     
-    const serviceAccount = require(serviceAccountPath);
+    // Read the file content
+    const serviceAccountContent = fs.readFileSync(serviceAccountPath, 'utf8');
+    const serviceAccount = JSON.parse(serviceAccountContent);
 
     firebaseApp = admin.initializeApp({
       credential: admin.credential.cert(serviceAccount),
