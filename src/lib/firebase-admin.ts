@@ -67,6 +67,8 @@ export async function sendPushNotification(
           aps: {
             sound: 'default',
             badge: 1,
+            'content-available': 1,
+            'mutable-content': 1,
           },
         },
       },
@@ -117,6 +119,8 @@ export async function sendPushNotificationToMultiple(
           aps: {
             sound: 'default',
             badge: 1,
+            'content-available': 1,
+            'mutable-content': 1,
           },
         },
       },
