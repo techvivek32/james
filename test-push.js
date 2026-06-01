@@ -4,7 +4,22 @@ const mongoose = require('mongoose');
 
 // 1. CONFIGURATION
 const SERVICE_ACCOUNT_PATH = './firebase-service-account.json';
-const MONGODB_URI = 'mongodb://localhost:27017/millerstorm';
+
+// Try to get MongoDB URI from .env file or environment variable
+let MONGODB_URI = process.env.MONGODB_URI;
+
+if (!MONGODB_URI) {
+  try {
+    const envContent = fs.readFileSync('./.env', 'utf8');
+    const match = envContent.match(/MONGODB_URI=(.+)/);
+    if (match) {
+      MONGODB_URI = match[1].trim().replace(/["']/g, '');
+    }
+  } catch (e) {
+    // If .env fails, use default
+    MONGODB_URI = 'mongodb://localhost:27017/millerstorm';
+  }
+}
 
 async function testPush() {
   try {
