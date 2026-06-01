@@ -84,6 +84,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           id: { $in: group.members }
         }).select('id name');
         
+        console.log(`[CHAT] Group Members Found: ${groupMembers.length}/${group.members.length}`);
+        
         // For each member, check if their name is mentioned with @
         for (const member of groupMembers) {
           const memberName = member.name;
@@ -115,6 +117,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       }
 
       const newMessage = await ChatMessage.create(messageData);
+      console.log(`[CHAT] Message created: ${newMessage._id}`);
 
       // Create notifications for group members
       const notificationPromises: Promise<any>[] = [];
@@ -143,28 +146,32 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       }
 
       // 2. New message notifications for other members
-      for (const memberId of group.members) {
-        if (memberId !== senderId && !mentionedUserIds.includes(memberId)) {
-          notificationPromises.push(
-            NotificationModel.create({
-              id: `notif-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-              userId: memberId,
-              type: 'stormchat_message',
-              title: `New message in ${group.name}`,
-              message: `${senderName}: ${
-                messageType === 'text' 
-                  ? (message?.substring(0, 100) || 'New message')
-                  : (messageType === 'image' ? 'Shared an image' : 'New message')
-              }`,
-              read: false,
-              metadata: {
-                groupId,
-                groupName: group.name,
-                messageId: newMessage._id
-              }
-            })
-          );
-        }
+      const otherMemberIds = group.members.filter(
+        (id: string) => id !== senderId && !mentionedUserIds.includes(id)
+      );
+      
+      console.log(`[CHAT] Notifying ${otherMemberIds.length} other members (Sender: ${senderId})`);
+
+      for (const memberId of otherMemberIds) {
+        notificationPromises.push(
+          NotificationModel.create({
+            id: `notif-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+            userId: memberId,
+            type: 'stormchat_message',
+            title: `New message in ${group.name}`,
+            message: `${senderName}: ${
+              messageType === 'text' 
+                ? (message?.substring(0, 100) || 'New message')
+                : (messageType === 'image' ? 'Shared an image' : 'New message')
+            }`,
+            read: false,
+            metadata: {
+              groupId,
+              groupName: group.name,
+              messageId: newMessage._id
+            }
+          })
+        );
       }
 
       // Wait for all notifications to be created
@@ -181,6 +188,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         }).select('fcmToken');
         
         const mentionTokens = mentionedUsers.map((u: any) => u.fcmToken).filter(Boolean);
+        console.log(`[CHAT] Mention Tokens Found: ${mentionTokens.length}`);
         
         if (mentionTokens.length > 0) {
           await sendPushNotificationToMultiple(
@@ -199,16 +207,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         }
         
         // Get FCM tokens for other members
-        const otherMemberIds = group.members.filter(
-          (id: string) => id !== senderId && !mentionedUserIds.includes(id)
-        );
-        
         const otherUsers = await UserModel.find({
           id: { $in: otherMemberIds },
           fcmToken: { $exists: true, $ne: null, $nin: ['', null] }
         }).select('fcmToken');
         
         const otherTokens = otherUsers.map((u: any) => u.fcmToken).filter(Boolean);
+        console.log(`[CHAT] Other Member Tokens Found: ${otherTokens.length}`);
         
         if (otherTokens.length > 0) {
           await sendPushNotificationToMultiple(
@@ -227,9 +232,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             }
           );
         }
-      } catch (pushError) {
-        console.error('Error sending push notifications:', pushError);
-        // Don't fail the request if push notifications fail
+      } catch (pushError: any) {
+        console.error('[CHAT] Error sending push notifications:', pushError.message);
       }
 
       res.status(201).json(newMessage);
