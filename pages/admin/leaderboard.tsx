@@ -1,4 +1,4 @@
-﻿import type { NextPage } from "next";
+import type { NextPage } from "next";
 import { useEffect, useState, useCallback } from "react";
 import { AdminPageWrapper } from "../../src/portals/admin/AdminPageWrapper";
 
@@ -10,48 +10,52 @@ const fmtDate = (d: string) => d ? new Date(d).toLocaleDateString("en-US", { mon
 
 const LeaderboardPage: NextPage = () => {
   const [events, setEvents] = useState<any[]>([]);
+  const [stats, setStats] = useState<{ inspections: any[]; claims: any[] }>({ inspections: [], claims: [] });
   const [loading, setLoading] = useState(true);
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch("/api/admin/integration-events");
-      if (res.ok) setEvents(await res.json());
+      const [eventsRes, statsRes] = await Promise.all([
+        fetch("/api/admin/integration-events"),
+        fetch("/api/leaderboard")
+      ]);
+      
+      if (eventsRes.ok) setEvents(await eventsRes.json());
+      if (statsRes.ok) setStats(await statsRes.json());
     } finally { setLoading(false); }
   }, []);
 
   useEffect(() => { load(); }, [load]);
 
-  const inspections = events.filter(e => e.eventType?.toLowerCase().includes("inspection") && e.status !== "failed");
-  const claims = events.filter(e => e.eventType?.toLowerCase().includes("claim") && e.status !== "failed");
+  const inspections = stats.inspections || [];
+  const claims = stats.claims || [];
 
-  const cols = ["#", "Rep Name", "Job Number", "Amount", "Date", "Location", "Status"];
+  const cols = ["#", "Rep Name", "Count", "Revenue"];
 
-  function EventTable({ rows, type }: { rows: any[]; type: "inspection" | "claim" }) {
+  function LeaderboardTable({ rows, type }: { rows: any[]; type: "inspection" | "claim" }) {
     return (
       <div style={{ overflowX: "auto", marginBottom: 32 }}>
-        <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 860 }}>
+        <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 600 }}>
           <thead>
             <tr style={{ background: "#f1f5f9" }}>
-              {cols.map(c => <th key={c} style={th}>{c}</th>)}
+              <th style={th}>#</th>
+              <th style={th}>Rep Name</th>
+              <th style={th}>{type === "inspection" ? "Inspections" : "Claims"}</th>
+              {type === "claim" && <th style={th}>Total Revenue</th>}
             </tr>
           </thead>
           <tbody>
             {rows.length === 0 ? (
-              <tr><td colSpan={7} style={{ textAlign: "center", padding: 16, color: "#9ca3af" }}>No data yet</td></tr>
-            ) : rows.map((e, i) => (
-              <tr key={e._id} style={{ borderBottom: "1px solid #e2e8f0", background: i % 2 === 0 ? "#fff" : "#fafafa" }}>
+              <tr><td colSpan={type === "claim" ? 4 : 3} style={{ textAlign: "center", padding: 16, color: "#9ca3af" }}>No ranking data yet</td></tr>
+            ) : rows.map((r, i) => (
+              <tr key={r._id || i} style={{ borderBottom: "1px solid #e2e8f0", background: i % 2 === 0 ? "#fff" : "#fafafa" }}>
                 <td style={td}>{i + 1}</td>
-                <td style={{ ...td, fontWeight: 600 }}>{e.repName}</td>
-                <td style={{ ...td, fontFamily: "monospace", fontSize: 11 }}>{e.externalEventId}</td>
-                <td style={{ ...td, fontWeight: 600, color: type === "claim" ? "#16a34a" : "#374151" }}>{e.revenue ? fmt(e.revenue) : "—"}</td>
-                <td style={td}>{fmtDate(e.eventDate)}</td>
-                <td style={td}>
-                  <span style={{ padding: "2px 8px", borderRadius: 12, background: type === "claim" ? "#dcfce7" : "#dbeafe", color: type === "claim" ? "#15803d" : "#1d4ed8", fontSize: 12, fontWeight: 600 }}>
-                    {e.location || "—"}
-                  </span>
+                <td style={{ ...td, fontWeight: 600 }}>{r.repName}</td>
+                <td style={{ ...td, fontWeight: 600, color: "#2563eb" }}>
+                  {type === "inspection" ? r.inspectionCount : r.claimCount}
                 </td>
-                <td style={td}><span style={{ color: statusColor[e.status] ?? "#555", fontWeight: 600 }}>{e.status}</span></td>
+                {type === "claim" && <td style={{ ...td, fontWeight: 600, color: "#16a34a" }}>{fmt(r.revenueTotal)}</td>}
               </tr>
             ))}
           </tbody>
@@ -70,13 +74,13 @@ const LeaderboardPage: NextPage = () => {
 
         {loading ? <p>Loading...</p> : (
           <>
-            <h2 style={{ fontSize: 18, fontWeight: 600, marginBottom: 10 }}>Inspections</h2>
-            <EventTable rows={inspections} type="inspection" />
+            <h2 style={{ fontSize: 18, fontWeight: 600, marginBottom: 10 }}>Top Inspections</h2>
+            <LeaderboardTable rows={inspections} type="inspection" />
 
-            <h2 style={{ fontSize: 18, fontWeight: 600, marginBottom: 10 }}>Claims</h2>
-            <EventTable rows={claims} type="claim" />
+            <h2 style={{ fontSize: 18, fontWeight: 600, marginBottom: 10 }}>Top Claims & Revenue</h2>
+            <LeaderboardTable rows={claims} type="claim" />
 
-            <h2 style={{ fontSize: 18, fontWeight: 600, marginBottom: 10 }}>All Events Log</h2>
+            <h2 style={{ fontSize: 18, fontWeight: 600, marginBottom: 10, marginTop: 40 }}>Recent Events Activity</h2>
             <div style={{ overflowX: "auto" }}>
               <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 700 }}>
                 <thead>
@@ -93,7 +97,7 @@ const LeaderboardPage: NextPage = () => {
                       <td style={td}>{e.repName}</td>
                       <td style={td}>{e.eventType}</td>
                       <td style={{ ...td, fontFamily: "monospace", fontSize: 11 }}>{e.externalEventId}</td>
-                      <td style={td}>{e.revenue ? fmt(e.revenue) : "—"}</td>
+                      <td style={td}>{e.revenue ? fmt(e.revenue) : (e.rawPayload?.amount ? fmt(e.rawPayload.amount) : "—")}</td>
                       <td style={td}>{e.location || "—"}</td>
                       <td style={td}><span style={{ color: statusColor[e.status] ?? "#555", fontWeight: 600 }}>{e.status}</span></td>
                     </tr>
