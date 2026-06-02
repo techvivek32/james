@@ -35,17 +35,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   try {
     // Dedupe check — same job_id + event_type combination
-    // We check for the same job_id and eventType to avoid counting the same event twice
     const existing = await IntegrationEventModel.findOne({ 
       externalEventId: job_id,
       eventType: event_type,
       status: "processed"
     });
-
     if (existing) {
-      console.log(`Duplicate event detected for job ${job_id} and type ${event_type}. Saving as duplicate.`);
       await IntegrationEventModel.create({
-        externalEventId: job_id, // Keep the actual job ID
+        externalEventId: `${job_id}-dup-${Date.now()}`,
         source: "acculynx",
         eventType: event_type,
         repName: rep_name,
