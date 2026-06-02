@@ -52,12 +52,27 @@ void main() async {
   runApp(const MillerStormApp());
 }
 
-class MillerStormApp extends StatelessWidget {
+class MillerStormApp extends StatefulWidget {
   const MillerStormApp({super.key});
+
+  @override
+  State<MillerStormApp> createState() => _MillerStormAppState();
+}
+
+class _MillerStormAppState extends State<MillerStormApp> {
+  final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
+
+  @override
+  void initState() {
+    super.initState();
+    // Pass navigator key to messaging service
+    FirebaseMessagingService.setNavigatorKey(navigatorKey);
+  }
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+      navigatorKey: navigatorKey,
       title: 'Miller Storm',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(

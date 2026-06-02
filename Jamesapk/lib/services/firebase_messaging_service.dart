@@ -6,10 +6,17 @@ import 'dart:convert';
 import 'dart:io';
 import 'auth_service.dart';
 import '../firebase_options.dart';
+import '../screens/storm_chat_room_screen.dart';
+import 'package:flutter/material.dart';
 
 class FirebaseMessagingService {
   static final FirebaseMessaging _firebaseMessaging = FirebaseMessaging.instance;
   static final FlutterLocalNotificationsPlugin _localNotifications = FlutterLocalNotificationsPlugin();
+  static GlobalKey<NavigatorState>? _navigatorKey;
+
+  static void setNavigatorKey(GlobalKey<NavigatorState> key) {
+    _navigatorKey = key;
+  }
 
   static Future<void> initialize() async {
     // Request permission
@@ -171,11 +178,41 @@ class FirebaseMessagingService {
     }
   }
 
-  static void _handleNotificationTap(RemoteMessage message) {
+  static void _handleNotificationTap(RemoteMessage message) async {
     print('🔔 Notification tapped: ${message.data}');
     final groupId = message.data['groupId'];
-    if (groupId != null) {
-      print('Navigate to group: $groupId');
+    
+    if (groupId != null && _navigatorKey != null) {
+      print('🚀 Navigating to group: $groupId');
+      
+      try {
+        // Fetch group details
+        final response = await http.get(
+          Uri.parse('https://millerstorm.tech/api/storm-chat/groups/$groupId'),
+        );
+
+        if (response.statusCode == 200) {
+          final group = json.decode(response.body);
+          final user = await AuthService.getStoredUser();
+          
+          if (user != null && _navigatorKey?.currentState != null) {
+            final userId = user['id'] ?? user['_id'];
+            final userRole = user['role'];
+
+            _navigatorKey!.currentState!.push(
+              MaterialPageRoute(
+                builder: (context) => StormChatRoomScreen(
+                  group: group,
+                  userId: userId,
+                  userRole: userRole,
+                ),
+              ),
+            );
+          }
+        }
+      } catch (e) {
+        print('❌ Error in deep linking: $e');
+      }
     }
   }
 }

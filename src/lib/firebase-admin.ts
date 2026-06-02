@@ -57,6 +57,8 @@ export async function sendPushNotification(
       },
       data: {
         ...(data || {}),
+        title, // Duplicate for some older clients
+        body,  // Duplicate for some older clients
         click_action: 'FLUTTER_NOTIFICATION_CLICK',
       },
       token: fcmToken,
@@ -84,6 +86,7 @@ export async function sendPushNotification(
       },
     };
 
+    console.log(`[PUSH-DEBUG] Payload being sent to Firebase: ${JSON.stringify(message, null, 2)}`);
     const response = await admin.messaging().send(message);
     await logToDb('info', 'PUSH-NOTIFICATION', `✅ Successfully sent to token ending in ...${fcmToken.slice(-10)}`, { title });
     return true;
