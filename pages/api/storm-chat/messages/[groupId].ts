@@ -4,6 +4,7 @@ import ChatMessage from '../../../../src/lib/models/ChatMessage';
 import ChatGroup from '../../../../src/lib/models/ChatGroup';
 import { NotificationModel } from '../../../../src/lib/models/Notification';
 import { sendPushNotificationToMultiple } from '../../../../src/lib/firebase-admin';
+import { logToDb } from '../../../../src/lib/models/SystemLog';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   await connectMongo();
@@ -44,8 +45,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     try {
       const { senderId, senderName, senderRole, message, messageType, mediaUrl, replyTo, replyToMessage, replyToSender } = req.body;
       
-      console.log(`[CHAT-DEBUG] 📩 New message POST request for group: ${groupId}`);
-      console.log(`[CHAT-DEBUG] Sender: ${senderName} (${senderId}), Type: ${messageType}`);
+      await logToDb('info', 'STORM-CHAT', `📩 New message request for group: ${groupId}`, { senderName, senderId, messageType });
 
       if (!senderId || !senderName) {
         return res.status(400).json({ error: 'Sender information is required' });
@@ -54,6 +54,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       // Check if group exists
       const group = await ChatGroup.findById(groupId);
       if (!group) {
+        await logToDb('error', 'STORM-CHAT', `Group not found: ${groupId}`);
         return res.status(404).json({ error: 'Group not found' });
       }
 
@@ -120,7 +121,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       }
 
       const newMessage = await ChatMessage.create(messageData);
-      console.log(`[CHAT] Message created: ${newMessage._id}`);
+      await logToDb('info', 'STORM-CHAT', `✅ Message created in DB: ${newMessage._id}`);
 
       // Create notifications for group members
       const notificationPromises: Promise<any>[] = [];
@@ -189,13 +190,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         const mentionedUsers = await UserModel.find({
           _id: { $in: mentionedUserIds },
           fcmToken: { $exists: true, $ne: null, $nin: ['', null] }
-        }).select('fcmToken');
+        }).select('fcmToken name');
         
         const mentionTokens = mentionedUsers.map((u: any) => u.fcmToken).filter(Boolean);
-        console.log(`[CHAT-DEBUG] Mention Tokens Found: ${mentionTokens.length}`);
+        await logToDb('info', 'STORM-CHAT', `Found ${mentionTokens.length} mention tokens`, { userNames: mentionedUsers.map(u => u.name) });
         
         if (mentionTokens.length > 0) {
-          console.log(`[CHAT-DEBUG] 🚀 Sending push to ${mentionTokens.length} mentioned users`);
+          await logToDb('info', 'PUSH-NOTIFICATION', `🚀 Sending push to ${mentionTokens.length} mentioned users`);
           await sendPushNotificationToMultiple(
             mentionTokens,
             `You were mentioned by ${senderName}`,
@@ -216,13 +217,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         const otherUsers = await UserModel.find({
           _id: { $in: otherMemberIds },
           fcmToken: { $exists: true, $ne: null, $nin: ['', null] }
-        }).select('fcmToken');
+        }).select('fcmToken name');
         
         const otherTokens = otherUsers.map((u: any) => u.fcmToken).filter(Boolean);
-        console.log(`[CHAT-DEBUG] Other Member Tokens Found: ${otherTokens.length}`);
+        await logToDb('info', 'STORM-CHAT', `Found ${otherTokens.length} member tokens`, { userNames: otherUsers.map(u => u.name) });
         
         if (otherTokens.length > 0) {
-          console.log(`[CHAT-DEBUG] 🚀 Sending push to ${otherTokens.length} other members`);
+          await logToDb('info', 'PUSH-NOTIFICATION', `🚀 Sending push to ${otherTokens.length} other members`);
           await sendPushNotificationToMultiple(
             otherTokens,
             `New message in ${group.name}`,
@@ -239,18 +240,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             }
           );
           pushStatus.memberCount = otherTokens.length;
-        } else {
-          console.log(`[CHAT-DEBUG] No FCM tokens found for other ${otherMemberIds.length} members`);
         }
       } catch (pushError: any) {
-        console.error('[CHAT-DEBUG] ❌ Error sending push notifications:', pushError.message);
+        await logToDb('error', 'PUSH-NOTIFICATION', `❌ Error: ${pushError.message}`);
         pushStatus.error = pushError.message;
       }
 
-      console.log(`[CHAT-DEBUG] ✅ Message processing complete for ${newMessage._id}`);
+      await logToDb('info', 'STORM-CHAT', `✅ Finished processing message: ${newMessage._id}`, { pushStatus });
       res.status(201).json({ ...newMessage.toObject(), pushStatus });
-    } catch (error) {
-      console.error('Error sending message:', error);
+    } catch (error: any) {
+      await logToDb('error', 'STORM-CHAT', `❌ Critical Error: ${error.message}`);
       res.status(500).json({ error: 'Failed to send message' });
     }
   } else if (req.method === 'PATCH') {
