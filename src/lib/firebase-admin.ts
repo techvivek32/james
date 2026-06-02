@@ -75,10 +75,10 @@ export async function sendPushNotification(
     };
 
     const response = await admin.messaging().send(message);
-    console.log(`[PUSH] ✅ Sent to ${fcmToken.substring(0, 10)}... | Title: "${title}" | Msg: "${body.substring(0, 30)}..."`);
+    console.log(`[PUSH-DEBUG] ✅ Sent to ${fcmToken.substring(0, 15)}... | Title: "${title}"`);
     return true;
   } catch (error: any) {
-    console.error(`[PUSH] ❌ Failed to send:`, error.message);
+    console.error(`[PUSH-DEBUG] ❌ Failed to send:`, error.message);
     return false;
   }
 }
@@ -95,9 +95,11 @@ export async function sendPushNotificationToMultiple(
     }
 
     if (!firebaseApp) {
-      console.error('Firebase not initialized');
+      console.error('[PUSH-DEBUG] Firebase not initialized');
       return false;
     }
+
+    console.log(`[PUSH-DEBUG] 📡 Attempting multicast to ${fcmTokens.length} tokens`);
 
     const message: admin.messaging.MulticastMessage = {
       notification: {

@@ -43,6 +43,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     // Send a message
     try {
       const { senderId, senderName, senderRole, message, messageType, mediaUrl, replyTo, replyToMessage, replyToSender } = req.body;
+      
+      console.log(`[CHAT-DEBUG] 📩 New message POST request for group: ${groupId}`);
+      console.log(`[CHAT-DEBUG] Sender: ${senderName} (${senderId}), Type: ${messageType}`);
 
       if (!senderId || !senderName) {
         return res.status(400).json({ error: 'Sender information is required' });
@@ -188,9 +191,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         }).select('fcmToken');
         
         const mentionTokens = mentionedUsers.map((u: any) => u.fcmToken).filter(Boolean);
-        console.log(`[CHAT] Mention Tokens Found: ${mentionTokens.length}`);
+        console.log(`[CHAT-DEBUG] Mention Tokens Found: ${mentionTokens.length}`);
         
         if (mentionTokens.length > 0) {
+          console.log(`[CHAT-DEBUG] 🚀 Sending push to ${mentionTokens.length} mentioned users`);
           await sendPushNotificationToMultiple(
             mentionTokens,
             `You were mentioned by ${senderName}`,
@@ -213,9 +217,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         }).select('fcmToken');
         
         const otherTokens = otherUsers.map((u: any) => u.fcmToken).filter(Boolean);
-        console.log(`[CHAT] Other Member Tokens Found: ${otherTokens.length}`);
+        console.log(`[CHAT-DEBUG] Other Member Tokens Found: ${otherTokens.length}`);
         
         if (otherTokens.length > 0) {
+          console.log(`[CHAT-DEBUG] 🚀 Sending push to ${otherTokens.length} other members`);
           await sendPushNotificationToMultiple(
             otherTokens,
             `New message in ${group.name}`,
@@ -231,11 +236,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
               type: 'message'
             }
           );
+        } else {
+          console.log(`[CHAT-DEBUG] No FCM tokens found for other ${otherMemberIds.length} members`);
         }
       } catch (pushError: any) {
-        console.error('[CHAT] Error sending push notifications:', pushError.message);
+        console.error('[CHAT-DEBUG] ❌ Error sending push notifications:', pushError.message);
       }
 
+      console.log(`[CHAT-DEBUG] ✅ Message processing complete for ${newMessage._id}`);
       res.status(201).json(newMessage);
     } catch (error) {
       console.error('Error sending message:', error);
