@@ -128,8 +128,8 @@ export function UserManagement(props: UserEditorProps) {
 
   const selectedUser = draftUsers.find((u) => u.id === selectedUserId);
   
-  // Get all roles for the user (including primary role and additional roles)
-  const userRoles = selectedUser ? [selectedUser.role, ...(selectedUser.roles || [])] : [];
+  // Single role selection
+  const userRoles = selectedUser ? [selectedUser.role] : [];
   const uniqueRoles = [...new Set(userRoles)];
   
   // Get toggles grouped by role
@@ -153,9 +153,7 @@ export function UserManagement(props: UserEditorProps) {
     
     // Apply role filter
     if (roleFilter !== "all") {
-      filtered = filtered.filter(u => 
-        u.role === roleFilter || (u.roles || []).includes(roleFilter)
-      );
+      filtered = filtered.filter(u => u.role === roleFilter);
     }
     
     // Apply sorting
@@ -546,7 +544,7 @@ export function UserManagement(props: UserEditorProps) {
           <span>User Management</span>
           <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
             {(['admin', 'manager', 'sales', 'marketing'] as UserRole[]).map(role => {
-              const count = draftUsers.filter(u => (u.roles || [u.role]).includes(role)).length;
+              const count = draftUsers.filter(u => u.role === role).length;
               const colors: Record<UserRole, { bg: string; color: string }> = {
                 admin: { bg: '#fef3c7', color: '#92400e' },
                 manager: { bg: '#dbeafe', color: '#1e40af' },
@@ -792,7 +790,7 @@ export function UserManagement(props: UserEditorProps) {
                   activeUsersSearch === "" || 
                   user.name.toLowerCase().includes(activeUsersSearch.toLowerCase()) ||
                   user.email.toLowerCase().includes(activeUsersSearch.toLowerCase()) ||
-                  (user.roles || [user.role]).some(r => r.toLowerCase().includes(activeUsersSearch.toLowerCase()))
+                  user.role.toLowerCase().includes(activeUsersSearch.toLowerCase())
                 ).map((user) => {
                   const isActive = user.id === selectedUserId;
                   return (
@@ -801,7 +799,7 @@ export function UserManagement(props: UserEditorProps) {
                         <div>
                           <div className="list-item-title">{user.name}</div>
                           <div className="list-item-subtitle">
-                            {(user.roles || [user.role]).map(r => r.toUpperCase()).join(", ")} • {user.email}
+                            {user.role.toUpperCase()} • {user.email}
                           </div>
                         </div>
                       </div>
@@ -827,9 +825,9 @@ export function UserManagement(props: UserEditorProps) {
                           <div>
                             <div className="list-item-title">{user.name}</div>
                             <div className="list-item-subtitle">
-                              {(user.roles || [user.role]).map(r => r.toUpperCase()).join(", ")} • {user.email}
-                              <span style={{ color: "#dc2626", marginLeft: 8 }}>• SUSPENDED</span>
-                            </div>
+                          {user.role.toUpperCase()} • {user.email}
+                          <span style={{ color: "#dc2626", marginLeft: 8 }}>• SUSPENDED</span>
+                        </div>
                           </div>
                         </div>
                       </button>
@@ -852,7 +850,7 @@ export function UserManagement(props: UserEditorProps) {
                     <div key={user.id} className="list-item" style={{ backgroundColor: '#fef2f2', borderLeft: '3px solid #ef4444' }}>
                       <div style={{ flex: 1 }}>
                         <div className="list-item-title">{user.name}</div>
-                        <div className="list-item-subtitle">{(user.roles || [user.role]).map(r => r.toUpperCase()).join(", ")} • {user.email}</div>
+                        <div className="list-item-subtitle">{user.role.toUpperCase()} • {user.email}</div>
                         {user.deletedAt && (
                           <div style={{ fontSize: 11, color: '#9ca3af', marginTop: 4 }}>
                             Deleted: {new Date(user.deletedAt).toLocaleDateString()}
@@ -977,12 +975,11 @@ export function UserManagement(props: UserEditorProps) {
                     }
                     setPhoneError("");
                     const isNewUser = selectedUser.id.startsWith("user-");
-                    const selectedRoles = (selectedUser.roles || [selectedUser.role]).filter(Boolean);
-                    if (isNewUser && selectedRoles.length === 0) {
+                    if (isNewUser && !selectedUser.role) {
                       alert("Please select a Role before saving.");
                       return;
                     }
-                    const isSales = selectedRoles.includes("sales");
+                    const isSales = selectedUser.role === "sales";
                     if (isSales && !selectedUser.managerId) {
                       setManagerError("Please assign a Manager to this sales user before saving.");
                       return;
@@ -1165,42 +1162,38 @@ export function UserManagement(props: UserEditorProps) {
                 )}
               </label>
               <label className="field">
-                <span className="field-label">Roles (Multiple Selection)</span>
+                <span className="field-label">Role</span>
                 <div className="territory-field">
                   <button type="button" className={showRolesDropdown ? "territory-trigger territory-trigger-open" : "territory-trigger"} onClick={() => setShowRolesDropdown(!showRolesDropdown)}>
                     <span className="territory-trigger-value" style={{ color: (selectedUser.roles || [selectedUser.role]).filter(Boolean).length === 0 ? '#9ca3af' : undefined }}>
                       {(selectedUser.roles || [selectedUser.role]).filter(Boolean).length === 0
                         ? "-- Select a role (required) --"
-                        : (selectedUser.roles || [selectedUser.role]).map(r => r.charAt(0).toUpperCase() + r.slice(1)).join(", ")}
+                        : (selectedUser.role.charAt(0).toUpperCase() + selectedUser.role.slice(1))}
                     </span>
                     <span className="territory-trigger-icon">{showRolesDropdown ? "▲" : "▼"}</span>
                   </button>
                   {showRolesDropdown && (
                     <div className="territory-dropdown" style={{ gridTemplateColumns: "1fr" }}>
                       {(["admin", "manager", "sales", "marketing"] as UserRole[]).map((role) => (
-                        <div key={role} className={(selectedUser.roles || [selectedUser.role]).includes(role) ? "territory-option territory-option-active" : "territory-option"} onClick={() => {
-                          const currentRoles = (selectedUser.roles || [selectedUser.role]).filter(Boolean);
-                          const newRoles = currentRoles.includes(role) ? currentRoles.filter((r) => r !== role) : [...currentRoles, role];
-                          if (newRoles.length === 0) {
-                            updateUser({ ...selectedUser, role: "" as any, roles: [] });
-                            return;
-                          }
-                          const newManagerId = newRoles.includes("sales") ? selectedUser.managerId : undefined;
-                          if (!newRoles.includes("sales")) setManagerDraftId("");
-                          updateUser({ ...selectedUser, role: newRoles[0], roles: newRoles, managerId: newManagerId });
+                        <div key={role} className={selectedUser.role === role ? "territory-option territory-option-active" : "territory-option"} onClick={() => {
+                          const newRoles = [role];
+                          const newManagerId = role === "sales" ? selectedUser.managerId : undefined;
+                          if (role !== "sales") setManagerDraftId("");
+                          updateUser({ ...selectedUser, role: role, roles: newRoles, managerId: newManagerId });
+                          setShowRolesDropdown(false);
                         }}>
-                          <input type="checkbox" checked={(selectedUser.roles || [selectedUser.role]).includes(role)} readOnly />
+                          <input type="radio" checked={selectedUser.role === role} readOnly />
                           <span style={{ textTransform: "capitalize" }}>{role}</span>
                         </div>
                       ))}
                     </div>
                   )}
                 </div>
-                {selectedUser.id.startsWith("user-") && (selectedUser.roles || [selectedUser.role]).filter(Boolean).length === 0 && (
+                {selectedUser.id.startsWith("user-") && !selectedUser.role && (
                   <div style={{ fontSize: 12, color: "#dc2626", marginTop: 4, fontWeight: 500 }}>Role is required</div>
                 )}
               </label>
-              {(selectedUser.roles || [selectedUser.role]).includes("sales") && (
+              {selectedUser.role === "sales" && (
                 <label className="field">
                   <span className="field-label">Manager <span style={{ color: "#dc2626" }}>*</span></span>
                   <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
@@ -1211,7 +1204,7 @@ export function UserManagement(props: UserEditorProps) {
                       updateUser({ ...selectedUser, managerId: nextManagerId || undefined });
                     }}>
                       <option value="">-- Select a manager (required) --</option>
-                      {draftUsers.filter((u) => (u.roles || [u.role]).includes("manager")).map((manager) => (
+                      {draftUsers.filter((u) => u.role === "manager").map((manager) => (
                         <option key={manager.id} value={manager.id}>{manager.name}</option>
                       ))}
                     </select>

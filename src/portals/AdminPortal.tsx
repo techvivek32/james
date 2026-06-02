@@ -856,7 +856,7 @@ function UserManagement(props: UserEditorProps) {
                 </div>
               </label>
               <label className="field">
-                <span className="field-label">Roles (Multiple Selection)</span>
+                <span className="field-label">Role</span>
                 <div className="territory-field">
                   <button
                     type="button"
@@ -864,7 +864,7 @@ function UserManagement(props: UserEditorProps) {
                     onClick={() => setShowRolesDropdown(!showRolesDropdown)}
                   >
                     <span className="territory-trigger-value">
-                      {(selectedUser.roles || [selectedUser.role]).map(r => r.charAt(0).toUpperCase() + r.slice(1)).join(", ")}
+                      {selectedUser.role.charAt(0).toUpperCase() + selectedUser.role.slice(1)}
                     </span>
                     <span className="territory-trigger-icon">{showRolesDropdown ? "▲" : "▼"}</span>
                   </button>
@@ -873,26 +873,21 @@ function UserManagement(props: UserEditorProps) {
                       {(["admin", "manager", "sales", "marketing"] as UserRole[]).map((role) => (
                         <div
                           key={role}
-                          className={(
-                            selectedUser.roles || [selectedUser.role]
-                          ).includes(role) ? "territory-option territory-option-active" : "territory-option"}
+                          className={selectedUser.role === role ? "territory-option territory-option-active" : "territory-option"}
                           onClick={() => {
-                            const currentRoles = selectedUser.roles || [selectedUser.role];
-                            const newRoles = currentRoles.includes(role)
-                              ? currentRoles.filter((r) => r !== role)
-                              : [...currentRoles, role];
-                            if (newRoles.length === 0) return;
+                            const newRoles = [role];
                             updateUser({
                               ...selectedUser,
-                              role: newRoles[0],
+                              role: role,
                               roles: newRoles,
-                              managerId: newRoles.includes("sales") ? selectedUser.managerId : undefined
+                              managerId: role === "sales" ? selectedUser.managerId : undefined
                             });
+                            setShowRolesDropdown(false);
                           }}
                         >
                           <input
-                            type="checkbox"
-                            checked={(selectedUser.roles || [selectedUser.role]).includes(role)}
+                            type="radio"
+                            checked={selectedUser.role === role}
                             readOnly
                           />
                           <span style={{ textTransform: "capitalize" }}>{role}</span>
@@ -902,7 +897,7 @@ function UserManagement(props: UserEditorProps) {
                   )}
                 </div>
               </label>
-              {(selectedUser.roles || [selectedUser.role]).includes("sales") && (
+              {selectedUser.role === "sales" && (
                 <label className="field">
                   <span className="field-label">Manager</span>
                   <div
