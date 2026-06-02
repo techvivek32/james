@@ -29,9 +29,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   console.log("Incoming AccuLynx Direct Payload:", JSON.stringify(req.body, null, 2));
 
   const payload = req.body;
+  console.log("========== LIVE ACCULYNX PAYLOAD ==========");
+  console.log(JSON.stringify(req.body,null,2));
+  console.log("===========================================");
   const topicName = payload.topicName || "unknown";
   const eventId = payload.eventId; // Unique ID from AccuLynx
   const eventData = payload.Event || {};
+  console.log("EVENT DATA:");
+  console.log(JSON.stringify(eventData,null,2));
   
   const jobId = eventData.jobId || eventData.externalEventId;
   const companyUserId = eventData.companyUserId;
