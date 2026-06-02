@@ -19,13 +19,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       // Check if group exists
       const group = await ChatGroup.findById(groupId);
       if (!group) {
+        await logToDb('error', 'STORM-CHAT', `Group not found: ${groupId}`);
         return res.status(404).json({ error: 'Group not found' });
       }
 
+      const { userId: queryUserId, userRole: queryUserRole } = req.query;
+
       // Allow access if user is admin, group admin, or member
-      const isAdmin = userRole === 'admin';
-      const isGroupAdmin = group.admins.includes(userId as string);
-      const isMember = group.members.includes(userId as string);
+      const isAdmin = queryUserRole?.toString().toLowerCase() === 'admin';
+      const isGroupAdmin = group.admins.includes(queryUserId as string);
+      const isMember = group.members.includes(queryUserId as string);
       
       if (!isAdmin && !isGroupAdmin && !isMember) {
         return res.status(403).json({ error: 'You are not a member of this group' });

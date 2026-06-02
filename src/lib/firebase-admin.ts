@@ -73,10 +73,6 @@ export async function sendPushNotification(
       apns: {
         payload: {
           aps: {
-            alert: {
-              title,
-              body,
-            },
             sound: 'default',
             badge: 1,
             'content-available': 1,

@@ -196,7 +196,7 @@ class FirebaseMessagingService {
           final user = await AuthService.getStoredUser();
           
           if (user != null && _navigatorKey?.currentState != null) {
-            final userId = user['id'] ?? user['_id'];
+            final userId = user['_id'] ?? user['id'];
             final userRole = user['role'];
 
             _navigatorKey!.currentState!.push(
