@@ -318,7 +318,7 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
         ),
         child: const Center(
           child: Text(
-            'Continue course',
+            'Resume Training',
             style: TextStyle(color: _white, fontSize: 16, fontWeight: FontWeight.w600),
           ),
         ),
