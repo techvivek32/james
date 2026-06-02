@@ -1,5 +1,6 @@
 import * as admin from 'firebase-admin';
 import * as fs from 'fs';
+import * as path from 'path';
 
 let firebaseApp: admin.app.App | null = null;
 
@@ -8,15 +9,18 @@ export function initializeFirebase() {
 
   try {
     const serviceAccountPath = process.env.FIREBASE_SERVICE_ACCOUNT_PATH || './firebase-service-account.json';
+    const absolutePath = path.resolve(serviceAccountPath);
     
     // Check if file exists (only needed at runtime, not build time)
-    if (!fs.existsSync(serviceAccountPath)) {
-      console.warn('⚠️  Firebase service account file not found. Push notifications will not work.');
+    if (!fs.existsSync(absolutePath)) {
+      console.warn(`⚠️  Firebase service account file not found at ${absolutePath}. Push notifications will not work.`);
       return null;
     }
     
+    console.log(`[PUSH-DEBUG] Initializing Firebase Admin with: ${absolutePath}`);
+    
     // Read the file content
-    const serviceAccountContent = fs.readFileSync(serviceAccountPath, 'utf8');
+    const serviceAccountContent = fs.readFileSync(absolutePath, 'utf8');
     const serviceAccount = JSON.parse(serviceAccountContent);
 
     firebaseApp = admin.initializeApp({
@@ -43,7 +47,7 @@ export async function sendPushNotification(
     }
 
     if (!firebaseApp) {
-      console.error('Firebase not initialized');
+      console.error('[PUSH-DEBUG] Firebase not initialized');
       return false;
     }
 
@@ -52,7 +56,10 @@ export async function sendPushNotification(
         title,
         body,
       },
-      data: data || {},
+      data: {
+        ...(data || {}),
+        click_action: 'FLUTTER_NOTIFICATION_CLICK',
+      },
       token: fcmToken,
       android: {
         priority: 'high',
@@ -63,6 +70,10 @@ export async function sendPushNotification(
         },
       },
       apns: {
+        headers: {
+          'apns-priority': '10',
+          'apns-push-type': 'alert',
+        },
         payload: {
           aps: {
             sound: 'default',
@@ -100,48 +111,20 @@ export async function sendPushNotificationToMultiple(
     }
 
     console.log(`[PUSH-DEBUG] 📡 Attempting multicast to ${fcmTokens.length} tokens`);
-
-    const message: admin.messaging.MulticastMessage = {
-      notification: {
-        title,
-        body,
-      },
-      data: data || {},
-      tokens: fcmTokens,
-      android: {
-        priority: 'high',
-        notification: {
-          channelId: 'stormchat_channel',
-          sound: 'default',
-          priority: 'high',
-        },
-      },
-      apns: {
-        payload: {
-          aps: {
-            sound: 'default',
-            badge: 1,
-            'content-available': 1,
-            'mutable-content': 1,
-          },
-        },
-      },
-    };
-
-    const response = await admin.messaging().sendEachForMulticast(message);
-    console.log(`[PUSH] ✅ Multicast: ${response.successCount} success, ${response.failureCount} failed | Title: "${title}"`);
     
-    if (response.failureCount > 0) {
-      response.responses.forEach((res, idx) => {
-        if (!res.success) {
-          console.error(`[PUSH] ❌ Token ${fcmTokens[idx].substring(0, 10)}... error:`, res.error?.message);
-        }
-      });
-    }
+    // Use individual sends in a loop to match test-push.js which is working
+    const results = await Promise.all(fcmTokens.map(token => 
+      sendPushNotification(token, title, body, data)
+    ));
+
+    const successCount = results.filter(r => r === true).length;
+    const failureCount = results.length - successCount;
+
+    console.log(`[PUSH-DEBUG] ✅ Batch result: ${successCount} success, ${failureCount} failed | Title: "${title}"`);
     
     return true;
   } catch (error: any) {
-    console.error(`[PUSH] ❌ Multicast critical error:`, error.message);
+    console.error(`[PUSH-DEBUG] ❌ Multicast critical error:`, error.message);
     return false;
   }
 }
