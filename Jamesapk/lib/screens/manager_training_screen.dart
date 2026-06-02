@@ -87,14 +87,26 @@ class _ManagerTrainingScreenState extends State<ManagerTrainingScreen> {
                 width: double.infinity,
                 color: _white,
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-                child: const Text(
-                  'Miller Storm Training Center',
-                  textAlign: TextAlign.left,
-                  style: TextStyle(
-                    color: _textDark,
-                    fontSize: 18,
-                    fontWeight: FontWeight.w700,
-                  ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text(
+                      'Miller Storm Training Center',
+                      style: TextStyle(
+                        color: _textDark,
+                        fontSize: 18,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    IconButton(
+                      icon: const Text('🏆', style: TextStyle(fontSize: 26)),
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(),
+                      onPressed: () {
+                        Navigator.pushNamed(context, '/manager-training-leaderboard');
+                      },
+                    ),
+                  ],
                 ),
               ),
               const Expanded(child: ManagerCoursesScreen()),
