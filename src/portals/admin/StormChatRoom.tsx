@@ -101,13 +101,17 @@ export function StormChatRoom({ group, onBack }: Props) {
       const response = await fetch(`/api/storm-chat/messages/${group._id}?userId=${userId}&userRole=${userRole}`);
       if (response.ok) {
         const data = await response.json();
+        if (data.length > messages.length) {
+          console.log(`[STORM-CHAT] 📥 Received ${data.length - messages.length} new messages`);
+        }
         setMessages(data);
       } else {
         const error = await response.json();
+        console.error(`[STORM-CHAT] ❌ Failed to fetch messages:`, error);
         alert(error.error || 'Failed to fetch messages');
       }
     } catch (error) {
-      console.error('Error fetching messages:', error);
+      console.error('[STORM-CHAT] ❌ Error in fetchMessages:', error);
     } finally {
       setLoading(false);
     }
@@ -115,6 +119,9 @@ export function StormChatRoom({ group, onBack }: Props) {
 
   async function sendMessage() {
     if (!newMessage.trim() || sending) return;
+
+    console.log(`[STORM-CHAT] 📤 Sending message to group: ${group.name} (${group._id})`);
+    console.log(`[STORM-CHAT] Message content: "${newMessage}"`);
 
     setSending(true);
     try {
@@ -128,6 +135,7 @@ export function StormChatRoom({ group, onBack }: Props) {
 
       // Add reply data if replying
       if (replyingTo) {
+        console.log(`[STORM-CHAT] Replying to message ID: ${replyingTo._id}`);
         messageBody.replyTo = replyingTo._id;
         messageBody.replyToMessage = replyingTo.message;
         messageBody.replyToSender = replyingTo.senderName;
@@ -141,16 +149,29 @@ export function StormChatRoom({ group, onBack }: Props) {
 
       if (response.ok) {
         const message = await response.json();
+        console.log(`[STORM-CHAT] ✅ Message sent successfully! Message ID: ${message._id}`);
+        
+        // Log push notification status
+        if (message.pushStatus) {
+          const { mentionCount, memberCount, error } = message.pushStatus;
+          if (error) {
+            console.error(`[STORM-CHAT] ⚠️ Push notification error: ${error}`);
+          } else {
+            console.log(`[STORM-CHAT] 📱 Push notifications: ${mentionCount} mentions, ${memberCount} members notified`);
+          }
+        }
+
         setMessages([...messages, message]);
         setNewMessage("");
         setReplyingTo(null);
         setShouldAutoScroll(true);
       } else {
         const error = await response.json();
+        console.error(`[STORM-CHAT] ❌ Failed to send message:`, error);
         alert(error.error || 'Failed to send message');
       }
     } catch (error) {
-      console.error('Error sending message:', error);
+      console.error('[STORM-CHAT] ❌ Error in sendMessage:', error);
       alert('Failed to send message');
     } finally {
       setSending(false);
@@ -158,6 +179,7 @@ export function StormChatRoom({ group, onBack }: Props) {
   }
 
   async function handleFileUpload(file: File) {
+    console.log(`[STORM-CHAT] 📁 Starting file upload: ${file.name} (${file.type})`);
     setUploading(true);
     const formData = new FormData();
     formData.append('file', file);
@@ -169,17 +191,20 @@ export function StormChatRoom({ group, onBack }: Props) {
       });
 
       if (!uploadResponse.ok) {
+        console.error(`[STORM-CHAT] ❌ File upload failed`);
         alert('Failed to upload file');
         return;
       }
 
       const { url } = await uploadResponse.json();
+      console.log(`[STORM-CHAT] ✅ File uploaded successfully! URL: ${url}`);
       
       // Determine message type
       let messageType: 'image' | 'video' | 'file' = 'file';
       if (file.type.startsWith('image/')) messageType = 'image';
       else if (file.type.startsWith('video/')) messageType = 'video';
 
+      console.log(`[STORM-CHAT] 📤 Sending media message...`);
       // Send message with media
       const response = await fetch(`/api/storm-chat/messages/${group._id}`, {
         method: 'POST',
@@ -196,12 +221,26 @@ export function StormChatRoom({ group, onBack }: Props) {
 
       if (response.ok) {
         const message = await response.json();
+        console.log(`[STORM-CHAT] ✅ Media message sent successfully! Message ID: ${message._id}`);
+        
+        // Log push notification status
+        if (message.pushStatus) {
+          const { mentionCount, memberCount, error } = message.pushStatus;
+          if (error) {
+            console.error(`[STORM-CHAT] ⚠️ Push notification error: ${error}`);
+          } else {
+            console.log(`[STORM-CHAT] 📱 Push notifications: ${mentionCount} mentions, ${memberCount} members notified`);
+          }
+        }
+
         setMessages([...messages, message]);
       } else {
+        const error = await response.json();
+        console.error(`[STORM-CHAT] ❌ Failed to send media message:`, error);
         alert('Failed to send file');
       }
     } catch (error) {
-      console.error('Upload error:', error);
+      console.error('[STORM-CHAT] ❌ Error in handleFileUpload:', error);
       alert('Failed to upload file');
     } finally {
       setUploading(false);

@@ -181,6 +181,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       await Promise.all(notificationPromises);
 
       // Send push notifications
+      const pushStatus = { mentionCount: 0, memberCount: 0, error: null as string | null };
       try {
         const { UserModel } = await import('../../../../src/lib/models/User');
         
@@ -208,6 +209,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
               type: 'mention'
             }
           );
+          pushStatus.mentionCount = mentionTokens.length;
         }
         
         // Get FCM tokens for other members
@@ -236,15 +238,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
               type: 'message'
             }
           );
+          pushStatus.memberCount = otherTokens.length;
         } else {
           console.log(`[CHAT-DEBUG] No FCM tokens found for other ${otherMemberIds.length} members`);
         }
       } catch (pushError: any) {
         console.error('[CHAT-DEBUG] ❌ Error sending push notifications:', pushError.message);
+        pushStatus.error = pushError.message;
       }
 
       console.log(`[CHAT-DEBUG] ✅ Message processing complete for ${newMessage._id}`);
-      res.status(201).json(newMessage);
+      res.status(201).json({ ...newMessage.toObject(), pushStatus });
     } catch (error) {
       console.error('Error sending message:', error);
       res.status(500).json({ error: 'Failed to send message' });
