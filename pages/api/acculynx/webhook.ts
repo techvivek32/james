@@ -161,6 +161,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       metadata: { jobId, repName, topicName, milestoneName, revenue: approvedValue },
     });
 
+    // 7. Add a slight delay or trigger a cache revalidation if needed
+    // In a serverless env, we just return. Next.js SWR/Polling handles the rest.
+
     return res.status(200).json({ ok: true, status: "processed" });
 
   } catch (err: any) {

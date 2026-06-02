@@ -20,7 +20,12 @@ const LeaderboardPage: NextPage = () => {
     } finally { setLoading(false); }
   }, []);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => { 
+    load(); 
+    // Auto-refresh every 30 seconds to keep it "live"
+    const interval = setInterval(load, 30000);
+    return () => clearInterval(interval);
+  }, [load]);
 
   const inspections = events.filter(e => e.eventType?.toLowerCase().includes("inspection") && e.status !== "failed");
   const claims = events.filter(e => e.eventType?.toLowerCase().includes("claim") && e.status !== "failed");
