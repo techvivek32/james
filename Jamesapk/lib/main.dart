@@ -28,6 +28,7 @@ import 'screens/manager_apps_tools_detail_screen.dart';
 import 'screens/manager_all_plans_screen.dart';
 import 'screens/ai_clone_chat_screen.dart';
 import 'screens/register_screen.dart';
+import 'screens/training_leaderboard_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -84,6 +85,8 @@ class MillerStormApp extends StatelessWidget {
             return MaterialPageRoute(builder: (_) => const PlannerScreen());
           case '/courses':
             return MaterialPageRoute(builder: (_) => CoursesScreen());
+          case '/training-leaderboard':
+            return MaterialPageRoute(builder: (_) => const TrainingLeaderboardScreen());
           case '/apps-tools-items':
             return MaterialPageRoute(builder: (_) => const AppsToolsItemsScreen());
           case '/apps-tools-detail':

@@ -6,6 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../services/auth_service.dart';
 import 'course_detail_screen.dart';
+import 'training_leaderboard_screen.dart';
 
 class CoursesScreen extends StatefulWidget {
   const CoursesScreen({super.key});
@@ -229,6 +230,15 @@ class _CoursesScreenState extends State<CoursesScreen> with SingleTickerProvider
           'Miller Storm Training Center',
           style: TextStyle(color: _textDark, fontSize: 18, fontWeight: FontWeight.w700),
         ),
+        actions: [
+          IconButton(
+            icon: const Text('🏆', style: TextStyle(fontSize: 26)),
+            onPressed: () {
+              Navigator.pushNamed(context, '/training-leaderboard');
+            },
+          ),
+          const SizedBox(width: 8),
+        ],
         bottom: TabBar(
           controller: _tabController,
           labelColor: _blue,
