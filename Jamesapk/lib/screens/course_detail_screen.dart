@@ -294,7 +294,7 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
           nextLesson ??= lessons.isNotEmpty ? lessons.first : null;
 
           if (nextLesson != null) {
-            Navigator.push(
+            final result = await Navigator.push(
               context,
               MaterialPageRoute(
                 builder: (context) => LessonPlayerScreen(
@@ -306,6 +306,11 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
                 ),
               ),
             );
+            
+            // Refresh progress when returning from player
+            if (result == true || mounted) {
+              _fetchCourseDetail();
+            }
           }
         }
       },
@@ -493,9 +498,9 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
                           final isCompleted = false; // You can add completion logic here
                           
                           return GestureDetector(
-                            onTap: () {
+                            onTap: () async {
                               // Navigate to lesson player
-                              Navigator.push(
+                              final result = await Navigator.push(
                                 context,
                                 MaterialPageRoute(
                                   builder: (context) => LessonPlayerScreen(
@@ -507,6 +512,11 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
                                   ),
                                 ),
                               );
+
+                              // Refresh progress when returning from player
+                              if (result == true || mounted) {
+                                _fetchCourseDetail();
+                              }
                             },
                             child: Container(
                               margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 6),

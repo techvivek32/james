@@ -44,6 +44,9 @@ class _LessonPlayerScreenState extends State<LessonPlayerScreen> {
   Map<String, dynamic>? _course;
   List<dynamic> _allLessons = [];
   int _currentLessonIndex = 0;
+  int _completedCount = 0;
+  int _totalCount = 0;
+  int _progressPercent = 0;
   bool _isLoading = true;
   bool _isFullscreen = false;
   bool _videoError = false;
@@ -199,6 +202,10 @@ class _LessonPlayerScreenState extends State<LessonPlayerScreen> {
 
         // Load saved progress (including quiz results)
         List<dynamic> savedQuizResults = [];
+        int completedCount = 0;
+        int totalCount = lessons.length;
+        int progressPercent = 0;
+        
         if (userId.isNotEmpty) {
           try {
             final progressResponse = await http.get(
@@ -207,7 +214,20 @@ class _LessonPlayerScreenState extends State<LessonPlayerScreen> {
             if (progressResponse.statusCode == 200) {
               final progressData = jsonDecode(progressResponse.body);
               savedQuizResults = progressData['quizResults'] ?? [];
+              
+              // Get counts and percentage from API if available, otherwise calculate
+              if (progressData['completedLessons'] != null) {
+                completedCount = progressData['completedLessons'];
+                totalCount = progressData['totalLessons'] ?? lessons.length;
+                progressPercent = progressData['progressPercent'] ?? 0;
+              } else {
+                final completedPages = progressData['completedPages'] as List<dynamic>? ?? [];
+                completedCount = completedPages.length;
+                progressPercent = totalCount > 0 ? ((completedCount / totalCount) * 100).round() : 0;
+              }
+              
               print('📊 Loaded ${savedQuizResults.length} saved quiz results');
+              print('📊 Progress: $completedCount/$totalCount ($progressPercent%)');
             }
           } catch (e) {
             print('⚠️ Could not load progress: $e');
@@ -219,6 +239,9 @@ class _LessonPlayerScreenState extends State<LessonPlayerScreen> {
           _lesson = lesson;
           _allLessons = lessons;
           _currentLessonIndex = currentIndex >= 0 ? currentIndex : 0;
+          _completedCount = completedCount;
+          _totalCount = totalCount;
+          _progressPercent = progressPercent;
           _savedQuizResults = savedQuizResults;
           _isLoading = false;
           _videoError = false;
@@ -507,7 +530,7 @@ ${embedUrl.contains('vimeo.com') ? '<script src="https://player.vimeo.com/api/pl
       
       // Only mark lesson pages as complete (not quizzes)
       if (_lesson!['isQuiz'] != true) {
-        await http.post(
+        final response = await http.post(
           Uri.parse('https://millerstorm.tech/api/progress/save'),
           headers: {'Content-Type': 'application/json'},
           body: jsonEncode({
@@ -517,6 +540,17 @@ ${embedUrl.contains('vimeo.com') ? '<script src="https://player.vimeo.com/api/pl
           }),
         );
         
+        if (response.statusCode == 200) {
+          final data = jsonDecode(response.body);
+          if (data['progress'] != null) {
+            setState(() {
+              _completedCount = data['progress']['completedLessons'] ?? _completedCount;
+              _totalCount = data['progress']['totalLessons'] ?? _totalCount;
+              _progressPercent = data['progress']['progressPercent'] ?? _progressPercent;
+            });
+          }
+        }
+        
         print('✅ Lesson marked as complete: ${_lesson!['title']}');
       }
       
@@ -525,6 +559,9 @@ ${embedUrl.contains('vimeo.com') ? '<script src="https://player.vimeo.com/api/pl
         final nextLesson = _allLessons[_currentLessonIndex + 1];
         print('🔄 Navigating to next: ${nextLesson['title']} (isQuiz: ${nextLesson['isQuiz']})');
         _stopVideo();
+        
+        // Use then() to refresh progress when returning back from nested navigation
+        // though here we use pushReplacement, so we should actually just update our state
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(
@@ -538,8 +575,8 @@ ${embedUrl.contains('vimeo.com') ? '<script src="https://player.vimeo.com/api/pl
           ),
         );
       } else {
-        // Last lesson - go back to course detail
-        Navigator.pop(context);
+        // Last lesson - go back to course detail with a result to trigger refresh
+        Navigator.pop(context, true);
         final message = widget.playlistModules != null ? '🎉 Playlist completed!' : '🎉 Course completed!';
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -1293,20 +1330,44 @@ ${embedUrl.contains('vimeo.com') ? '<script src="https://player.vimeo.com/api/pl
                               crossAxisAlignment: CrossAxisAlignment.start,
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                Text(
-                                  'Lesson ${_currentLessonIndex + 1} of ${_allLessons.length}',
-                                  style: const TextStyle(
-                                    fontSize: 12,
-                                    color: _textLight,
-                                    fontWeight: FontWeight.w500,
-                                  ),
+                                Row(
+                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Text(
+                                      'Training Progress',
+                                      style: const TextStyle(
+                                        fontSize: 12,
+                                        color: _textLight,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                    Text(
+                                      '$_progressPercent% Complete',
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        color: _progressPercent == 100 ? Colors.green : _primary,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ],
                                 ),
                                 const SizedBox(height: 4),
                                 LinearProgressIndicator(
-                                  value: _allLessons.isNotEmpty ? (_currentLessonIndex + 1) / _allLessons.length : 0,
+                                  value: _progressPercent / 100,
                                   backgroundColor: _border,
-                                  valueColor: AlwaysStoppedAnimation<Color>(_primary),
-                                  minHeight: 3,
+                                  valueColor: AlwaysStoppedAnimation<Color>(
+                                    _progressPercent == 100 ? Colors.green : _primary
+                                  ),
+                                  minHeight: 4,
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  '$_completedCount / $_totalCount Lessons Completed',
+                                  style: const TextStyle(
+                                    fontSize: 11,
+                                    color: _textLight,
+                                    fontWeight: FontWeight.w500,
+                                  ),
                                 ),
                               ],
                             ),
