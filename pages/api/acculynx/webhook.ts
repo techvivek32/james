@@ -107,10 +107,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     // 3. Determine what to update on the leaderboard
-    const isInspection = topicName === "job.milestone.current_changed" && 
+    const isInspection = (topicName === "job.milestone.current_changed" || topicName === "job-milestone-changed") && 
                         milestoneName && milestoneName.toLowerCase().includes("inspection");
     
-    const isClaim = topicName === "job.milestone.current_changed" && 
+    const isClaim = (topicName === "job.milestone.current_changed" || topicName === "job-milestone-changed") && 
                     milestoneName && (milestoneName.toLowerCase().includes("claim") || milestoneName.toLowerCase().includes("approved"));
     
     const isRevenueUpdate = topicName === "job.financials.approved-value_changed";

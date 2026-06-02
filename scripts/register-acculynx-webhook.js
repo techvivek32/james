@@ -43,7 +43,9 @@ async function registerWebhook() {
         techContact: "admin@millerstorm.com", 
         topicNames: [
           "job.milestone.current_changed",
-          "job.financials.approved-value_changed"
+          "job.financials.approved-value_changed",
+          "job_created",
+          "job_updated"
         ]
       })
     });
