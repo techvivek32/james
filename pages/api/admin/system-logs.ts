@@ -1,6 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from "next";
-import { connectMongo } from "../../src/lib/mongodb";
-import { SystemLogModel } from "../../src/lib/models/SystemLog";
+import { connectMongo } from "../../../src/lib/mongodb";
+import { SystemLogModel } from "../../../src/lib/models/SystemLog";
 
 export default async function handler(
   req: NextApiRequest,
