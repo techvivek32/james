@@ -150,7 +150,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     // 5. Save Event Log
-    const location = extractLocation(eventData.companyName || "");
     await IntegrationEventModel.create({
       externalEventId: eventId,
       source: "acculynx_direct",
