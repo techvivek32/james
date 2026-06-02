@@ -138,7 +138,6 @@ class _StormChatScreenState extends State<StormChatScreen> {
                         color: Color(0xFF111827),
                       ),
                     ),
-                    if (userId != null) NotificationBell(userId: userId!, userRole: userRole),
                   ],
                 ),
               ),
