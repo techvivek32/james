@@ -45,32 +45,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   await connectMongo();
 
+  const isRevenueUpdate = topicName === "job.financials.approved-value_changed";
+  const location = extractLocation(eventData.companyName || "");
+
   try {
-    // 1. Dedupe check using the unique eventId from AccuLynx
-    const existing = await IntegrationEventModel.findOne({ 
-      externalEventId: eventId 
-    });
-
-    if (existing) {
-      console.log(`Duplicate event ignored but logged for visibility: ${eventId}`);
-      // Log it anyway but don't update leaderboard
-      await IntegrationEventModel.create({
-        externalEventId: `${eventId}-dup-${Date.now()}`,
-        source: "acculynx_direct",
-        eventType: topicName,
-        repName: repName,
-        repExternalId: companyUserId,
-        revenue: isRevenueUpdate ? approvedValue : 0,
-        eventDate: payload.eventDateTime ? new Date(payload.eventDateTime) : new Date(),
-        rawPayload: payload,
-        status: "duplicate",
-        location,
-        companyName: eventData.companyName || "",
-      });
-      return res.status(200).json({ ok: true, status: "duplicate" });
-    }
-
-    // 2. Resolve Rep Name from companyUserId if possible
+    // 1. Resolve Rep Name from companyUserId if possible
     let repName = "Unknown Rep";
     let repEmail = "";
 
@@ -120,6 +99,30 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       repName = eventData.companyUserName;
     }
 
+    // 2. Dedupe check using the unique eventId from AccuLynx
+    const existing = await IntegrationEventModel.findOne({ 
+      externalEventId: eventId 
+    });
+
+    if (existing) {
+      console.log(`Duplicate event ignored but logged for visibility: ${eventId}`);
+      // Log it anyway but don't update leaderboard
+      await IntegrationEventModel.create({
+        externalEventId: `${eventId}-dup-${Date.now()}`,
+        source: "acculynx_direct",
+        eventType: topicName,
+        repName: repName,
+        repExternalId: companyUserId,
+        revenue: isRevenueUpdate ? approvedValue : 0,
+        eventDate: payload.eventDateTime ? new Date(payload.eventDateTime) : new Date(),
+        rawPayload: payload,
+        status: "duplicate",
+        location,
+        companyName: eventData.companyName || "",
+      });
+      return res.status(200).json({ ok: true, status: "duplicate" });
+    }
+
     // 3. Determine what to update on the leaderboard
     const isInspection = (topicName === "job.milestone.current_changed" || topicName === "job-milestone-changed") && 
                         milestoneName && milestoneName.toLowerCase().includes("inspection");
@@ -127,8 +130,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const isClaim = (topicName === "job.milestone.current_changed" || topicName === "job-milestone-changed") && 
                     milestoneName && (milestoneName.toLowerCase().includes("claim") || milestoneName.toLowerCase().includes("approved"));
     
-    const isRevenueUpdate = topicName === "job.financials.approved-value_changed";
-
     // 4. Update Leaderboard
     const filter = companyUserId ? { repExternalId: companyUserId } : { repName: repName };
     const leaderboardUpdate: any = { $set: { repName } };
