@@ -81,8 +81,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         
         // Get all group members
         const groupMembers = await UserModel.find({
-          id: { $in: group.members }
-        }).select('id name');
+          _id: { $in: group.members }
+        }).select('_id id name');
         
         console.log(`[CHAT] Group Members Found: ${groupMembers.length}/${group.members.length}`);
         
@@ -92,7 +92,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           // Create regex to match @Name (case insensitive, with word boundary or space after)
           const nameRegex = new RegExp(`@${memberName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(?=\\s|$)`, 'i');
           if (nameRegex.test(message)) {
-            mentionedUserIds.push(member.id);
+            mentionedUserIds.push(member._id.toString());
           }
         }
       }
@@ -183,7 +183,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         
         // Get FCM tokens for mentioned users
         const mentionedUsers = await UserModel.find({
-          id: { $in: mentionedUserIds },
+          _id: { $in: mentionedUserIds },
           fcmToken: { $exists: true, $ne: null, $nin: ['', null] }
         }).select('fcmToken');
         
@@ -208,7 +208,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         
         // Get FCM tokens for other members
         const otherUsers = await UserModel.find({
-          id: { $in: otherMemberIds },
+          _id: { $in: otherMemberIds },
           fcmToken: { $exists: true, $ne: null, $nin: ['', null] }
         }).select('fcmToken');
         
