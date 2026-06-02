@@ -197,7 +197,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         
         if (mentionTokens.length > 0) {
           await logToDb('info', 'PUSH-NOTIFICATION', `🚀 Sending push to ${mentionTokens.length} mentioned users`);
-          await sendPushNotificationToMultiple(
+          const result = await sendPushNotificationToMultiple(
             mentionTokens,
             `You were mentioned by ${senderName}`,
             messageType === 'text' 
@@ -210,7 +210,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
               type: 'mention'
             }
           );
-          pushStatus.mentionCount = mentionTokens.length;
+          pushStatus.mentionCount = result.successCount;
         }
         
         // Get FCM tokens for other members
@@ -224,7 +224,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         
         if (otherTokens.length > 0) {
           await logToDb('info', 'PUSH-NOTIFICATION', `🚀 Sending push to ${otherTokens.length} other members`);
-          await sendPushNotificationToMultiple(
+          const result = await sendPushNotificationToMultiple(
             otherTokens,
             `New message in ${group.name}`,
             `${senderName}: ${
@@ -239,7 +239,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
               type: 'message'
             }
           );
-          pushStatus.memberCount = otherTokens.length;
+          pushStatus.memberCount = result.successCount;
         }
       } catch (pushError: any) {
         await logToDb('error', 'PUSH-NOTIFICATION', `❌ Error: ${pushError.message}`);

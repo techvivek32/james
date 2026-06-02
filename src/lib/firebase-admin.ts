@@ -1,6 +1,7 @@
 import * as admin from 'firebase-admin';
 import * as fs from 'fs';
 import * as path from 'path';
+import { logToDb } from './models/SystemLog';
 
 let firebaseApp: admin.app.App | null = null;
 
@@ -17,8 +18,6 @@ export function initializeFirebase() {
       return null;
     }
     
-    console.log(`[PUSH-DEBUG] Initializing Firebase Admin with: ${absolutePath}`);
-    
     // Read the file content
     const serviceAccountContent = fs.readFileSync(absolutePath, 'utf8');
     const serviceAccount = JSON.parse(serviceAccountContent);
@@ -29,7 +28,7 @@ export function initializeFirebase() {
 
     console.log('✅ Firebase Admin initialized');
     return firebaseApp;
-  } catch (error) {
+  } catch (error: any) {
     console.error('❌ Firebase Admin initialization failed:', error);
     return null;
   }
@@ -47,7 +46,7 @@ export async function sendPushNotification(
     }
 
     if (!firebaseApp) {
-      console.error('[PUSH-DEBUG] Firebase not initialized');
+      await logToDb('error', 'PUSH-NOTIFICATION', 'Firebase not initialized');
       return false;
     }
 
@@ -70,10 +69,6 @@ export async function sendPushNotification(
         },
       },
       apns: {
-        headers: {
-          'apns-priority': '10',
-          'apns-push-type': 'alert',
-        },
         payload: {
           aps: {
             sound: 'default',
@@ -86,10 +81,10 @@ export async function sendPushNotification(
     };
 
     const response = await admin.messaging().send(message);
-    console.log(`[PUSH-DEBUG] ✅ Sent to ${fcmToken.substring(0, 15)}... | Title: "${title}"`);
+    await logToDb('info', 'PUSH-NOTIFICATION', `✅ Successfully sent to token ending in ...${fcmToken.slice(-10)}`, { title });
     return true;
   } catch (error: any) {
-    console.error(`[PUSH-DEBUG] ❌ Failed to send:`, error.message);
+    await logToDb('error', 'PUSH-NOTIFICATION', `❌ Failed to send to token ending in ...${fcmToken.slice(-10)}: ${error.message}`);
     return false;
   }
 }
@@ -106,12 +101,10 @@ export async function sendPushNotificationToMultiple(
     }
 
     if (!firebaseApp) {
-      console.error('[PUSH-DEBUG] Firebase not initialized');
-      return false;
+      await logToDb('error', 'PUSH-NOTIFICATION', 'Firebase not initialized (multicast)');
+      return { successCount: 0, failureCount: fcmTokens.length };
     }
 
-    console.log(`[PUSH-DEBUG] 📡 Attempting multicast to ${fcmTokens.length} tokens`);
-    
     // Use individual sends in a loop to match test-push.js which is working
     const results = await Promise.all(fcmTokens.map(token => 
       sendPushNotification(token, title, body, data)
@@ -120,11 +113,11 @@ export async function sendPushNotificationToMultiple(
     const successCount = results.filter(r => r === true).length;
     const failureCount = results.length - successCount;
 
-    console.log(`[PUSH-DEBUG] ✅ Batch result: ${successCount} success, ${failureCount} failed | Title: "${title}"`);
+    await logToDb('info', 'PUSH-NOTIFICATION', `📊 Batch Result: ${successCount} success, ${failureCount} failed`, { title });
     
-    return true;
+    return { successCount, failureCount };
   } catch (error: any) {
-    console.error(`[PUSH-DEBUG] ❌ Multicast critical error:`, error.message);
-    return false;
+    await logToDb('error', 'PUSH-NOTIFICATION', `❌ Multicast critical error: ${error.message}`);
+    return { successCount: 0, failureCount: fcmTokens.length };
   }
 }
