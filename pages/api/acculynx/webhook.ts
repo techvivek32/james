@@ -52,7 +52,21 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     });
 
     if (existing) {
-      console.log(`Duplicate event ignored: ${eventId}`);
+      console.log(`Duplicate event ignored but logged for visibility: ${eventId}`);
+      // Log it anyway but don't update leaderboard
+      await IntegrationEventModel.create({
+        externalEventId: `${eventId}-dup-${Date.now()}`,
+        source: "acculynx_direct",
+        eventType: topicName,
+        repName: repName,
+        repExternalId: companyUserId,
+        revenue: isRevenueUpdate ? approvedValue : 0,
+        eventDate: payload.eventDateTime ? new Date(payload.eventDateTime) : new Date(),
+        rawPayload: payload,
+        status: "duplicate",
+        location,
+        companyName: eventData.companyName || "",
+      });
       return res.status(200).json({ ok: true, status: "duplicate" });
     }
 

@@ -28,13 +28,11 @@ const LeaderboardPage: NextPage = () => {
   }, [load]);
 
   const inspections = events.filter(e => 
-    (e.eventType?.toLowerCase().includes("inspection") || e.milestoneName?.toLowerCase().includes("inspection")) 
-    && e.status !== "failed"
-  );
-  const claims = events.filter(e => 
-    (e.eventType?.toLowerCase().includes("claim") || e.eventType?.toLowerCase().includes("approved") || e.milestoneName?.toLowerCase().includes("claim") || e.milestoneName?.toLowerCase().includes("approved")) 
-    && e.status !== "failed"
-  );
+     (e.eventType?.toLowerCase().includes("inspection") || e.milestoneName?.toLowerCase().includes("inspection")) 
+   );
+   const claims = events.filter(e => 
+     (e.eventType?.toLowerCase().includes("claim") || e.eventType?.toLowerCase().includes("approved") || e.milestoneName?.toLowerCase().includes("claim") || e.milestoneName?.toLowerCase().includes("approved")) 
+   );
 
   const cols = ["#", "Rep Name", "Job Number", "Amount", "Date", "Location", "Status"];
 
