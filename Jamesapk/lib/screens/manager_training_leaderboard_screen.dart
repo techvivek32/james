@@ -46,12 +46,10 @@ class _ManagerTrainingLeaderboardScreenState extends State<ManagerTrainingLeader
 
   Future<void> _init() async {
     final user = await AuthService.getStoredUser();
-    print('DEBUG: Stored user: $user');
     setState(() {
       _currentUserId = user?['id'] ?? user?['_id'] ?? '';
-      _managerId = user?['id'] ?? user?['_id'] ?? ''; 
+      _managerId = _currentUserId; // Managers see their own team
     });
-    print('DEBUG: Manager ID set to: $_managerId');
     await Future.wait([
       _fetchCourses(),
       _fetchPlaylists(),
@@ -665,9 +663,7 @@ class _ManagerTrainingLeaderboardScreenState extends State<ManagerTrainingLeader
             Icon(Icons.emoji_events_outlined, size: 64, color: _textLight.withOpacity(0.3)),
             const SizedBox(height: 16),
             Text(
-              _searchQuery.isEmpty 
-                ? (_viewType == 'courses' ? 'No data for this course' : 'No data for this playlist')
-                : 'No users found',
+              _searchQuery.isEmpty ? 'No data for this course' : 'No users found',
               style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: _textDark),
             ),
           ],
