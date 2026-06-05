@@ -48,6 +48,7 @@ export function ManagerOnlineTrainingPage(props: {
   const [assignedUsers, setAssignedUsers] = useState<Set<string>>(new Set());
   const [assignModalTab, setAssignModalTab] = useState<'assign' | 'unassign'>('assign');
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
+  const [teamProgressView, setTeamProgressView] = useState<'courses' | 'playlists'>('courses');
   const [expandedPlaylistId, setExpandedPlaylistId] = useState<string | null>(null);
   const [playlistProgressData, setPlaylistProgressData] = useState<Record<string, { user: any; completed: number; total: number; pct: number }[]>>({});
   const [isLoadingPlaylistProgress, setIsLoadingPlaylistProgress] = useState(false);
@@ -2199,7 +2200,47 @@ export function ManagerOnlineTrainingPage(props: {
     if (activeTab === 'team') {
       return (
         <div className="panel">
-          <div className="panel-header"><span>Team Training Progress</span></div>
+          <div className="panel-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span>Team Training Progress</span>
+            <div style={{ display: 'flex', background: '#f3f4f6', padding: '4px', borderRadius: '8px', gap: '4px' }}>
+              <button
+                type="button"
+                onClick={() => setTeamProgressView('courses')}
+                style={{
+                  padding: '6px 16px',
+                  borderRadius: '6px',
+                  fontSize: '13px',
+                  fontWeight: 600,
+                  border: 'none',
+                  cursor: 'pointer',
+                  background: teamProgressView === 'courses' ? '#fff' : 'transparent',
+                  color: teamProgressView === 'courses' ? '#111827' : '#6b7280',
+                  boxShadow: teamProgressView === 'courses' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
+                  transition: 'all 0.2s'
+                }}
+              >
+                Courses Progress
+              </button>
+              <button
+                type="button"
+                onClick={() => setTeamProgressView('playlists')}
+                style={{
+                  padding: '6px 16px',
+                  borderRadius: '6px',
+                  fontSize: '13px',
+                  fontWeight: 600,
+                  border: 'none',
+                  cursor: 'pointer',
+                  background: teamProgressView === 'playlists' ? '#fff' : 'transparent',
+                  color: teamProgressView === 'playlists' ? '#111827' : '#6b7280',
+                  boxShadow: teamProgressView === 'playlists' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
+                  transition: 'all 0.2s'
+                }}
+              >
+                Playlist Progress
+              </button>
+            </div>
+          </div>
           <div className="panel-body">
             {isLoadingTeam ? (
               <div style={{ textAlign: 'center', padding: 60, color: '#6b7280' }}>Loading...</div>
@@ -2208,107 +2249,47 @@ export function ManagerOnlineTrainingPage(props: {
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 32 }}>
                 {/* Courses Section */}
-                {publishedCourses.filter(c => (c.pages || []).some((p: any) => p.status === 'published' && !p.isQuiz)).length > 0 && (
+                {teamProgressView === 'courses' && (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
-                    <div style={{ fontSize: 18, fontWeight: 600, color: '#374151', paddingBottom: 8, borderBottom: '2px solid #f3f4f6' }}>Course Progress</div>
-                    {publishedCourses.filter(c => (c.pages || []).some((p: any) => p.status === 'published' && !p.isQuiz)).map(course => {
-                      const lessonPages = (course.pages || []).filter((p: any) => p.status === 'published' && !p.isQuiz);
-                      const total = lessonPages.length;
-                      return (
-                        <div key={course.id} style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 12, overflow: 'hidden' }}>
-                          <div style={{ padding: '14px 20px', background: '#f8fafc', borderBottom: '1px solid #e5e7eb', fontWeight: 700, fontSize: 15, color: '#111827' }}>
-                            {course.title}
-                            <span style={{ fontWeight: 400, fontSize: 13, color: '#6b7280', marginLeft: 8 }}>{total} lesson{total !== 1 ? 's' : ''}</span>
-                          </div>
-                          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                            <thead>
-                              <tr style={{ background: '#f1f5f9' }}>
-                                <th style={{ padding: '10px 20px', textAlign: 'left', fontSize: 13, fontWeight: 600, color: '#374151' }}>User Name</th>
-                                <th style={{ padding: '10px 20px', textAlign: 'left', fontSize: 13, fontWeight: 600, color: '#374151' }}>Course Progress</th>
-                                <th style={{ padding: '10px 20px', textAlign: 'left', fontSize: 13, fontWeight: 600, color: '#374151' }}>Lessons Completed</th>
-                                <th style={{ padding: '10px 20px', textAlign: 'left', fontSize: 13, fontWeight: 600, color: '#374151' }}>Status</th>
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {teamProgress.map(({ user, rows }) => {
-                                const row = rows.find(r => r.course.id === course.id) || { completed: 0, total, isCompleted: false };
-                                const pct = total > 0 ? Math.round((row.completed / total) * 100) : 0;
-                                return (
-                                  <tr key={user.id} style={{ borderTop: '1px solid #f1f5f9' }}>
-                                    <td style={{ padding: '12px 20px', fontSize: 14, color: '#111827', fontWeight: 500 }}>{user.name}</td>
-                                    <td style={{ padding: '12px 20px', minWidth: 160 }}>
-                                      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                                        <div style={{ flex: 1, height: 8, borderRadius: 999, background: '#e5e7eb', overflow: 'hidden' }}>
-                                          <div style={{ height: '100%', borderRadius: 999, background: row.isCompleted ? '#10b981' : '#22c55e', width: `${pct}%` }} />
-                                        </div>
-                                        <span style={{ fontSize: 13, fontWeight: 600, color: row.isCompleted ? '#10b981' : '#374151', minWidth: 36 }}>{pct}%</span>
-                                      </div>
-                                    </td>
-                                    <td style={{ padding: '12px 20px', fontSize: 14, color: '#374151' }}>{row.completed} / {total}</td>
-                                    <td style={{ padding: '12px 20px' }}>
-                                      {row.isCompleted ? (
-                                        <span style={{ background: '#d1fae5', color: '#065f46', borderRadius: 999, padding: '3px 10px', fontSize: 12, fontWeight: 600 }}>✓ Completed</span>
-                                      ) : pct === 0 ? (
-                                        <span style={{ background: '#fee2e2', color: '#991b1b', borderRadius: 999, padding: '3px 10px', fontSize: 12, fontWeight: 600 }}>Not Started</span>
-                                      ) : (
-                                        <span style={{ background: '#fef3c7', color: '#92400e', borderRadius: 999, padding: '3px 10px', fontSize: 12, fontWeight: 600 }}>In Progress</span>
-                                      )}
-                                    </td>
-                                  </tr>
-                                );
-                              })}
-                            </tbody>
-                          </table>
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-
-                {/* Playlists Section */}
-                {playlists.length > 0 && (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
-                    <div style={{ fontSize: 18, fontWeight: 600, color: '#374151', paddingBottom: 8, borderBottom: '2px solid #f3f4f6' }}>Playlist Progress</div>
-                    {playlists.map(playlist => {
-                      const total = playlist.selectedModules.length;
-                      const progressRows = playlistProgressData[playlist.id] || [];
-                      
-                      return (
-                        <div key={playlist.id} style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 12, overflow: 'hidden' }}>
-                          <div style={{ padding: '14px 20px', background: '#f8fafc', borderBottom: '1px solid #e5e7eb', fontWeight: 700, fontSize: 15, color: '#111827' }}>
-                            {playlist.name}
-                            <span style={{ fontWeight: 400, fontSize: 13, color: '#6b7280', marginLeft: 8 }}>{total} module{total !== 1 ? 's' : ''} • Course: {playlist.courseName}</span>
-                          </div>
-                          {progressRows.length === 0 ? (
-                            <div style={{ padding: '20px', textAlign: 'center', color: '#9ca3af', fontSize: 14 }}>No users assigned to this playlist yet.</div>
-                          ) : (
+                    {publishedCourses.filter(c => (c.pages || []).some((p: any) => p.status === 'published' && !p.isQuiz)).length > 0 ? (
+                      publishedCourses.filter(c => (c.pages || []).some((p: any) => p.status === 'published' && !p.isQuiz)).map(course => {
+                        const lessonPages = (course.pages || []).filter((p: any) => p.status === 'published' && !p.isQuiz);
+                        const total = lessonPages.length;
+                        return (
+                          <div key={course.id} style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 12, overflow: 'hidden' }}>
+                            <div style={{ padding: '14px 20px', background: '#f8fafc', borderBottom: '1px solid #e5e7eb', fontWeight: 700, fontSize: 15, color: '#111827' }}>
+                              {course.title}
+                              <span style={{ fontWeight: 400, fontSize: 13, color: '#6b7280', marginLeft: 8 }}>{total} lesson{total !== 1 ? 's' : ''}</span>
+                            </div>
                             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                               <thead>
                                 <tr style={{ background: '#f1f5f9' }}>
                                   <th style={{ padding: '10px 20px', textAlign: 'left', fontSize: 13, fontWeight: 600, color: '#374151' }}>User Name</th>
-                                  <th style={{ padding: '10px 20px', textAlign: 'left', fontSize: 13, fontWeight: 600, color: '#374151' }}>Playlist Progress</th>
-                                  <th style={{ padding: '10px 20px', textAlign: 'left', fontSize: 13, fontWeight: 600, color: '#374151' }}>Modules Completed</th>
+                                  <th style={{ padding: '10px 20px', textAlign: 'left', fontSize: 13, fontWeight: 600, color: '#374151' }}>Course Progress</th>
+                                  <th style={{ padding: '10px 20px', textAlign: 'left', fontSize: 13, fontWeight: 600, color: '#374151' }}>Lessons Completed</th>
                                   <th style={{ padding: '10px 20px', textAlign: 'left', fontSize: 13, fontWeight: 600, color: '#374151' }}>Status</th>
                                 </tr>
                               </thead>
                               <tbody>
-                                {progressRows.map((row, idx) => {
+                                {teamProgress.map(({ user, rows }) => {
+                                  const row = rows.find(r => r.course.id === course.id) || { completed: 0, total, isCompleted: false };
+                                  const pct = total > 0 ? Math.round((row.completed / total) * 100) : 0;
                                   return (
-                                    <tr key={idx} style={{ borderTop: '1px solid #f1f5f9' }}>
-                                      <td style={{ padding: '12px 20px', fontSize: 14, color: '#111827', fontWeight: 500 }}>{row.user.name}</td>
+                                    <tr key={user.id} style={{ borderTop: '1px solid #f1f5f9' }}>
+                                      <td style={{ padding: '12px 20px', fontSize: 14, color: '#111827', fontWeight: 500 }}>{user.name}</td>
                                       <td style={{ padding: '12px 20px', minWidth: 160 }}>
                                         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                                           <div style={{ flex: 1, height: 8, borderRadius: 999, background: '#e5e7eb', overflow: 'hidden' }}>
-                                            <div style={{ height: '100%', borderRadius: 999, background: row.pct === 100 ? '#10b981' : '#3b82f6', width: `${row.pct}%` }} />
+                                            <div style={{ height: '100%', borderRadius: 999, background: row.isCompleted ? '#10b981' : '#22c55e', width: `${pct}%` }} />
                                           </div>
-                                          <span style={{ fontSize: 13, fontWeight: 600, color: row.pct === 100 ? '#10b981' : '#374151', minWidth: 36 }}>{row.pct}%</span>
+                                          <span style={{ fontSize: 13, fontWeight: 600, color: row.isCompleted ? '#10b981' : '#374151', minWidth: 36 }}>{pct}%</span>
                                         </div>
                                       </td>
-                                      <td style={{ padding: '12px 20px', fontSize: 14, color: '#374151' }}>{row.completed} / {row.total}</td>
+                                      <td style={{ padding: '12px 20px', fontSize: 14, color: '#374151' }}>{row.completed} / {total}</td>
                                       <td style={{ padding: '12px 20px' }}>
-                                        {row.pct === 100 ? (
+                                        {row.isCompleted ? (
                                           <span style={{ background: '#d1fae5', color: '#065f46', borderRadius: 999, padding: '3px 10px', fontSize: 12, fontWeight: 600 }}>✓ Completed</span>
-                                        ) : row.pct === 0 ? (
+                                        ) : pct === 0 ? (
                                           <span style={{ background: '#fee2e2', color: '#991b1b', borderRadius: 999, padding: '3px 10px', fontSize: 12, fontWeight: 600 }}>Not Started</span>
                                         ) : (
                                           <span style={{ background: '#fef3c7', color: '#92400e', borderRadius: 999, padding: '3px 10px', fontSize: 12, fontWeight: 600 }}>In Progress</span>
@@ -2319,10 +2300,76 @@ export function ManagerOnlineTrainingPage(props: {
                                 })}
                               </tbody>
                             </table>
-                          )}
-                        </div>
-                      );
-                    })}
+                          </div>
+                        );
+                      })
+                    ) : (
+                      <div style={{ textAlign: 'center', padding: 40, color: '#9ca3af' }}>No courses found.</div>
+                    )}
+                  </div>
+                )}
+
+                {/* Playlists Section */}
+                {teamProgressView === 'playlists' && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+                    {playlists.length > 0 ? (
+                      playlists.map(playlist => {
+                        const total = playlist.selectedModules.length;
+                        const progressRows = playlistProgressData[playlist.id] || [];
+                        
+                        return (
+                          <div key={playlist.id} style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 12, overflow: 'hidden' }}>
+                            <div style={{ padding: '14px 20px', background: '#f8fafc', borderBottom: '1px solid #e5e7eb', fontWeight: 700, fontSize: 15, color: '#111827' }}>
+                              {playlist.name}
+                              <span style={{ fontWeight: 400, fontSize: 13, color: '#6b7280', marginLeft: 8 }}>{total} module{total !== 1 ? 's' : ''} • Course: {playlist.courseName}</span>
+                            </div>
+                            {progressRows.length === 0 ? (
+                              <div style={{ padding: '20px', textAlign: 'center', color: '#9ca3af', fontSize: 14 }}>No users assigned to this playlist yet.</div>
+                            ) : (
+                              <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                                <thead>
+                                  <tr style={{ background: '#f1f5f9' }}>
+                                    <th style={{ padding: '10px 20px', textAlign: 'left', fontSize: 13, fontWeight: 600, color: '#374151' }}>User Name</th>
+                                    <th style={{ padding: '10px 20px', textAlign: 'left', fontSize: 13, fontWeight: 600, color: '#374151' }}>Playlist Progress</th>
+                                    <th style={{ padding: '10px 20px', textAlign: 'left', fontSize: 13, fontWeight: 600, color: '#374151' }}>Modules Completed</th>
+                                    <th style={{ padding: '10px 20px', textAlign: 'left', fontSize: 13, fontWeight: 600, color: '#374151' }}>Status</th>
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  {progressRows.map((row, idx) => {
+                                    return (
+                                      <tr key={idx} style={{ borderTop: '1px solid #f1f5f9' }}>
+                                        <td style={{ padding: '12px 20px', fontSize: 14, color: '#111827', fontWeight: 500 }}>{row.user.name}</td>
+                                        <td style={{ padding: '12px 20px', minWidth: 160 }}>
+                                          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                                            <div style={{ flex: 1, height: 8, borderRadius: 999, background: '#e5e7eb', overflow: 'hidden' }}>
+                                              <div style={{ height: '100%', borderRadius: 999, background: row.pct === 100 ? '#10b981' : '#3b82f6', width: `${row.pct}%` }} />
+                                            </div>
+                                            <span style={{ fontSize: 13, fontWeight: 600, color: row.pct === 100 ? '#10b981' : '#374151', minWidth: 36 }}>{row.pct}%</span>
+                                          </div>
+                                        </td>
+                                        <td style={{ padding: '12px 20px', fontSize: 14, color: '#374151' }}>{row.completed} / {row.total}</td>
+                                        <td style={{ padding: '12px 20px' }}>
+                                          {row.pct === 100 ? (
+                                            <span style={{ background: '#d1fae5', color: '#065f46', borderRadius: 999, padding: '3px 10px', fontSize: 12, fontWeight: 600 }}>✓ Completed</span>
+                                          ) : row.pct === 0 ? (
+                                            <span style={{ background: '#fee2e2', color: '#991b1b', borderRadius: 999, padding: '3px 10px', fontSize: 12, fontWeight: 600 }}>Not Started</span>
+                                          ) : (
+                                            <span style={{ background: '#fef3c7', color: '#92400e', borderRadius: 999, padding: '3px 10px', fontSize: 12, fontWeight: 600 }}>In Progress</span>
+                                          )}
+                                        </td>
+                                      </tr>
+                                    );
+                                  })}
+                                </tbody>
+                              </table>
+                            )}
+                          </div>
+                        );
+                      })
+                    ) : (
+                      <div style={{ textAlign: 'center', padding: 40, color: '#9ca3af' }}>No playlists found.</div>
+                    )}
                   </div>
                 )}
               </div>
