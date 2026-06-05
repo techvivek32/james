@@ -112,8 +112,24 @@ class _ManagerTrainingLeaderboardScreenState extends State<ManagerTrainingLeader
       
       final List<dynamic> allUsers = jsonDecode(usersResponse.body);
       
+      // If playlist mode, fetch assignments to filter users
+      Set<String>? assignedUserIds;
+      if (_viewType == 'playlists' && playlist != null) {
+        try {
+          final playlistId = playlist['_id'] ?? playlist['id'];
+          final assignRes = await http.get(Uri.parse('https://millerstorm.tech/api/playlist-assignments?playlistId=$playlistId'));
+          if (assignRes.statusCode == 200) {
+            final List<dynamic> assignments = jsonDecode(assignRes.body);
+            assignedUserIds = Set.from(assignments.map((a) => a['assignedToUserId'].toString()));
+          }
+        } catch (e) {
+          print('Error fetching playlist assignments: $e');
+        }
+      }
+
       // Filter based on toggle
       final targetUsers = allUsers.where((u) {
+        final userId = (u['id'] ?? u['_id']).toString();
         final isDeleted = u['deleted'] == true;
         final isSuspended = u['suspended'] == true;
         if (isDeleted || isSuspended) return false;
@@ -124,9 +140,13 @@ class _ManagerTrainingLeaderboardScreenState extends State<ManagerTrainingLeader
                              roles.contains('manager') || roles.contains('sales');
         if (!hasTargetRole) return false;
 
-        // If playlist mode, only show team members
-        if (_viewType == 'playlists' || (_showTeamOnly && _managerId != null)) {
-          // In team mode or playlist mode, only show users managed by current manager
+        // If playlist mode, only show assigned team members
+        if (_viewType == 'playlists') {
+          return assignedUserIds?.contains(userId) ?? false;
+        }
+
+        if (_showTeamOnly && _managerId != null) {
+          // In team mode, only show users managed by current manager
           return u['managerId'] == _managerId || u['id'] == _managerId || u['_id'] == _managerId;
         }
         return true; // In company mode (courses only), show everyone
@@ -249,54 +269,51 @@ class _ManagerTrainingLeaderboardScreenState extends State<ManagerTrainingLeader
   Widget _buildViewTypeSelector() {
     return Container(
       color: _white,
-      padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
-      child: Row(
-        children: [
-          _typeTab('Courses', _viewType == 'courses', () {
-            setState(() {
-              _viewType = 'courses';
-              _showTeamOnly = true;
-            });
-            if (_selectedCourse != null) _fetchLeaderboard(course: _selectedCourse);
-          }),
-          const SizedBox(width: 12),
-          _typeTab('Playlists', _viewType == 'playlists', () {
-            setState(() {
-              _viewType = 'playlists';
-              _showTeamOnly = true; // Playlists only show team
-            });
-            if (_selectedPlaylist != null) {
-              _fetchLeaderboard(playlist: _selectedPlaylist);
-            } else if (_playlists.isNotEmpty) {
-              _selectedPlaylist = _playlists[0];
-              _fetchLeaderboard(playlist: _selectedPlaylist);
-            }
-          }),
-        ],
-      ),
-    );
-  }
-
-  Widget _typeTab(String label, bool active, VoidCallback onTap) {
-    return GestureDetector(
-      onTap: onTap,
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+        padding: const EdgeInsets.all(4),
         decoration: BoxDecoration(
-          border: Border(
-            bottom: BorderSide(
-              color: active ? _primary : Colors.transparent,
-              width: 3,
-            ),
-          ),
+          color: _bg,
+          borderRadius: BorderRadius.circular(12),
         ),
-        child: Text(
-          label,
-          style: TextStyle(
-            fontSize: 15,
-            fontWeight: active ? FontWeight.w800 : FontWeight.w500,
-            color: active ? _primary : _textLight,
-          ),
+        child: Row(
+          children: [
+            Expanded(
+              child: _toggleItem(
+                label: 'Courses',
+                isActive: _viewType == 'courses',
+                onTap: () {
+                  if (_viewType != 'courses') {
+                    setState(() {
+                      _viewType = 'courses';
+                      _showTeamOnly = true;
+                    });
+                    if (_selectedCourse != null) _fetchLeaderboard(course: _selectedCourse);
+                  }
+                },
+              ),
+            ),
+            Expanded(
+              child: _toggleItem(
+                label: 'Playlists',
+                isActive: _viewType == 'playlists',
+                onTap: () {
+                  if (_viewType != 'playlists') {
+                    setState(() {
+                      _viewType = 'playlists';
+                      _showTeamOnly = true;
+                    });
+                    if (_selectedPlaylist != null) {
+                      _fetchLeaderboard(playlist: _selectedPlaylist);
+                    } else if (_playlists.isNotEmpty) {
+                      _selectedPlaylist = _playlists[0];
+                      _fetchLeaderboard(playlist: _selectedPlaylist);
+                    }
+                  }
+                },
+              ),
+            ),
+          ],
         ),
       ),
     );
@@ -373,7 +390,9 @@ class _ManagerTrainingLeaderboardScreenState extends State<ManagerTrainingLeader
                   itemCount: _playlists.length,
                   itemBuilder: (context, index) {
                     final playlist = _playlists[index];
-                    final isSelected = _selectedPlaylist?['_id'] == playlist['_id'] || _selectedPlaylist?['id'] == playlist['id'];
+                    final playlistId = (playlist['_id'] ?? playlist['id']).toString();
+                    final selectedId = (_selectedPlaylist?['_id'] ?? _selectedPlaylist?['id']).toString();
+                    final isSelected = _selectedPlaylist != null && selectedId == playlistId;
                     return ListTile(
                       title: Text(playlist['name'], style: TextStyle(color: isSelected ? _primary : _textDark, fontWeight: isSelected ? FontWeight.bold : FontWeight.normal)),
                       trailing: isSelected ? const Icon(Icons.check, color: _primary) : null,
@@ -465,7 +484,9 @@ class _ManagerTrainingLeaderboardScreenState extends State<ManagerTrainingLeader
                   itemCount: _courses.length,
                   itemBuilder: (context, index) {
                     final course = _courses[index];
-                    final isSelected = _selectedCourse?['id'] == course['id'];
+                    final courseId = (course['id'] ?? course['_id']).toString();
+                    final selectedId = (_selectedCourse?['id'] ?? _selectedCourse?['_id']).toString();
+                    final isSelected = _selectedCourse != null && selectedId == courseId;
                     return ListTile(
                       title: Text(
                         course['title'],
@@ -657,16 +678,26 @@ class _ManagerTrainingLeaderboardScreenState extends State<ManagerTrainingLeader
 
     if (filteredRows.isEmpty) {
       return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.emoji_events_outlined, size: 64, color: _textLight.withOpacity(0.3)),
-            const SizedBox(height: 16),
-            Text(
-              _searchQuery.isEmpty ? 'No data for this course' : 'No users found',
-              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: _textDark),
-            ),
-          ],
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 40),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                _viewType == 'playlists' ? Icons.group_off_outlined : Icons.emoji_events_outlined, 
+                size: 64, 
+                color: _textLight.withOpacity(0.3)
+              ),
+              const SizedBox(height: 16),
+              Text(
+                _searchQuery.isEmpty 
+                    ? (_viewType == 'playlists' ? 'No users assigned to this playlist yet.' : 'No data for this course')
+                    : 'No users found',
+                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: _textDark),
+                textAlign: TextAlign.center,
+              ),
+            ],
+          ),
         ),
       );
     }
