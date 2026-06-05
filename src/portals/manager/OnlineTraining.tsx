@@ -48,6 +48,9 @@ export function ManagerOnlineTrainingPage(props: {
   const [assignedUsers, setAssignedUsers] = useState<Set<string>>(new Set());
   const [assignModalTab, setAssignModalTab] = useState<'assign' | 'unassign'>('assign');
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
+  const [expandedPlaylistId, setExpandedPlaylistId] = useState<string | null>(null);
+  const [playlistProgressData, setPlaylistProgressData] = useState<Record<string, { user: any; completed: number; total: number; pct: number }[]>>({});
+  const [isLoadingPlaylistProgress, setIsLoadingPlaylistProgress] = useState(false);
   const [sidebarWidth, setSidebarWidth] = useState(280); // Default width
   const [isResizing, setIsResizing] = useState(false);
   const [startX, setStartX] = useState(0);
@@ -105,6 +108,79 @@ export function ManagerOnlineTrainingPage(props: {
         .catch(err => console.error('Failed to load playlists:', err));
     }
   }, [props.currentUser?.id]);
+
+  const loadPlaylistProgress = async (playlist: Playlist) => {
+    if (!playlist.id) return;
+    setIsLoadingPlaylistProgress(true);
+    try {
+      // 1. Get all assignments for this playlist
+      const assignmentsRes = await fetch(`/api/playlist-assignments?playlistId=${playlist.id}`);
+      const assignments = await assignmentsRes.json();
+      
+      if (assignments.length === 0) {
+        setPlaylistProgressData(prev => ({ ...prev, [playlist.id]: [] }));
+        setIsLoadingPlaylistProgress(false);
+        return;
+      }
+
+      // 2. Get course info to know which modules are lessons
+      const course = publishedCourses.find(c => c.id === playlist.courseId);
+      if (!course) {
+        setPlaylistProgressData(prev => ({ ...prev, [playlist.id]: [] }));
+        setIsLoadingPlaylistProgress(false);
+        return;
+      }
+
+      const playlistModuleIds = new Set(playlist.selectedModules);
+      const totalModules = playlist.selectedModules.length;
+
+      // 3. For each assigned user, get their progress for this course
+      const progressPromises = assignments.map(async (assignment: any) => {
+        const userId = assignment.assignedToUserId;
+        const progRes = await fetch(`/api/course-progress?userId=${userId}&courseIds=${playlist.courseId}`);
+        const progData = await progRes.json();
+        const courseProg = progData[playlist.courseId] || {};
+        
+        const completedPages = (courseProg.completedPages || []).filter((id: string) => playlistModuleIds.has(id));
+        const completedCount = completedPages.length;
+        const pct = totalModules > 0 ? Math.round((completedCount / totalModules) * 100) : 0;
+        
+        return {
+          user: { id: userId, name: assignment.assignedToUserName },
+          completed: completedCount,
+          total: totalModules,
+          pct: pct
+        };
+      });
+
+      const results = await Promise.all(progressPromises);
+      setPlaylistProgressData(prev => ({ ...prev, [playlist.id]: results }));
+    } catch (err) {
+      console.error('Failed to load playlist progress:', err);
+    } finally {
+      setIsLoadingPlaylistProgress(false);
+    }
+  };
+
+  useEffect(() => {
+    if (playlists.length > 0 && publishedCourses.length > 0) {
+      // Background load progress for all playlists
+      playlists.forEach(playlist => {
+        if (!playlistProgressData[playlist.id]) {
+          loadPlaylistProgress(playlist);
+        }
+      });
+    }
+  }, [playlists, publishedCourses]);
+
+  useEffect(() => {
+    if (expandedPlaylistId) {
+      const playlist = playlists.find(p => p.id === expandedPlaylistId);
+      if (playlist && !playlistProgressData[playlist.id]) {
+        loadPlaylistProgress(playlist);
+      }
+    }
+  }, [expandedPlaylistId]);
 
   // Load sales users under this manager
   useEffect(() => {
@@ -1962,8 +2038,32 @@ export function ManagerOnlineTrainingPage(props: {
                         <div style={{ fontSize: 14, color: '#6b7280', marginBottom: 8 }}>
                           Course: {playlist.courseName}
                         </div>
-                        <div style={{ fontSize: 14, color: '#6b7280' }}>
-                          {playlist.selectedModules.length} module{playlist.selectedModules.length !== 1 ? 's' : ''}
+                        <div style={{ fontSize: 14, color: '#6b7280', display: 'flex', alignItems: 'center', gap: 12 }}>
+                          <span>{playlist.selectedModules.length} module{playlist.selectedModules.length !== 1 ? 's' : ''}</span>
+                          {playlistProgressData[playlist.id] && playlistProgressData[playlist.id].length > 0 && (
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 8, flex: 1, maxWidth: 200 }}>
+                              <div style={{ flex: 1, height: 4, borderRadius: 999, background: '#e5e7eb', overflow: 'hidden' }}>
+                                <div 
+                                  style={{ 
+                                    height: '100%', 
+                                    background: '#10b981', 
+                                    width: `${Math.round(playlistProgressData[playlist.id].reduce((sum, p) => sum + p.pct, 0) / playlistProgressData[playlist.id].length)}%` 
+                                  }} 
+                                />
+                              </div>
+                              <span style={{ fontSize: 11, fontWeight: 600, color: '#059669' }}>
+                                Team: {Math.round(playlistProgressData[playlist.id].reduce((sum, p) => sum + p.pct, 0) / playlistProgressData[playlist.id].length)}%
+                              </span>
+                            </div>
+                          )}
+                          <button 
+                            type="button" 
+                            className="btn-ghost btn-small" 
+                            style={{ padding: '2px 8px', fontSize: 12, marginLeft: 'auto' }}
+                            onClick={() => setExpandedPlaylistId(expandedPlaylistId === playlist.id ? null : playlist.id)}
+                          >
+                            {expandedPlaylistId === playlist.id ? 'Hide Progress' : 'View Team Progress'}
+                          </button>
                         </div>
                       </div>
                       <div style={{ display: 'flex', gap: 12 }} className="playlist-card-actions">
@@ -2046,6 +2146,47 @@ export function ManagerOnlineTrainingPage(props: {
                         </button>
                       </div>
                     </div>
+
+                    {/* Progress Section */}
+                    {expandedPlaylistId === playlist.id && (
+                      <div style={{ marginTop: 16, paddingTop: 16, borderTop: '1px solid #f3f4f6' }}>
+                        <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 12, color: '#374151' }}>
+                          Team Progress for this Playlist
+                        </div>
+                        {isLoadingPlaylistProgress ? (
+                          <div style={{ padding: '12px', textAlign: 'center', color: '#6b7280', fontSize: 13 }}>Loading progress...</div>
+                        ) : !playlistProgressData[playlist.id] || playlistProgressData[playlist.id].length === 0 ? (
+                          <div style={{ padding: '12px', textAlign: 'center', color: '#9ca3af', fontSize: 13, backgroundColor: '#f9fafb', borderRadius: 8 }}>
+                            No users assigned to this playlist yet.
+                          </div>
+                        ) : (
+                          <div style={{ display: 'grid', gap: 12 }}>
+                            {playlistProgressData[playlist.id].map((prog, idx) => (
+                              <div key={idx} style={{ backgroundColor: '#f9fafb', padding: '10px 12px', borderRadius: 8 }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
+                                  <span style={{ fontSize: 14, fontWeight: 500, color: '#111827' }}>{prog.user.name}</span>
+                                  <span style={{ fontSize: 12, color: '#6b7280' }}>{prog.completed} / {prog.total} modules</span>
+                                </div>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                                  <div style={{ flex: 1, height: 6, borderRadius: 999, background: '#e5e7eb', overflow: 'hidden' }}>
+                                    <div 
+                                      style={{ 
+                                        height: '100%', 
+                                        borderRadius: 999, 
+                                        background: prog.pct === 100 ? '#10b981' : '#3b82f6', 
+                                        width: `${prog.pct}%`,
+                                        transition: 'width 0.3s ease'
+                                      }} 
+                                    />
+                                  </div>
+                                  <span style={{ fontSize: 12, fontWeight: 600, color: prog.pct === 100 ? '#10b981' : '#374151', minWidth: 32 }}>{prog.pct}%</span>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>
