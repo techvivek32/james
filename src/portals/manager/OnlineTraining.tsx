@@ -2203,61 +2203,128 @@ export function ManagerOnlineTrainingPage(props: {
           <div className="panel-body">
             {isLoadingTeam ? (
               <div style={{ textAlign: 'center', padding: 60, color: '#6b7280' }}>Loading...</div>
-            ) : teamProgress.length === 0 ? (
-              <div style={{ textAlign: 'center', padding: 60, color: '#9ca3af' }}>No team members found.</div>
+            ) : (teamProgress.length === 0 && playlists.length === 0) ? (
+              <div style={{ textAlign: 'center', padding: 60, color: '#9ca3af' }}>No team members or playlists found.</div>
             ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
-                {publishedCourses.filter(c => (c.pages || []).some((p: any) => p.status === 'published' && !p.isQuiz)).map(course => {
-                  const lessonPages = (course.pages || []).filter((p: any) => p.status === 'published' && !p.isQuiz);
-                  const total = lessonPages.length;
-                  return (
-                    <div key={course.id} style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 12, overflow: 'hidden' }}>
-                      <div style={{ padding: '14px 20px', background: '#f8fafc', borderBottom: '1px solid #e5e7eb', fontWeight: 700, fontSize: 15, color: '#111827' }}>
-                        {course.title}
-                        <span style={{ fontWeight: 400, fontSize: 13, color: '#6b7280', marginLeft: 8 }}>{total} lesson{total !== 1 ? 's' : ''}</span>
-                      </div>
-                      <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                        <thead>
-                          <tr style={{ background: '#f1f5f9' }}>
-                            <th style={{ padding: '10px 20px', textAlign: 'left', fontSize: 13, fontWeight: 600, color: '#374151' }}>User Name</th>
-                            <th style={{ padding: '10px 20px', textAlign: 'left', fontSize: 13, fontWeight: 600, color: '#374151' }}>Course Progress</th>
-                            <th style={{ padding: '10px 20px', textAlign: 'left', fontSize: 13, fontWeight: 600, color: '#374151' }}>Lessons Completed</th>
-                            <th style={{ padding: '10px 20px', textAlign: 'left', fontSize: 13, fontWeight: 600, color: '#374151' }}>Status</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {teamProgress.map(({ user, rows }) => {
-                            const row = rows.find(r => r.course.id === course.id) || { completed: 0, total, isCompleted: false };
-                            const pct = total > 0 ? Math.round((row.completed / total) * 100) : 0;
-                            return (
-                              <tr key={user.id} style={{ borderTop: '1px solid #f1f5f9' }}>
-                                <td style={{ padding: '12px 20px', fontSize: 14, color: '#111827', fontWeight: 500 }}>{user.name}</td>
-                                <td style={{ padding: '12px 20px', minWidth: 160 }}>
-                                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                                    <div style={{ flex: 1, height: 8, borderRadius: 999, background: '#e5e7eb', overflow: 'hidden' }}>
-                                      <div style={{ height: '100%', borderRadius: 999, background: row.isCompleted ? '#10b981' : '#22c55e', width: `${pct}%` }} />
-                                    </div>
-                                    <span style={{ fontSize: 13, fontWeight: 600, color: row.isCompleted ? '#10b981' : '#374151', minWidth: 36 }}>{pct}%</span>
-                                  </div>
-                                </td>
-                                <td style={{ padding: '12px 20px', fontSize: 14, color: '#374151' }}>{row.completed} / {total}</td>
-                                <td style={{ padding: '12px 20px' }}>
-                                  {row.isCompleted ? (
-                                    <span style={{ background: '#d1fae5', color: '#065f46', borderRadius: 999, padding: '3px 10px', fontSize: 12, fontWeight: 600 }}>✓ Completed</span>
-                                  ) : pct === 0 ? (
-                                    <span style={{ background: '#fee2e2', color: '#991b1b', borderRadius: 999, padding: '3px 10px', fontSize: 12, fontWeight: 600 }}>Not Started</span>
-                                  ) : (
-                                    <span style={{ background: '#fef3c7', color: '#92400e', borderRadius: 999, padding: '3px 10px', fontSize: 12, fontWeight: 600 }}>In Progress</span>
-                                  )}
-                                </td>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 32 }}>
+                {/* Courses Section */}
+                {publishedCourses.filter(c => (c.pages || []).some((p: any) => p.status === 'published' && !p.isQuiz)).length > 0 && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+                    <div style={{ fontSize: 18, fontWeight: 600, color: '#374151', paddingBottom: 8, borderBottom: '2px solid #f3f4f6' }}>Course Progress</div>
+                    {publishedCourses.filter(c => (c.pages || []).some((p: any) => p.status === 'published' && !p.isQuiz)).map(course => {
+                      const lessonPages = (course.pages || []).filter((p: any) => p.status === 'published' && !p.isQuiz);
+                      const total = lessonPages.length;
+                      return (
+                        <div key={course.id} style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 12, overflow: 'hidden' }}>
+                          <div style={{ padding: '14px 20px', background: '#f8fafc', borderBottom: '1px solid #e5e7eb', fontWeight: 700, fontSize: 15, color: '#111827' }}>
+                            {course.title}
+                            <span style={{ fontWeight: 400, fontSize: 13, color: '#6b7280', marginLeft: 8 }}>{total} lesson{total !== 1 ? 's' : ''}</span>
+                          </div>
+                          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                            <thead>
+                              <tr style={{ background: '#f1f5f9' }}>
+                                <th style={{ padding: '10px 20px', textAlign: 'left', fontSize: 13, fontWeight: 600, color: '#374151' }}>User Name</th>
+                                <th style={{ padding: '10px 20px', textAlign: 'left', fontSize: 13, fontWeight: 600, color: '#374151' }}>Course Progress</th>
+                                <th style={{ padding: '10px 20px', textAlign: 'left', fontSize: 13, fontWeight: 600, color: '#374151' }}>Lessons Completed</th>
+                                <th style={{ padding: '10px 20px', textAlign: 'left', fontSize: 13, fontWeight: 600, color: '#374151' }}>Status</th>
                               </tr>
-                            );
-                          })}
-                        </tbody>
-                      </table>
-                    </div>
-                  );
-                })}
+                            </thead>
+                            <tbody>
+                              {teamProgress.map(({ user, rows }) => {
+                                const row = rows.find(r => r.course.id === course.id) || { completed: 0, total, isCompleted: false };
+                                const pct = total > 0 ? Math.round((row.completed / total) * 100) : 0;
+                                return (
+                                  <tr key={user.id} style={{ borderTop: '1px solid #f1f5f9' }}>
+                                    <td style={{ padding: '12px 20px', fontSize: 14, color: '#111827', fontWeight: 500 }}>{user.name}</td>
+                                    <td style={{ padding: '12px 20px', minWidth: 160 }}>
+                                      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                                        <div style={{ flex: 1, height: 8, borderRadius: 999, background: '#e5e7eb', overflow: 'hidden' }}>
+                                          <div style={{ height: '100%', borderRadius: 999, background: row.isCompleted ? '#10b981' : '#22c55e', width: `${pct}%` }} />
+                                        </div>
+                                        <span style={{ fontSize: 13, fontWeight: 600, color: row.isCompleted ? '#10b981' : '#374151', minWidth: 36 }}>{pct}%</span>
+                                      </div>
+                                    </td>
+                                    <td style={{ padding: '12px 20px', fontSize: 14, color: '#374151' }}>{row.completed} / {total}</td>
+                                    <td style={{ padding: '12px 20px' }}>
+                                      {row.isCompleted ? (
+                                        <span style={{ background: '#d1fae5', color: '#065f46', borderRadius: 999, padding: '3px 10px', fontSize: 12, fontWeight: 600 }}>✓ Completed</span>
+                                      ) : pct === 0 ? (
+                                        <span style={{ background: '#fee2e2', color: '#991b1b', borderRadius: 999, padding: '3px 10px', fontSize: 12, fontWeight: 600 }}>Not Started</span>
+                                      ) : (
+                                        <span style={{ background: '#fef3c7', color: '#92400e', borderRadius: 999, padding: '3px 10px', fontSize: 12, fontWeight: 600 }}>In Progress</span>
+                                      )}
+                                    </td>
+                                  </tr>
+                                );
+                              })}
+                            </tbody>
+                          </table>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+
+                {/* Playlists Section */}
+                {playlists.length > 0 && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+                    <div style={{ fontSize: 18, fontWeight: 600, color: '#374151', paddingBottom: 8, borderBottom: '2px solid #f3f4f6' }}>Playlist Progress</div>
+                    {playlists.map(playlist => {
+                      const total = playlist.selectedModules.length;
+                      const progressRows = playlistProgressData[playlist.id] || [];
+                      
+                      return (
+                        <div key={playlist.id} style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 12, overflow: 'hidden' }}>
+                          <div style={{ padding: '14px 20px', background: '#f8fafc', borderBottom: '1px solid #e5e7eb', fontWeight: 700, fontSize: 15, color: '#111827' }}>
+                            {playlist.name}
+                            <span style={{ fontWeight: 400, fontSize: 13, color: '#6b7280', marginLeft: 8 }}>{total} module{total !== 1 ? 's' : ''} • Course: {playlist.courseName}</span>
+                          </div>
+                          {progressRows.length === 0 ? (
+                            <div style={{ padding: '20px', textAlign: 'center', color: '#9ca3af', fontSize: 14 }}>No users assigned to this playlist yet.</div>
+                          ) : (
+                            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                              <thead>
+                                <tr style={{ background: '#f1f5f9' }}>
+                                  <th style={{ padding: '10px 20px', textAlign: 'left', fontSize: 13, fontWeight: 600, color: '#374151' }}>User Name</th>
+                                  <th style={{ padding: '10px 20px', textAlign: 'left', fontSize: 13, fontWeight: 600, color: '#374151' }}>Playlist Progress</th>
+                                  <th style={{ padding: '10px 20px', textAlign: 'left', fontSize: 13, fontWeight: 600, color: '#374151' }}>Modules Completed</th>
+                                  <th style={{ padding: '10px 20px', textAlign: 'left', fontSize: 13, fontWeight: 600, color: '#374151' }}>Status</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {progressRows.map((row, idx) => {
+                                  return (
+                                    <tr key={idx} style={{ borderTop: '1px solid #f1f5f9' }}>
+                                      <td style={{ padding: '12px 20px', fontSize: 14, color: '#111827', fontWeight: 500 }}>{row.user.name}</td>
+                                      <td style={{ padding: '12px 20px', minWidth: 160 }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                                          <div style={{ flex: 1, height: 8, borderRadius: 999, background: '#e5e7eb', overflow: 'hidden' }}>
+                                            <div style={{ height: '100%', borderRadius: 999, background: row.pct === 100 ? '#10b981' : '#3b82f6', width: `${row.pct}%` }} />
+                                          </div>
+                                          <span style={{ fontSize: 13, fontWeight: 600, color: row.pct === 100 ? '#10b981' : '#374151', minWidth: 36 }}>{row.pct}%</span>
+                                        </div>
+                                      </td>
+                                      <td style={{ padding: '12px 20px', fontSize: 14, color: '#374151' }}>{row.completed} / {row.total}</td>
+                                      <td style={{ padding: '12px 20px' }}>
+                                        {row.pct === 100 ? (
+                                          <span style={{ background: '#d1fae5', color: '#065f46', borderRadius: 999, padding: '3px 10px', fontSize: 12, fontWeight: 600 }}>✓ Completed</span>
+                                        ) : row.pct === 0 ? (
+                                          <span style={{ background: '#fee2e2', color: '#991b1b', borderRadius: 999, padding: '3px 10px', fontSize: 12, fontWeight: 600 }}>Not Started</span>
+                                        ) : (
+                                          <span style={{ background: '#fef3c7', color: '#92400e', borderRadius: 999, padding: '3px 10px', fontSize: 12, fontWeight: 600 }}>In Progress</span>
+                                        )}
+                                      </td>
+                                    </tr>
+                                  );
+                                })}
+                              </tbody>
+                            </table>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
             )}
           </div>
