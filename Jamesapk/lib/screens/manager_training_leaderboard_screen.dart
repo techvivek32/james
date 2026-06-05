@@ -23,7 +23,10 @@ class _ManagerTrainingLeaderboardScreenState extends State<ManagerTrainingLeader
   static const _bronze = Color(0xFFCD7F32);
 
   List<dynamic> _courses = [];
+  List<dynamic> _playlists = [];
   dynamic _selectedCourse;
+  dynamic _selectedPlaylist;
+  String _viewType = 'courses'; // 'courses' or 'playlists'
   List<Map<String, dynamic>> _leaderboardRows = [];
   bool _isLoadingCourses = true;
   bool _isLoadingLeaderboard = false;
@@ -43,11 +46,34 @@ class _ManagerTrainingLeaderboardScreenState extends State<ManagerTrainingLeader
 
   Future<void> _init() async {
     final user = await AuthService.getStoredUser();
+    print('DEBUG: Stored user: $user');
     setState(() {
       _currentUserId = user?['id'] ?? user?['_id'] ?? '';
-      _managerId = _currentUserId; // Managers see their own team
+      _managerId = user?['id'] ?? user?['_id'] ?? ''; 
     });
-    await _fetchCourses();
+    print('DEBUG: Manager ID set to: $_managerId');
+    await Future.wait([
+      _fetchCourses(),
+      _fetchPlaylists(),
+    ]);
+  }
+
+  Future<void> _fetchPlaylists() async {
+    if (_managerId == null) return;
+    try {
+      final response = await http.get(Uri.parse('https://millerstorm.tech/api/playlists?managerId=$_managerId'));
+      if (response.statusCode == 200) {
+        final List<dynamic> data = jsonDecode(response.body);
+        setState(() {
+          _playlists = data;
+          if (_viewType == 'playlists' && data.isNotEmpty) {
+            _selectedPlaylist = data[0];
+          }
+        });
+      }
+    } catch (e) {
+      print('Error fetching playlists: $e');
+    }
   }
 
   Future<void> _fetchCourses() async {
@@ -65,8 +91,8 @@ class _ManagerTrainingLeaderboardScreenState extends State<ManagerTrainingLeader
           _isLoadingCourses = false;
         });
 
-        if (_selectedCourse != null) {
-          _fetchLeaderboard(_selectedCourse);
+        if (_viewType == 'courses' && _selectedCourse != null) {
+          _fetchLeaderboard(course: _selectedCourse);
         }
       }
     } catch (e) {
@@ -75,7 +101,7 @@ class _ManagerTrainingLeaderboardScreenState extends State<ManagerTrainingLeader
     }
   }
 
-  Future<void> _fetchLeaderboard(dynamic course) async {
+  Future<void> _fetchLeaderboard({dynamic course, dynamic playlist}) async {
     setState(() {
       _isLoadingLeaderboard = true;
       _leaderboardRows = [];
@@ -100,25 +126,41 @@ class _ManagerTrainingLeaderboardScreenState extends State<ManagerTrainingLeader
                              roles.contains('manager') || roles.contains('sales');
         if (!hasTargetRole) return false;
 
-        if (_showTeamOnly && _managerId != null) {
-          // In team mode, only show users managed by current manager
+        // If playlist mode, only show team members
+        if (_viewType == 'playlists' || (_showTeamOnly && _managerId != null)) {
+          // In team mode or playlist mode, only show users managed by current manager
           return u['managerId'] == _managerId || u['id'] == _managerId || u['_id'] == _managerId;
         }
-        return true; // In company mode, show everyone
+        return true; // In company mode (courses only), show everyone
       }).toList();
 
-      // 2. Prepare course lessons
-      final folders = course['folders'] as List<dynamic>? ?? [];
-      final publishedFolderIds = Set.from(folders.where((f) => f['status'] == 'published').map((f) => f['id']));
-      
-      final lessonPages = (course['pages'] as List<dynamic>? ?? []).where((p) => 
-        p['status'] == 'published' && 
-        p['isQuiz'] != true && 
-        (p['folderId'] == null || publishedFolderIds.contains(p['folderId']))
-      ).toList();
-      
-      final totalLessons = lessonPages.length;
-      final lessonIds = Set.from(lessonPages.map((p) => p['id']));
+      // 2. Prepare modules/lessons
+      Set<dynamic> targetModuleIds;
+      int totalModules;
+      String targetCourseId;
+
+      if (_viewType == 'playlists' && playlist != null) {
+        targetCourseId = playlist['courseId'];
+        final selectedModules = playlist['selectedModules'] as List<dynamic>? ?? [];
+        targetModuleIds = Set.from(selectedModules);
+        totalModules = targetModuleIds.length;
+      } else if (course != null) {
+        targetCourseId = course['id'];
+        final folders = course['folders'] as List<dynamic>? ?? [];
+        final publishedFolderIds = Set.from(folders.where((f) => f['status'] == 'published').map((f) => f['id']));
+        
+        final lessonPages = (course['pages'] as List<dynamic>? ?? []).where((p) => 
+          p['status'] == 'published' && 
+          p['isQuiz'] != true && 
+          (p['folderId'] == null || publishedFolderIds.contains(p['folderId']))
+        ).toList();
+        
+        targetModuleIds = Set.from(lessonPages.map((p) => p['id']));
+        totalModules = targetModuleIds.length;
+      } else {
+        setState(() => _isLoadingLeaderboard = false);
+        return;
+      }
 
       // 3. Fetch progress for each user
       final List<Map<String, dynamic>> builtRows = [];
@@ -127,15 +169,15 @@ class _ManagerTrainingLeaderboardScreenState extends State<ManagerTrainingLeader
         try {
           final userId = u['id'] ?? u['_id'];
           final progRes = await http.get(
-            Uri.parse('https://millerstorm.tech/api/course-progress?userId=$userId&courseIds=${course['id']}')
+            Uri.parse('https://millerstorm.tech/api/course-progress?userId=$userId&courseIds=$targetCourseId')
           );
           
           if (progRes.statusCode == 200) {
             final progData = jsonDecode(progRes.body);
-            final rec = progData[course['id']] ?? {};
+            final rec = progData[targetCourseId] ?? {};
             final completedPages = (rec['completedPages'] as List<dynamic>? ?? []);
-            final doneCount = completedPages.where((id) => lessonIds.contains(id)).length;
-            final pct = totalLessons > 0 ? ((doneCount / totalLessons) * 100).round() : 0;
+            final doneCount = completedPages.where((id) => targetModuleIds.contains(id)).length;
+            final pct = totalModules > 0 ? ((doneCount / totalModules) * 100).round() : 0;
             
             builtRows.add({
               'id': userId,
@@ -143,7 +185,7 @@ class _ManagerTrainingLeaderboardScreenState extends State<ManagerTrainingLeader
               'email': u['email'] ?? '',
               'headshotUrl': u['headshotUrl'] ?? '',
               'done': doneCount,
-              'total': totalLessons,
+              'total': totalModules,
               'pct': pct,
             });
           }
@@ -182,18 +224,19 @@ class _ManagerTrainingLeaderboardScreenState extends State<ManagerTrainingLeader
           icon: const Icon(Icons.arrow_back, color: _textDark),
           onPressed: () => Navigator.pop(context),
         ),
-        title: const Text(
-          '🏆 Course Leaderboard',
-          style: TextStyle(color: _textDark, fontSize: 18, fontWeight: FontWeight.w700),
+        title: Text(
+          _viewType == 'courses' ? '🏆 Course Leaderboard' : '📋 Playlist Leaderboard',
+          style: const TextStyle(color: _textDark, fontSize: 18, fontWeight: FontWeight.w700),
         ),
       ),
       body: _isLoadingCourses
           ? const Center(child: CircularProgressIndicator(color: _primary))
           : Column(
               children: [
-                _buildCourseSelector(),
-                _buildLeaderboardToggle(),
-                if (!_showTeamOnly) _buildCurrentUserRank(),
+                _buildViewTypeSelector(),
+                _buildDataSelector(),
+                if (_viewType == 'courses') _buildLeaderboardToggle(),
+                if (!_showTeamOnly && _viewType == 'courses') _buildCurrentUserRank(),
                 _buildSearchBar(),
                 Expanded(
                   child: _isLoadingLeaderboard
@@ -202,6 +245,153 @@ class _ManagerTrainingLeaderboardScreenState extends State<ManagerTrainingLeader
                 ),
               ],
             ),
+    );
+  }
+
+  Widget _buildViewTypeSelector() {
+    return Container(
+      color: _white,
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+      child: Row(
+        children: [
+          _typeTab('Courses', _viewType == 'courses', () {
+            setState(() {
+              _viewType = 'courses';
+              _showTeamOnly = true;
+            });
+            if (_selectedCourse != null) _fetchLeaderboard(course: _selectedCourse);
+          }),
+          const SizedBox(width: 12),
+          _typeTab('Playlists', _viewType == 'playlists', () {
+            setState(() {
+              _viewType = 'playlists';
+              _showTeamOnly = true; // Playlists only show team
+            });
+            if (_selectedPlaylist != null) {
+              _fetchLeaderboard(playlist: _selectedPlaylist);
+            } else if (_playlists.isNotEmpty) {
+              _selectedPlaylist = _playlists[0];
+              _fetchLeaderboard(playlist: _selectedPlaylist);
+            }
+          }),
+        ],
+      ),
+    );
+  }
+
+  Widget _typeTab(String label, bool active, VoidCallback onTap) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+        decoration: BoxDecoration(
+          border: Border(
+            bottom: BorderSide(
+              color: active ? _primary : Colors.transparent,
+              width: 3,
+            ),
+          ),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            fontSize: 15,
+            fontWeight: active ? FontWeight.w800 : FontWeight.w500,
+            color: active ? _primary : _textLight,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDataSelector() {
+    if (_viewType == 'courses') {
+      return _buildCourseSelector();
+    } else {
+      return _buildPlaylistSelector();
+    }
+  }
+
+  Widget _buildPlaylistSelector() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: const BoxDecoration(
+        color: _white,
+        border: Border(bottom: BorderSide(color: _bg, width: 2)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Select Playlist',
+            style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: _textLight),
+          ),
+          const SizedBox(height: 4),
+          GestureDetector(
+            onTap: _showPlaylistPicker,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              decoration: BoxDecoration(
+                border: Border.all(color: _border),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      _selectedPlaylist?['name'] ?? 'Select a playlist',
+                      style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: _textDark),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  const Icon(Icons.keyboard_arrow_down, color: _textLight),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showPlaylistPicker() {
+    if (_playlists.isEmpty) return;
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: _white,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      builder: (context) {
+        return Container(
+          padding: const EdgeInsets.symmetric(vertical: 20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text('Select Playlist', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+              const SizedBox(height: 12),
+              Flexible(
+                child: ListView.builder(
+                  shrinkWrap: true,
+                  itemCount: _playlists.length,
+                  itemBuilder: (context, index) {
+                    final playlist = _playlists[index];
+                    final isSelected = _selectedPlaylist?['_id'] == playlist['_id'] || _selectedPlaylist?['id'] == playlist['id'];
+                    return ListTile(
+                      title: Text(playlist['name'], style: TextStyle(color: isSelected ? _primary : _textDark, fontWeight: isSelected ? FontWeight.bold : FontWeight.normal)),
+                      trailing: isSelected ? const Icon(Icons.check, color: _primary) : null,
+                      onTap: () {
+                        setState(() => _selectedPlaylist = playlist);
+                        Navigator.pop(context);
+                        _fetchLeaderboard(playlist: playlist);
+                      },
+                    );
+                  },
+                ),
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 
@@ -290,7 +480,7 @@ class _ManagerTrainingLeaderboardScreenState extends State<ManagerTrainingLeader
                       onTap: () {
                         setState(() => _selectedCourse = course);
                         Navigator.pop(context);
-                        _fetchLeaderboard(course);
+                        _fetchLeaderboard(course: course);
                       },
                     );
                   },
@@ -322,7 +512,7 @@ class _ManagerTrainingLeaderboardScreenState extends State<ManagerTrainingLeader
                 onTap: () {
                   if (!_showTeamOnly) {
                     setState(() => _showTeamOnly = true);
-                    _fetchLeaderboard(_selectedCourse);
+                    _fetchLeaderboard(course: _selectedCourse);
                   }
                 },
               ),
@@ -334,7 +524,7 @@ class _ManagerTrainingLeaderboardScreenState extends State<ManagerTrainingLeader
                 onTap: () {
                   if (_showTeamOnly) {
                     setState(() => _showTeamOnly = false);
-                    _fetchLeaderboard(_selectedCourse);
+                    _fetchLeaderboard(course: _selectedCourse);
                   }
                 },
               ),
@@ -475,7 +665,9 @@ class _ManagerTrainingLeaderboardScreenState extends State<ManagerTrainingLeader
             Icon(Icons.emoji_events_outlined, size: 64, color: _textLight.withOpacity(0.3)),
             const SizedBox(height: 16),
             Text(
-              _searchQuery.isEmpty ? 'No data for this course' : 'No users found',
+              _searchQuery.isEmpty 
+                ? (_viewType == 'courses' ? 'No data for this course' : 'No data for this playlist')
+                : 'No users found',
               style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: _textDark),
             ),
           ],
