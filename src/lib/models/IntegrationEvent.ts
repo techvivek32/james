@@ -5,6 +5,7 @@ const integrationEventSchema = new Schema(
     externalEventId: { type: String, required: true, unique: true },
     source: { type: String, default: "acculynx" },
     eventType: { type: String, required: true },
+    milestoneName: { type: String },
     repName: { type: String, required: true },
     repExternalId: { type: String },
     revenue: { type: Number, default: 0 },

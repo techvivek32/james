@@ -27,12 +27,17 @@ const LeaderboardPage: NextPage = () => {
     return () => clearInterval(interval);
   }, [load]);
 
-  const inspections = events.filter(e => 
-     (e.eventType?.toLowerCase().includes("inspection") || e.milestoneName?.toLowerCase().includes("inspection")) 
-   );
-   const claims = events.filter(e => 
-     (e.eventType?.toLowerCase().includes("claim") || e.eventType?.toLowerCase().includes("approved") || e.milestoneName?.toLowerCase().includes("claim") || e.milestoneName?.toLowerCase().includes("approved")) 
-   );
+  const inspections = events.filter(e => {
+     const type = (e.eventType || "").toLowerCase();
+     const milestone = (e.milestoneName || "").toLowerCase();
+     return type.includes("inspection") || milestone.includes("inspection") || type.includes("milestone") && milestone.includes("inspection");
+  });
+  const claims = events.filter(e => {
+     const type = (e.eventType || "").toLowerCase();
+     const milestone = (e.milestoneName || "").toLowerCase();
+     const isClaim = type.includes("claim") || type.includes("approved") || milestone.includes("claim") || milestone.includes("approved");
+     return isClaim;
+  });
 
   const cols = ["#", "Rep Name", "Job Number", "Amount", "Date", "Location", "Status"];
 

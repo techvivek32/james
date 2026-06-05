@@ -29,23 +29,18 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   console.log("Incoming AccuLynx Direct Payload:", JSON.stringify(req.body, null, 2));
 
   const payload = req.body;
-  console.log("========== LIVE ACCULYNX PAYLOAD ==========");
-  console.log(JSON.stringify(req.body,null,2));
-  console.log("===========================================");
-  const topicName = payload.topicName || "unknown";
-  const eventId = payload.eventId; // Unique ID from AccuLynx
-  const eventData = payload.Event || {};
-  console.log("EVENT DATA:");
-  console.log(JSON.stringify(eventData,null,2));
+  const topicName = payload.topicName || payload.topic || "unknown";
+  const eventId = payload.eventId || payload.id || `evt_${Date.now()}`; 
+  const eventData = payload.Event || payload.data || payload;
   
-  const jobId = eventData.jobId || eventData.externalEventId;
-  const companyUserId = eventData.companyUserId;
-  const milestoneName = eventData.milestoneName;
-  const approvedValue = eventData.approvedValue || 0;
+  const jobId = eventData.jobId || eventData.externalEventId || eventData.id;
+  const companyUserId = eventData.companyUserId || eventData.userId;
+  const milestoneName = eventData.milestoneName || eventData.milestone;
+  const approvedValue = eventData.approvedValue || eventData.value || 0;
 
-  if (!jobId || !eventId) {
-    console.error("Missing required fields (jobId or eventId) in payload");
-    return res.status(400).json({ error: "Missing required fields: jobId, eventId" });
+  if (!jobId) {
+    console.error("Missing required jobId in payload");
+    return res.status(400).json({ error: "Missing required field: jobId" });
   }
 
   await connectMongo();
@@ -155,10 +150,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     // 5. Save Event Log
-    await IntegrationEventModel.create({
+    const newEvent = await IntegrationEventModel.create({
       externalEventId: eventId,
       source: "acculynx_direct",
       eventType: topicName,
+      milestoneName: milestoneName,
       repName: repName,
       repExternalId: companyUserId,
       revenue: isRevenueUpdate ? approvedValue : 0,
@@ -168,6 +164,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       location,
       companyName: eventData.companyName || "",
     });
+
+    console.log(`✅ Event processed and saved: ${newEvent._id}`);
 
     // 6. Internal Notification
     await NotificationModel.create({
