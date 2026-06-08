@@ -2,6 +2,7 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { connectMongo } from "../../../src/lib/mongodb";
 import { UserModel } from "../../../src/lib/models/User";
 import { UserRequestModel } from "../../../src/lib/models/UserRequest";
+import { exactCaseInsensitive } from "../../../src/lib/sanitize";
 
 export default async function handler(
   req: NextApiRequest,
@@ -26,11 +27,11 @@ export default async function handler(
     const normalizedEmail = email.trim().toLowerCase();
 
     // Check if email exists in users
-    const existingUser = await UserModel.findOne({ email: { $regex: new RegExp(`^${normalizedEmail}$`, "i") } });
-    
+    const existingUser = await UserModel.findOne({ email: exactCaseInsensitive(normalizedEmail) });
+
     // Check if email exists in pending requests only (not approved/rejected)
-    const existingRequest = await UserRequestModel.findOne({ 
-      email: { $regex: new RegExp(`^${normalizedEmail}$`, "i") },
+    const existingRequest = await UserRequestModel.findOne({
+      email: exactCaseInsensitive(normalizedEmail),
       status: "pending"
     });
 

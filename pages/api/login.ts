@@ -2,6 +2,7 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import bcrypt from "bcryptjs";
 import { connectMongo } from "../../src/lib/mongodb";
 import { UserModel } from "../../src/lib/models/User";
+import { exactCaseInsensitive } from "../../src/lib/sanitize";
 
 export default async function handler(
   req: NextApiRequest,
@@ -101,7 +102,7 @@ export default async function handler(
     return;
   }
 
-  const user = await UserModel.findOne({ email: { $regex: new RegExp(`^${normalizedEmail}$`, "i") } }).lean();
+  const user = await UserModel.findOne({ email: exactCaseInsensitive(normalizedEmail) }).lean();
 
   if (!user) {
     res.status(404).json({ error: "User not found" });

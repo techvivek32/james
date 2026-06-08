@@ -4,6 +4,7 @@ import { connectMongo } from "../../../src/lib/mongodb";
 import { UserModel } from "../../../src/lib/models/User";
 import { sendQuickStartUserEmail, sendQuickStartManagerEmail } from "../../../src/lib/email";
 import { sendUserAccountUpdateSMS } from "../../../src/lib/telnyx";
+import { exactCaseInsensitive, asString, validateUserPayload } from "../../../src/lib/sanitize";
 
 export default async function handler(
   req: NextApiRequest,
@@ -29,6 +30,13 @@ export default async function handler(
 
   if (req.method === "POST") {
     const payload = req.body || {};
+
+    const valid = validateUserPayload(payload);
+    if (!valid.ok) {
+      res.status(400).json({ error: valid.error });
+      return;
+    }
+
     const { password, passwordHash, _id, sendNotification, sendSMSNotification, adminName, adminEmail, managerName, ...rest } = payload;
     const id = rest.email ? rest.email.trim().toLowerCase() : (payload.id || `user-${Date.now()}`);
     const hashedPassword =
@@ -38,7 +46,7 @@ export default async function handler(
 
     // Check if a deleted user with same email exists — restore + update instead of creating new
     if (rest.email) {
-      const existingDeleted = await UserModel.findOne({ email: { $regex: new RegExp(`^${rest.email}$`, "i") }, deleted: true });
+      const existingDeleted = await UserModel.findOne({ email: exactCaseInsensitive(asString(rest.email)), deleted: true });
       if (existingDeleted) {
         const restored = await UserModel.findOneAndUpdate(
           { id: existingDeleted.id },
