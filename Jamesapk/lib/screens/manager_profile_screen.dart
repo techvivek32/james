@@ -317,6 +317,76 @@ class _ManagerProfileScreenState extends State<ManagerProfileScreen> {
     }
   }
 
+  Future<void> _deleteAccount() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: _white,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text(
+          'Delete Account',
+          style: TextStyle(color: _textDark, fontWeight: FontWeight.bold),
+        ),
+        content: const Text(
+          'Are you sure you want to delete your account? This action cannot be undone.',
+          style: TextStyle(color: _textDark),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel', style: TextStyle(color: _textLight)),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Delete', style: TextStyle(color: _primary, fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) return;
+
+    setState(() {
+      _isSaving = true;
+    });
+
+    try {
+      final response = await http.delete(
+        Uri.parse('https://millerstorm.tech/api/users/$_userId'),
+      );
+
+      if (response.statusCode == 200 || response.statusCode == 204) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Account deleted successfully'),
+              backgroundColor: Color(0xFFCB0002),
+            ),
+          );
+          _logout();
+        }
+      } else {
+        throw Exception('Failed to delete account: ${response.statusCode}');
+      }
+    } catch (e) {
+      print('Error deleting account: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to delete account: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isSaving = false;
+        });
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return WillPopScope(
@@ -626,6 +696,28 @@ class _ManagerProfileScreenState extends State<ManagerProfileScreen> {
                             ),
                     ),
                   ),
+                  const SizedBox(height: 16),
+                  SizedBox(
+                    width: double.infinity,
+                    child: OutlinedButton(
+                      onPressed: _isSaving ? null : _deleteAccount,
+                      style: OutlinedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        side: const BorderSide(color: _primary),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      child: const Text(
+                        'Delete Account',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: _primary,
+                        ),
+                      ),
+                    ),
+                  ),
                 ],
               ),
             ),
@@ -656,7 +748,12 @@ class _ManagerProfileScreenState extends State<ManagerProfileScreen> {
             showDialog(
               context: context,
               builder: (context) => AlertDialog(
-                title: const Text('Select Territory'),
+                backgroundColor: _white,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                title: const Text(
+                  'Select Territory',
+                  style: TextStyle(color: _textDark, fontWeight: FontWeight.bold),
+                ),
                 content: SingleChildScrollView(
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
