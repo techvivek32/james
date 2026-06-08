@@ -5,8 +5,9 @@ import { UserModel } from "../../../src/lib/models/User";
 import { sendQuickStartUserEmail, sendQuickStartManagerEmail } from "../../../src/lib/email";
 import { sendUserAccountUpdateSMS } from "../../../src/lib/telnyx";
 import { exactCaseInsensitive, asString, validateUserPayload } from "../../../src/lib/sanitize";
+import { requireAuth } from "../../../src/lib/auth";
 
-export default async function handler(
+async function handler(
   req: NextApiRequest,
   res: NextApiResponse
 ) {
@@ -145,3 +146,9 @@ export default async function handler(
   res.setHeader("Allow", "GET, POST");
   res.status(405).end();
 }
+
+// Require a valid login session for listing/creating users. Any authenticated
+// role is allowed (the sales dashboard reads the list for its leaderboard);
+// this blocks anonymous/unauthenticated access. Per-role restriction and the
+// per-id endpoints are a follow-up that also needs the Flutter app updated.
+export default requireAuth(handler);
