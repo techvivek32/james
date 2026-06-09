@@ -313,6 +313,41 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
         isAlreadyCompleted
       );
       videoCleanupRef.current = cleanup;
+
+      // If no videos were found on this page, mark it as completed so the user can advance
+      if (!cleanup && !isAlreadyCompleted && activePageId) {
+        console.log('[VideoSeq] No videos found on this page, marking as completed');
+        const newCompleted = new Set([...completedPages, activePageId]);
+        setCompletedPages(newCompleted);
+        
+        // Update the card progress state immediately
+        let pages = (selectedCourse.pages ?? []).filter(p => p.status === 'published');
+        if (viewingPlaylist) {
+          pages = pages.filter(p => viewingPlaylist.selectedModules.includes(p.id));
+        }
+        const lessonPages = pages.filter(p => !p.isQuiz);
+        const completedLessons = lessonPages.filter(p => newCompleted.has(p.id)).length;
+        setCourseProgress(prev => ({
+          ...prev,
+          [selectedCourse.id]: {
+            completed: completedLessons,
+            total: lessonPages.length,
+            isCompleted: prev[selectedCourse.id]?.isCompleted || false
+          }
+        }));
+
+        if (user) {
+          fetch('/api/progress', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              userId: user.id,
+              courseId: selectedCourse.id,
+              completedPages: Array.from(newCompleted)
+            })
+          }).catch(() => {});
+        }
+      }
     }, 1200);
 
     return () => {
@@ -498,9 +533,9 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
         </button>
       </div>
       {selectedCourse ? (
-        <CourseView />
+        CourseView()
       ) : (
-        <TabContent />
+        TabContent()
       )}
     </div>
     </>
@@ -765,7 +800,16 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
       );
     }
     const activePage = pages.find((p) => p.id === activePageId) ?? pages[0];
-    const isPageUnlocked = (_pageId: string) => true;
+    const isPageUnlocked = (pageId: string) => {
+      const currentIndex = pages.findIndex(p => p.id === pageId);
+      if (currentIndex <= 0) return true;
+      
+      const previousPage = pages[currentIndex - 1];
+      if (previousPage.isQuiz) {
+        return savedQuizResults.some(r => r.pageId === previousPage.id);
+      }
+      return completedPages.has(previousPage.id);
+    };
     const progress = courseProgress[selectedCourse.id] || { completed: 0, total: 0, isCompleted: false };
     const pct = progress.total > 0 ? Math.round((progress.completed / progress.total) * 100) : 0;
     const totalLessons = (selectedCourse.pages ?? []).filter(p => p.status === 'published').length;
@@ -810,8 +854,19 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
           <button
             type="button"
             onClick={() => {
-              const firstPage = pages[0];
-              if (firstPage) { setActivePageId(firstPage.id); setMobileCourseScreen('lesson'); }
+              // Find the first page that isn't completed
+              const firstIncomplete = pages.find(p => {
+                if (p.isQuiz) return !savedQuizResults.some(r => r.pageId === p.id);
+                return !completedPages.has(p.id);
+              });
+              const targetPage = firstIncomplete || pages[pages.length - 1] || pages[0];
+              if (targetPage && isPageUnlocked(targetPage.id)) {
+                setActivePageId(targetPage.id);
+                setMobileCourseScreen('lesson');
+              } else if (pages[0]) {
+                setActivePageId(pages[0].id);
+                setMobileCourseScreen('lesson');
+              }
             }}
             style={{ width: '100%', padding: '14px', borderRadius: 999, border: 'none', background: '#111827', color: '#fff', fontSize: 16, fontWeight: 700, cursor: 'pointer' }}
           >
@@ -827,20 +882,39 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
         </div>
         {/* Lesson list */}
         <div style={{ borderTop: '1px solid #e5e7eb' }}>
-          {pages.filter(p => !p.folderId).map(page => (
-            <div
-              key={page.id}
-              onClick={() => { setActivePageId(page.id); setMobileCourseScreen('lesson'); }}
-              style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 16px', borderBottom: '1px solid #f1f5f9', cursor: 'pointer', background: activePageId === page.id ? '#fef3c7' : '#fff' }}
-            >
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                <div style={{ width: 18, height: 18, borderRadius: '50%', border: `2px solid ${completedPages.has(page.id) ? '#10b981' : '#d1d5db'}`, background: completedPages.has(page.id) ? '#10b981' : 'transparent', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  {completedPages.has(page.id) && <span style={{ color: '#fff', fontSize: 10 }}>✓</span>}
+          {pages.filter(p => !p.folderId).map(page => {
+            const unlocked = isPageUnlocked(page.id);
+            return (
+              <div
+                key={page.id}
+                onClick={() => { 
+                  if (unlocked) {
+                    setActivePageId(page.id); 
+                    setMobileCourseScreen('lesson'); 
+                  }
+                }}
+                style={{ 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  justifyContent: 'space-between', 
+                  padding: '14px 16px', 
+                  borderBottom: '1px solid #f1f5f9', 
+                  cursor: unlocked ? 'pointer' : 'not-allowed', 
+                  background: activePageId === page.id ? '#fef3c7' : '#fff',
+                  opacity: unlocked ? 1 : 0.6
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <div style={{ width: 18, height: 18, borderRadius: '50%', border: `2px solid ${completedPages.has(page.id) ? '#10b981' : '#d1d5db'}`, background: completedPages.has(page.id) ? '#10b981' : 'transparent', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    {completedPages.has(page.id) && <span style={{ color: '#fff', fontSize: 10 }}>✓</span>}
+                  </div>
+                  <span style={{ fontSize: 14, color: '#111827' }}>
+                    {!unlocked && "🔒 "}{page.title}
+                  </span>
                 </div>
-                <span style={{ fontSize: 14, color: '#111827' }}>{page.title}</span>
               </div>
-            </div>
-          ))}
+            );
+          })}
           {folders.map(folder => {
             const folderPages = pages.filter(p => p.folderId === folder.id);
             const isCollapsed = collapsedFolders.has(folder.id);
@@ -857,20 +931,39 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
                   <span style={{ fontSize: 13, color: '#6b7280' }}>{isCollapsed ? '∧' : '∨'}</span>
                   <span style={{ fontSize: 14, fontWeight: 600, color: '#374151' }}>{folder.title}</span>
                 </div>
-                {!isCollapsed && folderPages.map(page => (
-                  <div
-                    key={page.id}
-                    onClick={() => { setActivePageId(page.id); setMobileCourseScreen('lesson'); }}
-                    style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 16px 14px 32px', borderBottom: '1px solid #f1f5f9', cursor: 'pointer', background: activePageId === page.id ? '#fef3c7' : '#fff' }}
-                  >
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                      <div style={{ width: 18, height: 18, borderRadius: '50%', border: `2px solid ${completedPages.has(page.id) ? '#10b981' : '#d1d5db'}`, background: completedPages.has(page.id) ? '#10b981' : 'transparent', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                        {completedPages.has(page.id) && <span style={{ color: '#fff', fontSize: 10 }}>✓</span>}
+                {!isCollapsed && folderPages.map(page => {
+                  const unlocked = isPageUnlocked(page.id);
+                  return (
+                    <div
+                      key={page.id}
+                      onClick={() => { 
+                        if (unlocked) {
+                          setActivePageId(page.id); 
+                          setMobileCourseScreen('lesson'); 
+                        }
+                      }}
+                      style={{ 
+                        display: 'flex', 
+                        alignItems: 'center', 
+                        justifyContent: 'space-between', 
+                        padding: '14px 16px 14px 32px', 
+                        borderBottom: '1px solid #f1f5f9', 
+                        cursor: unlocked ? 'pointer' : 'not-allowed', 
+                        background: activePageId === page.id ? '#fef3c7' : '#fff',
+                        opacity: unlocked ? 1 : 0.6
+                      }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                        <div style={{ width: 18, height: 18, borderRadius: '50%', border: `2px solid ${completedPages.has(page.id) ? '#10b981' : '#d1d5db'}`, background: completedPages.has(page.id) ? '#10b981' : 'transparent', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                          {completedPages.has(page.id) && <span style={{ color: '#fff', fontSize: 10 }}>✓</span>}
+                        </div>
+                        <span style={{ fontSize: 14, color: '#111827' }}>
+                          {!unlocked && "🔒 "}{page.title}
+                        </span>
                       </div>
-                      <span style={{ fontSize: 14, color: '#111827' }}>{page.title}</span>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             );
           })}
@@ -1024,7 +1117,7 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
         )}
 
         {/* MOBILE: Overview screen */}
-        {mobileCourseScreen === 'overview' && <MobileOverview />}
+        {mobileCourseScreen === 'overview' && MobileOverview()}
 
         {/* MOBILE: Lesson screen - full page, no sidebar */}
         {mobileCourseScreen === 'lesson' && activePage && (
@@ -1087,17 +1180,33 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
                   <div style={{ fontSize: 14, color: '#10b981', fontWeight: 600 }}>✓ Course Completed!</div>
                 )}
               </div>
-              <div style={{ display: 'flex', gap: 8 }}>
-                {activePage.isQuiz && !quizSubmitted && (
-                  <button type="button" className="btn-primary" onClick={handleSubmitQuiz} disabled={Object.keys(selectedAnswers).length !== (activePage.quizQuestions?.length || 0)}>Submit Quiz</button>
-                )}
-                {pages.findIndex(p => p.id === activePage.id) === pages.length - 1 && (!activePage.isQuiz || quizSubmitted) && !courseCompleted && (
-                  <button type="button" className="btn-primary" onClick={handleCompleteCourse} style={{ backgroundColor: '#10b981' }}>✓ Complete Course</button>
-                )}
-                {(!activePage.isQuiz || quizSubmitted) && pages.findIndex(p => p.id === activePage.id) < pages.length - 1 && (
-                  <button type="button" className="btn-primary" onClick={() => { handleNextPage(); }}>Next Page →</button>
-                )}
-              </div>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  {activePage.isQuiz && !quizSubmitted && (
+                    <button type="button" className="btn-primary" onClick={handleSubmitQuiz} disabled={Object.keys(selectedAnswers).length !== (activePage.quizQuestions?.length || 0)}>Submit Quiz</button>
+                  )}
+                  {pages.findIndex(p => p.id === activePage.id) === pages.length - 1 && (!activePage.isQuiz || quizSubmitted) && !courseCompleted && (
+                     <button 
+                       type="button" 
+                       className="btn-primary" 
+                       onClick={handleCompleteCourse} 
+                       style={{ backgroundColor: '#10b981', opacity: (!activePage.isQuiz && !completedPages.has(activePage.id)) ? 0.5 : 1, cursor: (!activePage.isQuiz && !completedPages.has(activePage.id)) ? 'not-allowed' : 'pointer' }}
+                       disabled={!activePage.isQuiz && !completedPages.has(activePage.id)}
+                     >
+                       ✓ Complete Course
+                     </button>
+                   )}
+                   {(!activePage.isQuiz || quizSubmitted) && pages.findIndex(p => p.id === activePage.id) < pages.length - 1 && (
+                     <button 
+                       type="button" 
+                       className="btn-primary" 
+                       onClick={() => { handleNextPage(); }}
+                       style={{ opacity: (!activePage.isQuiz && !completedPages.has(activePage.id)) ? 0.5 : 1, cursor: (!activePage.isQuiz && !completedPages.has(activePage.id)) ? 'not-allowed' : 'pointer' }}
+                       disabled={!activePage.isQuiz && !completedPages.has(activePage.id)}
+                     >
+                       Next Page →
+                     </button>
+                   )}
+                </div>
             </div>
           </div>
         )}
@@ -1615,12 +1724,24 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
                       </button>
                     )}
                     {pages.findIndex(p => p.id === activePage.id) === pages.length - 1 && (!activePage.isQuiz || quizSubmitted) && !courseCompleted && (
-                      <button type="button" className="btn-primary" onClick={handleCompleteCourse} style={{ backgroundColor: "#10b981" }}>
+                      <button 
+                        type="button" 
+                        className="btn-primary" 
+                        onClick={handleCompleteCourse} 
+                        style={{ backgroundColor: "#10b981", opacity: (!activePage.isQuiz && !completedPages.has(activePage.id)) ? 0.5 : 1, cursor: (!activePage.isQuiz && !completedPages.has(activePage.id)) ? "not-allowed" : "pointer" }}
+                        disabled={!activePage.isQuiz && !completedPages.has(activePage.id)}
+                      >
                         ✓ Complete Course
                       </button>
                     )}
                     {(!activePage.isQuiz || quizSubmitted) && pages.findIndex(p => p.id === activePage.id) < pages.length - 1 && (
-                      <button type="button" className="btn-primary" onClick={handleNextPage}>
+                      <button 
+                        type="button" 
+                        className="btn-primary" 
+                        onClick={handleNextPage}
+                        style={{ opacity: (!activePage.isQuiz && !completedPages.has(activePage.id)) ? 0.5 : 1, cursor: (!activePage.isQuiz && !completedPages.has(activePage.id)) ? "not-allowed" : "pointer" }}
+                        disabled={!activePage.isQuiz && !completedPages.has(activePage.id)}
+                      >
                         Next Page →
                       </button>
                     )}
