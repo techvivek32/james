@@ -52,6 +52,7 @@ class _LessonPlayerScreenState extends State<LessonPlayerScreen> {
   bool _videoError = false;
   bool _videoLoading = true;
   bool _isLessonCompleted = false;
+  bool _canGoNext = false;
   WebViewController? _webViewController;
   
   // Quiz state
@@ -105,8 +106,12 @@ class _LessonPlayerScreenState extends State<LessonPlayerScreen> {
       ..addJavaScriptChannel(
         'VideoEndChannel',
         onMessageReceived: (JavaScriptMessage message) {
-          print('🎬 Video ended - auto-advancing');
-          _markCompleteAndNext();
+          print('🎬 Video ended - enabling next button');
+          if (mounted) {
+            setState(() {
+              _canGoNext = true;
+            });
+          }
         },
       );
     
@@ -249,6 +254,7 @@ class _LessonPlayerScreenState extends State<LessonPlayerScreen> {
           _progressPercent = progressPercent;
           _savedQuizResults = savedQuizResults;
           _isLessonCompleted = isCurrentLessonCompleted;
+          _canGoNext = isCurrentLessonCompleted;
           _isLoading = false;
           _videoError = false;
           _videoLoading = true;
@@ -276,6 +282,13 @@ class _LessonPlayerScreenState extends State<LessonPlayerScreen> {
             _buildVideoHtml(embedUrl, _isLessonCompleted),
             baseUrl: 'https://millerstorm.tech',
           );
+        } else if (lesson != null && lesson['isQuiz'] != true) {
+          // No video and not a quiz, enable next after a small delay
+          Future.delayed(const Duration(milliseconds: 1500), () {
+            if (mounted) {
+              setState(() => _canGoNext = true);
+            }
+          });
         }
         
         print('✅ Lesson loaded: ${lesson?['title']}');
@@ -1490,33 +1503,36 @@ ${isYouTube ? '<script src="https://www.youtube.com/iframe_api"></script>' : ''}
                             )
                           else if (_lesson?['isQuiz'] != true || _quizSubmitted)
                             GestureDetector(
-                              onTap: _markCompleteAndNext,
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                                decoration: BoxDecoration(
-                                  color: _primary,
-                                  borderRadius: BorderRadius.circular(20),
-                                ),
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Text(
-                                      _currentLessonIndex < _allLessons.length - 1 ? 'Next' : 'Complete',
-                                      style: const TextStyle(
-                                        color: _white,
-                                        fontSize: 14,
-                                        fontWeight: FontWeight.w600,
+                              onTap: _canGoNext ? _markCompleteAndNext : null,
+                              child: Opacity(
+                                opacity: _canGoNext ? 1.0 : 0.5,
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                                  decoration: BoxDecoration(
+                                    color: _primary,
+                                    borderRadius: BorderRadius.circular(20),
+                                  ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Text(
+                                        _currentLessonIndex < _allLessons.length - 1 ? 'Next' : 'Complete',
+                                        style: const TextStyle(
+                                          color: _white,
+                                          fontSize: 14,
+                                          fontWeight: FontWeight.w600,
+                                        ),
                                       ),
-                                    ),
-                                    const SizedBox(width: 4),
-                                    Icon(
-                                      _currentLessonIndex < _allLessons.length - 1 
-                                          ? Icons.arrow_forward 
-                                          : Icons.check,
-                                      color: _white,
-                                      size: 16,
-                                    ),
-                                  ],
+                                      const SizedBox(width: 4),
+                                      Icon(
+                                        _currentLessonIndex < _allLessons.length - 1 
+                                            ? Icons.arrow_forward 
+                                            : Icons.check,
+                                        color: _white,
+                                        size: 16,
+                                      ),
+                                    ],
+                                  ),
                                 ),
                               ),
                             ),

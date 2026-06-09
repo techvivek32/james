@@ -35,6 +35,7 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
   int _totalLessons = 0;
   int _progressPercent = 0;
   String? _userId;
+  Set<String> _completedPageIds = <String>{};
   
   // Track which sections are expanded
   Set<int> _expandedSections = <int>{};
@@ -74,15 +75,33 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
+        
+        // Fetch actual completed pages from progress API to ensure accuracy
+        Set<String> completedIds = {};
+        try {
+          final progressResponse = await http.get(
+            Uri.parse('https://millerstorm.tech/api/progress?userId=$userId&courseId=${widget.courseId}'),
+          );
+          if (progressResponse.statusCode == 200) {
+            final progressData = jsonDecode(progressResponse.body);
+            final completedPages = progressData['completedPages'] as List<dynamic>? ?? [];
+            completedIds = completedPages.map((p) => p.toString()).toSet();
+          }
+        } catch (e) {
+          print('⚠️ Could not load progress in detail: $e');
+        }
+
         setState(() {
           _course = data;
-          _completedLessons = data['progress']?['completedLessons'] ?? 0;
+          _completedLessons = data['progress']?['completedLessons'] ?? completedIds.length;
           _totalLessons = data['progress']?['totalLessons'] ?? 0;
           _progressPercent = data['progress']?['progressPercent'] ?? 0;
+          _completedPageIds = completedIds;
           _isLoading = false;
         });
         print('✅ Course loaded: ${data['title']}');
         print('📊 Progress: $_completedLessons/$_totalLessons ($_progressPercent%)');
+        print('✅ Completed IDs: $_completedPageIds');
       } else {
         setState(() {
           _isLoading = false;
@@ -338,36 +357,72 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
 
     // Get folders from course data
     final folders = _course!['folders'] as List<dynamic>? ?? [];
-    var pages = _course!['pages'] as List<dynamic>? ?? [];
+    var allPublishedPages = (_course!['pages'] as List<dynamic>? ?? [])
+        .where((page) => page['status'] == 'published')
+        .toList();
     
-    // Filter out draft pages - only show published
-    pages = pages.where((page) => page['status'] == 'published').toList();
-    
+    // Sort all pages first to determine correct sequence
+    if (folders.isNotEmpty) {
+      final folderIndexMap = <String, int>{};
+      for (var i = 0; i < folders.length; i++) {
+        folderIndexMap[folders[i]['id']] = i;
+      }
+      final pageIndexMap = <String, int>{};
+      for (var i = 0; i < allPublishedPages.length; i++) {
+        pageIndexMap[allPublishedPages[i]['id']] = i;
+      }
+      allPublishedPages.sort((a, b) {
+        final aFolderId = a['folderId'];
+        final bFolderId = b['folderId'];
+        if (aFolderId != null && bFolderId != null) {
+          final aFolderIndex = folderIndexMap[aFolderId] ?? 999;
+          final bFolderIndex = folderIndexMap[bFolderId] ?? 999;
+          if (aFolderIndex == bFolderIndex) {
+            return (pageIndexMap[a['id']] ?? 999).compareTo(pageIndexMap[b['id']] ?? 999);
+          }
+          return aFolderIndex.compareTo(bFolderIndex);
+        }
+        if (aFolderId != null) return -1;
+        if (bFolderId != null) return 1;
+        return (pageIndexMap[a['id']] ?? 999).compareTo(pageIndexMap[b['id']] ?? 999);
+      });
+    }
+
     // Filter pages if viewing a playlist
+    var pagesToShow = allPublishedPages;
     if (widget.playlistModules != null) {
-      pages = pages.where((page) => widget.playlistModules!.contains(page['id'])).toList();
+      pagesToShow = allPublishedPages.where((page) => widget.playlistModules!.contains(page['id'])).toList();
     }
     
+    // Helper to check if a page is unlocked
+    bool isPageUnlocked(String pageId) {
+      final index = allPublishedPages.indexWhere((p) => p['id'] == pageId);
+      if (index <= 0) return true; // First page is always unlocked
+      
+      final previousPage = allPublishedPages[index - 1];
+      return _completedPageIds.contains(previousPage['id'].toString());
+    }
+
     // If no folders, create sections from lessonNames or pages
     List<Map<String, dynamic>> sections = [];
     
     if (folders.isNotEmpty) {
       // Use actual folders from backend
       sections = folders.map<Map<String, dynamic>>((folder) {
-        final folderPages = pages.where((page) => page['folderId'] == folder['id']).toList();
+        final folderPages = pagesToShow.where((page) => page['folderId'] == folder['id']).toList();
         return {
           'title': folder['title'] ?? 'Untitled Section',
           'lessons': folderPages.length,
           'pages': folderPages,
         };
       }).where((section) => section['lessons'] > 0).toList();
-    } else if (pages.isNotEmpty) {
+    } else if (pagesToShow.isNotEmpty) {
       // Group pages by some logic or show all as one section
       sections = [
         {
           'title': 'Course Content',
-          'lessons': pages.length,
-          'pages': pages,
+          'lessons': pagesToShow.length,
+          'pages': pagesToShow,
         }
       ];
     } else {
@@ -495,10 +550,22 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
                         children: sectionPages.asMap().entries.map<Widget>((pageEntry) {
                           final pageIndex = pageEntry.key;
                           final page = pageEntry.value;
-                          final isCompleted = false; // You can add completion logic here
+                          final pageId = page['id'].toString();
+                          final isCompleted = _completedPageIds.contains(pageId);
+                          final isUnlocked = isPageUnlocked(pageId);
                           
                           return GestureDetector(
                             onTap: () async {
+                              if (!isUnlocked) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text('Please complete the previous lesson first'),
+                                    backgroundColor: Colors.orange,
+                                  ),
+                                );
+                                return;
+                              }
+
                               // Navigate to lesson player
                               final result = await Navigator.push(
                                 context,
@@ -506,7 +573,7 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
                                   builder: (context) => LessonPlayerScreen(
                                     courseId: widget.courseId,
                                     courseTitle: widget.courseTitle,
-                                    lessonId: page['id'] ?? '',
+                                    lessonId: pageId,
                                     lessonTitle: page['title'] ?? 'Lesson ${pageIndex + 1}',
                                     playlistModules: widget.playlistModules,
                                   ),
@@ -518,96 +585,98 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
                                 _fetchCourseDetail();
                               }
                             },
-                            child: Container(
-                              margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 6),
-                              padding: const EdgeInsets.all(16),
-                              decoration: BoxDecoration(
-                                color: _white,
-                                borderRadius: BorderRadius.circular(10),
-                                border: Border.all(color: _border.withOpacity(0.3)),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: Colors.black.withOpacity(0.02),
-                                    blurRadius: 4,
-                                    offset: const Offset(0, 1),
-                                  ),
-                                ],
-                              ),
-                            child: Row(
-                              children: [
-                                Container(
-                                  width: 32,
-                                  height: 32,
-                                  decoration: BoxDecoration(
-                                    color: isCompleted ? _primary : _bg,
-                                    shape: BoxShape.circle,
-                                  ),
-                                  child: Icon(
-                                    page['isQuiz'] == true 
-                                        ? Icons.quiz_outlined
-                                        : isCompleted 
-                                            ? Icons.check 
-                                            : Icons.play_arrow,
-                                    size: 16,
-                                    color: isCompleted ? _white : _textLight,
-                                  ),
+                            child: Opacity(
+                              opacity: isUnlocked ? 1.0 : 0.5,
+                              child: Container(
+                                margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 6),
+                                padding: const EdgeInsets.all(16),
+                                decoration: BoxDecoration(
+                                  color: _white,
+                                  borderRadius: BorderRadius.circular(10),
+                                  border: Border.all(color: _border.withOpacity(0.3)),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Colors.black.withOpacity(0.02),
+                                      blurRadius: 4,
+                                      offset: const Offset(0, 1),
+                                    ),
+                                  ],
                                 ),
-                                const SizedBox(width: 12),
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        page['title'] ?? 'Lesson ${pageIndex + 1}',
-                                        style: TextStyle(
-                                          fontSize: 14,
-                                          fontWeight: FontWeight.w500,
-                                          color: isCompleted ? _textMedium : _textDark,
-                                          decoration: isCompleted ? TextDecoration.lineThrough : null,
+                              child: Row(
+                                children: [
+                                  Container(
+                                    width: 32,
+                                    height: 32,
+                                    decoration: const BoxDecoration(
+                                      color: _bg,
+                                      shape: BoxShape.circle,
+                                    ),
+                                    child: Icon(
+                                      !isUnlocked
+                                          ? Icons.lock_outline
+                                          : page['isQuiz'] == true 
+                                              ? Icons.quiz_outlined
+                                              : Icons.play_arrow,
+                                      size: 16,
+                                      color: _textLight,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          page['title'] ?? 'Lesson ${pageIndex + 1}',
+                                          style: TextStyle(
+                                            fontSize: 14,
+                                            fontWeight: FontWeight.w500,
+                                            color: _textDark,
+                                          ),
                                         ),
-                                      ),
-                                      // Only show "Video lesson" if page has videoUrl and is not a quiz
-                                      if (page['isQuiz'] != true && page['videoUrl'] != null && page['videoUrl'].toString().isNotEmpty)
-                                        const SizedBox(height: 2),
-                                      if (page['isQuiz'] != true && page['videoUrl'] != null && page['videoUrl'].toString().isNotEmpty)
-                                        Row(
-                                          children: [
-                                            Icon(
-                                              Icons.videocam_outlined,
-                                              size: 12,
-                                              color: _textLight,
-                                            ),
-                                            const SizedBox(width: 4),
-                                            Text(
-                                              'Video lesson',
-                                              style: TextStyle(
-                                                fontSize: 11,
+                                        // Only show "Video lesson" if page has videoUrl and is not a quiz
+                                        if (page['isQuiz'] != true && page['videoUrl'] != null && page['videoUrl'].toString().isNotEmpty)
+                                          const SizedBox(height: 2),
+                                        if (page['isQuiz'] != true && page['videoUrl'] != null && page['videoUrl'].toString().isNotEmpty)
+                                          Row(
+                                            children: [
+                                              Icon(
+                                                Icons.videocam_outlined,
+                                                size: 12,
                                                 color: _textLight,
                                               ),
-                                            ),
-                                          ],
-                                        ),
-                                    ],
-                                  ),
-                                ),
-                                if (page['isQuiz'] == true)
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                    decoration: BoxDecoration(
-                                      color: Colors.orange.withOpacity(0.1),
-                                      borderRadius: BorderRadius.circular(4),
+                                              const SizedBox(width: 4),
+                                              Text(
+                                                'Video lesson',
+                                                style: TextStyle(
+                                                  fontSize: 11,
+                                                  color: _textLight,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                      ],
                                     ),
-                                    child: Text(
-                                      'Quiz',
-                                      style: TextStyle(
-                                        fontSize: 10,
-                                        fontWeight: FontWeight.w600,
-                                        color: Colors.orange.shade700,
+                                  ),
+                                  if (page['isQuiz'] == true)
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                      decoration: BoxDecoration(
+                                        color: Colors.orange.withOpacity(0.1),
+                                        borderRadius: BorderRadius.circular(4),
+                                      ),
+                                      child: Text(
+                                        'Quiz',
+                                        style: TextStyle(
+                                          fontSize: 10,
+                                          fontWeight: FontWeight.w600,
+                                          color: Colors.orange.shade700,
+                                        ),
                                       ),
                                     ),
-                                  ),
-                              ],
-                            ),
+                                ],
+                              ),
+                              ),
                             ),
                           );
                         }).toList(),
