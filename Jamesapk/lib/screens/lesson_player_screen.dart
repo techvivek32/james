@@ -317,8 +317,29 @@ class _LessonPlayerScreenState extends State<LessonPlayerScreen> {
 </div>
 <script>
   var video = document.getElementById('player');
+  var maxTimeWatched = 0;
+  var isSeeking = false;
+
   video.setAttribute('playsinline', '');
   video.setAttribute('webkit-playsinline', '');
+  
+  video.onseeking = function() {
+    isSeeking = true;
+  };
+
+  video.onseeked = function() {
+    isSeeking = false;
+  };
+
+  video.ontimeupdate = function() {
+    if (!isSeeking) {
+      if (video.currentTime > maxTimeWatched + 2) {
+        video.currentTime = maxTimeWatched;
+      } else {
+        maxTimeWatched = Math.max(maxTimeWatched, video.currentTime);
+      }
+    }
+  };
   
   video.onerror = function() {
     console.log('Video error');
@@ -339,6 +360,9 @@ class _LessonPlayerScreenState extends State<LessonPlayerScreen> {
 </html>''';
     }
 
+    final isYouTube = embedUrl.contains('youtube.com') || embedUrl.contains('youtu.be');
+    final isVimeo = embedUrl.contains('vimeo.com');
+
     return '''
 <!DOCTYPE html>
 <html>
@@ -351,21 +375,43 @@ class _LessonPlayerScreenState extends State<LessonPlayerScreen> {
 </style>
 </head>
 <body>
-<iframe
-  id="player"
-  src="$embedUrl"
-  allow="autoplay; fullscreen; picture-in-picture; encrypted-media"
-  allowfullscreen
-  webkitallowfullscreen
-  mozallowfullscreen>
-</iframe>
-${embedUrl.contains('vimeo.com') ? '<script src="https://player.vimeo.com/api/player.js"></script>' : ''}
+<div id="player-container">
+  <iframe
+    id="player"
+    src="$embedUrl${embedUrl.contains('?') ? '&' : '?'}enablejsapi=1"
+    allow="autoplay; fullscreen; picture-in-picture; encrypted-media"
+    allowfullscreen
+    webkitallowfullscreen
+    mozallowfullscreen>
+  </iframe>
+</div>
+
+${isVimeo ? '<script src="https://player.vimeo.com/api/player.js"></script>' : ''}
+${isYouTube ? '<script src="https://www.youtube.com/iframe_api"></script>' : ''}
+
 <script>
   var iframe = document.getElementById('player');
-  
-  function initPlayer() {
+  var maxTimeWatched = 0;
+  var checkInterval;
+
+  function initVimeo() {
     if (window.Vimeo) {
       var player = new Vimeo.Player(iframe);
+      
+      player.on('timeupdate', function(data) {
+        if (data.seconds > maxTimeWatched + 2) {
+          player.setCurrentTime(maxTimeWatched);
+        } else {
+          maxTimeWatched = Math.max(maxTimeWatched, data.seconds);
+        }
+      });
+
+      player.on('seeking', function(data) {
+        if (data.seconds > maxTimeWatched + 1) {
+          player.setCurrentTime(maxTimeWatched);
+        }
+      });
+
       player.on('ended', function() {
         if (window.VideoEndChannel) {
           window.VideoEndChannel.postMessage('ended');
@@ -374,10 +420,38 @@ ${embedUrl.contains('vimeo.com') ? '<script src="https://player.vimeo.com/api/pl
     }
   }
 
+  function onYouTubeIframeAPIReady() {
+    var player = new YT.Player('player', {
+      events: {
+        'onStateChange': onPlayerStateChange,
+        'onReady': onPlayerReady
+      }
+    });
+
+    function onPlayerReady() {
+      checkInterval = setInterval(function() {
+        var currentTime = player.getCurrentTime();
+        if (currentTime > maxTimeWatched + 2) {
+          player.seekTo(maxTimeWatched, true);
+        } else {
+          maxTimeWatched = Math.max(maxTimeWatched, currentTime);
+        }
+      }, 500);
+    }
+
+    function onPlayerStateChange(event) {
+      if (event.data === YT.PlayerState.ENDED) {
+        if (window.VideoEndChannel) {
+          window.VideoEndChannel.postMessage('ended');
+        }
+      }
+    }
+  }
+
   if (window.Vimeo) {
-    initPlayer();
-  } else {
-    iframe.onload = initPlayer;
+    initVimeo();
+  } else if (iframe.src.indexOf('vimeo.com') !== -1) {
+    iframe.onload = initVimeo;
   }
 </script>
 </body>
