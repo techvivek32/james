@@ -353,10 +353,13 @@ export function ManagerOnlineTrainingPage(props: {
         console.log('[VideoSeq] container .course-page-body-input not found');
         return;
       }
+      const isAlreadyCompleted = activePageId ? completedPages.has(activePageId) : false;
       const cleanup = await initVideoSequence(
         container,
         () => onVideoEndedRef.current(),
-        autoPlayRef
+        autoPlayRef,
+        false, // shouldAutoStartFirst
+        isAlreadyCompleted
       );
       videoCleanupRef.current = cleanup;
     }, 1200);
@@ -367,7 +370,7 @@ export function ManagerOnlineTrainingPage(props: {
       videoCleanupRef.current = undefined;
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activePageId, selectedCourse?.id, viewingPlaylist?.id, mobileCourseScreen]);
+  }, [activePageId, selectedCourse?.id, viewingPlaylist?.id, mobileCourseScreen, completedPages]);
 
   const [courseProgress, setCourseProgress] = useState<Record<string, { completed: number; total: number; isCompleted: boolean }>>({});
   const [isLoadingProgress, setIsLoadingProgress] = useState(false);

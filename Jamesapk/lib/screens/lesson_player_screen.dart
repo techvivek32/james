@@ -51,6 +51,7 @@ class _LessonPlayerScreenState extends State<LessonPlayerScreen> {
   bool _isFullscreen = false;
   bool _videoError = false;
   bool _videoLoading = true;
+  bool _isLessonCompleted = false;
   WebViewController? _webViewController;
   
   // Quiz state
@@ -205,6 +206,7 @@ class _LessonPlayerScreenState extends State<LessonPlayerScreen> {
         int completedCount = 0;
         int totalCount = lessons.length;
         int progressPercent = 0;
+        bool isCurrentLessonCompleted = false;
         
         if (userId.isNotEmpty) {
           try {
@@ -215,19 +217,22 @@ class _LessonPlayerScreenState extends State<LessonPlayerScreen> {
               final progressData = jsonDecode(progressResponse.body);
               savedQuizResults = progressData['quizResults'] ?? [];
               
+              final completedPages = progressData['completedPages'] as List<dynamic>? ?? [];
+              isCurrentLessonCompleted = completedPages.contains(widget.lessonId);
+              
               // Get counts and percentage from API if available, otherwise calculate
               if (progressData['completedLessons'] != null) {
                 completedCount = progressData['completedLessons'];
                 totalCount = progressData['totalLessons'] ?? lessons.length;
                 progressPercent = progressData['progressPercent'] ?? 0;
               } else {
-                final completedPages = progressData['completedPages'] as List<dynamic>? ?? [];
                 completedCount = completedPages.length;
                 progressPercent = totalCount > 0 ? ((completedCount / totalCount) * 100).round() : 0;
               }
               
               print('📊 Loaded ${savedQuizResults.length} saved quiz results');
               print('📊 Progress: $completedCount/$totalCount ($progressPercent%)');
+              print('📊 Is current lesson completed: $isCurrentLessonCompleted');
             }
           } catch (e) {
             print('⚠️ Could not load progress: $e');
@@ -243,6 +248,7 @@ class _LessonPlayerScreenState extends State<LessonPlayerScreen> {
           _totalCount = totalCount;
           _progressPercent = progressPercent;
           _savedQuizResults = savedQuizResults;
+          _isLessonCompleted = isCurrentLessonCompleted;
           _isLoading = false;
           _videoError = false;
           _videoLoading = true;
@@ -267,7 +273,7 @@ class _LessonPlayerScreenState extends State<LessonPlayerScreen> {
         if (lesson != null && lesson['videoUrl'] != null && lesson['videoUrl'].toString().trim().isNotEmpty) {
           final embedUrl = _getEmbedUrl(lesson['videoUrl']);
           _webViewController?.loadHtmlString(
-            _buildVideoHtml(embedUrl),
+            _buildVideoHtml(embedUrl, _isLessonCompleted),
             baseUrl: 'https://millerstorm.tech',
           );
         }
@@ -282,7 +288,7 @@ class _LessonPlayerScreenState extends State<LessonPlayerScreen> {
     }
   }
 
-  String _buildVideoHtml(String embedUrl) {
+  String _buildVideoHtml(String embedUrl, bool isCompleted) {
     final isDirectVideo = embedUrl.contains('/uploads/') || 
                           embedUrl.endsWith('.mp4') || 
                           embedUrl.endsWith('.mov') || 
@@ -319,6 +325,7 @@ class _LessonPlayerScreenState extends State<LessonPlayerScreen> {
   var video = document.getElementById('player');
   var maxTimeWatched = 0;
   var isSeeking = false;
+  var isCompleted = $isCompleted;
 
   video.setAttribute('playsinline', '');
   video.setAttribute('webkit-playsinline', '');
@@ -332,7 +339,7 @@ class _LessonPlayerScreenState extends State<LessonPlayerScreen> {
   };
 
   video.ontimeupdate = function() {
-    if (!isSeeking) {
+    if (!isCompleted && !isSeeking) {
       if (video.currentTime > maxTimeWatched + 2) {
         video.currentTime = maxTimeWatched;
       } else {
@@ -393,21 +400,24 @@ ${isYouTube ? '<script src="https://www.youtube.com/iframe_api"></script>' : ''}
   var iframe = document.getElementById('player');
   var maxTimeWatched = 0;
   var checkInterval;
+  var isCompleted = $isCompleted;
 
   function initVimeo() {
     if (window.Vimeo) {
       var player = new Vimeo.Player(iframe);
       
       player.on('timeupdate', function(data) {
-        if (data.seconds > maxTimeWatched + 2) {
-          player.setCurrentTime(maxTimeWatched);
-        } else {
-          maxTimeWatched = Math.max(maxTimeWatched, data.seconds);
+        if (!isCompleted) {
+          if (data.seconds > maxTimeWatched + 2) {
+            player.setCurrentTime(maxTimeWatched);
+          } else {
+            maxTimeWatched = Math.max(maxTimeWatched, data.seconds);
+          }
         }
       });
 
       player.on('seeking', function(data) {
-        if (data.seconds > maxTimeWatched + 1) {
+        if (!isCompleted && data.seconds > maxTimeWatched + 1) {
           player.setCurrentTime(maxTimeWatched);
         }
       });
@@ -429,14 +439,16 @@ ${isYouTube ? '<script src="https://www.youtube.com/iframe_api"></script>' : ''}
     });
 
     function onPlayerReady() {
-      checkInterval = setInterval(function() {
-        var currentTime = player.getCurrentTime();
-        if (currentTime > maxTimeWatched + 2) {
-          player.seekTo(maxTimeWatched, true);
-        } else {
-          maxTimeWatched = Math.max(maxTimeWatched, currentTime);
-        }
-      }, 500);
+      if (!isCompleted) {
+        checkInterval = setInterval(function() {
+          var currentTime = player.getCurrentTime();
+          if (currentTime > maxTimeWatched + 2) {
+            player.seekTo(maxTimeWatched, true);
+          } else {
+            maxTimeWatched = Math.max(maxTimeWatched, currentTime);
+          }
+        }, 500);
+      }
     }
 
     function onPlayerStateChange(event) {

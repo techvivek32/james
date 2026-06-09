@@ -304,11 +304,13 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
       }
       const shouldAutoStart = autoTriggeredRef.current;
       autoTriggeredRef.current = false; // reset after reading
+      const isAlreadyCompleted = activePageId ? completedPages.has(activePageId) : false;
       const cleanup = await initVideoSequence(
         container,
         () => onVideoEndedRef.current(),
         autoPlayRef,
-        shouldAutoStart
+        shouldAutoStart,
+        isAlreadyCompleted
       );
       videoCleanupRef.current = cleanup;
     }, 1200);
@@ -319,7 +321,7 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
       videoCleanupRef.current = undefined;
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activePageId, selectedCourse?.id, viewingPlaylist?.id, mobileCourseScreen]);
+  }, [activePageId, selectedCourse?.id, viewingPlaylist?.id, mobileCourseScreen, completedPages]);
 
   const filteredCourses = useMemo(() => {
     const term = search.toLowerCase();

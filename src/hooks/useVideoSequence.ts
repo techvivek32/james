@@ -317,12 +317,14 @@ function scrollToEntry(entry: Entry) {
  * @param onAllEnded           - Called when the last video ends (navigate to next lesson)
  * @param autoPlayRef          - A React ref to the live autoPlay boolean value
  * @param shouldAutoStartFirst - If true, immediately play the first video (used when navigating via autoplay)
+ * @param isAlreadyCompleted   - If true, allow skipping (video was already watched)
  */
 export async function initVideoSequence(
   container: HTMLElement,
   onAllEnded: () => void,
   autoPlayRef: { current: boolean },
-  shouldAutoStartFirst = false
+  shouldAutoStartFirst = false,
+  isAlreadyCompleted = false
 ): Promise<(() => void) | undefined> {
   if (typeof window === 'undefined') return;
 
@@ -408,19 +410,21 @@ export async function initVideoSequence(
         const vimeoEntry = entries[seqIdx] as Extract<Entry, { type: 'vimeo' }>;
         vimeoEntry.player = vp;
 
-        vp.on('timeupdate', (data: { seconds: number }) => {
-          if (data.seconds > vimeoEntry.maxTimeWatched + 2) {
-            vp.setCurrentTime(vimeoEntry.maxTimeWatched);
-          } else {
-            vimeoEntry.maxTimeWatched = Math.max(vimeoEntry.maxTimeWatched, data.seconds);
-          }
-        });
+        if (!isAlreadyCompleted) {
+          vp.on('timeupdate', (data: { seconds: number }) => {
+            if (data.seconds > vimeoEntry.maxTimeWatched + 2) {
+              vp.setCurrentTime(vimeoEntry.maxTimeWatched);
+            } else {
+              vimeoEntry.maxTimeWatched = Math.max(vimeoEntry.maxTimeWatched, data.seconds);
+            }
+          });
 
-        vp.on('seeking', (data: { seconds: number }) => {
-          if (data.seconds > vimeoEntry.maxTimeWatched + 1) {
-            vp.setCurrentTime(vimeoEntry.maxTimeWatched);
-          }
-        });
+          vp.on('seeking', (data: { seconds: number }) => {
+            if (data.seconds > vimeoEntry.maxTimeWatched + 1) {
+              vp.setCurrentTime(vimeoEntry.maxTimeWatched);
+            }
+          });
+        }
 
         vp.on('ended', () => {
           console.log(`[VideoSeq] Vimeo video ${seqIdx} ended. Total videos: ${total}`);
@@ -459,18 +463,20 @@ export async function initVideoSequence(
     e.video.setAttribute('webkit-playsinline', 'true');
     e.video.muted = false; // Keep audio on
     
-    let isSeeking = false;
-    e.video.addEventListener('seeking', () => { isSeeking = true; });
-    e.video.addEventListener('seeked', () => { isSeeking = false; });
-    e.video.addEventListener('timeupdate', () => {
-      if (!isSeeking) {
-        if (e.video.currentTime > e.maxTimeWatched + 2) {
-          e.video.currentTime = e.maxTimeWatched;
-        } else {
-          e.maxTimeWatched = Math.max(e.maxTimeWatched, e.video.currentTime);
+    if (!isAlreadyCompleted) {
+      let isSeeking = false;
+      e.video.addEventListener('seeking', () => { isSeeking = true; });
+      e.video.addEventListener('seeked', () => { isSeeking = false; });
+      e.video.addEventListener('timeupdate', () => {
+        if (!isSeeking) {
+          if (e.video.currentTime > e.maxTimeWatched + 2) {
+            e.video.currentTime = e.maxTimeWatched;
+          } else {
+            e.maxTimeWatched = Math.max(e.maxTimeWatched, e.video.currentTime);
+          }
         }
-      }
-    });
+      });
+    }
 
     e.video.addEventListener('ended', () => {
       console.log(`[VideoSeq] HTML5 video ${e.seqIdx} ended. Total videos: ${total}`);
@@ -523,17 +529,19 @@ export async function initVideoSequence(
             ytEntry.ready = true;
             ytEntry.player = player;
 
-            const interval = setInterval(() => {
-              if (player && player.getCurrentTime) {
-                const currentTime = player.getCurrentTime();
-                if (currentTime > ytEntry.maxTimeWatched + 2) {
-                  player.seekTo(ytEntry.maxTimeWatched, true);
-                } else {
-                  ytEntry.maxTimeWatched = Math.max(ytEntry.maxTimeWatched, currentTime);
+            if (!isAlreadyCompleted) {
+              const interval = setInterval(() => {
+                if (player && player.getCurrentTime) {
+                  const currentTime = player.getCurrentTime();
+                  if (currentTime > ytEntry.maxTimeWatched + 2) {
+                    player.seekTo(ytEntry.maxTimeWatched, true);
+                  } else {
+                    ytEntry.maxTimeWatched = Math.max(ytEntry.maxTimeWatched, currentTime);
+                  }
                 }
-              }
-            }, 500);
-            intervals.push(interval);
+              }, 500);
+              intervals.push(interval);
+            }
             
             // Aggressive autoplay for first YouTube video
             if (seqIdx === 0 && autoPlayRef.current) {
