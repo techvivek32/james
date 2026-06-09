@@ -775,7 +775,7 @@ ${isYouTube ? '<script src="https://www.youtube.com/iframe_api"></script>' : ''}
                       if (_lesson != null && _lesson!['videoUrl'] != null) {
                         final embedUrl = _getEmbedUrl(_lesson!['videoUrl']);
                         _webViewController?.loadHtmlString(
-                          _buildVideoHtml(embedUrl),
+                          _buildVideoHtml(embedUrl, _isLessonCompleted),
                           baseUrl: 'https://millerstorm.tech',
                         );
                       }
