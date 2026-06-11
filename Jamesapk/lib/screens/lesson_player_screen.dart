@@ -60,6 +60,10 @@ class _LessonPlayerScreenState extends State<LessonPlayerScreen> {
   bool _quizSubmitted = false;
   Map<String, dynamic>? _quizScore;
   List<dynamic> _savedQuizResults = [];
+  // Quiz gating: shuffled question order (per user / per attempt) and the
+  // failed-attempt counter (1st fail -> try again, 2nd fail -> relearn).
+  List<dynamic> _shuffledQuestions = [];
+  int _quizAttempts = 0;
   
   // AI Chat state
   Map<String, dynamic>? _courseBot;
@@ -261,11 +265,14 @@ class _LessonPlayerScreenState extends State<LessonPlayerScreen> {
           
           // If this is a quiz, check if user already completed it
           if (lesson?['isQuiz'] == true) {
+            // Shuffle the question order (different per user / per attempt).
+            _shuffledQuestions = List<dynamic>.from(lesson!['quizQuestions'] ?? [])..shuffle();
+
             final savedResult = savedQuizResults.firstWhere(
               (r) => r['pageId'] == lesson!['id'],
               orElse: () => null,
             );
-            
+
             if (savedResult != null) {
               print('✅ Found saved quiz result');
               _selectedAnswers = Map<String, int>.from(savedResult['answers'] ?? {});
@@ -576,29 +583,45 @@ ${isYouTube ? '<script src="https://www.youtube.com/iframe_api"></script>' : ''}
       }
     }
     
+    final total = questions.length;
     final score = {
       'correct': correct,
-      'total': questions.length,
+      'total': total,
     };
-    
+    final pct = total > 0 ? correct / total : 0.0;
+    final passed = pct >= 0.6; // 60% to pass
+
     setState(() {
       _quizSubmitted = true;
       _quizScore = score;
     });
-    
-    // Save quiz result to database
+
+    if (!passed) {
+      // Failed (< 60%): do NOT save a pass and do NOT advance. Show top-up.
+      _quizAttempts++;
+      if (_quizAttempts >= 2) {
+        _quizAttempts = 0; // reset for after the relearn
+        _showQuizFailDialog(pct, relearn: true);
+      } else {
+        _showQuizFailDialog(pct, relearn: false);
+      }
+      return;
+    }
+
+    // Passed: save the result and advance.
     try {
       final user = await AuthService.getStoredUser();
       final userId = user?['id'] ?? '';
-      
+
       if (userId.isNotEmpty) {
         final quizResult = {
           'pageId': _lesson!['id'],
           'answers': _selectedAnswers,
           'score': score,
+          'passed': true,
           'submittedAt': DateTime.now().toIso8601String(),
         };
-        
+
         await http.post(
           Uri.parse('https://millerstorm.tech/api/progress/save'),
           headers: {'Content-Type': 'application/json'},
@@ -608,16 +631,105 @@ ${isYouTube ? '<script src="https://www.youtube.com/iframe_api"></script>' : ''}
             'quizResult': quizResult,
           }),
         );
-        
+
         print('💾 Quiz result saved to database');
       }
     } catch (e) {
       print('❌ Error saving quiz result: $e');
     }
-    
-    // Auto-advance after 2 seconds
-    await Future.delayed(const Duration(seconds: 2));
+
+    // Auto-advance after a short delay
+    await Future.delayed(const Duration(milliseconds: 1500));
     _markCompleteAndNext();
+  }
+
+  // Top-up dialog shown when a quiz is failed (< 60%).
+  void _showQuizFailDialog(double pct, {required bool relearn}) {
+    final percent = (pct * 100).round();
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+        title: Column(
+          children: [
+            Text(relearn ? '📚' : '📊', style: const TextStyle(fontSize: 40)),
+            const SizedBox(height: 8),
+            Text(
+              relearn ? "Let's revisit the lesson" : 'Top up your score!',
+              textAlign: TextAlign.center,
+              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: _textDark),
+            ),
+          ],
+        ),
+        content: Text(
+          relearn
+              ? "You scored $percent% again. Your performance isn't there yet, so please go through the lesson once more, then retake the quiz."
+              : "You scored $percent%. You need 60% to move on. Give it another try — score above 60% and you'll advance to the next step.",
+          textAlign: TextAlign.center,
+          style: const TextStyle(fontSize: 14, color: _textLight, height: 1.5),
+        ),
+        actionsAlignment: MainAxisAlignment.center,
+        actions: [
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: _primary,
+                foregroundColor: _white,
+                padding: const EdgeInsets.symmetric(vertical: 12),
+              ),
+              onPressed: () {
+                Navigator.of(ctx).pop();
+                if (relearn) {
+                  _relearnPreviousLesson();
+                } else {
+                  _retryQuiz();
+                }
+              },
+              child: Text(relearn ? 'Review Lesson' : 'Try Again'),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Retry the same quiz: reset answers and reshuffle the question order.
+  void _retryQuiz() {
+    setState(() {
+      _quizSubmitted = false;
+      _quizScore = null;
+      _selectedAnswers = {};
+      _shuffledQuestions = List<dynamic>.from(_lesson!['quizQuestions'] ?? [])..shuffle();
+    });
+  }
+
+  // Send the user back to the lesson immediately before this quiz to relearn it.
+  void _relearnPreviousLesson() {
+    int prevIdx = _currentLessonIndex - 1;
+    while (prevIdx >= 0 && _allLessons[prevIdx]['isQuiz'] == true) {
+      prevIdx--;
+    }
+    if (prevIdx < 0) {
+      // No earlier lesson to revisit — just let them retry.
+      _retryQuiz();
+      return;
+    }
+    final prevLesson = _allLessons[prevIdx];
+    _stopVideo();
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(
+        builder: (context) => LessonPlayerScreen(
+          courseId: widget.courseId,
+          courseTitle: widget.courseTitle,
+          lessonId: prevLesson['id'],
+          lessonTitle: prevLesson['title'],
+          playlistModules: widget.playlistModules,
+        ),
+      ),
+    );
   }
   
   Future<void> _markCompleteAndNext() async {
@@ -834,7 +946,9 @@ ${isYouTube ? '<script src="https://www.youtube.com/iframe_api"></script>' : ''}
       return const SizedBox();
     }
 
-    final questions = _lesson!['quizQuestions'] as List<dynamic>? ?? [];
+    final questions = _shuffledQuestions.isNotEmpty
+        ? _shuffledQuestions
+        : (_lesson!['quizQuestions'] as List<dynamic>? ?? []);
     
     return Container(
       width: double.infinity,
@@ -1432,14 +1546,18 @@ ${isYouTube ? '<script src="https://www.youtube.com/iframe_api"></script>' : ''}
                                 Row(
                                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                   children: [
-                                    Text(
-                                      'Training Progress',
-                                      style: const TextStyle(
-                                        fontSize: 12,
-                                        color: _textLight,
-                                        fontWeight: FontWeight.w600,
+                                    Flexible(
+                                      child: Text(
+                                        'Training Progress',
+                                        overflow: TextOverflow.ellipsis,
+                                        style: const TextStyle(
+                                          fontSize: 12,
+                                          color: _textLight,
+                                          fontWeight: FontWeight.w600,
+                                        ),
                                       ),
                                     ),
+                                    const SizedBox(width: 8),
                                     Text(
                                       '$_progressPercent% Complete',
                                       style: TextStyle(
