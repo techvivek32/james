@@ -5,6 +5,7 @@ import { LessonAIChat } from "../../components/LessonAIChat";
 import { ShareModal } from "../../components/ShareModal";
 import { initVideoSequence } from "../../hooks/useVideoSequence";
 import { PlaybookTimer } from "../../components/PlaybookTimer";
+import { QUIZ_PASS_THRESHOLD, QUIZ_MAX_ATTEMPTS, quizPct, quizPercent, isQuizResultPassing, shuffleQuestions } from "../../lib/quiz";
 
 type Playlist = {
   id: string;
@@ -32,6 +33,11 @@ export function ManagerOnlineTrainingPage(props: {
   const [quizSubmitted, setQuizSubmitted] = useState(false);
   const [quizScore, setQuizScore] = useState<{ correct: number; total: number } | null>(null);
   const [savedQuizResults, setSavedQuizResults] = useState<any[]>([]);
+  // Quiz gating (mirrors the Sales TrainingCenter): failed-attempt counter,
+  // shuffled question order per quiz, and the pass/fail top-up modal.
+  const [quizAttempts, setQuizAttempts] = useState<Record<string, number>>({});
+  const [quizQuestionOrder, setQuizQuestionOrder] = useState<Record<string, any[]>>({});
+  const [quizModal, setQuizModal] = useState<{ mode: 'retry' | 'relearn'; pageId: string; pct: number; prevLessonId: string | null } | null>(null);
   const [courseCompleted, setCourseCompleted] = useState(false);
   const [activeTab, setActiveTab] = useState<'courses' | 'playlists' | 'team'>('courses');
   const [isCreatePlaylistOpen, setIsCreatePlaylistOpen] = useState(false);
@@ -244,6 +250,11 @@ export function ManagerOnlineTrainingPage(props: {
       setQuizSubmitted(false);
       setQuizScore(null);
       setSelectedAnswers({});
+    }
+
+    // Give each quiz a shuffled question order (per user, per attempt).
+    if (page.isQuiz && page.quizQuestions && page.quizQuestions.length > 0) {
+      setQuizQuestionOrder(prev => prev[page.id] ? prev : { ...prev, [page.id]: shuffleQuestions(page.quizQuestions!) });
     }
 
   }, [activePageId, savedQuizResults, selectedCourse]);
@@ -1170,7 +1181,7 @@ export function ManagerOnlineTrainingPage(props: {
       
       const previousPage = pages[currentIndex - 1];
       if (previousPage.isQuiz) {
-        return savedQuizResults.some(r => r.pageId === previousPage.id);
+        return isQuizResultPassing(savedQuizResults.find(r => r.pageId === previousPage.id));
       }
       return completedPages.has(previousPage.id);
     };
@@ -1219,30 +1230,67 @@ export function ManagerOnlineTrainingPage(props: {
         if (selectedAnswers[q.id] === q.correctIndex) correct++;
       });
       const score = { correct, total: activePage.quizQuestions.length };
+      const passed = quizPct(score) >= QUIZ_PASS_THRESHOLD;
+      const pct = quizPercent(score);
       setQuizScore(score);
       setQuizSubmitted(true);
-      
-      const newResult = {
-        pageId: activePage.id,
-        answers: selectedAnswers,
-        score,
-        submittedAt: new Date()
-      };
-      const updatedResults = [...savedQuizResults.filter(r => r.pageId !== activePage.id), newResult];
-      setSavedQuizResults(updatedResults);
-      
-      fetch('/api/progress', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId: props.currentUser.id, courseId: selectedCourse.id, quizResults: updatedResults })
-      }).catch(err => console.error("Failed to save quiz:", err));
 
-      // Auto-advance to next page after quiz submit (2 second delay to show score)
-      const currentIndex = pages.findIndex(p => p.id === activePage.id);
-      if (currentIndex < pages.length - 1) {
+      if (passed) {
+        // Passed: persist the result and let the user advance.
+        const newResult = { pageId: activePage.id, answers: selectedAnswers, score, passed: true, submittedAt: new Date() };
+        const updatedResults = [...savedQuizResults.filter(r => r.pageId !== activePage.id), newResult];
+        setSavedQuizResults(updatedResults);
+        setQuizAttempts(prev => ({ ...prev, [activePage.id]: 0 }));
+        fetch('/api/progress', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ userId: props.currentUser.id, courseId: selectedCourse.id, quizResults: updatedResults })
+        }).catch(err => console.error("Failed to save quiz:", err));
+
+        const currentIndex = pages.findIndex(p => p.id === activePage.id);
+        if (currentIndex < pages.length - 1) {
+          setTimeout(() => { handleNextPage(); }, 1500);
+        }
+        return;
+      }
+
+      // Failed (< 60%): do NOT persist a pass and do NOT advance. Show top-up.
+      const attempts = (quizAttempts[activePage.id] || 0) + 1;
+      setQuizAttempts(prev => ({ ...prev, [activePage.id]: attempts }));
+      if (attempts >= QUIZ_MAX_ATTEMPTS) {
+        const idx = pages.findIndex(p => p.id === activePage.id);
+        let prevLessonId: string | null = null;
+        for (let i = idx - 1; i >= 0; i--) { if (!pages[i].isQuiz) { prevLessonId = pages[i].id; break; } }
+        setQuizModal({ mode: 'relearn', pageId: activePage.id, pct, prevLessonId });
+        setQuizAttempts(prev => ({ ...prev, [activePage.id]: 0 }));
+      } else {
+        setQuizModal({ mode: 'retry', pageId: activePage.id, pct, prevLessonId: null });
+      }
+    };
+
+    // Retry the same quiz: reset answers and reshuffle the question order.
+    const handleQuizRetry = (pageId: string) => {
+      setQuizModal(null);
+      setQuizSubmitted(false);
+      setQuizScore(null);
+      setSelectedAnswers({});
+      const page = pages.find(p => p.id === pageId);
+      if (page?.quizQuestions?.length) {
+        setQuizQuestionOrder(prev => ({ ...prev, [pageId]: shuffleQuestions(page.quizQuestions!) }));
+      }
+    };
+
+    // Send the user back to the preceding lesson to relearn it.
+    const handleQuizRelearn = (prevLessonId: string | null) => {
+      setQuizModal(null);
+      setQuizSubmitted(false);
+      setQuizScore(null);
+      setSelectedAnswers({});
+      if (prevLessonId) {
+        setActivePageId(prevLessonId);
         setTimeout(() => {
-          handleNextPage();
-        }, 2000);
+          document.querySelector('.course-page-main')?.scrollTo({ top: 0, behavior: 'smooth' });
+        }, 100);
       }
     };
 
@@ -1323,7 +1371,7 @@ export function ManagerOnlineTrainingPage(props: {
             onClick={() => {
               // Find the first page that isn't completed
               const firstIncomplete = pages.find(p => {
-                if (p.isQuiz) return !savedQuizResults.some(r => r.pageId === p.id);
+                if (p.isQuiz) return !isQuizResultPassing(savedQuizResults.find(r => r.pageId === p.id));
                 return !completedPages.has(p.id);
               });
               const targetPage = firstIncomplete || pages[pages.length - 1] || pages[0];
@@ -1457,6 +1505,28 @@ export function ManagerOnlineTrainingPage(props: {
           }}
         />
 
+        {/* Quiz top-up modal — shown when a quiz is failed (< 60%) */}
+        {quizModal && (
+          <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999, padding: 16 }}>
+            <div style={{ background: '#fff', borderRadius: 14, maxWidth: 440, width: '100%', padding: '28px 26px', textAlign: 'center', boxShadow: '0 20px 60px rgba(0,0,0,0.3)' }}>
+              <div style={{ fontSize: 44, marginBottom: 8 }}>{quizModal.mode === 'retry' ? '📊' : '📚'}</div>
+              <div style={{ fontSize: 20, fontWeight: 700, color: '#16202b', marginBottom: 10 }}>
+                {quizModal.mode === 'retry' ? 'Top up your score!' : "Let's revisit the lesson"}
+              </div>
+              <div style={{ fontSize: 14, color: '#5b6670', lineHeight: 1.55, marginBottom: 22 }}>
+                {quizModal.mode === 'retry'
+                  ? <>You scored <b>{quizModal.pct}%</b>. You need <b>{Math.round(QUIZ_PASS_THRESHOLD * 100)}%</b> to move on. Give it another try — score above {Math.round(QUIZ_PASS_THRESHOLD * 100)}% and you'll advance to the next step.</>
+                  : <>You scored <b>{quizModal.pct}%</b> again. Your performance isn't there yet, so please go through the lesson once more, then retake the quiz.</>}
+              </div>
+              {quizModal.mode === 'retry' ? (
+                <button type="button" className="btn-primary" style={{ width: '100%' }} onClick={() => handleQuizRetry(quizModal.pageId)}>Try Again</button>
+              ) : (
+                <button type="button" className="btn-primary" style={{ width: '100%' }} onClick={() => handleQuizRelearn(quizModal.prevLessonId)}>Review Lesson</button>
+              )}
+            </div>
+          </div>
+        )}
+
         {/* MOBILE: Overview screen */}
         {mobileCourseScreen === 'overview' && MobileOverview()}
 
@@ -1479,10 +1549,10 @@ export function ManagerOnlineTrainingPage(props: {
                     </div>
                   )}
                   <div style={{ padding: '12px' }}>
-                    {activePage.quizQuestions.map((q, qIdx) => (
+                    {(quizQuestionOrder[activePage.id] || activePage.quizQuestions).map((q, qIdx) => (
                       <div key={q.id} style={{ marginBottom: 32 }}>
                         <div style={{ fontSize: '16px', fontWeight: 600, marginBottom: 16 }}>Question {qIdx + 1}: {q.prompt}</div>
-                        {q.options.map((option, optIdx) => {
+                        {q.options.map((option: string, optIdx: number) => {
                           const isSelected = selectedAnswers[q.id] === optIdx;
                           const isCorrect = q.correctIndex === optIdx;
                           return (
@@ -1761,10 +1831,10 @@ export function ManagerOnlineTrainingPage(props: {
                       </div>
                     )}
                     <div style={{ padding: "12px" }}>
-                      {activePage.quizQuestions.map((q, qIdx) => (
+                      {(quizQuestionOrder[activePage.id] || activePage.quizQuestions).map((q, qIdx) => (
                         <div key={q.id} style={{ marginBottom: 32 }}>
                           <div style={{ fontSize: "16px", fontWeight: 600, marginBottom: 16 }}>Question {qIdx + 1}: {q.prompt}</div>
-                          {q.options.map((option, optIdx) => {
+                          {q.options.map((option: string, optIdx: number) => {
                             const isSelected = selectedAnswers[q.id] === optIdx;
                             const isCorrect = q.correctIndex === optIdx;
                             const showResult = quizSubmitted;
