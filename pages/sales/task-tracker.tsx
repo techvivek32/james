@@ -17,6 +17,7 @@ type Task = {
   meetingLink: string;
   assignedTo: string | string[];
   customFields: Record<string, string>;
+  editableFields: string[];
 };
 
 const TaskTracker: NextPage = () => {
@@ -24,6 +25,13 @@ const TaskTracker: NextPage = () => {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const tableRef = useRef<HTMLTableElement>(null);
+  
+  // Edit modal state
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editingTask, setEditingTask] = useState<Task | null>(null);
+  const [formData, setFormData] = useState<Partial<Task>>({});
+  const [saving, setSaving] = useState(false);
+
   const [columnWidths, setColumnWidths] = useState({
     assignedOn: 120,
     description: 200,
@@ -34,7 +42,8 @@ const TaskTracker: NextPage = () => {
     notesByUser: 200,
     documentLinkByManager: 200,
     supportingLinksByUser: 200,
-    meetingLink: 150
+    meetingLink: 150,
+    actions: 120
   });
   const [isResizing, setIsResizing] = useState(false);
   const [resizingColumn, setResizingColumn] = useState<string | null>(null);
@@ -186,6 +195,80 @@ const TaskTracker: NextPage = () => {
     }
   }
 
+  // Edit handlers
+  const handleEditTask = (task: Task) => {
+    // Ensure editableFields exists
+    const taskWithEditableFields = {
+      ...task,
+      editableFields: task.editableFields || []
+    };
+    setEditingTask(taskWithEditableFields);
+    setFormData({
+      assignedOn: task.assignedOn,
+      description: task.description,
+      deadline: task.deadline,
+      priority: task.priority,
+      status: task.status,
+      notesByManager: task.notesByManager,
+      documentLinkByManager: task.documentLinkByManager,
+      notesByUser: task.notesByUser,
+      supportingLinksByUser: task.supportingLinksByUser,
+      meetingLink: task.meetingLink,
+      customFields: { ...task.customFields }
+    });
+    setShowEditModal(true);
+  };
+
+  const handleSaveEdit = async () => {
+    if (!editingTask) return;
+    
+    setSaving(true);
+    try {
+      // Only update editable fields!
+      const updateData: Partial<Task> = {
+        id: editingTask.id,
+        ...editingTask, // Keep all original fields
+        editableFields: editingTask.editableFields // Don't change editable fields
+      };
+
+      // Only update fields that are in editableFields!
+      editingTask.editableFields.forEach(field => {
+        if (field in formData) {
+          // @ts-ignore
+          updateData[field] = formData[field];
+        }
+        // Check if it's a custom field
+        if (editingTask.customFields && field in editingTask.customFields) {
+          if (!updateData.customFields) {
+            updateData.customFields = {};
+          }
+          updateData.customFields[field] = formData.customFields?.[field] || '';
+        }
+      });
+
+      const res = await fetch("/api/tasks", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(updateData)
+      });
+
+      if (res.ok) {
+        const savedTask = await res.json();
+        // Update tasks in state
+        setTasks(tasks.map(t => t.id === savedTask.id ? savedTask : t));
+        setShowEditModal(false);
+        setEditingTask(null);
+      } else {
+        alert("Failed to update task");
+      }
+    } catch (error) {
+      console.error("Failed to update task:", error);
+      alert("Failed to update task");
+    } finally {
+      setSaving(false);
+    }
+  };
+
   if (!user) {
     return (
       <SalesLayout currentView="task-tracker">
@@ -227,7 +310,7 @@ const TaskTracker: NextPage = () => {
             }}>
             <table 
                 ref={tableRef}
-                style={{ width: '100%', minWidth: '2000px', borderCollapse: 'collapse', tableLayout: 'fixed' }}
+                style={{ width: '100%', minWidth: '2120px', borderCollapse: 'collapse', tableLayout: 'fixed' }}
               >
               <thead>
                 <tr style={{ backgroundColor: '#000000' }}>
@@ -525,6 +608,32 @@ const TaskTracker: NextPage = () => {
                       </th>
                     );
                   })}
+                  <th style={{ 
+                    padding: '12px 16px', 
+                    textAlign: 'left', 
+                    border: '1px solid #ffffff', 
+                    fontSize: '14px', 
+                    fontWeight: 600, 
+                    color: '#ffffff', 
+                    whiteSpace: 'nowrap', 
+                    width: `${columnWidths.actions}px`,
+                    position: 'relative'
+                  }}>
+                    Actions
+                    <div
+                      style={{
+                        position: 'absolute',
+                        right: 0,
+                        top: 0,
+                        bottom: 0,
+                        width: '5px',
+                        cursor: 'col-resize',
+                        backgroundColor: 'transparent',
+                        zIndex: 1
+                      }}
+                      onMouseDown={(e) => handleMouseDown('actions', e)}
+                    />
+                  </th>
                 </tr>
               </thead>
               <tbody>
@@ -706,6 +815,29 @@ const TaskTracker: NextPage = () => {
                           </td>
                         );
                       })}
+                      <td style={{ 
+                        padding: '12px 16px', 
+                        verticalAlign: 'top', 
+                        fontSize: '13px', 
+                        border: '1px solid #000000',
+                        width: `${columnWidths.actions}px`
+                      }}>
+                        <button
+                          onClick={() => handleEditTask(task)}
+                          style={{
+                            padding: '6px 12px',
+                            backgroundColor: '#3b82f6',
+                            color: 'white',
+                            border: 'none',
+                            borderRadius: '4px',
+                            cursor: 'pointer',
+                            fontSize: '13px',
+                            fontWeight: 500
+                          }}
+                        >
+                          Edit
+                        </button>
+                      </td>
                   </tr>
                 ))}
               </tbody>
@@ -713,6 +845,342 @@ const TaskTracker: NextPage = () => {
           </div>
         )}
       </div>
+
+      {/* Edit Task Modal */}
+      {showEditModal && editingTask && (
+        <div
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'rgba(0, 0, 0, 0.5)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1000,
+            overflowY: 'auto',
+            padding: '24px 0'
+          }}
+          onClick={() => setShowEditModal(false)}
+        >
+          <div
+            style={{
+              backgroundColor: 'white',
+              borderRadius: '8px',
+              padding: '24px',
+              width: '90%',
+              maxWidth: '700px',
+              maxHeight: '90vh',
+              overflowY: 'auto',
+              boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)'
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 style={{ margin: '0 0 20px 0', fontSize: '20px', fontWeight: 600 }}>
+              Edit Task
+            </h3>
+
+            {/* Show all default editable fields */}
+            {editingTask.editableFields.includes('assignedOn') && (
+              <div style={{ marginBottom: '16px' }}>
+                <label style={{ display: 'block', marginBottom: '6px', fontSize: '14px', fontWeight: 500 }}>
+                  Assigned On
+                </label>
+                <input
+                  type="date"
+                  value={formData.assignedOn}
+                  onChange={(e) => setFormData(prev => ({ ...prev, assignedOn: e.target.value }))}
+                  style={{
+                    width: '100%',
+                    padding: '10px 14px',
+                    border: '1px solid #d1d5db',
+                    borderRadius: '6px',
+                    fontSize: '14px'
+                  }}
+                />
+              </div>
+            )}
+
+            {editingTask.editableFields.includes('description') && (
+              <div style={{ marginBottom: '16px' }}>
+                <label style={{ display: 'block', marginBottom: '6px', fontSize: '14px', fontWeight: 500 }}>
+                  Task Description
+                </label>
+                <textarea
+                  value={formData.description}
+                  onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
+                  placeholder="Enter task description"
+                  rows={3}
+                  style={{
+                    width: '100%',
+                    padding: '10px 14px',
+                    border: '1px solid #d1d5db',
+                    borderRadius: '6px',
+                    fontSize: '14px',
+                    resize: 'vertical'
+                  }}
+                />
+              </div>
+            )}
+
+            {editingTask.editableFields.includes('deadline') && (
+              <div style={{ marginBottom: '16px' }}>
+                <label style={{ display: 'block', marginBottom: '6px', fontSize: '14px', fontWeight: 500 }}>
+                  Deadline
+                </label>
+                <input
+                  type="date"
+                  value={formData.deadline}
+                  onChange={(e) => setFormData(prev => ({ ...prev, deadline: e.target.value }))}
+                  style={{
+                    width: '100%',
+                    padding: '10px 14px',
+                    border: '1px solid #d1d5db',
+                    borderRadius: '6px',
+                    fontSize: '14px'
+                  }}
+                />
+              </div>
+            )}
+
+            {editingTask.editableFields.includes('priority') && (
+              <div style={{ marginBottom: '16px' }}>
+                <label style={{ display: 'block', marginBottom: '6px', fontSize: '14px', fontWeight: 500 }}>
+                  Priority
+                </label>
+                <select
+                  value={formData.priority}
+                  onChange={(e) => setFormData(prev => ({ ...prev, priority: e.target.value as any }))}
+                  style={{
+                    width: '100%',
+                    padding: '10px 14px',
+                    border: '1px solid #d1d5db',
+                    borderRadius: '6px',
+                    fontSize: '14px',
+                    backgroundColor: 'white'
+                  }}
+                >
+                  <option value="low">Low</option>
+                  <option value="medium">Medium</option>
+                  <option value="high">High</option>
+                </select>
+              </div>
+            )}
+
+            {editingTask.editableFields.includes('status') && (
+              <div style={{ marginBottom: '16px' }}>
+                <label style={{ display: 'block', marginBottom: '6px', fontSize: '14px', fontWeight: 500 }}>
+                  Status
+                </label>
+                <select
+                  value={formData.status}
+                  onChange={(e) => setFormData(prev => ({ ...prev, status: e.target.value as any }))}
+                  style={{
+                    width: '100%',
+                    padding: '10px 14px',
+                    border: '1px solid #d1d5db',
+                    borderRadius: '6px',
+                    fontSize: '14px',
+                    backgroundColor: 'white'
+                  }}
+                >
+                  <option value="not started">Not Started</option>
+                  <option value="in progress">In Progress</option>
+                  <option value="blocked">Blocked</option>
+                  <option value="on hold">On Hold</option>
+                  <option value="done">Done</option>
+                </select>
+              </div>
+            )}
+
+            {editingTask.editableFields.includes('notesByManager') && (
+              <div style={{ marginBottom: '16px' }}>
+                <label style={{ display: 'block', marginBottom: '6px', fontSize: '14px', fontWeight: 500 }}>
+                  Notes by Manager
+                </label>
+                <textarea
+                  value={formData.notesByManager}
+                  onChange={(e) => setFormData(prev => ({ ...prev, notesByManager: e.target.value }))}
+                  placeholder="Enter notes for the user"
+                  rows={2}
+                  style={{
+                    width: '100%',
+                    padding: '10px 14px',
+                    border: '1px solid #d1d5db',
+                    borderRadius: '6px',
+                    fontSize: '14px',
+                    resize: 'vertical'
+                  }}
+                />
+              </div>
+            )}
+
+            {editingTask.editableFields.includes('documentLinkByManager') && (
+              <div style={{ marginBottom: '16px' }}>
+                <label style={{ display: 'block', marginBottom: '6px', fontSize: '14px', fontWeight: 500 }}>
+                  Document Link by Manager
+                </label>
+                <input
+                  type="text"
+                  value={formData.documentLinkByManager}
+                  onChange={(e) => setFormData(prev => ({ ...prev, documentLinkByManager: e.target.value }))}
+                  placeholder="Enter document URL (Loom, Google Docs, etc.)"
+                  style={{
+                    width: '100%',
+                    padding: '10px 14px',
+                    border: '1px solid #d1d5db',
+                    borderRadius: '6px',
+                    fontSize: '14px'
+                  }}
+                />
+              </div>
+            )}
+
+            {editingTask.editableFields.includes('notesByUser') && (
+              <div style={{ marginBottom: '16px' }}>
+                <label style={{ display: 'block', marginBottom: '6px', fontSize: '14px', fontWeight: 500 }}>
+                  Notes by User
+                </label>
+                <textarea
+                  value={formData.notesByUser}
+                  onChange={(e) => setFormData(prev => ({ ...prev, notesByUser: e.target.value }))}
+                  placeholder="Enter user notes"
+                  rows={2}
+                  style={{
+                    width: '100%',
+                    padding: '10px 14px',
+                    border: '1px solid #d1d5db',
+                    borderRadius: '6px',
+                    fontSize: '14px',
+                    resize: 'vertical'
+                  }}
+                />
+              </div>
+            )}
+
+            {editingTask.editableFields.includes('supportingLinksByUser') && (
+              <div style={{ marginBottom: '16px' }}>
+                <label style={{ display: 'block', marginBottom: '6px', fontSize: '14px', fontWeight: 500 }}>
+                  Supporting Links by User
+                </label>
+                <input
+                  type="text"
+                  value={formData.supportingLinksByUser}
+                  onChange={(e) => setFormData(prev => ({ ...prev, supportingLinksByUser: e.target.value }))}
+                  placeholder="Enter supporting links"
+                  style={{
+                    width: '100%',
+                    padding: '10px 14px',
+                    border: '1px solid #d1d5db',
+                    borderRadius: '6px',
+                    fontSize: '14px'
+                  }}
+                />
+              </div>
+            )}
+
+            {editingTask.editableFields.includes('meetingLink') && (
+              <div style={{ marginBottom: '20px' }}>
+                <label style={{ display: 'block', marginBottom: '6px', fontSize: '14px', fontWeight: 500 }}>
+                  Meeting Link
+                </label>
+                <input
+                  type="text"
+                  value={formData.meetingLink}
+                  onChange={(e) => setFormData(prev => ({ ...prev, meetingLink: e.target.value }))}
+                  placeholder="Enter meeting URL"
+                  style={{
+                    width: '100%',
+                    padding: '10px 14px',
+                    border: '1px solid #d1d5db',
+                    borderRadius: '6px',
+                    fontSize: '14px'
+                  }}
+                />
+              </div>
+            )}
+
+            {/* Custom Fields */}
+            {Object.entries(editingTask.customFields || {}).map(([key, value]) => {
+              if (editingTask.editableFields.includes(key)) {
+                return (
+                  <div key={key} style={{ marginBottom: '16px' }}>
+                    <label style={{ display: 'block', marginBottom: '6px', fontSize: '14px', fontWeight: 500 }}>
+                      {key}
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.customFields?.[key] || ''}
+                      onChange={(e) => {
+                        setFormData(prev => ({
+                          ...prev,
+                          customFields: {
+                            ...prev.customFields,
+                            [key]: e.target.value
+                          }
+                        }));
+                      }}
+                      placeholder={`Enter ${key}`}
+                      style={{
+                        width: '100%',
+                        padding: '10px 14px',
+                        border: '1px solid #d1d5db',
+                        borderRadius: '6px',
+                        fontSize: '14px'
+                      }}
+                    />
+                  </div>
+                );
+              }
+              return null;
+            })}
+
+            <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
+              <button
+                type="button"
+                className="btn-secondary"
+                onClick={() => {
+                  setShowEditModal(false);
+                  setEditingTask(null);
+                }}
+                disabled={saving}
+                style={{
+                  padding: '10px 20px',
+                  border: '1px solid #d1d5db',
+                  backgroundColor: 'white',
+                  color: '#374151',
+                  borderRadius: '6px',
+                  fontSize: '14px',
+                  fontWeight: 500,
+                  cursor: saving ? 'not-allowed' : 'pointer'
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="btn-primary btn-success"
+                onClick={handleSaveEdit}
+                disabled={saving}
+                style={{
+                  padding: '10px 20px',
+                  backgroundColor: '#10b981',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '6px',
+                  fontSize: '14px',
+                  fontWeight: 500,
+                  cursor: saving ? 'not-allowed' : 'pointer'
+                }}
+              >
+                {saving ? "Saving..." : "Update Task"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </SalesLayout>
   );
 };
