@@ -487,8 +487,8 @@ const TaskManagerPage: NextPage = () => {
           display: none;
         }
       `}</style>
-      <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <h1 className="page-title">Team Tasks</h1>
+      <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '0', paddingTop: '0' }}>
+        <h1 className="page-title" style={{ marginTop: '0', marginBottom: '0' }}>Team Tasks</h1>
         <button
           className="btn-primary btn-success"
           onClick={() => setShowCreateModal(true)}
@@ -497,7 +497,7 @@ const TaskManagerPage: NextPage = () => {
         </button>
       </div>
       
-      <div className="panel">
+      <div className="panel" style={{ marginTop: '16px' }}>
         <div className="panel-header">
           <div className="panel-header-row">
             <div className="panel-header-actions" style={{ width: '100%' }}>
