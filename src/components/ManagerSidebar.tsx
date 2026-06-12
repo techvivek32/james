@@ -10,7 +10,7 @@ const baseItems = [
   { id: "jays-ai-clone", label: "Jay's AI Clone", toggleKey: "aiChat" },
   { id: "apps-tools", label: "Apps & Tools", toggleKey: "appsTools" },
   { id: "my-profile", label: "My Profile", toggleKey: "profile" },
-  { id: "task-manager", label: "Task Manager", toggleKey: "taskTracker" },
+  { id: "task-manager", label: "Team Tasks", toggleKey: "taskTracker" },
 ];
 
 type ManagerSidebarProps = {
