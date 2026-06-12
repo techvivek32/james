@@ -1047,7 +1047,7 @@ const TaskTracker: NextPage = () => {
                   value={formData.notesByUser}
                   onChange={(e) => setFormData(prev => ({ ...prev, notesByUser: e.target.value }))}
                   placeholder="Enter user notes"
-                  rows={2}
+                  rows={5}
                   style={{
                     width: '100%',
                     padding: '10px 14px',

@@ -1702,9 +1702,18 @@ const TaskManagerPage: NextPage = () => {
               {customFields.map((field) => (
                 <div key={field.id} style={{ display: 'flex', gap: '10px', marginBottom: '10px', alignItems: 'flex-end' }}>
                   <div style={{ flex: 1 }}>
-                    <label style={{ display: 'block', marginBottom: '4px', fontSize: '12px', color: '#6b7280' }}>
-                      Column Name
-                    </label>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+                      <label style={{ fontSize: '12px', color: '#6b7280' }}>
+                        Column Name
+                      </label>
+                      <input
+                        type="checkbox"
+                        checked={field.editable}
+                        onChange={() => toggleCustomFieldEditable(field.id)}
+                        style={{ cursor: 'pointer' }}
+                      />
+                      <span style={{ fontSize: '12px', color: '#6b7280' }}>User can edit</span>
+                    </div>
                     <input
                       type="text"
                       value={field.name}
@@ -1737,31 +1746,27 @@ const TaskManagerPage: NextPage = () => {
                       }}
                     />
                   </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', paddingBottom: '8px' }}>
-                    <input
-                      type="checkbox"
-                      checked={field.editable}
-                      onChange={() => toggleCustomFieldEditable(field.id)}
-                      style={{ cursor: 'pointer' }}
-                    />
-                    <span style={{ fontSize: '12px', color: '#6b7280' }}>User can edit</span>
-                  </div>
                   <button
                     type="button"
                     onClick={() => removeCustomField(field.id)}
                     style={{
-                      padding: '8px 12px',
+                      padding: '8px 10px',
                       border: '1px solid #ef4444',
                       backgroundColor: '#fef2f2',
                       color: '#ef4444',
                       borderRadius: '6px',
                       cursor: 'pointer',
-                      fontSize: '14px',
-                      fontWeight: 500,
-                      marginBottom: '0px'
+                      fontSize: '16px',
+                      fontWeight: 'bold',
+                      marginBottom: '0px',
+                      minWidth: '36px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center'
                     }}
+                    title="Remove field"
                   >
-                    Remove
+                    ×
                   </button>
                 </div>
               ))}
@@ -2211,9 +2216,18 @@ const TaskManagerPage: NextPage = () => {
               {customFields.map((field) => (
                 <div key={field.id} style={{ display: 'flex', gap: '10px', marginBottom: '10px', alignItems: 'flex-end' }}>
                   <div style={{ flex: 1 }}>
-                    <label style={{ display: 'block', marginBottom: '4px', fontSize: '12px', color: '#6b7280' }}>
-                      Column Name
-                    </label>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+                      <label style={{ fontSize: '12px', color: '#6b7280' }}>
+                        Column Name
+                      </label>
+                      <input
+                        type="checkbox"
+                        checked={field.editable}
+                        onChange={() => toggleCustomFieldEditable(field.id)}
+                        style={{ cursor: 'pointer' }}
+                      />
+                      <span style={{ fontSize: '12px', color: '#6b7280' }}>User can edit</span>
+                    </div>
                     <input
                       type="text"
                       value={field.name}
@@ -2246,31 +2260,27 @@ const TaskManagerPage: NextPage = () => {
                       }}
                     />
                   </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', paddingBottom: '8px' }}>
-                    <input
-                      type="checkbox"
-                      checked={field.editable}
-                      onChange={() => toggleCustomFieldEditable(field.id)}
-                      style={{ cursor: 'pointer' }}
-                    />
-                    <span style={{ fontSize: '12px', color: '#6b7280' }}>User can edit</span>
-                  </div>
                   <button
                     type="button"
                     onClick={() => removeCustomField(field.id)}
                     style={{
-                      padding: '8px 12px',
+                      padding: '8px 10px',
                       border: '1px solid #ef4444',
                       backgroundColor: '#fef2f2',
                       color: '#ef4444',
                       borderRadius: '6px',
                       cursor: 'pointer',
-                      fontSize: '14px',
-                      fontWeight: 500,
-                      marginBottom: '0px'
+                      fontSize: '16px',
+                      fontWeight: 'bold',
+                      marginBottom: '0px',
+                      minWidth: '36px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center'
                     }}
+                    title="Remove field"
                   >
-                    Remove
+                    ×
                   </button>
                 </div>
               ))}
