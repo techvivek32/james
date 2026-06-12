@@ -21,18 +21,22 @@ async function handler(
   }
 
   if (req.method === "POST") {
+    console.log('API POST received:', req.body);
+    
     const { assignedTo, ...taskData } = req.body;
     
     // If assignedTo is an array, create multiple tasks
     if (Array.isArray(assignedTo) && assignedTo.length > 0) {
       const tasks = await Promise.all(
-        assignedTo.map((userId: string) => 
-          TaskModel.create({
+        assignedTo.map((userId: string) => {
+          const taskToCreate = {
             ...taskData,
             id: `task-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
             assignedTo: userId
-          })
-        )
+          };
+          console.log('Creating task for user:', userId, taskToCreate);
+          return TaskModel.create(taskToCreate);
+        })
       );
       res.status(201).json(tasks);
     } else {

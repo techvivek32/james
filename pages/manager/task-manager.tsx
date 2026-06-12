@@ -17,6 +17,7 @@ type Task = {
   supportingLinksByUser: string;
   meetingLink: string;
   assignedTo: string | string[]; // Accept both formats for backward compatibility
+  customFields: Record<string, string>; // Custom fields as key-value pairs
 };
 
 const TaskManagerPage: NextPage = () => {
@@ -31,7 +32,36 @@ const TaskManagerPage: NextPage = () => {
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const membersContainerRef = useRef<HTMLDivElement>(null);
+  const tableRef = useRef<HTMLTableElement>(null);
   
+  // Column widths for resizable table
+  const defaultColumnWidths: Record<string, number> = {
+    assignedOn: 120,
+    description: 200,
+    deadline: 120,
+    priority: 100,
+    status: 120,
+    notesByManager: 150,
+    notesByUser: 150,
+    documentLinkByManager: 250,
+    supportingLinksByUser: 250,
+    meetingLink: 250,
+    actions: 150
+  };
+  
+  const [columnWidths, setColumnWidths] = useState(defaultColumnWidths);
+  const [isResizing, setIsResizing] = useState(false);
+  const [resizingColumn, setResizingColumn] = useState<string | null>(null);
+  const [startX, setStartX] = useState(0);
+  const [startWidth, setStartWidth] = useState(0);
+  
+  // Custom field for form
+  type CustomFieldForm = {
+    id: string;
+    name: string;
+    value: string;
+  };
+
   // Form state
   const [formData, setFormData] = useState<Partial<Task> & { showAssignDropdown?: boolean }>({
     assignedOn: new Date().toISOString().split('T')[0],
@@ -45,8 +75,12 @@ const TaskManagerPage: NextPage = () => {
     supportingLinksByUser: '',
     meetingLink: '',
     assignedTo: [],
+    customFields: {},
     showAssignDropdown: false
   });
+
+  // Custom fields state for form
+  const [customFields, setCustomFields] = useState<CustomFieldForm[]>([]);
 
   useEffect(() => {
     async function loadTeamMembers() {
@@ -109,6 +143,15 @@ const TaskManagerPage: NextPage = () => {
     return task.assignedTo === selectedMemberId;
   });
 
+  // Get all unique custom field keys from selected member tasks
+  const customFieldKeys = Array.from(
+    new Set(
+      selectedMemberTasks.flatMap(task => 
+        task.customFields ? Object.keys(task.customFields) : []
+      )
+    )
+  );
+
   const scrollMembers = (direction: 'left' | 'right') => {
     if (membersContainerRef.current) {
       const scrollAmount = 200;
@@ -119,6 +162,88 @@ const TaskManagerPage: NextPage = () => {
     }
   };
 
+  // Custom fields handlers
+  const addCustomField = () => {
+    setCustomFields(prev => [
+      ...prev,
+      { id: `custom-${Date.now()}`, name: '', value: '' }
+    ]);
+  };
+
+  const removeCustomField = (id: string) => {
+    setCustomFields(prev => prev.filter(field => field.id !== id));
+  };
+
+  const updateCustomField = (id: string, field: 'name' | 'value', newValue: string) => {
+    setCustomFields(prev => 
+      prev.map(f => f.id === id ? { ...f, [field]: newValue } : f)
+    );
+  };
+
+  // Resizable column handlers
+  const handleMouseDown = (columnKey: string, e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsResizing(true);
+    setResizingColumn(columnKey);
+    setStartX(e.clientX);
+    setStartWidth(columnWidths[columnKey] || 150);
+  };
+
+  const handleMouseMove = (e: MouseEvent) => {
+    if (!isResizing || !resizingColumn) return;
+    
+    const newWidth = startWidth + (e.clientX - startX);
+    const minWidth = 80; // Minimum column width
+    if (newWidth >= minWidth) {
+      setColumnWidths(prev => ({
+        ...prev,
+        [resizingColumn]: newWidth
+      }));
+    }
+  };
+
+  const handleMouseUp = () => {
+    setIsResizing(false);
+    setResizingColumn(null);
+  };
+
+  useEffect(() => {
+    if (isResizing) {
+      document.body.style.cursor = 'col-resize';
+      document.addEventListener('mousemove', handleMouseMove);
+      document.addEventListener('mouseup', handleMouseUp);
+    } else {
+      document.body.style.cursor = '';
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+    }
+    return () => {
+      document.body.style.cursor = '';
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [isResizing, resizingColumn, startX, startWidth]);
+
+  // Convert custom fields array to object
+  const customFieldsToObject = (fields: CustomFieldForm[]): Record<string, string> => {
+    return fields.reduce((acc, field) => {
+      if (field.name.trim()) {
+        acc[field.name.trim()] = field.value;
+      }
+      return acc;
+    }, {} as Record<string, string>);
+  };
+
+  // Convert custom fields object to array for form
+  const customFieldsToArray = (obj: Record<string, string> = {}): CustomFieldForm[] => {
+    return Object.entries(obj).map(([name, value], index) => ({
+      id: `custom-${Date.now()}-${index}`,
+      name,
+      value
+    }));
+  };
+
   const handleCreateTask = async () => {
     if (!formData.description?.trim() || !formData.deadline || !formData.assignedTo?.length) {
       alert('Please fill in all required fields: description, deadline, and assign at least one team member');
@@ -127,6 +252,10 @@ const TaskManagerPage: NextPage = () => {
 
     setLoading(true);
     try {
+      const customFieldsObj = customFieldsToObject(customFields);
+      console.log('Custom fields form data:', customFields);
+      console.log('Custom fields object:', customFieldsObj);
+
       const taskData = {
         assignedOn: formData.assignedOn || new Date().toISOString().split('T')[0],
         description: formData.description,
@@ -138,8 +267,11 @@ const TaskManagerPage: NextPage = () => {
         notesByUser: formData.notesByUser || '',
         supportingLinksByUser: formData.supportingLinksByUser || '',
         meetingLink: formData.meetingLink || '',
-        assignedTo: formData.assignedTo || []
+        assignedTo: formData.assignedTo || [],
+        customFields: customFieldsObj
       };
+
+      console.log('Sending task data to API:', taskData);
 
       const res = await fetch("/api/tasks", {
         method: "POST",
@@ -166,8 +298,10 @@ const TaskManagerPage: NextPage = () => {
           supportingLinksByUser: '',
           meetingLink: '',
           assignedTo: [],
+          customFields: {},
           showAssignDropdown: false
         });
+        setCustomFields([]); // Reset custom fields
       } else {
         alert("Failed to save task");
       }
@@ -193,8 +327,11 @@ const TaskManagerPage: NextPage = () => {
       supportingLinksByUser: task.supportingLinksByUser,
       meetingLink: task.meetingLink,
       assignedTo: Array.isArray(task.assignedTo) ? task.assignedTo : [task.assignedTo],
+      customFields: task.customFields || {},
       showAssignDropdown: false
     });
+    // Populate custom fields from task
+    setCustomFields(customFieldsToArray(task.customFields || {}));
     setShowEditModal(true);
   };
 
@@ -224,7 +361,8 @@ const TaskManagerPage: NextPage = () => {
         notesByUser: formData.notesByUser || '',
         supportingLinksByUser: formData.supportingLinksByUser || '',
         meetingLink: formData.meetingLink || '',
-        assignedTo: originalAssignedTo // Keep original assigned user
+        assignedTo: originalAssignedTo, // Keep original assigned user
+        customFields: customFieldsToObject(customFields)
       };
 
       const res = await fetch("/api/tasks", {
@@ -238,6 +376,7 @@ const TaskManagerPage: NextPage = () => {
         setTasks(tasks.map(t => t.id === savedTask.id ? savedTask : t));
         setShowEditModal(false);
         setEditingTask(null);
+        setCustomFields([]); // Reset custom fields
       } else {
         alert("Failed to update task");
       }
@@ -282,6 +421,43 @@ const TaskManagerPage: NextPage = () => {
           : [...current, memberId]
       };
     });
+  };
+
+  const openAddTaskForMember = () => {
+    if (selectedMember) {
+      // Collect all unique custom field keys from the selected user's existing tasks
+      const existingKeys = new Set<string>();
+      selectedMemberTasks.forEach(task => {
+        if (task.customFields) {
+          Object.keys(task.customFields).forEach(key => existingKeys.add(key));
+        }
+      });
+
+      // Convert keys to custom fields form array
+      const initialCustomFields: CustomFieldForm[] = Array.from(existingKeys).map((key, index) => ({
+        id: `custom-${Date.now()}-${index}`,
+        name: key,
+        value: ''
+      }));
+
+      setFormData({
+        assignedOn: new Date().toISOString().split('T')[0],
+        description: '',
+        deadline: '',
+        priority: 'medium',
+        status: 'not started',
+        notesByManager: '',
+        documentLinkByManager: '',
+        notesByUser: '',
+        supportingLinksByUser: '',
+        meetingLink: '',
+        assignedTo: [selectedMember.id],
+        customFields: {},
+        showAssignDropdown: false
+      });
+      setCustomFields(initialCustomFields);
+      setShowCreateModal(true);
+    }
   };
 
   const getPriorityColor = (priority: string) => {
@@ -414,49 +590,375 @@ const TaskManagerPage: NextPage = () => {
             </button>
           </div>
           
+          {selectedMember && (
+            <div style={{ marginBottom: '20px' }}>
+              <button
+                type="button"
+                onClick={openAddTaskForMember}
+                style={{
+                  padding: '10px 20px',
+                  borderRadius: '8px',
+                  border: '1px solid #10b981',
+                  backgroundColor: '#f0fdf4',
+                  color: '#10b981',
+                  cursor: 'pointer',
+                  fontSize: '14px',
+                  fontWeight: '600',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px'
+                }}
+              >
+                <span>+</span> Add Task for {selectedMember.name}
+              </button>
+            </div>
+          )}
+          
           {selectedMember && selectedMemberTasks.length > 0 && (
             <div style={{ 
               overflowX: 'auto', 
               paddingBottom: '8px',
-              border: '1px solid #e5e7eb',
+              border: '2px solid #000000',
               borderRadius: '8px',
               backgroundColor: '#ffffff'
             }}>
-              <table style={{ width: '100%', minWidth: '1800px', borderCollapse: 'collapse', tableLayout: 'auto' }}>
+              <table 
+                ref={tableRef}
+                style={{ width: '100%', minWidth: '2000px', borderCollapse: 'collapse', tableLayout: 'fixed' }}
+              >
                 <thead>
-                  <tr style={{ backgroundColor: '#f9fafb' }}>
-                    <th style={{ padding: '12px 16px', textAlign: 'left', borderBottom: '1px solid #e5e7eb', fontSize: '14px', fontWeight: 600, color: '#374151', whiteSpace: 'nowrap', width: '120px' }}>
+                  <tr style={{ backgroundColor: '#000000' }}>
+                    {/* Assigned On */}
+                    <th style={{ 
+                      padding: '12px 16px', 
+                      textAlign: 'left', 
+                      border: '1px solid #ffffff', 
+                      fontSize: '14px', 
+                      fontWeight: 600, 
+                      color: '#ffffff', 
+                      whiteSpace: 'nowrap', 
+                      width: `${columnWidths.assignedOn}px`,
+                      position: 'relative'
+                    }}>
                       Assigned On
+                      <div
+                        style={{
+                          position: 'absolute',
+                          right: 0,
+                          top: 0,
+                          bottom: 0,
+                          width: '5px',
+                          cursor: 'col-resize',
+                          backgroundColor: 'transparent',
+                          zIndex: 1
+                        }}
+                        onMouseDown={(e) => handleMouseDown('assignedOn', e)}
+                      />
                     </th>
-                    <th style={{ padding: '12px 16px', textAlign: 'left', borderBottom: '1px solid #e5e7eb', fontSize: '14px', fontWeight: 600, color: '#374151', whiteSpace: 'nowrap', width: '200px' }}>
+                    {/* Task Description */}
+                    <th style={{ 
+                      padding: '12px 16px', 
+                      textAlign: 'left', 
+                      border: '1px solid #ffffff', 
+                      fontSize: '14px', 
+                      fontWeight: 600, 
+                      color: '#ffffff', 
+                      whiteSpace: 'nowrap', 
+                      width: `${columnWidths.description}px`,
+                      position: 'relative'
+                    }}>
                       Task Description
+                      <div
+                        style={{
+                          position: 'absolute',
+                          right: 0,
+                          top: 0,
+                          bottom: 0,
+                          width: '5px',
+                          cursor: 'col-resize',
+                          backgroundColor: 'transparent',
+                          zIndex: 1
+                        }}
+                        onMouseDown={(e) => handleMouseDown('description', e)}
+                      />
                     </th>
-                    <th style={{ padding: '12px 16px', textAlign: 'left', borderBottom: '1px solid #e5e7eb', fontSize: '14px', fontWeight: 600, color: '#374151', whiteSpace: 'nowrap', width: '120px' }}>
+                    {/* Deadline */}
+                    <th style={{ 
+                      padding: '12px 16px', 
+                      textAlign: 'left', 
+                      border: '1px solid #ffffff', 
+                      fontSize: '14px', 
+                      fontWeight: 600, 
+                      color: '#ffffff', 
+                      whiteSpace: 'nowrap', 
+                      width: `${columnWidths.deadline}px`,
+                      position: 'relative'
+                    }}>
                       Deadline
+                      <div
+                        style={{
+                          position: 'absolute',
+                          right: 0,
+                          top: 0,
+                          bottom: 0,
+                          width: '5px',
+                          cursor: 'col-resize',
+                          backgroundColor: 'transparent',
+                          zIndex: 1
+                        }}
+                        onMouseDown={(e) => handleMouseDown('deadline', e)}
+                      />
                     </th>
-                    <th style={{ padding: '12px 16px', textAlign: 'left', borderBottom: '1px solid #e5e7eb', fontSize: '14px', fontWeight: 600, color: '#374151', whiteSpace: 'nowrap', width: '100px' }}>
+                    {/* Priority */}
+                    <th style={{ 
+                      padding: '12px 16px', 
+                      textAlign: 'left', 
+                      border: '1px solid #ffffff', 
+                      fontSize: '14px', 
+                      fontWeight: 600, 
+                      color: '#ffffff', 
+                      whiteSpace: 'nowrap', 
+                      width: `${columnWidths.priority}px`,
+                      position: 'relative'
+                    }}>
                       Priority
+                      <div
+                        style={{
+                          position: 'absolute',
+                          right: 0,
+                          top: 0,
+                          bottom: 0,
+                          width: '5px',
+                          cursor: 'col-resize',
+                          backgroundColor: 'transparent',
+                          zIndex: 1
+                        }}
+                        onMouseDown={(e) => handleMouseDown('priority', e)}
+                      />
                     </th>
-                    <th style={{ padding: '12px 16px', textAlign: 'left', borderBottom: '1px solid #e5e7eb', fontSize: '14px', fontWeight: 600, color: '#374151', whiteSpace: 'nowrap', width: '120px' }}>
+                    {/* Status */}
+                    <th style={{ 
+                      padding: '12px 16px', 
+                      textAlign: 'left', 
+                      border: '1px solid #ffffff', 
+                      fontSize: '14px', 
+                      fontWeight: 600, 
+                      color: '#ffffff', 
+                      whiteSpace: 'nowrap', 
+                      width: `${columnWidths.status}px`,
+                      position: 'relative'
+                    }}>
                       Status
+                      <div
+                        style={{
+                          position: 'absolute',
+                          right: 0,
+                          top: 0,
+                          bottom: 0,
+                          width: '5px',
+                          cursor: 'col-resize',
+                          backgroundColor: 'transparent',
+                          zIndex: 1
+                        }}
+                        onMouseDown={(e) => handleMouseDown('status', e)}
+                      />
                     </th>
-                    <th style={{ padding: '12px 16px', textAlign: 'left', borderBottom: '1px solid #e5e7eb', fontSize: '14px', fontWeight: 600, color: '#374151', whiteSpace: 'nowrap', width: '150px' }}>
+                    {/* Notes by Manager */}
+                    <th style={{ 
+                      padding: '12px 16px', 
+                      textAlign: 'left', 
+                      border: '1px solid #ffffff', 
+                      fontSize: '14px', 
+                      fontWeight: 600, 
+                      color: '#ffffff', 
+                      whiteSpace: 'nowrap', 
+                      width: `${columnWidths.notesByManager}px`,
+                      position: 'relative'
+                    }}>
                       Notes by Manager
+                      <div
+                        style={{
+                          position: 'absolute',
+                          right: 0,
+                          top: 0,
+                          bottom: 0,
+                          width: '5px',
+                          cursor: 'col-resize',
+                          backgroundColor: 'transparent',
+                          zIndex: 1
+                        }}
+                        onMouseDown={(e) => handleMouseDown('notesByManager', e)}
+                      />
                     </th>
-                    <th style={{ padding: '12px 16px', textAlign: 'left', borderBottom: '1px solid #e5e7eb', fontSize: '14px', fontWeight: 600, color: '#374151', whiteSpace: 'nowrap', width: '150px' }}>
+                    {/* Notes by User */}
+                    <th style={{ 
+                      padding: '12px 16px', 
+                      textAlign: 'left', 
+                      border: '1px solid #ffffff', 
+                      fontSize: '14px', 
+                      fontWeight: 600, 
+                      color: '#ffffff', 
+                      whiteSpace: 'nowrap', 
+                      width: `${columnWidths.notesByUser}px`,
+                      position: 'relative'
+                    }}>
                       Notes by User
+                      <div
+                        style={{
+                          position: 'absolute',
+                          right: 0,
+                          top: 0,
+                          bottom: 0,
+                          width: '5px',
+                          cursor: 'col-resize',
+                          backgroundColor: 'transparent',
+                          zIndex: 1
+                        }}
+                        onMouseDown={(e) => handleMouseDown('notesByUser', e)}
+                      />
                     </th>
-                    <th style={{ padding: '12px 16px', textAlign: 'left', borderBottom: '1px solid #e5e7eb', fontSize: '14px', fontWeight: 600, color: '#374151', whiteSpace: 'nowrap', width: '250px' }}>
+                    {/* Document Link by Manager */}
+                    <th style={{ 
+                      padding: '12px 16px', 
+                      textAlign: 'left', 
+                      border: '1px solid #ffffff', 
+                      fontSize: '14px', 
+                      fontWeight: 600, 
+                      color: '#ffffff', 
+                      whiteSpace: 'nowrap', 
+                      width: `${columnWidths.documentLinkByManager}px`,
+                      position: 'relative'
+                    }}>
                       Document Link by Manager
+                      <div
+                        style={{
+                          position: 'absolute',
+                          right: 0,
+                          top: 0,
+                          bottom: 0,
+                          width: '5px',
+                          cursor: 'col-resize',
+                          backgroundColor: 'transparent',
+                          zIndex: 1
+                        }}
+                        onMouseDown={(e) => handleMouseDown('documentLinkByManager', e)}
+                      />
                     </th>
-                    <th style={{ padding: '12px 16px', textAlign: 'left', borderBottom: '1px solid #e5e7eb', fontSize: '14px', fontWeight: 600, color: '#374151', whiteSpace: 'nowrap', width: '250px' }}>
+                    {/* Supporting Links by User */}
+                    <th style={{ 
+                      padding: '12px 16px', 
+                      textAlign: 'left', 
+                      border: '1px solid #ffffff', 
+                      fontSize: '14px', 
+                      fontWeight: 600, 
+                      color: '#ffffff', 
+                      whiteSpace: 'nowrap', 
+                      width: `${columnWidths.supportingLinksByUser}px`,
+                      position: 'relative'
+                    }}>
                       Supporting Links by User
+                      <div
+                        style={{
+                          position: 'absolute',
+                          right: 0,
+                          top: 0,
+                          bottom: 0,
+                          width: '5px',
+                          cursor: 'col-resize',
+                          backgroundColor: 'transparent',
+                          zIndex: 1
+                        }}
+                        onMouseDown={(e) => handleMouseDown('supportingLinksByUser', e)}
+                      />
                     </th>
-                    <th style={{ padding: '12px 16px', textAlign: 'left', borderBottom: '1px solid #e5e7eb', fontSize: '14px', fontWeight: 600, color: '#374151', whiteSpace: 'nowrap', width: '250px' }}>
+                    {/* Meeting Link */}
+                    <th style={{ 
+                      padding: '12px 16px', 
+                      textAlign: 'left', 
+                      border: '1px solid #ffffff', 
+                      fontSize: '14px', 
+                      fontWeight: 600, 
+                      color: '#ffffff', 
+                      whiteSpace: 'nowrap', 
+                      width: `${columnWidths.meetingLink}px`,
+                      position: 'relative'
+                    }}>
                       Meeting Link
+                      <div
+                        style={{
+                          position: 'absolute',
+                          right: 0,
+                          top: 0,
+                          bottom: 0,
+                          width: '5px',
+                          cursor: 'col-resize',
+                          backgroundColor: 'transparent',
+                          zIndex: 1
+                        }}
+                        onMouseDown={(e) => handleMouseDown('meetingLink', e)}
+                      />
                     </th>
-                    <th style={{ padding: '12px 16px', textAlign: 'left', borderBottom: '1px solid #e5e7eb', fontSize: '14px', fontWeight: 600, color: '#374151', whiteSpace: 'nowrap', width: '150px' }}>
+                    {/* Custom field columns */}
+                    {customFieldKeys.map(key => {
+                      // Initialize custom field width if not exists
+                      if (!(key in columnWidths)) {
+                        columnWidths[key] = 150;
+                      }
+                      return (
+                        <th key={key} style={{ 
+                          padding: '12px 16px', 
+                          textAlign: 'left', 
+                          border: '1px solid #ffffff', 
+                          fontSize: '14px', 
+                          fontWeight: 600, 
+                          color: '#ffffff', 
+                          whiteSpace: 'nowrap', 
+                          width: `${columnWidths[key]}px`,
+                          position: 'relative'
+                        }}>
+                          {key}
+                          <div
+                            style={{
+                              position: 'absolute',
+                              right: 0,
+                              top: 0,
+                              bottom: 0,
+                              width: '5px',
+                              cursor: 'col-resize',
+                              backgroundColor: 'transparent',
+                              zIndex: 1
+                            }}
+                            onMouseDown={(e) => handleMouseDown(key, e)}
+                          />
+                        </th>
+                      );
+                    })}
+                    {/* Actions */}
+                    <th style={{ 
+                      padding: '12px 16px', 
+                      textAlign: 'left', 
+                      border: '1px solid #ffffff', 
+                      fontSize: '14px', 
+                      fontWeight: 600, 
+                      color: '#ffffff', 
+                      whiteSpace: 'nowrap', 
+                      width: `${columnWidths.actions}px`,
+                      position: 'relative'
+                    }}>
                       Actions
+                      <div
+                        style={{
+                          position: 'absolute',
+                          right: 0,
+                          top: 0,
+                          bottom: 0,
+                          width: '5px',
+                          cursor: 'col-resize',
+                          backgroundColor: 'transparent',
+                          zIndex: 1
+                        }}
+                        onMouseDown={(e) => handleMouseDown('actions', e)}
+                      />
                     </th>
                   </tr>
                 </thead>
@@ -465,54 +967,112 @@ const TaskManagerPage: NextPage = () => {
                     <tr
                       key={task.id}
                       style={{
-                        backgroundColor: index % 2 === 0 ? '#ffffff' : '#f9fafb',
-                        borderBottom: '1px solid #e5e7eb'
+                        backgroundColor: index % 2 === 0 ? '#ffffff' : '#f9fafb'
                       }}
                     >
-                      <td style={{ padding: '12px 16px', verticalAlign: 'top', fontSize: '14px', color: '#374151', whiteSpace: 'nowrap' }}>
+                      <td style={{ 
+                        padding: '12px 16px', 
+                        verticalAlign: 'top', 
+                        fontSize: '14px', 
+                        color: '#000000', 
+                        whiteSpace: 'nowrap', 
+                        border: '1px solid #000000',
+                        width: `${columnWidths.assignedOn}px`
+                      }}>
                         {new Date(task.assignedOn).toLocaleDateString()}
                       </td>
-                      <td style={{ padding: '12px 16px', verticalAlign: 'top', fontSize: '14px', color: '#111827', fontWeight: 500, wordBreak: 'break-word' }}>
+                      <td style={{ 
+                        padding: '12px 16px', 
+                        verticalAlign: 'top', 
+                        fontSize: '14px', 
+                        color: '#000000', 
+                        fontWeight: 500, 
+                        wordBreak: 'break-word', 
+                        border: '1px solid #000000',
+                        width: `${columnWidths.description}px`
+                      }}>
                         {task.description}
                       </td>
-                      <td style={{ padding: '12px 16px', verticalAlign: 'top', fontSize: '14px', color: '#374151', whiteSpace: 'nowrap' }}>
+                      <td style={{ 
+                        padding: '12px 16px', 
+                        verticalAlign: 'top', 
+                        fontSize: '14px', 
+                        color: '#000000', 
+                        whiteSpace: 'nowrap', 
+                        border: '1px solid #000000',
+                        width: `${columnWidths.deadline}px`
+                      }}>
                         {new Date(task.deadline).toLocaleDateString()}
                       </td>
-                      <td style={{ padding: '12px 16px', verticalAlign: 'top', whiteSpace: 'nowrap' }}>
+                      <td style={{ 
+                      padding: '12px 16px', 
+                      verticalAlign: 'top', 
+                      whiteSpace: 'nowrap', 
+                      border: '1px solid #000000',
+                      width: `${columnWidths.priority}px`
+                    }}>
                         <span
                           style={{
                             padding: '4px 10px',
-                            borderRadius: '9999px',
+                            borderRadius: '4px',
                             fontSize: '12px',
-                            fontWeight: 500,
-                            backgroundColor: `${getPriorityColor(task.priority)}15`,
-                            color: getPriorityColor(task.priority)
+                            fontWeight: 600,
+                            backgroundColor: getPriorityColor(task.priority),
+                            color: '#ffffff'
                           }}
                         >
                           {task.priority}
                         </span>
                       </td>
-                      <td style={{ padding: '12px 16px', verticalAlign: 'top', whiteSpace: 'nowrap' }}>
+                      <td style={{ 
+                      padding: '12px 16px', 
+                      verticalAlign: 'top', 
+                      whiteSpace: 'nowrap', 
+                      border: '1px solid #000000',
+                      width: `${columnWidths.status}px`
+                    }}>
                         <span
                           style={{
                             padding: '4px 10px',
-                            borderRadius: '9999px',
+                            borderRadius: '4px',
                             fontSize: '12px',
-                            fontWeight: 500,
-                            backgroundColor: `${getStatusColor(task.status)}15`,
-                            color: getStatusColor(task.status)
+                            fontWeight: 600,
+                            backgroundColor: getStatusColor(task.status),
+                            color: '#ffffff'
                           }}
                         >
                           {task.status}
                         </span>
                       </td>
-                      <td style={{ padding: '12px 16px', verticalAlign: 'top', fontSize: '13px', color: '#374151', wordBreak: 'break-word' }}>
+                      <td style={{ 
+                        padding: '12px 16px', 
+                        verticalAlign: 'top', 
+                        fontSize: '13px', 
+                        color: '#000000', 
+                        wordBreak: 'break-word', 
+                        border: '1px solid #000000',
+                        width: `${columnWidths.notesByManager}px`
+                      }}>
                         {task.notesByManager || <span style={{ color: '#9ca3af' }}>-</span>}
                       </td>
-                      <td style={{ padding: '12px 16px', verticalAlign: 'top', fontSize: '13px', color: '#374151', wordBreak: 'break-word' }}>
+                      <td style={{ 
+                        padding: '12px 16px', 
+                        verticalAlign: 'top', 
+                        fontSize: '13px', 
+                        color: '#000000', 
+                        wordBreak: 'break-word', 
+                        border: '1px solid #000000',
+                        width: `${columnWidths.notesByUser}px`
+                      }}>
                         {task.notesByUser || <span style={{ color: '#9ca3af' }}>-</span>}
                       </td>
-                      <td style={{ padding: '12px 16px', verticalAlign: 'top', fontSize: '13px' }}>
+                      <td style={{ 
+                        padding: '12px 16px', 
+                        verticalAlign: 'top', 
+                        fontSize: '13px', 
+                        border: '1px solid #000000',
+                        width: `${columnWidths.documentLinkByManager}px`
+                      }}>
                         {task.documentLinkByManager ? (
                           <a href={task.documentLinkByManager} target="_blank" rel="noopener noreferrer" style={{ color: '#3b82f6', wordBreak: 'break-all' }}>
                             {task.documentLinkByManager}
@@ -521,7 +1081,13 @@ const TaskManagerPage: NextPage = () => {
                           <span style={{ color: '#9ca3af' }}>-</span>
                         )}
                       </td>
-                      <td style={{ padding: '12px 16px', verticalAlign: 'top', fontSize: '13px' }}>
+                      <td style={{ 
+                        padding: '12px 16px', 
+                        verticalAlign: 'top', 
+                        fontSize: '13px', 
+                        border: '1px solid #000000',
+                        width: `${columnWidths.supportingLinksByUser}px`
+                      }}>
                         {task.supportingLinksByUser ? (
                           <a href={task.supportingLinksByUser} target="_blank" rel="noopener noreferrer" style={{ color: '#3b82f6', wordBreak: 'break-all' }}>
                             {task.supportingLinksByUser}
@@ -530,7 +1096,13 @@ const TaskManagerPage: NextPage = () => {
                           <span style={{ color: '#9ca3af' }}>-</span>
                         )}
                       </td>
-                      <td style={{ padding: '12px 16px', verticalAlign: 'top', fontSize: '13px' }}>
+                      <td style={{ 
+                        padding: '12px 16px', 
+                        verticalAlign: 'top', 
+                        fontSize: '13px', 
+                        border: '1px solid #000000',
+                        width: `${columnWidths.meetingLink}px`
+                      }}>
                         {task.meetingLink ? (
                           <a href={task.meetingLink} target="_blank" rel="noopener noreferrer" style={{ color: '#3b82f6', wordBreak: 'break-all' }}>
                             {task.meetingLink}
@@ -539,7 +1111,38 @@ const TaskManagerPage: NextPage = () => {
                           <span style={{ color: '#9ca3af' }}>-</span>
                         )}
                       </td>
-                      <td style={{ padding: '12px 16px', verticalAlign: 'top', fontSize: '13px' }}>
+                      {/* Custom field values */}
+                      {customFieldKeys.map(key => {
+                        const value = task.customFields?.[key];
+                        return (
+                          <td key={key} style={{ 
+                            padding: '12px 16px', 
+                            verticalAlign: 'top', 
+                            fontSize: '13px', 
+                            color: '#000000', 
+                            wordBreak: 'break-word', 
+                            border: '1px solid #000000',
+                            width: `${columnWidths[key] || 150}px`
+                          }}>
+                            {value ? (
+                              (value.startsWith('http://') || value.startsWith('https://')) ? (
+                                <a href={value} target="_blank" rel="noopener noreferrer" style={{ color: '#3b82f6', wordBreak: 'break-all' }}>
+                                  {value}
+                                </a>
+                              ) : value
+                            ) : (
+                              <span style={{ color: '#9ca3af' }}>-</span>
+                            )}
+                          </td>
+                        );
+                      })}
+                      <td style={{ 
+                        padding: '12px 16px', 
+                        verticalAlign: 'top', 
+                        fontSize: '13px', 
+                        border: '1px solid #000000',
+                        width: `${columnWidths.actions}px`
+                      }}>
                         <div style={{ display: 'flex', gap: '8px' }}>
                           <button
                             type="button"
@@ -893,6 +1496,88 @@ const TaskManagerPage: NextPage = () => {
               />
             </div>
 
+            {/* Custom Fields Section */}
+            <div style={{ marginBottom: '20px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+                <label style={{ fontSize: '14px', fontWeight: 500, margin: 0 }}>
+                  Custom Fields
+                </label>
+                <button
+                  type="button"
+                  onClick={addCustomField}
+                  style={{
+                    padding: '6px 12px',
+                    border: '1px solid #3b82f6',
+                    backgroundColor: '#eff6ff',
+                    color: '#3b82f6',
+                    borderRadius: '6px',
+                    cursor: 'pointer',
+                    fontSize: '14px',
+                    fontWeight: 500
+                  }}
+                >
+                  + Add Field
+                </button>
+              </div>
+              {customFields.map((field) => (
+                <div key={field.id} style={{ display: 'flex', gap: '10px', marginBottom: '10px', alignItems: 'flex-end' }}>
+                  <div style={{ flex: 1 }}>
+                    <label style={{ display: 'block', marginBottom: '4px', fontSize: '12px', color: '#6b7280' }}>
+                      Column Name
+                    </label>
+                    <input
+                      type="text"
+                      value={field.name}
+                      onChange={(e) => updateCustomField(field.id, 'name', e.target.value)}
+                      placeholder="e.g., Vimeo Link"
+                      style={{
+                        width: '100%',
+                        padding: '8px 12px',
+                        border: '1px solid #d1d5db',
+                        borderRadius: '6px',
+                        fontSize: '14px'
+                      }}
+                    />
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    <label style={{ display: 'block', marginBottom: '4px', fontSize: '12px', color: '#6b7280' }}>
+                      Value
+                    </label>
+                    <input
+                      type="text"
+                      value={field.value}
+                      onChange={(e) => updateCustomField(field.id, 'value', e.target.value)}
+                      placeholder="Enter value"
+                      style={{
+                        width: '100%',
+                        padding: '8px 12px',
+                        border: '1px solid #d1d5db',
+                        borderRadius: '6px',
+                        fontSize: '14px'
+                      }}
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => removeCustomField(field.id)}
+                    style={{
+                      padding: '8px 12px',
+                      border: '1px solid #ef4444',
+                      backgroundColor: '#fef2f2',
+                      color: '#ef4444',
+                      borderRadius: '6px',
+                      cursor: 'pointer',
+                      fontSize: '14px',
+                      fontWeight: 500,
+                      marginBottom: '0px'
+                    }}
+                  >
+                    Remove
+                  </button>
+                </div>
+              ))}
+            </div>
+
             <div style={{ marginBottom: '24px' }}>
               <label style={{ display: 'block', marginBottom: '6px', fontSize: '14px', fontWeight: 500 }}>
                 Assign To <span style={{ color: '#ef4444' }}>*</span>
@@ -1219,6 +1904,88 @@ const TaskManagerPage: NextPage = () => {
                   fontSize: '14px'
                 }}
               />
+            </div>
+
+            {/* Custom Fields Section for Edit */}
+            <div style={{ marginBottom: '20px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+                <label style={{ fontSize: '14px', fontWeight: 500, margin: 0 }}>
+                  Custom Fields
+                </label>
+                <button
+                  type="button"
+                  onClick={addCustomField}
+                  style={{
+                    padding: '6px 12px',
+                    border: '1px solid #3b82f6',
+                    backgroundColor: '#eff6ff',
+                    color: '#3b82f6',
+                    borderRadius: '6px',
+                    cursor: 'pointer',
+                    fontSize: '14px',
+                    fontWeight: 500
+                  }}
+                >
+                  + Add Field
+                </button>
+              </div>
+              {customFields.map((field) => (
+                <div key={field.id} style={{ display: 'flex', gap: '10px', marginBottom: '10px', alignItems: 'flex-end' }}>
+                  <div style={{ flex: 1 }}>
+                    <label style={{ display: 'block', marginBottom: '4px', fontSize: '12px', color: '#6b7280' }}>
+                      Column Name
+                    </label>
+                    <input
+                      type="text"
+                      value={field.name}
+                      onChange={(e) => updateCustomField(field.id, 'name', e.target.value)}
+                      placeholder="e.g., Vimeo Link"
+                      style={{
+                        width: '100%',
+                        padding: '8px 12px',
+                        border: '1px solid #d1d5db',
+                        borderRadius: '6px',
+                        fontSize: '14px'
+                      }}
+                    />
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    <label style={{ display: 'block', marginBottom: '4px', fontSize: '12px', color: '#6b7280' }}>
+                      Value
+                    </label>
+                    <input
+                      type="text"
+                      value={field.value}
+                      onChange={(e) => updateCustomField(field.id, 'value', e.target.value)}
+                      placeholder="Enter value"
+                      style={{
+                        width: '100%',
+                        padding: '8px 12px',
+                        border: '1px solid #d1d5db',
+                        borderRadius: '6px',
+                        fontSize: '14px'
+                      }}
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => removeCustomField(field.id)}
+                    style={{
+                      padding: '8px 12px',
+                      border: '1px solid #ef4444',
+                      backgroundColor: '#fef2f2',
+                      color: '#ef4444',
+                      borderRadius: '6px',
+                      cursor: 'pointer',
+                      fontSize: '14px',
+                      fontWeight: 500,
+                      marginBottom: '0px'
+                    }}
+                  >
+                    Remove
+                  </button>
+                </div>
+              ))}
             </div>
 
             <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
