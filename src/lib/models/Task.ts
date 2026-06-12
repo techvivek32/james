@@ -22,7 +22,8 @@ const taskSchema = new Schema(
     supportingLinksByUser: { type: String, default: "" },
     meetingLink: { type: String, default: "" },
     assignedTo: { type: String, required: true },
-    customFields: { type: Schema.Types.Mixed, default: {} } // Use Mixed type for custom fields
+    customFields: { type: Schema.Types.Mixed, default: {} }, // Use Mixed type for custom fields
+    editableFields: { type: [String], default: [] } // Fields that user can edit
   },
   { timestamps: true }
 );

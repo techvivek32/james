@@ -18,6 +18,7 @@ type Task = {
   meetingLink: string;
   assignedTo: string | string[]; // Accept both formats for backward compatibility
   customFields: Record<string, string>; // Custom fields as key-value pairs
+  editableFields: string[]; // Fields that user can edit
 };
 
 const TaskManagerPage: NextPage = () => {
@@ -60,6 +61,7 @@ const TaskManagerPage: NextPage = () => {
     id: string;
     name: string;
     value: string;
+    editable: boolean;
   };
 
   // Form state
@@ -76,6 +78,7 @@ const TaskManagerPage: NextPage = () => {
     meetingLink: '',
     assignedTo: [],
     customFields: {},
+    editableFields: ['status', 'notesByUser', 'supportingLinksByUser', 'meetingLink'], // Default editable fields
     showAssignDropdown: false
   });
 
@@ -166,7 +169,7 @@ const TaskManagerPage: NextPage = () => {
   const addCustomField = () => {
     setCustomFields(prev => [
       ...prev,
-      { id: `custom-${Date.now()}`, name: '', value: '' }
+      { id: `custom-${Date.now()}`, name: '', value: '', editable: true }
     ]);
   };
 
@@ -178,6 +181,30 @@ const TaskManagerPage: NextPage = () => {
     setCustomFields(prev => 
       prev.map(f => f.id === id ? { ...f, [field]: newValue } : f)
     );
+  };
+
+  const toggleCustomFieldEditable = (id: string) => {
+    setCustomFields(prev =>
+      prev.map(f => f.id === id ? { ...f, editable: !f.editable } : f)
+    );
+  };
+
+  // Toggle editable fields
+  const toggleEditableField = (fieldName: string) => {
+    setFormData(prev => {
+      const currentEditable = prev.editableFields || [];
+      if (currentEditable.includes(fieldName)) {
+        return {
+          ...prev,
+          editableFields: currentEditable.filter(f => f !== fieldName)
+        };
+      } else {
+        return {
+          ...prev,
+          editableFields: [...currentEditable, fieldName]
+        };
+      }
+    });
   };
 
   // Resizable column handlers
@@ -236,11 +263,12 @@ const TaskManagerPage: NextPage = () => {
   };
 
   // Convert custom fields object to array for form
-  const customFieldsToArray = (obj: Record<string, string> = {}): CustomFieldForm[] => {
+  const customFieldsToArray = (obj: Record<string, string> = {}, editableFields: string[] = []): CustomFieldForm[] => {
     return Object.entries(obj).map(([name, value], index) => ({
       id: `custom-${Date.now()}-${index}`,
       name,
-      value
+      value,
+      editable: editableFields.includes(name)
     }));
   };
 
@@ -256,6 +284,17 @@ const TaskManagerPage: NextPage = () => {
       console.log('Custom fields form data:', customFields);
       console.log('Custom fields object:', customFieldsObj);
 
+      // Collect editable custom fields
+      const editableCustomFields = customFields
+        .filter(field => field.editable && field.name.trim())
+        .map(field => field.name.trim());
+
+      // Combine default editable fields and custom editable fields
+      const allEditableFields = [
+        ...(formData.editableFields || []),
+        ...editableCustomFields
+      ].filter((value, index, self) => self.indexOf(value) === index); // Remove duplicates
+
       const taskData = {
         assignedOn: formData.assignedOn || new Date().toISOString().split('T')[0],
         description: formData.description,
@@ -268,7 +307,8 @@ const TaskManagerPage: NextPage = () => {
         supportingLinksByUser: formData.supportingLinksByUser || '',
         meetingLink: formData.meetingLink || '',
         assignedTo: formData.assignedTo || [],
-        customFields: customFieldsObj
+        customFields: customFieldsObj,
+        editableFields: allEditableFields
       };
 
       console.log('Sending task data to API:', taskData);
@@ -299,6 +339,7 @@ const TaskManagerPage: NextPage = () => {
           meetingLink: '',
           assignedTo: [],
           customFields: {},
+          editableFields: ['status', 'notesByUser', 'supportingLinksByUser', 'meetingLink'], // Default editable fields
           showAssignDropdown: false
         });
         setCustomFields([]); // Reset custom fields
@@ -328,10 +369,11 @@ const TaskManagerPage: NextPage = () => {
       meetingLink: task.meetingLink,
       assignedTo: Array.isArray(task.assignedTo) ? task.assignedTo : [task.assignedTo],
       customFields: task.customFields || {},
+      editableFields: task.editableFields || [],
       showAssignDropdown: false
     });
     // Populate custom fields from task
-    setCustomFields(customFieldsToArray(task.customFields || {}));
+    setCustomFields(customFieldsToArray(task.customFields || {}, task.editableFields || []));
     setShowEditModal(true);
   };
 
@@ -349,6 +391,17 @@ const TaskManagerPage: NextPage = () => {
         ? editingTask.assignedTo[0] 
         : editingTask.assignedTo;
 
+      // Collect editable custom fields
+      const editableCustomFields = customFields
+        .filter(field => field.editable && field.name.trim())
+        .map(field => field.name.trim());
+
+      // Combine default editable fields and custom editable fields
+      const allEditableFields = [
+        ...(formData.editableFields || editingTask.editableFields || []),
+        ...editableCustomFields
+      ].filter((value, index, self) => self.indexOf(value) === index); // Remove duplicates
+
       const updatedTask: Task = {
         ...editingTask,
         assignedOn: formData.assignedOn || editingTask.assignedOn,
@@ -362,7 +415,8 @@ const TaskManagerPage: NextPage = () => {
         supportingLinksByUser: formData.supportingLinksByUser || '',
         meetingLink: formData.meetingLink || '',
         assignedTo: originalAssignedTo, // Keep original assigned user
-        customFields: customFieldsToObject(customFields)
+        customFields: customFieldsToObject(customFields),
+        editableFields: allEditableFields
       };
 
       const res = await fetch("/api/tasks", {
@@ -437,7 +491,8 @@ const TaskManagerPage: NextPage = () => {
       const initialCustomFields: CustomFieldForm[] = Array.from(existingKeys).map((key, index) => ({
         id: `custom-${Date.now()}-${index}`,
         name: key,
-        value: ''
+        value: '',
+        editable: true
       }));
 
       setFormData({
@@ -453,6 +508,7 @@ const TaskManagerPage: NextPage = () => {
         meetingLink: '',
         assignedTo: [selectedMember.id],
         customFields: {},
+        editableFields: ['status', 'notesByUser', 'supportingLinksByUser', 'meetingLink'], // Default editable fields
         showAssignDropdown: false
       });
       setCustomFields(initialCustomFields);
@@ -1299,9 +1355,18 @@ const TaskManagerPage: NextPage = () => {
 
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '16px', marginBottom: '20px' }}>
               <div>
-                <label style={{ display: 'block', marginBottom: '6px', fontSize: '14px', fontWeight: 500 }}>
-                  Assigned On
-                </label>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
+                  <label style={{ fontSize: '14px', fontWeight: 500, margin: 0 }}>
+                    Assigned On
+                  </label>
+                  <input
+                    type="checkbox"
+                    checked={(formData.editableFields || []).includes('assignedOn')}
+                    onChange={() => toggleEditableField('assignedOn')}
+                    style={{ cursor: 'pointer' }}
+                  />
+                  <span style={{ fontSize: '12px', color: '#6b7280' }}>User can edit</span>
+                </div>
                 <input
                   type="date"
                   min={new Date().toISOString().split('T')[0]}
@@ -1318,9 +1383,18 @@ const TaskManagerPage: NextPage = () => {
               </div>
 
               <div>
-                <label style={{ display: 'block', marginBottom: '6px', fontSize: '14px', fontWeight: 500 }}>
-                  Deadline <span style={{ color: '#ef4444' }}>*</span>
-                </label>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
+                  <label style={{ fontSize: '14px', fontWeight: 500, margin: 0 }}>
+                    Deadline <span style={{ color: '#ef4444' }}>*</span>
+                  </label>
+                  <input
+                    type="checkbox"
+                    checked={(formData.editableFields || []).includes('deadline')}
+                    onChange={() => toggleEditableField('deadline')}
+                    style={{ cursor: 'pointer' }}
+                  />
+                  <span style={{ fontSize: '12px', color: '#6b7280' }}>User can edit</span>
+                </div>
                 <input
                   type="date"
                   min={new Date().toISOString().split('T')[0]}
@@ -1337,9 +1411,18 @@ const TaskManagerPage: NextPage = () => {
               </div>
 
               <div>
-                <label style={{ display: 'block', marginBottom: '6px', fontSize: '14px', fontWeight: 500 }}>
-                  Priority
-                </label>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
+                  <label style={{ fontSize: '14px', fontWeight: 500, margin: 0 }}>
+                    Priority
+                  </label>
+                  <input
+                    type="checkbox"
+                    checked={(formData.editableFields || []).includes('priority')}
+                    onChange={() => toggleEditableField('priority')}
+                    style={{ cursor: 'pointer' }}
+                  />
+                  <span style={{ fontSize: '12px', color: '#6b7280' }}>User can edit</span>
+                </div>
                 <select
                   value={formData.priority}
                   onChange={(e) => setFormData(prev => ({ ...prev, priority: e.target.value as any }))}
@@ -1359,9 +1442,18 @@ const TaskManagerPage: NextPage = () => {
               </div>
 
               <div>
-                <label style={{ display: 'block', marginBottom: '6px', fontSize: '14px', fontWeight: 500 }}>
-                  Status
-                </label>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
+                  <label style={{ fontSize: '14px', fontWeight: 500, margin: 0 }}>
+                    Status
+                  </label>
+                  <input
+                    type="checkbox"
+                    checked={(formData.editableFields || []).includes('status')}
+                    onChange={() => toggleEditableField('status')}
+                    style={{ cursor: 'pointer' }}
+                  />
+                  <span style={{ fontSize: '12px', color: '#6b7280' }}>User can edit</span>
+                </div>
                 <select
                   value={formData.status}
                   onChange={(e) => setFormData(prev => ({ ...prev, status: e.target.value as any }))}
@@ -1384,9 +1476,18 @@ const TaskManagerPage: NextPage = () => {
             </div>
 
             <div style={{ marginBottom: '16px' }}>
-              <label style={{ display: 'block', marginBottom: '6px', fontSize: '14px', fontWeight: 500 }}>
-                Task Description <span style={{ color: '#ef4444' }}>*</span>
-              </label>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
+                <label style={{ fontSize: '14px', fontWeight: 500, margin: 0 }}>
+                  Task Description <span style={{ color: '#ef4444' }}>*</span>
+                </label>
+                <input
+                  type="checkbox"
+                  checked={(formData.editableFields || []).includes('description')}
+                  onChange={() => toggleEditableField('description')}
+                  style={{ cursor: 'pointer' }}
+                />
+                <span style={{ fontSize: '12px', color: '#6b7280' }}>User can edit</span>
+              </div>
               <textarea
                 value={formData.description}
                 onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
@@ -1404,9 +1505,18 @@ const TaskManagerPage: NextPage = () => {
             </div>
 
             <div style={{ marginBottom: '16px' }}>
-              <label style={{ display: 'block', marginBottom: '6px', fontSize: '14px', fontWeight: 500 }}>
-                Notes by Manager
-              </label>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
+                <label style={{ fontSize: '14px', fontWeight: 500, margin: 0 }}>
+                  Notes by Manager
+                </label>
+                <input
+                  type="checkbox"
+                  checked={(formData.editableFields || []).includes('notesByManager')}
+                  onChange={() => toggleEditableField('notesByManager')}
+                  style={{ cursor: 'pointer' }}
+                />
+                <span style={{ fontSize: '12px', color: '#6b7280' }}>User can edit</span>
+              </div>
               <textarea
                 value={formData.notesByManager}
                 onChange={(e) => setFormData(prev => ({ ...prev, notesByManager: e.target.value }))}
@@ -1424,9 +1534,18 @@ const TaskManagerPage: NextPage = () => {
             </div>
 
             <div style={{ marginBottom: '16px' }}>
-              <label style={{ display: 'block', marginBottom: '6px', fontSize: '14px', fontWeight: 500 }}>
-                Document Link by Manager
-              </label>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
+                <label style={{ fontSize: '14px', fontWeight: 500, margin: 0 }}>
+                  Document Link by Manager
+                </label>
+                <input
+                  type="checkbox"
+                  checked={(formData.editableFields || []).includes('documentLinkByManager')}
+                  onChange={() => toggleEditableField('documentLinkByManager')}
+                  style={{ cursor: 'pointer' }}
+                />
+                <span style={{ fontSize: '12px', color: '#6b7280' }}>User can edit</span>
+              </div>
               <input
                 type="text"
                 value={formData.documentLinkByManager}
@@ -1443,9 +1562,18 @@ const TaskManagerPage: NextPage = () => {
             </div>
 
             <div style={{ marginBottom: '16px' }}>
-              <label style={{ display: 'block', marginBottom: '6px', fontSize: '14px', fontWeight: 500 }}>
-                Notes by User
-              </label>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
+                <label style={{ fontSize: '14px', fontWeight: 500, margin: 0 }}>
+                  Notes by User
+                </label>
+                <input
+                  type="checkbox"
+                  checked={(formData.editableFields || []).includes('notesByUser')}
+                  onChange={() => toggleEditableField('notesByUser')}
+                  style={{ cursor: 'pointer' }}
+                />
+                <span style={{ fontSize: '12px', color: '#6b7280' }}>User can edit</span>
+              </div>
               <textarea
                 value={formData.notesByUser}
                 onChange={(e) => setFormData(prev => ({ ...prev, notesByUser: e.target.value }))}
@@ -1463,9 +1591,18 @@ const TaskManagerPage: NextPage = () => {
             </div>
 
             <div style={{ marginBottom: '16px' }}>
-              <label style={{ display: 'block', marginBottom: '6px', fontSize: '14px', fontWeight: 500 }}>
-                Supporting Links by User
-              </label>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
+                <label style={{ fontSize: '14px', fontWeight: 500, margin: 0 }}>
+                  Supporting Links by User
+                </label>
+                <input
+                  type="checkbox"
+                  checked={(formData.editableFields || []).includes('supportingLinksByUser')}
+                  onChange={() => toggleEditableField('supportingLinksByUser')}
+                  style={{ cursor: 'pointer' }}
+                />
+                <span style={{ fontSize: '12px', color: '#6b7280' }}>User can edit</span>
+              </div>
               <input
                 type="text"
                 value={formData.supportingLinksByUser}
@@ -1482,9 +1619,18 @@ const TaskManagerPage: NextPage = () => {
             </div>
 
             <div style={{ marginBottom: '20px' }}>
-              <label style={{ display: 'block', marginBottom: '6px', fontSize: '14px', fontWeight: 500 }}>
-                Meeting Link
-              </label>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
+                <label style={{ fontSize: '14px', fontWeight: 500, margin: 0 }}>
+                  Meeting Link
+                </label>
+                <input
+                  type="checkbox"
+                  checked={(formData.editableFields || []).includes('meetingLink')}
+                  onChange={() => toggleEditableField('meetingLink')}
+                  style={{ cursor: 'pointer' }}
+                />
+                <span style={{ fontSize: '12px', color: '#6b7280' }}>User can edit</span>
+              </div>
               <input
                 type="text"
                 value={formData.meetingLink}
@@ -1560,6 +1706,15 @@ const TaskManagerPage: NextPage = () => {
                         fontSize: '14px'
                       }}
                     />
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', paddingBottom: '8px' }}>
+                    <input
+                      type="checkbox"
+                      checked={field.editable}
+                      onChange={() => toggleCustomFieldEditable(field.id)}
+                      style={{ cursor: 'pointer' }}
+                    />
+                    <span style={{ fontSize: '12px', color: '#6b7280' }}>User can edit</span>
                   </div>
                   <button
                     type="button"
@@ -1709,9 +1864,18 @@ const TaskManagerPage: NextPage = () => {
 
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '16px', marginBottom: '20px' }}>
               <div>
-                <label style={{ display: 'block', marginBottom: '6px', fontSize: '14px', fontWeight: 500 }}>
-                  Assigned On
-                </label>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
+                  <label style={{ fontSize: '14px', fontWeight: 500, margin: 0 }}>
+                    Assigned On
+                  </label>
+                  <input
+                    type="checkbox"
+                    checked={(formData.editableFields || []).includes('assignedOn')}
+                    onChange={() => toggleEditableField('assignedOn')}
+                    style={{ cursor: 'pointer' }}
+                  />
+                  <span style={{ fontSize: '12px', color: '#6b7280' }}>User can edit</span>
+                </div>
                 <input
                   type="date"
                   min={new Date().toISOString().split('T')[0]}
@@ -1728,9 +1892,18 @@ const TaskManagerPage: NextPage = () => {
               </div>
 
               <div>
-                <label style={{ display: 'block', marginBottom: '6px', fontSize: '14px', fontWeight: 500 }}>
-                  Deadline <span style={{ color: '#ef4444' }}>*</span>
-                </label>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
+                  <label style={{ fontSize: '14px', fontWeight: 500, margin: 0 }}>
+                    Deadline <span style={{ color: '#ef4444' }}>*</span>
+                  </label>
+                  <input
+                    type="checkbox"
+                    checked={(formData.editableFields || []).includes('deadline')}
+                    onChange={() => toggleEditableField('deadline')}
+                    style={{ cursor: 'pointer' }}
+                  />
+                  <span style={{ fontSize: '12px', color: '#6b7280' }}>User can edit</span>
+                </div>
                 <input
                   type="date"
                   min={new Date().toISOString().split('T')[0]}
@@ -1747,9 +1920,18 @@ const TaskManagerPage: NextPage = () => {
               </div>
 
               <div>
-                <label style={{ display: 'block', marginBottom: '6px', fontSize: '14px', fontWeight: 500 }}>
-                  Priority
-                </label>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
+                  <label style={{ fontSize: '14px', fontWeight: 500, margin: 0 }}>
+                    Priority
+                  </label>
+                  <input
+                    type="checkbox"
+                    checked={(formData.editableFields || []).includes('priority')}
+                    onChange={() => toggleEditableField('priority')}
+                    style={{ cursor: 'pointer' }}
+                  />
+                  <span style={{ fontSize: '12px', color: '#6b7280' }}>User can edit</span>
+                </div>
                 <select
                   value={formData.priority}
                   onChange={(e) => setFormData(prev => ({ ...prev, priority: e.target.value as any }))}
@@ -1769,9 +1951,18 @@ const TaskManagerPage: NextPage = () => {
               </div>
 
               <div>
-                <label style={{ display: 'block', marginBottom: '6px', fontSize: '14px', fontWeight: 500 }}>
-                  Status
-                </label>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
+                  <label style={{ fontSize: '14px', fontWeight: 500, margin: 0 }}>
+                    Status
+                  </label>
+                  <input
+                    type="checkbox"
+                    checked={(formData.editableFields || []).includes('status')}
+                    onChange={() => toggleEditableField('status')}
+                    style={{ cursor: 'pointer' }}
+                  />
+                  <span style={{ fontSize: '12px', color: '#6b7280' }}>User can edit</span>
+                </div>
                 <select
                   value={formData.status}
                   onChange={(e) => setFormData(prev => ({ ...prev, status: e.target.value as any }))}
@@ -1794,9 +1985,18 @@ const TaskManagerPage: NextPage = () => {
             </div>
 
             <div style={{ marginBottom: '16px' }}>
-              <label style={{ display: 'block', marginBottom: '6px', fontSize: '14px', fontWeight: 500 }}>
-                Task Description <span style={{ color: '#ef4444' }}>*</span>
-              </label>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
+                <label style={{ fontSize: '14px', fontWeight: 500, margin: 0 }}>
+                  Task Description <span style={{ color: '#ef4444' }}>*</span>
+                </label>
+                <input
+                  type="checkbox"
+                  checked={(formData.editableFields || []).includes('description')}
+                  onChange={() => toggleEditableField('description')}
+                  style={{ cursor: 'pointer' }}
+                />
+                <span style={{ fontSize: '12px', color: '#6b7280' }}>User can edit</span>
+              </div>
               <textarea
                 value={formData.description}
                 onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
@@ -1814,9 +2014,18 @@ const TaskManagerPage: NextPage = () => {
             </div>
 
             <div style={{ marginBottom: '16px' }}>
-              <label style={{ display: 'block', marginBottom: '6px', fontSize: '14px', fontWeight: 500 }}>
-                Notes by Manager
-              </label>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
+                <label style={{ fontSize: '14px', fontWeight: 500, margin: 0 }}>
+                  Notes by Manager
+                </label>
+                <input
+                  type="checkbox"
+                  checked={(formData.editableFields || []).includes('notesByManager')}
+                  onChange={() => toggleEditableField('notesByManager')}
+                  style={{ cursor: 'pointer' }}
+                />
+                <span style={{ fontSize: '12px', color: '#6b7280' }}>User can edit</span>
+              </div>
               <textarea
                 value={formData.notesByManager}
                 onChange={(e) => setFormData(prev => ({ ...prev, notesByManager: e.target.value }))}
@@ -1834,9 +2043,18 @@ const TaskManagerPage: NextPage = () => {
             </div>
 
             <div style={{ marginBottom: '16px' }}>
-              <label style={{ display: 'block', marginBottom: '6px', fontSize: '14px', fontWeight: 500 }}>
-                Document Link by Manager
-              </label>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
+                <label style={{ fontSize: '14px', fontWeight: 500, margin: 0 }}>
+                  Document Link by Manager
+                </label>
+                <input
+                  type="checkbox"
+                  checked={(formData.editableFields || []).includes('documentLinkByManager')}
+                  onChange={() => toggleEditableField('documentLinkByManager')}
+                  style={{ cursor: 'pointer' }}
+                />
+                <span style={{ fontSize: '12px', color: '#6b7280' }}>User can edit</span>
+              </div>
               <input
                 type="text"
                 value={formData.documentLinkByManager}
@@ -1853,9 +2071,18 @@ const TaskManagerPage: NextPage = () => {
             </div>
 
             <div style={{ marginBottom: '16px' }}>
-              <label style={{ display: 'block', marginBottom: '6px', fontSize: '14px', fontWeight: 500 }}>
-                Notes by User
-              </label>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
+                <label style={{ fontSize: '14px', fontWeight: 500, margin: 0 }}>
+                  Notes by User
+                </label>
+                <input
+                  type="checkbox"
+                  checked={(formData.editableFields || []).includes('notesByUser')}
+                  onChange={() => toggleEditableField('notesByUser')}
+                  style={{ cursor: 'pointer' }}
+                />
+                <span style={{ fontSize: '12px', color: '#6b7280' }}>User can edit</span>
+              </div>
               <textarea
                 value={formData.notesByUser}
                 onChange={(e) => setFormData(prev => ({ ...prev, notesByUser: e.target.value }))}
@@ -1873,9 +2100,18 @@ const TaskManagerPage: NextPage = () => {
             </div>
 
             <div style={{ marginBottom: '16px' }}>
-              <label style={{ display: 'block', marginBottom: '6px', fontSize: '14px', fontWeight: 500 }}>
-                Supporting Links by User
-              </label>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
+                <label style={{ fontSize: '14px', fontWeight: 500, margin: 0 }}>
+                  Supporting Links by User
+                </label>
+                <input
+                  type="checkbox"
+                  checked={(formData.editableFields || []).includes('supportingLinksByUser')}
+                  onChange={() => toggleEditableField('supportingLinksByUser')}
+                  style={{ cursor: 'pointer' }}
+                />
+                <span style={{ fontSize: '12px', color: '#6b7280' }}>User can edit</span>
+              </div>
               <input
                 type="text"
                 value={formData.supportingLinksByUser}
@@ -1892,9 +2128,18 @@ const TaskManagerPage: NextPage = () => {
             </div>
 
             <div style={{ marginBottom: '20px' }}>
-              <label style={{ display: 'block', marginBottom: '6px', fontSize: '14px', fontWeight: 500 }}>
-                Meeting Link
-              </label>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
+                <label style={{ fontSize: '14px', fontWeight: 500, margin: 0 }}>
+                  Meeting Link
+                </label>
+                <input
+                  type="checkbox"
+                  checked={(formData.editableFields || []).includes('meetingLink')}
+                  onChange={() => toggleEditableField('meetingLink')}
+                  style={{ cursor: 'pointer' }}
+                />
+                <span style={{ fontSize: '12px', color: '#6b7280' }}>User can edit</span>
+              </div>
               <input
                 type="text"
                 value={formData.meetingLink}
@@ -1970,6 +2215,15 @@ const TaskManagerPage: NextPage = () => {
                         fontSize: '14px'
                       }}
                     />
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', paddingBottom: '8px' }}>
+                    <input
+                      type="checkbox"
+                      checked={field.editable}
+                      onChange={() => toggleCustomFieldEditable(field.id)}
+                      style={{ cursor: 'pointer' }}
+                    />
+                    <span style={{ fontSize: '12px', color: '#6b7280' }}>User can edit</span>
                   </div>
                   <button
                     type="button"
