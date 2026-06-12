@@ -500,18 +500,29 @@ const TaskManagerPage: NextPage = () => {
     if (selectedMember) {
       // Collect all unique custom field keys from the selected user's existing tasks
       const existingKeys = new Set<string>();
+      const fieldEditability = new Map<string, boolean>();
+      
       selectedMemberTasks.forEach(task => {
         if (task.customFields) {
-          Object.keys(task.customFields).forEach(key => existingKeys.add(key));
+          Object.keys(task.customFields).forEach(key => {
+            existingKeys.add(key);
+            // Check if this field was editable in any existing task
+            if (task.editableFields && task.editableFields.includes(key)) {
+              fieldEditability.set(key, true);
+            } else if (!fieldEditability.has(key)) {
+              // Only set to false if we haven't already found it to be editable
+              fieldEditability.set(key, false);
+            }
+          });
         }
       });
 
-      // Convert keys to custom fields form array
+      // Convert keys to custom fields form array with preserved editability
       const initialCustomFields: CustomFieldForm[] = Array.from(existingKeys).map((key, index) => ({
         id: `custom-${Date.now()}-${index}`,
         name: key,
         value: '',
-        editable: true
+        editable: fieldEditability.get(key) || false
       }));
 
       setFormData({
