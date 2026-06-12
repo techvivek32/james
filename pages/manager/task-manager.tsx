@@ -982,29 +982,30 @@ const TaskManagerPage: NextPage = () => {
                         {new Date(task.assignedOn).toLocaleDateString()}
                       </td>
                       <td style={{ 
-                        padding: '12px 16px', 
-                        verticalAlign: 'top', 
-                        fontSize: '14px', 
-                        color: '#000000', 
-                        fontWeight: 500, 
-                        wordBreak: 'break-word', 
-                        border: '1px solid #000000',
-                        width: `${columnWidths.description}px`
-                      }}>
-                        {task.description}
-                      </td>
-                      <td style={{ 
-                        padding: '12px 16px', 
-                        verticalAlign: 'top', 
-                        fontSize: '14px', 
-                        color: '#000000', 
-                        whiteSpace: 'nowrap', 
-                        border: '1px solid #000000',
-                        width: `${columnWidths.deadline}px`
-                      }}>
-                        {new Date(task.deadline).toLocaleDateString()}
-                      </td>
-                      <td style={{ 
+                      padding: '12px 16px', 
+                      verticalAlign: 'top', 
+                      fontSize: '14px', 
+                      color: '#000000', 
+                      fontWeight: 500, 
+                      wordBreak: 'break-word',
+                      whiteSpace: 'pre-line',
+                      border: '1px solid #000000',
+                      width: `${columnWidths.description}px`
+                    }}>
+                      {task.description}
+                    </td>
+                    <td style={{ 
+                      padding: '12px 16px', 
+                      verticalAlign: 'top', 
+                      fontSize: '14px', 
+                      color: '#000000', 
+                      whiteSpace: 'nowrap', 
+                      border: '1px solid #000000',
+                      width: `${columnWidths.deadline}px`
+                    }}>
+                      {new Date(task.deadline).toLocaleDateString()}
+                    </td>
+                    <td style={{ 
                       padding: '12px 16px', 
                       verticalAlign: 'top', 
                       whiteSpace: 'nowrap', 
@@ -1049,7 +1050,8 @@ const TaskManagerPage: NextPage = () => {
                         verticalAlign: 'top', 
                         fontSize: '13px', 
                         color: '#000000', 
-                        wordBreak: 'break-word', 
+                        wordBreak: 'break-word',
+                        whiteSpace: 'pre-line',
                         border: '1px solid #000000',
                         width: `${columnWidths.notesByManager}px`
                       }}>
@@ -1060,7 +1062,8 @@ const TaskManagerPage: NextPage = () => {
                         verticalAlign: 'top', 
                         fontSize: '13px', 
                         color: '#000000', 
-                        wordBreak: 'break-word', 
+                        wordBreak: 'break-word',
+                        whiteSpace: 'pre-line',
                         border: '1px solid #000000',
                         width: `${columnWidths.notesByUser}px`
                       }}>
@@ -1120,7 +1123,8 @@ const TaskManagerPage: NextPage = () => {
                             verticalAlign: 'top', 
                             fontSize: '13px', 
                             color: '#000000', 
-                            wordBreak: 'break-word', 
+                            wordBreak: 'break-word',
+                            whiteSpace: 'pre-line',
                             border: '1px solid #000000',
                             width: `${columnWidths[key] || 150}px`
                           }}>
