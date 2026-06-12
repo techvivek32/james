@@ -16,7 +16,7 @@ type Task = {
   notesByUser: string;
   supportingLinksByUser: string;
   meetingLink: string;
-  assignedTo: string[];
+  assignedTo: string | string[]; // Accept both formats for backward compatibility
 };
 
 const TaskManagerPage: NextPage = () => {
@@ -100,9 +100,14 @@ const TaskManagerPage: NextPage = () => {
 
   const selectedMember = teamMembers.find(m => m.id === selectedMemberId);
   
-  const selectedMemberTasks = tasks.filter(task => 
-    selectedMemberId ? task.assignedTo.includes(selectedMemberId) : false
-  );
+  const selectedMemberTasks = tasks.filter(task => {
+    if (!selectedMemberId) return false;
+    // Handle both old format (array) and new format (single string)
+    if (Array.isArray(task.assignedTo)) {
+      return task.assignedTo.includes(selectedMemberId);
+    }
+    return task.assignedTo === selectedMemberId;
+  });
 
   const scrollMembers = (direction: 'left' | 'right') => {
     if (membersContainerRef.current) {
@@ -122,8 +127,7 @@ const TaskManagerPage: NextPage = () => {
 
     setLoading(true);
     try {
-      const newTask: Task = {
-        id: `task-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      const taskData = {
         assignedOn: formData.assignedOn || new Date().toISOString().split('T')[0],
         description: formData.description,
         deadline: formData.deadline,
@@ -140,12 +144,14 @@ const TaskManagerPage: NextPage = () => {
       const res = await fetch("/api/tasks", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(newTask)
+        body: JSON.stringify(taskData)
       });
 
       if (res.ok) {
-        const savedTask = await res.json();
-        setTasks([...tasks, savedTask]);
+        const savedTasks = await res.json();
+        // Handle both single task and array of tasks
+        const newTasks = Array.isArray(savedTasks) ? savedTasks : [savedTasks];
+        setTasks([...tasks, ...newTasks]);
         setShowCreateModal(false);
         // Reset form
         setFormData({
@@ -186,7 +192,7 @@ const TaskManagerPage: NextPage = () => {
       notesByUser: task.notesByUser,
       supportingLinksByUser: task.supportingLinksByUser,
       meetingLink: task.meetingLink,
-      assignedTo: task.assignedTo,
+      assignedTo: Array.isArray(task.assignedTo) ? task.assignedTo : [task.assignedTo],
       showAssignDropdown: false
     });
     setShowEditModal(true);
@@ -200,6 +206,12 @@ const TaskManagerPage: NextPage = () => {
 
     setLoading(true);
     try {
+      // For backward compatibility: if editingTask might have array assignedTo
+      // Convert to single string using the first user or keep as string
+      const originalAssignedTo = Array.isArray(editingTask.assignedTo) 
+        ? editingTask.assignedTo[0] 
+        : editingTask.assignedTo;
+
       const updatedTask: Task = {
         ...editingTask,
         assignedOn: formData.assignedOn || editingTask.assignedOn,
@@ -211,7 +223,8 @@ const TaskManagerPage: NextPage = () => {
         documentLinkByManager: formData.documentLinkByManager || '',
         notesByUser: formData.notesByUser || '',
         supportingLinksByUser: formData.supportingLinksByUser || '',
-        meetingLink: formData.meetingLink || ''
+        meetingLink: formData.meetingLink || '',
+        assignedTo: originalAssignedTo // Keep original assigned user
       };
 
       const res = await fetch("/api/tasks", {

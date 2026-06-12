@@ -21,7 +21,7 @@ const taskSchema = new Schema(
     notesByUser: { type: String, default: "" },
     supportingLinksByUser: { type: String, default: "" },
     meetingLink: { type: String, default: "" },
-    assignedTo: { type: [String], required: true },
+    assignedTo: { type: String, required: true },
   },
   { timestamps: true }
 );
