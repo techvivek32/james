@@ -284,7 +284,7 @@ const TaskTracker: NextPage = () => {
 
   return (
     <SalesLayout currentView="task-tracker">
-      <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '0', paddingTop: '16px' }}>
+      <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '0', paddingTop: '0' }}>
         <h1 className="page-title" style={{ marginTop: '0', marginBottom: '0' }}>My Tasks</h1>
       </div>
       
