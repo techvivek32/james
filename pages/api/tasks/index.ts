@@ -16,12 +16,14 @@ async function handler(
       query.assignedTo = assignedTo;
     }
     const tasks = await TaskModel.find(query).lean();
+    console.log('API GET returning tasks:', tasks);
     res.status(200).json(tasks);
     return;
   }
 
   if (req.method === "POST") {
     console.log('API POST received:', req.body);
+    console.log('req.body.editableFields:', req.body.editableFields);
     
     const { assignedTo, ...taskData } = req.body;
     
@@ -35,25 +37,32 @@ async function handler(
             assignedTo: userId
           };
           console.log('Creating task for user:', userId, taskToCreate);
+          console.log('taskToCreate.editableFields:', taskToCreate.editableFields);
           return TaskModel.create(taskToCreate);
         })
       );
+      console.log('Tasks created:', tasks);
       res.status(201).json(tasks);
     } else {
       // Single user, create one task
       const task = await TaskModel.create(req.body);
+      console.log('Single task created:', task);
       res.status(201).json(task);
     }
     return;
   }
 
   if (req.method === "PUT") {
+    console.log('API PUT received:', req.body);
+    console.log('req.body.id:', req.body.id);
+    console.log('req.body.editableFields:', req.body.editableFields);
     const { id } = req.body;
     const task = await TaskModel.findOneAndUpdate(
       { id },
       req.body,
       { new: true }
     ).lean();
+    console.log('Task updated:', task);
     res.status(200).json(task);
     return;
   }

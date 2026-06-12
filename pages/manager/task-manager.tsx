@@ -110,7 +110,15 @@ const TaskManagerPage: NextPage = () => {
       try {
         const res = await fetch("/api/tasks");
         if (res.ok) {
-          setTasks(await res.json());
+          const loadedTasks = await res.json();
+          console.log('Loaded tasks:', loadedTasks);
+          console.log('Each task editableFields:', loadedTasks.map(t => t.editableFields));
+          // Ensure all tasks have editableFields
+          const tasksWithEditableFields = loadedTasks.map(task => ({
+            ...task,
+            editableFields: task.editableFields || []
+          }));
+          setTasks(tasksWithEditableFields);
         }
       } catch (error) {
         console.error("Failed to load tasks:", error);
@@ -191,8 +199,10 @@ const TaskManagerPage: NextPage = () => {
 
   // Toggle editable fields
   const toggleEditableField = (fieldName: string) => {
+    console.log('toggleEditableField called with:', fieldName);
     setFormData(prev => {
       const currentEditable = prev.editableFields || [];
+      console.log('Current editable fields:', currentEditable);
       if (currentEditable.includes(fieldName)) {
         return {
           ...prev,
@@ -312,6 +322,7 @@ const TaskManagerPage: NextPage = () => {
       };
 
       console.log('Sending task data to API:', taskData);
+      console.log('allEditableFields:', allEditableFields);
 
       const res = await fetch("/api/tasks", {
         method: "POST",
@@ -355,6 +366,10 @@ const TaskManagerPage: NextPage = () => {
   };
 
   const handleEditTask = (task: Task) => {
+    console.log('handleEditTask task:', task);
+    console.log('task.editableFields:', task.editableFields);
+    console.log('task.customFields:', task.customFields);
+    
     setEditingTask(task);
     setFormData({
       assignedOn: task.assignedOn,
@@ -373,7 +388,9 @@ const TaskManagerPage: NextPage = () => {
       showAssignDropdown: false
     });
     // Populate custom fields from task
-    setCustomFields(customFieldsToArray(task.customFields || {}, task.editableFields || []));
+    const customFieldsArray = customFieldsToArray(task.customFields || {}, task.editableFields || []);
+    console.log('customFieldsArray:', customFieldsArray);
+    setCustomFields(customFieldsArray);
     setShowEditModal(true);
   };
 
@@ -418,6 +435,8 @@ const TaskManagerPage: NextPage = () => {
         customFields: customFieldsToObject(customFields),
         editableFields: allEditableFields
       };
+      console.log('handleSaveEdit updatedTask:', updatedTask);
+      console.log('allEditableFields:', allEditableFields);
 
       const res = await fetch("/api/tasks", {
         method: "PUT",
