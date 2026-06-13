@@ -41,29 +41,19 @@ export function ManagerDashboard(props: { teamMembers: UserProfile[] }) {
     async function fetchTeamData() {
       try {
         // Get team members for this manager
-        const usersRes = await fetch("/api/users");
+        const usersRes = await fetch(`/api/users?role=sales&managerId=${user?.id}`);
         if (usersRes.ok) {
-          const allUsers = await usersRes.json();
-          const teamMembers = allUsers.filter((u: UserProfile) => u.managerId === user?.id && u.role === "sales");
+          const teamMembers = await usersRes.json();
           
-          // Fetch business plans for team members
-          const plansPromises = teamMembers.map((member: UserProfile) =>
-            fetch(`/api/business-plan?userId=${member.id}`)
-              .then(r => r.json())
-              .then(data => {
-                const userPlan = data.find((p: any) => p.userId === member.id);
-                return {
-                  userId: member.id,
-                  userName: member.name,
-                  businessPlan: userPlan?.businessPlan
-                };
-              })
-          );
+          // Use businessPlan that's already in User object!
+          const committed = teamMembers
+            .filter((member: any) => member.businessPlan?.committed)
+            .map((member: any) => ({
+              userId: member.id,
+              userName: member.name,
+              businessPlan: member.businessPlan
+            }));
           
-          const plans = await Promise.all(plansPromises);
-          
-          // Filter only committed plans
-          const committed = plans.filter(p => p.businessPlan?.committed);
           setCommittedPlans(committed);
         }
 

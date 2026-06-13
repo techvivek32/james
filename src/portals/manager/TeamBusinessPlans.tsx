@@ -21,28 +21,13 @@ export function TeamBusinessPlansPage() {
   }, [user?.id]);
 
   async function fetchTeamData() {
+    if (!user?.id) return;
     try {
-      const usersRes = await fetch("/api/users");
+      const usersRes = await fetch(`/api/users?role=sales&managerId=${user.id}`);
       if (usersRes.ok) {
-        const allUsers = await usersRes.json();
-        // Filter team members assigned to this manager
-        const team = allUsers.filter((u: UserProfile) => u.managerId === user?.id && u.role === "sales");
-        
-        // Fetch their business plans
-        const plansPromises = team.map((member: UserProfile) =>
-          fetch(`/api/business-plan?userId=${member.id}`)
-            .then(r => r.json())
-            .then(data => {
-              const userPlan = data.find((p: any) => p.userId === member.id);
-              return {
-                ...member,
-                businessPlan: userPlan?.businessPlan
-              };
-            })
-        );
-        
-        const teamWithPlans = await Promise.all(plansPromises);
-        setTeamMembers(teamWithPlans);
+        const team = await usersRes.json();
+        // User objects already have businessPlan field!
+        setTeamMembers(team);
       }
     } catch (error) {
       console.error('Failed to fetch team data:', error);

@@ -38,14 +38,10 @@ export function TrainingExecutiveView() {
   useEffect(() => {
     async function load() {
       try {
-        const [coursesRes, usersRes] = await Promise.all([
-          fetch("/api/courses"),
-          fetch("/api/users"),
-        ]);
-        const courses = coursesRes.ok ? await coursesRes.json() : [];
-        const allUsers = usersRes.ok ? await usersRes.json() : [];
+        const response = await fetch("/api/admin/training-executive-data");
+        const { courses, users, progress: allProgressRecords } = response.ok ? await response.json() : { courses: [], users: [], progress: [] };
 
-        const targetUsers = allUsers.filter(
+        const targetUsers = users.filter(
           (u: any) =>
             !u.deleted &&
             !u.suspended &&
@@ -60,15 +56,18 @@ export function TrainingExecutiveView() {
           return;
         }
 
-        const courseIds = published.map((c: any) => c.id).join(",");
-
-        const allProgress = await Promise.all(
-          targetUsers.map((u: any) =>
-            fetch(`/api/course-progress?userId=${u.id}&courseIds=${courseIds}`)
-              .then((r) => (r.ok ? r.json() : {}))
-              .catch(() => ({}))
-          )
-        );
+        // Create a map: userId -> courseId -> progress
+        const progressMap: Record<string, Record<string, any>> = {};
+        allProgressRecords.forEach((record: any) => {
+          if (!progressMap[record.userId]) {
+            progressMap[record.userId] = {};
+          }
+          progressMap[record.userId][record.courseId] = {
+            completedPages: record.completedPages || [],
+            quizResults: record.quizResults || [],
+            courseCompleted: record.courseCompleted || false
+          };
+        });
 
         const result: CourseStats[] = published.map((course: any) => {
           const lessonPages = (course.pages || []).filter(
@@ -82,8 +81,8 @@ export function TrainingExecutiveView() {
           const managers: UserRow[] = [];
           const sales: UserRow[] = [];
 
-          targetUsers.forEach((u: any, i: number) => {
-            const rec = allProgress[i][course.id] || {};
+          targetUsers.forEach((u: any) => {
+            const rec = progressMap[u.id]?.[course.id] || {};
             const done = (rec.completedPages || []).filter((id: string) => lessonIds.has(id)).length;
             const pct = total > 0 ? Math.round((done / total) * 100) : 0;
             totalPct += pct;

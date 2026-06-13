@@ -87,20 +87,16 @@ class _ManagerViewTeamScreenState extends State<ManagerViewTeamScreen> {
     setState(() => _isLoading = true);
 
     try {
-      final response = await http.get(Uri.parse('https://millerstorm.tech/api/users'));
+      print('Fetching users with managerId: $_userId');
+      final response = await http.get(Uri.parse('https://millerstorm.tech/api/users?role=sales&managerId=$_userId'));
+      print('Users API response status: ${response.statusCode}');
       if (response.statusCode == 200) {
         final List<dynamic> allUsers = jsonDecode(response.body);
+        print('Users received: ${allUsers.length}');
         
-        // Filter for team members (sales users under this manager)
-        final team = allUsers.where((u) {
-          final mId = _extractId({'id': u['managerId']});
-          final role = (u['role'] ?? '').toString();
-          return mId == _userId && role == 'sales';
-        }).toList();
-
         setState(() {
-          _teamMembers = team;
-          _filteredMembers = team;
+          _teamMembers = allUsers;
+          _filteredMembers = allUsers;
           _isLoading = false;
         });
       }
