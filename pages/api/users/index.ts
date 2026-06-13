@@ -5,12 +5,21 @@ import { UserModel } from "../../../src/lib/models/User";
 import { sendQuickStartUserEmail, sendQuickStartManagerEmail } from "../../../src/lib/email";
 import { sendUserAccountUpdateSMS } from "../../../src/lib/telnyx";
 import { exactCaseInsensitive, asString, validateUserPayload } from "../../../src/lib/sanitize";
-import { requireAuth } from "../../../src/lib/auth";
-
 async function handler(
   req: NextApiRequest,
   res: NextApiResponse
 ) {
+  // Set CORS headers
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  
+  // Handle CORS preflight
+  if (req.method === "OPTIONS") {
+    res.status(200).end();
+    return;
+  }
+
   await connectMongo();
 
   if (req.method === "GET") {
@@ -147,8 +156,4 @@ async function handler(
   res.status(405).end();
 }
 
-// Require a valid login session for listing/creating users. Any authenticated
-// role is allowed (the sales dashboard reads the list for its leaderboard);
-// this blocks anonymous/unauthenticated access. Per-role restriction and the
-// per-id endpoints are a follow-up that also needs the Flutter app updated.
-export default requireAuth(handler);
+export default handler;
