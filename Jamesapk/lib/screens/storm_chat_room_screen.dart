@@ -101,27 +101,9 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
     _messageController.removeListener(_onMessageTextChanged);
     _messageFocusNode.dispose();
     _scrollController.removeListener(_onScroll);
-    _saveScrollPosition();
     _scrollController.dispose();
     _markAsRead(); // Mark as read when leaving chat
     super.dispose();
-  }
-
-  Future<void> _saveScrollPosition() async {
-    final prefs = await SharedPreferences.getInstance();
-    if (_scrollController.hasClients) {
-      await prefs.setDouble('storm_chat_scroll_${widget.group['_id']}', _scrollController.position.pixels);
-    }
-  }
-
-  Future<void> _loadScrollPosition() async {
-    final prefs = await SharedPreferences.getInstance();
-    final savedPosition = prefs.getDouble('storm_chat_scroll_${widget.group['_id']}');
-    if (savedPosition != null && _scrollController.hasClients) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        _scrollController.jumpTo(savedPosition);
-      });
-    }
   }
 
   void _onScroll() {
@@ -136,13 +118,10 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
           _hasNewMessages = false;
         }
       });
-      
-      // Save scroll position periodically
-      if (currentScroll % 100 < 10) { // Approximate to reduce writes
-        _saveScrollPosition();
-      }
     }
   }
+
+
 
   void _scrollToBottom() {
     if (_scrollController.hasClients) {
@@ -398,10 +377,12 @@ class _StormChatRoomScreenState extends State<StormChatRoomScreen> {
           }
         });
         
-        // On initial load, load saved position or go to bottom
+        // On initial load, go to bottom
         if (!silent) {
           WidgetsBinding.instance.addPostFrameCallback((_) {
-            _loadScrollPosition();
+            if (_scrollController.hasClients) {
+              _scrollController.jumpTo(_scrollController.position.maxScrollExtent);
+            }
           });
         } else if (wasAtBottom) {
           // If user was at bottom and new messages come, scroll to bottom
