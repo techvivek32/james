@@ -32,7 +32,7 @@ const TaskTracker: NextPage = () => {
   const [formData, setFormData] = useState<Partial<Task>>({});
   const [saving, setSaving] = useState(false);
 
-  const [columnWidths, setColumnWidths] = useState({
+  const [columnWidths, setColumnWidths] = useState<Record<string, number>>({
     assignedOn: 120,
     description: 200,
     deadline: 120,
@@ -226,7 +226,6 @@ const TaskTracker: NextPage = () => {
     try {
       // Only update editable fields!
       const updateData: Partial<Task> = {
-        id: editingTask.id,
         ...editingTask, // Keep all original fields
         editableFields: editingTask.editableFields // Don't change editable fields
       };

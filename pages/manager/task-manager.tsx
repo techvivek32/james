@@ -110,11 +110,11 @@ const TaskManagerPage: NextPage = () => {
       try {
         const res = await fetch("/api/tasks");
         if (res.ok) {
-          const loadedTasks = await res.json();
+          const loadedTasks = await res.json() as Task[];
           console.log('Loaded tasks:', loadedTasks);
-          console.log('Each task editableFields:', loadedTasks.map(t => t.editableFields));
+          console.log('Each task editableFields:', loadedTasks.map((t: Task) => t.editableFields));
           // Ensure all tasks have editableFields
-          const tasksWithEditableFields = loadedTasks.map(task => ({
+          const tasksWithEditableFields = loadedTasks.map((task: Task) => ({
             ...task,
             editableFields: task.editableFields || []
           }));
@@ -486,7 +486,11 @@ const TaskManagerPage: NextPage = () => {
 
   const toggleAssignedTo = (memberId: string) => {
     setFormData(prev => {
-      const current = prev.assignedTo || [];
+      let current = prev.assignedTo || [];
+      // If current is a string, convert it to an array
+      if (typeof current === 'string') {
+        current = [current];
+      }
       return {
         ...prev,
         assignedTo: current.includes(memberId) 
