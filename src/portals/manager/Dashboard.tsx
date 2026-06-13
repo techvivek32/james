@@ -128,46 +128,12 @@ export function ManagerDashboard(props: { teamMembers: UserProfile[] }) {
     setLbPickerOpen(false);
     setLbSearch("");
     try {
-      const [coursesData, usersData, hiddenPrefs] = await Promise.all([
-        allCoursesData
-          ? Promise.resolve(allCoursesData)
-          : fetch("/api/courses").then((r) => r.ok ? r.json() : []),
-        fetch("/api/users").then((r) => r.ok ? r.json() : []),
-        fetch("/api/admin/ui-prefs?key=hiddenLeaderboardUsers").then((r) => r.ok ? r.json() : { hiddenIds: [] }),
-      ]);
-
-      const hiddenIds = new Set<string>(hiddenPrefs.hiddenIds || []);
-      const fullCourse = (Array.isArray(coursesData) ? coursesData : []).find((c: any) => c.id === course.id);
-      // Only this manager's sales team
-      const teamUsers = (Array.isArray(usersData) ? usersData : []).filter(
-        (u: any) => !u.deleted && !u.suspended && !hiddenIds.has(u.id) && u.managerId === user?.id && u.role === "sales"
-      );
-
-      if (!fullCourse || !teamUsers.length) { setLbRows([]); setLbLoading(false); return; }
-
-      const lessonPages = (fullCourse.pages || []).filter(
-        (p: any) => p.status === "published" && !p.isQuiz
-      );
-      const total = lessonPages.length;
-      const lessonIds = new Set(lessonPages.map((p: any) => p.id));
-
-      const allProgress: any[] = await Promise.all(
-        teamUsers.map((u: any) =>
-          fetch(`/api/course-progress?userId=${u.id}&courseIds=${course.id}`)
-            .then((r) => r.ok ? r.json() : {})
-            .catch(() => ({}))
-        )
-      );
-
-      const built: LeaderRow[] = teamUsers.map((u: any, i: number) => {
-        const rec = allProgress[i][course.id] || {};
-        const done = (rec.completedPages || []).filter((id: string) => lessonIds.has(id)).length;
-        const pct = total > 0 ? Math.round((done / total) * 100) : 0;
-        return { id: u.id, name: u.name || u.email, email: u.email, done, total, pct };
-      });
-
-      built.sort((a, b) => b.pct - a.pct || a.name.localeCompare(b.name));
-      setLbRows(built);
+      // Use new optimized leaderboard API with managerId to filter to only their team
+      const leaderboardRes = await fetch(`/api/leaderboard?courseId=${course.id}&managerId=${user?.id}`);
+      if (leaderboardRes.ok) {
+        const data = await leaderboardRes.json();
+        setLbRows(data.rows || []);
+      }
     } catch (err) {
       console.error(err);
     } finally {

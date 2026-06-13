@@ -79,78 +79,32 @@ class _TrainingLeaderboardScreenState extends State<TrainingLeaderboardScreen> {
     });
 
     try {
-      // 1. Fetch users (restricted to manager/sales as per web logic)
-      final usersResponse = await http.get(Uri.parse('https://millerstorm.tech/api/users'));
-      if (usersResponse.statusCode != 200) throw Exception('Failed to fetch users');
+      // Use optimized leaderboard API
+      final leaderboardResponse = await http.get(
+        Uri.parse('https://millerstorm.tech/api/leaderboard?courseId=${course['id']}')
+      );
       
-      final List<dynamic> allUsers = jsonDecode(usersResponse.body);
-      final targetUsers = allUsers.where((u) => 
-        u['deleted'] != true && 
-        u['suspended'] != true &&
-        (u['role'] == 'manager' || u['role'] == 'sales' || 
-         (u['roles'] as List<dynamic>?)?.any((r) => r == 'manager' || r == 'sales') == true)
-      ).toList();
+      if (leaderboardResponse.statusCode == 200) {
+        final data = jsonDecode(leaderboardResponse.body);
+        final List<dynamic> rows = data['rows'] ?? [];
+        
+        final List<Map<String, dynamic>> builtRows = rows.map((row) {
+          return {
+            'id': row['id'],
+            'name': row['name'] ?? row['email'] ?? 'Unknown',
+            'email': row['email'] ?? '',
+            'headshotUrl': row['headshotUrl'] ?? '',
+            'done': row['done'],
+            'total': row['total'],
+            'pct': row['pct'],
+          };
+        }).toList();
 
-      // 2. Prepare course lessons for completion calculation
-      final fullCourse = course; // Assuming /api/courses returns enough detail, or fetch specific course if needed
-      final folders = fullCourse['folders'] as List<dynamic>? ?? [];
-      final publishedFolderIds = Set.from(folders.where((f) => f['status'] == 'published').map((f) => f['id']));
-      
-      final lessonPages = (fullCourse['pages'] as List<dynamic>? ?? []).where((p) => 
-        p['status'] == 'published' && 
-        p['isQuiz'] != true && 
-        (p['folderId'] == null || publishedFolderIds.contains(p['folderId']))
-      ).toList();
-      
-      final totalLessons = lessonPages.length;
-      final lessonIds = Set.from(lessonPages.map((p) => p['id']));
-
-      // 3. Fetch progress for each user
-      // Optimization: The web app fetches progress one by one, we'll do the same but in parallel
-      final List<Map<String, dynamic>> builtRows = [];
-      
-      final List<Future<void>> progressFutures = targetUsers.map((u) async {
-        try {
-          final userId = u['id'] ?? u['_id'];
-          final progRes = await http.get(
-            Uri.parse('https://millerstorm.tech/api/course-progress?userId=$userId&courseIds=${course['id']}')
-          );
-          
-          if (progRes.statusCode == 200) {
-            final progData = jsonDecode(progRes.body);
-            final rec = progData[course['id']] ?? {};
-            final completedPages = (rec['completedPages'] as List<dynamic>? ?? []);
-            final doneCount = completedPages.where((id) => lessonIds.contains(id)).length;
-            final pct = totalLessons > 0 ? ((doneCount / totalLessons) * 100).round() : 0;
-            
-            builtRows.add({
-              'id': userId,
-              'name': u['name'] ?? u['email'] ?? 'Unknown',
-              'email': u['email'] ?? '',
-              'headshotUrl': u['headshotUrl'] ?? '',
-              'done': doneCount,
-              'total': totalLessons,
-              'pct': pct,
-            });
-          }
-        } catch (e) {
-          print('Error fetching progress for user ${u['id']}: $e');
-        }
-      }).toList();
-
-      await Future.wait(progressFutures);
-
-      // 4. Sort: Percentage desc, then Name asc
-      builtRows.sort((a, b) {
-        int cmp = b['pct'].compareTo(a['pct']);
-        if (cmp != 0) return cmp;
-        return (a['name'] as String).compareTo(b['name'] as String);
-      });
-
-      setState(() {
-        _leaderboardRows = builtRows;
-        _isLoadingLeaderboard = false;
-      });
+        setState(() {
+          _leaderboardRows = builtRows;
+          _isLoadingLeaderboard = false;
+        });
+      }
     } catch (e) {
       print('Error building leaderboard: $e');
       setState(() => _isLoadingLeaderboard = false);

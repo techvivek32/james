@@ -125,68 +125,13 @@ export function CourseLeaderboard() {
     setIsPickerOpen(false);
     setSearch("");
     try {
-      const [coursesRes, usersRes] = await Promise.all([
-        allCoursesData ? Promise.resolve(allCoursesData) : fetch("/api/courses").then((r) => r.ok ? r.json() : []),
-        fetch("/api/users").then((r) => r.ok ? r.json() : []),
-      ]);
-
-      const courseData = Array.isArray(coursesRes) ? coursesRes : [];
-      const fullCourse = courseData.find((c: any) => c.id === course.id);
-      const allUsers = Array.isArray(usersRes) ? usersRes : [];
-
-      const targetUsers = allUsers.filter(
-        (u: any) =>
-          !u.deleted && !u.suspended &&
-          (u.role === "manager" || u.role === "sales" ||
-            (u.roles || []).some((r: string) => r === "manager" || r === "sales"))
-      );
-
-      setTotalUsers(targetUsers.length);
-
-      if (!fullCourse) { setRows([]); return; }
-
-      // Get published folders
-      const publishedFolderIds = new Set(
-        (fullCourse.folders || [])
-          .filter((f: any) => f.status === "published")
-          .map((f: any) => f.id)
-      );
-      
-      // Filter lessons: must be published, not a quiz, and either has no folder or is in a published folder
-      const lessonPages = (fullCourse.pages || []).filter(
-        (p: any) => 
-          p.status === "published" && 
-          !p.isQuiz && 
-          (!p.folderId || publishedFolderIds.has(p.folderId))
-      );
-      const total = lessonPages.length;
-      const lessonIds = new Set(lessonPages.map((p: any) => p.id));
-
-      const allProgress: any[] = await Promise.all(
-        targetUsers.map((u: any) =>
-          fetch(`/api/course-progress?userId=${u.id}&courseIds=${course.id}`)
-            .then((r) => (r.ok ? r.json() : {}))
-            .catch(() => ({}))
-        )
-      );
-
-      const built: LeaderRow[] = targetUsers.map((u: any, i: number) => {
-        const rec = allProgress[i][course.id] || {};
-        const done = (rec.completedPages || []).filter((id: string) => lessonIds.has(id)).length;
-        const pct = total > 0 ? Math.round((done / total) * 100) : 0;
-        return {
-          id: u.id,
-          name: u.name || u.email,
-          email: u.email,
-          role: u.role || (u.roles || [])[0] || "",
-          done,
-          total,
-          pct,
-        };
-      });
-
-      built.sort((a, b) => b.pct - a.pct || a.name.localeCompare(b.name));
-      setRows(built);
+      // Use new optimized leaderboard API
+      const leaderboardRes = await fetch(`/api/leaderboard?courseId=${course.id}`);
+      if (leaderboardRes.ok) {
+        const data = await leaderboardRes.json();
+        setTotalUsers(data.rows?.length || 0);
+        setRows(data.rows || []);
+      }
     } catch (err) {
       console.error(err);
     } finally {

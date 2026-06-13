@@ -106,15 +106,15 @@ class _ManagerTrainingLeaderboardScreenState extends State<ManagerTrainingLeader
     });
 
     try {
-      // 1. Fetch users
-      final usersResponse = await http.get(Uri.parse('https://millerstorm.tech/api/users'));
-      if (usersResponse.statusCode != 200) throw Exception('Failed to fetch users');
-      
-      final List<dynamic> allUsers = jsonDecode(usersResponse.body);
-      
-      // If playlist mode, fetch assignments to filter users
-      Set<String>? assignedUserIds;
+      // If playlist mode, use the old approach for now (we can optimize playlists later)
       if (_viewType == 'playlists' && playlist != null) {
+        // Original playlist logic here
+        final usersResponse = await http.get(Uri.parse('https://millerstorm.tech/api/users'));
+        if (usersResponse.statusCode != 200) throw Exception('Failed to fetch users');
+        
+        final List<dynamic> allUsers = jsonDecode(usersResponse.body);
+        
+        Set<String>? assignedUserIds;
         try {
           final playlistId = playlist['_id'] ?? playlist['id'];
           final assignRes = await http.get(Uri.parse('https://millerstorm.tech/api/playlist-assignments?playlistId=$playlistId'));
@@ -125,106 +125,103 @@ class _ManagerTrainingLeaderboardScreenState extends State<ManagerTrainingLeader
         } catch (e) {
           print('Error fetching playlist assignments: $e');
         }
+
+        final targetUsers = allUsers.where((u) {
+          final userId = (u['id'] ?? u['_id']).toString();
+          final isDeleted = u['deleted'] == true;
+          final isSuspended = u['suspended'] == true;
+          if (isDeleted || isSuspended) return false;
+
+          final roles = u['roles'] as List<dynamic>? ?? [];
+          final hasTargetRole = u['role'] == 'manager' || u['role'] == 'sales' || 
+                               roles.contains('manager') || roles.contains('sales');
+          if (!hasTargetRole) return false;
+
+          return assignedUserIds?.contains(userId) ?? false;
+        }).toList();
+
+        final targetCourseId = playlist['courseId'];
+        final selectedModules = playlist['selectedModules'] as List<dynamic>? ?? [];
+        final targetModuleIds = Set.from(selectedModules);
+        final totalModules = targetModuleIds.length;
+
+        final List<Map<String, dynamic>> builtRows = [];
+        final List<Future<void>> progressFutures = targetUsers.map((u) async {
+          try {
+            final userId = u['id'] ?? u['_id'];
+            final progRes = await http.get(
+              Uri.parse('https://millerstorm.tech/api/course-progress?userId=$userId&courseIds=$targetCourseId')
+            );
+            
+            if (progRes.statusCode == 200) {
+              final progData = jsonDecode(progRes.body);
+              final rec = progData[targetCourseId] ?? {};
+              final completedPages = (rec['completedPages'] as List<dynamic>? ?? []);
+              final doneCount = completedPages.where((id) => targetModuleIds.contains(id)).length;
+              final pct = totalModules > 0 ? ((doneCount / totalModules) * 100).round() : 0;
+              
+              builtRows.add({
+                'id': userId,
+                'name': u['name'] ?? u['email'] ?? 'Unknown',
+                'email': u['email'] ?? '',
+                'headshotUrl': u['headshotUrl'] ?? '',
+                'done': doneCount,
+                'total': totalModules,
+                'pct': pct,
+              });
+            }
+          } catch (e) {
+            print('Error fetching progress for user ${u['id']}: $e');
+          }
+        }).toList();
+
+        await Future.wait(progressFutures);
+        builtRows.sort((a, b) {
+          int cmp = b['pct'].compareTo(a['pct']);
+          if (cmp != 0) return cmp;
+          return (a['name'] as String).compareTo(b['name'] as String);
+        });
+
+        setState(() {
+          _leaderboardRows = builtRows;
+          _isLoadingLeaderboard = false;
+        });
+        return;
       }
 
-      // Filter based on toggle
-      final targetUsers = allUsers.where((u) {
-        final userId = (u['id'] ?? u['_id']).toString();
-        final isDeleted = u['deleted'] == true;
-        final isSuspended = u['suspended'] == true;
-        if (isDeleted || isSuspended) return false;
-
-        // Roles check
-        final roles = u['roles'] as List<dynamic>? ?? [];
-        final hasTargetRole = u['role'] == 'manager' || u['role'] == 'sales' || 
-                             roles.contains('manager') || roles.contains('sales');
-        if (!hasTargetRole) return false;
-
-        // If playlist mode, only show assigned team members
-        if (_viewType == 'playlists') {
-          return assignedUserIds?.contains(userId) ?? false;
-        }
-
-        if (_showTeamOnly && _managerId != null) {
-          // In team mode, only show users managed by current manager
-          return u['managerId'] == _managerId || u['id'] == _managerId || u['_id'] == _managerId;
-        }
-        return true; // In company mode (courses only), show everyone
-      }).toList();
-
-      // 2. Prepare modules/lessons
-      Set<dynamic> targetModuleIds;
-      int totalModules;
-      String targetCourseId;
-
-      if (_viewType == 'playlists' && playlist != null) {
-        targetCourseId = playlist['courseId'];
-        final selectedModules = playlist['selectedModules'] as List<dynamic>? ?? [];
-        targetModuleIds = Set.from(selectedModules);
-        totalModules = targetModuleIds.length;
-      } else if (course != null) {
-        targetCourseId = course['id'];
-        final folders = course['folders'] as List<dynamic>? ?? [];
-        final publishedFolderIds = Set.from(folders.where((f) => f['status'] == 'published').map((f) => f['id']));
-        
-        final lessonPages = (course['pages'] as List<dynamic>? ?? []).where((p) => 
-          p['status'] == 'published' && 
-          p['isQuiz'] != true && 
-          (p['folderId'] == null || publishedFolderIds.contains(p['folderId']))
-        ).toList();
-        
-        targetModuleIds = Set.from(lessonPages.map((p) => p['id']));
-        totalModules = targetModuleIds.length;
-      } else {
+      // For courses, use optimized leaderboard API
+      if (course == null) {
         setState(() => _isLoadingLeaderboard = false);
         return;
       }
 
-      // 3. Fetch progress for each user
-      final List<Map<String, dynamic>> builtRows = [];
+      final String url = _showTeamOnly 
+        ? 'https://millerstorm.tech/api/leaderboard?courseId=${course['id']}&managerId=$_managerId'
+        : 'https://millerstorm.tech/api/leaderboard?courseId=${course['id']}';
+
+      final leaderboardResponse = await http.get(Uri.parse(url));
       
-      final List<Future<void>> progressFutures = targetUsers.map((u) async {
-        try {
-          final userId = u['id'] ?? u['_id'];
-          final progRes = await http.get(
-            Uri.parse('https://millerstorm.tech/api/course-progress?userId=$userId&courseIds=$targetCourseId')
-          );
-          
-          if (progRes.statusCode == 200) {
-            final progData = jsonDecode(progRes.body);
-            final rec = progData[targetCourseId] ?? {};
-            final completedPages = (rec['completedPages'] as List<dynamic>? ?? []);
-            final doneCount = completedPages.where((id) => targetModuleIds.contains(id)).length;
-            final pct = totalModules > 0 ? ((doneCount / totalModules) * 100).round() : 0;
-            
-            builtRows.add({
-              'id': userId,
-              'name': u['name'] ?? u['email'] ?? 'Unknown',
-              'email': u['email'] ?? '',
-              'headshotUrl': u['headshotUrl'] ?? '',
-              'done': doneCount,
-              'total': totalModules,
-              'pct': pct,
-            });
-          }
-        } catch (e) {
-          print('Error fetching progress for user ${u['id']}: $e');
-        }
-      }).toList();
+      if (leaderboardResponse.statusCode == 200) {
+        final data = jsonDecode(leaderboardResponse.body);
+        final List<dynamic> rows = data['rows'] ?? [];
+        
+        final List<Map<String, dynamic>> builtRows = rows.map((row) {
+          return {
+            'id': row['id'],
+            'name': row['name'] ?? row['email'] ?? 'Unknown',
+            'email': row['email'] ?? '',
+            'headshotUrl': row['headshotUrl'] ?? '',
+            'done': row['done'],
+            'total': row['total'],
+            'pct': row['pct'],
+          };
+        }).toList();
 
-      await Future.wait(progressFutures);
-
-      // 4. Sort: Percentage desc, then Name asc
-      builtRows.sort((a, b) {
-        int cmp = b['pct'].compareTo(a['pct']);
-        if (cmp != 0) return cmp;
-        return (a['name'] as String).compareTo(b['name'] as String);
-      });
-
-      setState(() {
-        _leaderboardRows = builtRows;
-        _isLoadingLeaderboard = false;
-      });
+        setState(() {
+          _leaderboardRows = builtRows;
+          _isLoadingLeaderboard = false;
+        });
+      }
     } catch (e) {
       print('Error building leaderboard: $e');
       setState(() => _isLoadingLeaderboard = false);

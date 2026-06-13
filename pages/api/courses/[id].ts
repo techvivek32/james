@@ -1,7 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import { connectMongo } from "../../../src/lib/mongodb";
 import { CourseModel } from "../../../src/lib/models/Course";
-import { UserModel } from "../../../src/lib/models/User";
+import { UserProgressModel } from "../../../src/lib/models/UserProgress";
 
 export default async function handler(
   req: NextApiRequest,
@@ -26,7 +26,7 @@ export default async function handler(
     console.log('📚 Course detail API called for:', id, 'userId:', userId);
     
     try {
-      // Fetch course by ID
+      // Fetch course by ID with all fields
       const course = await CourseModel.findOne({ id: id }).lean();
       
       if (!course) {
@@ -46,45 +46,30 @@ export default async function handler(
         progressPercent: 0
       };
 
-      if (course.folders && course.folders.length > 0) {
-        // Count total lessons from folders
-        progress.totalLessons = course.folders.reduce((total: number, folder: any) => {
-          const folderPages = course.pages?.filter((page: any) => page.folderId === folder.id) || [];
-          return total + folderPages.length;
-        }, 0);
-      } else if (course.pages && course.pages.length > 0) {
-        // If no folders, count pages directly
-        progress.totalLessons = course.pages.length;
-      } else if (course.lessonNames && course.lessonNames.length > 0) {
-        // Fallback to lessonNames
-        progress.totalLessons = course.lessonNames.length;
-      }
+      // Use web's exact calculation logic - only count lesson pages (not quizzes)
+      const lessonPages = course.pages?.filter((p: any) => p.status === 'published' && !p.isQuiz) || [];
+      const totalLessonPages = lessonPages.length;
+      progress.totalLessons = totalLessonPages;
 
-      // Use web's EXACT API - same as web uses
       if (userId) {
         try {
-          // Call web's existing progress API (same as web uses)
-          const webApiUrl = `https://millerstorm.tech/api/progress?userId=${userId}&courseId=${id}`;
-          console.log('🌐 Calling web progress API:', webApiUrl);
+          // Get progress directly from UserProgressModel
+          const userProgress = await UserProgressModel.findOne({
+            userId: userId,
+            courseId: id
+          }).lean();
           
-          const webResponse = await fetch(webApiUrl);
-          if (webResponse.ok) {
-            const webProgressData = await webResponse.json();
-            
-            // Use web's exact calculation logic - only count lesson pages (not quizzes)
-            const completedPages = webProgressData.completedPages?.length || 0;
-            const lessonPages = course.pages?.filter((p: any) => p.status === 'published' && !p.isQuiz) || [];
-            const totalLessonPages = lessonPages.length;
+          if (userProgress) {
+            const completedPages = userProgress.completedPages?.length || 0;
             const progressPercent = totalLessonPages > 0 ? Math.round((completedPages / totalLessonPages) * 100) : 0;
             
             progress.completedLessons = completedPages;
-            progress.totalLessons = totalLessonPages;
             progress.progressPercent = progressPercent;
               
-            console.log(`✅ Web API result: ${completedPages}/${totalLessonPages} lessons = ${progressPercent}%`);
+            console.log(`✅ Progress result: ${completedPages}/${totalLessonPages} lessons = ${progressPercent}%`);
           }
         } catch (error) {
-          console.log('⚠️ Could not call web API:', error);
+          console.log('⚠️ Could not get progress:', error);
         }
       }
 
