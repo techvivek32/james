@@ -26,26 +26,8 @@ export default async function handler(
     
     console.log('📚 Courses API called with userId:', userId, 'userRole:', userRole);
     
-    // Fetch only necessary fields for course list
-    const courses = await CourseModel.find({}, {
-      id: 1,
-      title: 1,
-      tagline: 1,
-      coverImageUrl: 1,
-      status: 1,
-      accessMode: 1,
-      order: 1,
-      pages: {
-        id: 1,
-        status: 1,
-        isQuiz: 1
-      },
-      folders: {
-        id: 1,
-        status: 1,
-        title: 1
-      }
-    }).lean();
+    // Fetch all necessary course and page fields
+    const courses = await CourseModel.find({}).lean();
     console.log('📚 Total courses in DB:', courses.length);
     
     // If no user context, return all courses (for admin)
