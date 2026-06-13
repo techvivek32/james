@@ -22,7 +22,8 @@ const CourseManagementPage: NextPage = () => {
           const sortedData = data.sort((a: Course, b: Course) => (a.order ?? 999999) - (b.order ?? 999999));
           setCourses(sortedData);
           latestCoursesRef.current = sortedData;
-          prevCountRef.current = sortedData.length;        }
+          prevCountRef.current = sortedData.length;
+        }
       } catch (error) {
         console.error("Failed to load courses:", error);
       } finally {
@@ -93,21 +94,32 @@ const CourseManagementPage: NextPage = () => {
     }
   }
 
+  async function handleDeleteCourse(courseId: string) {
+    setDeleting(true);
+    try {
+      const res = await fetch(`/api/courses?id=${encodeURIComponent(courseId)}`, {
+        method: "DELETE"
+      });
+      if (!res.ok) {
+        throw new Error('Failed to delete course');
+      }
+      const next = courses.filter(c => c.id !== courseId);
+      setCourses(next);
+      latestCoursesRef.current = next;
+      prevCountRef.current = next.length;
+    } catch (error) {
+      console.error('Delete error:', error);
+      alert('Failed to delete course. Please try again.');
+    } finally {
+      setDeleting(false);
+    }
+  }
+
   async function handleCoursesChange(next: Course[]) {
-    const isDelete = next.length < prevCountRef.current;
+    // No need to handle delete here anymore — handled by handleDeleteCourse
     prevCountRef.current = next.length;
     setCourses(next);
     latestCoursesRef.current = next;
-
-    // Delete: save immediately
-    if (isDelete) {
-      if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
-      setDeleting(true);
-      await doSave(next);
-      setDeleting(false);
-      return;
-    }
-
     // For other changes (like status toggle), save immediately with only the changed course
     // No auto-save - let individual components handle their own saves
   }
@@ -140,7 +152,7 @@ const CourseManagementPage: NextPage = () => {
           <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
         </div>
       )}
-      <CourseManagement courses={courses} onCoursesChange={handleCoursesChange} onForceSave={doSave} cleanCourses={cleanCourses} />
+      <CourseManagement courses={courses} onCoursesChange={handleCoursesChange} onDeleteCourse={handleDeleteCourse} onForceSave={doSave} cleanCourses={cleanCourses} />
     </AdminPageWrapper>
   );
 };

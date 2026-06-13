@@ -5,6 +5,7 @@ import { Toast } from "../../components/Toast";
 type CourseEditorProps = {
   courses: Course[];
   onCoursesChange: (courses: Course[]) => void;
+  onDeleteCourse: (courseId: string) => Promise<void>;
   onForceSave?: (courses: Course[]) => Promise<void>;
   cleanCourses?: (courses: Course[]) => Course[];
 };
@@ -794,16 +795,11 @@ export function CourseManagement(props: CourseEditorProps) {
     setHasChanges(true);
   }
 
-  function deleteCourse(id: string) {
-    const next = props.courses.filter((course) => course.id !== id);
-    props.onCoursesChange(next);
-    if (!next.length) {
-      setSelectedCourseId("");
-      setViewMode("grid");
-      return;
-    }
+  async function deleteCourse(id: string) {
+    await props.onDeleteCourse(id);
     if (selectedCourseId === id) {
-      setSelectedCourseId(next[0].id);
+      const remaining = props.courses.filter(c => c.id !== id);
+      setSelectedCourseId(remaining.length > 0 ? remaining[0].id : "");
     }
     setViewMode("grid");
   }

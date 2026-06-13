@@ -136,6 +136,19 @@ export default async function handler(
     return;
   }
 
-  res.setHeader("Allow", "GET, POST");
+  if (req.method === "DELETE") {
+    const { id } = req.query;
+    if (!id) {
+      return res.status(400).json({ error: "Course ID is required" });
+    }
+    // Delete course and all associated progress
+    await Promise.all([
+      CourseModel.deleteOne({ id: id }),
+      UserProgressModel.deleteMany({ courseId: id })
+    ]);
+    return res.status(200).json({ success: true });
+  }
+
+  res.setHeader("Allow", "GET, POST, DELETE");
   res.status(405).end();
 }
