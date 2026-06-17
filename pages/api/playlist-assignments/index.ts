@@ -36,10 +36,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         courseId, 
         courseName, 
         selectedModules, 
-        managerId, 
-        managerName, 
-        assignedToUserId, 
-        assignedToUserName 
+        managerId,
+        managerName,
+        assignedToUserId,
+        assignedToUserName,
+        deadline
       } = req.body;
 
       if (!playlistId || !managerId || !assignedToUserId) {
@@ -55,7 +56,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         managerId,
         managerName,
         assignedToUserId,
-        assignedToUserName
+        assignedToUserName,
+        deadline: deadline ? new Date(deadline) : undefined
       });
 
       return res.status(201).json(assignment);

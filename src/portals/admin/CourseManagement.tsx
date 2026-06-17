@@ -816,7 +816,7 @@ export function CourseManagement(props: CourseEditorProps) {
       resourceLinks: [],
       fileUrls: [],
       isQuiz: isQuiz || false,
-      quizQuestions: isQuiz ? [{ id: `q-${Date.now()}`, prompt: "", options: ["", ""], correctIndex: 0 }] : []
+      quizQuestions: isQuiz ? [{ id: `q-${Date.now()}`, prompt: "", options: ["", "", "", ""], correctIndex: 0 }] : []
     };
     const nextCourse: Course = {
       ...course,
@@ -2439,6 +2439,9 @@ export function CourseManagement(props: CourseEditorProps) {
                                           <button type="button" className="course-page-menu-item" onClick={() => addPageForCourse(selectedCourse)}>
                                             Add Lesson
                                           </button>
+                                          <button type="button" className="course-page-menu-item" onClick={() => addPageForCourse(selectedCourse, undefined, true)}>
+                                            Add Quiz
+                                          </button>
                                         </div>
                                       )}
                                     </div>
@@ -3117,7 +3120,7 @@ export function CourseManagement(props: CourseEditorProps) {
                                             type="button"
                                             className="btn-secondary"
                                             onClick={() => {
-                                              const newQuestion = { id: `q-${Date.now()}`, prompt: "", options: ["", ""], correctIndex: 0 };
+                                              const newQuestion = { id: `q-${Date.now()}`, prompt: "", options: ["", "", "", ""], correctIndex: 0 };
                                               const nextQuestions = [...(activePage.quizQuestions || []), newQuestion];
                                               const nextPages = pages.map((page) => (page.id === activePage.id ? { ...page, quizQuestions: nextQuestions } : page));
                                               updateCourse({ ...selectedCourse, pages: nextPages });

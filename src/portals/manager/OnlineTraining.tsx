@@ -53,6 +53,8 @@ export function ManagerOnlineTrainingPage(props: {
   const [selectedSalesUser, setSelectedSalesUser] = useState<string[]>([]);
   const [assignedUsers, setAssignedUsers] = useState<Set<string>>(new Set());
   const [assignModalTab, setAssignModalTab] = useState<'assign' | 'unassign'>('assign');
+  const [assignDeadline, setAssignDeadline] = useState<string>('');
+  const [assignmentsByUser, setAssignmentsByUser] = useState<Record<string, any>>({});
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
   const [teamProgressView, setTeamProgressView] = useState<'courses' | 'playlists'>('courses');
   const [playlistProgressData, setPlaylistProgressData] = useState<Record<string, { user: any; completed: number; total: number; pct: number }[]>>({});
@@ -96,6 +98,16 @@ export function ManagerOnlineTrainingPage(props: {
       }
     }
   }, [publishedCourses]);
+
+  // Check for missed playlist deadlines and notify the manager (idempotent;
+  // only notifies once per overdue, incomplete assignment).
+  useEffect(() => {
+    if (props.currentUser?.id) {
+      fetch(`/api/playlist-assignments/check-deadlines?managerId=${props.currentUser.id}`, {
+        method: 'POST'
+      }).catch(err => console.error('Failed to check playlist deadlines:', err));
+    }
+  }, [props.currentUser?.id]);
 
   // Load playlists from database
   useEffect(() => {
@@ -202,12 +214,16 @@ export function ManagerOnlineTrainingPage(props: {
   // Load already assigned users when modal opens
   useEffect(() => {
     if (isAssignModalOpen && assigningPlaylist) {
+      setAssignDeadline('');
       fetch(`/api/playlist-assignments?playlistId=${assigningPlaylist.id}`)
         .then(res => res.json())
         .then(data => {
           const assignedUserIds = new Set<string>(data.map((a: any) => a.assignedToUserId));
           setAssignedUsers(assignedUserIds);
           setSelectedSalesUser(Array.from(assignedUserIds));
+          const byUser: Record<string, any> = {};
+          data.forEach((a: any) => { byUser[a.assignedToUserId] = a; });
+          setAssignmentsByUser(byUser);
         })
         .catch(err => console.error('Failed to load assigned users:', err));
     }
@@ -921,6 +937,20 @@ export function ManagerOnlineTrainingPage(props: {
                     </div>
                   )}
                 </div>
+                <div style={{ marginBottom: 16 }}>
+                  <label style={{ display: 'block', fontSize: 14, fontWeight: 600, marginBottom: 6, color: '#111827' }}>
+                    Deadline <span style={{ fontWeight: 400, color: '#9ca3af' }}>(optional)</span>
+                  </label>
+                  <input
+                    type="date"
+                    value={assignDeadline}
+                    onChange={(e) => setAssignDeadline(e.target.value)}
+                    style={{ width: '100%', padding: '10px 12px', border: '1px solid #d1d5db', borderRadius: 6, fontSize: 14 }}
+                  />
+                  <div style={{ fontSize: 12, color: '#9ca3af', marginTop: 4 }}>
+                    You&apos;ll be notified if a user hasn&apos;t finished the videos and quizzes by this date.
+                  </div>
+                </div>
                 {selectedSalesUser.filter(id => !assignedUsers.has(id)).length > 0 && (
                   <button
                     type="button"
@@ -946,7 +976,8 @@ export function ManagerOnlineTrainingPage(props: {
                               managerId: props.currentUser.id,
                               managerName: props.currentUser.name,
                               assignedToUserId: selectedUser.id,
-                              assignedToUserName: selectedUser.name
+                              assignedToUserName: selectedUser.name,
+                              deadline: assignDeadline || undefined
                             })
                           });
                         }
@@ -991,6 +1022,11 @@ export function ManagerOnlineTrainingPage(props: {
                           <div style={{ flex: 1 }}>
                             <div style={{ fontSize: 14, fontWeight: 500, color: '#065f46' }}>{user.name}</div>
                             <div style={{ fontSize: 12, color: '#047857' }}>{user.email}</div>
+                            {assignmentsByUser[user.id]?.deadline && (
+                              <div style={{ fontSize: 12, color: assignmentsByUser[user.id]?.completedAt ? '#047857' : (new Date(assignmentsByUser[user.id].deadline) < new Date() ? '#dc2626' : '#b45309'), marginTop: 2 }}>
+                                {assignmentsByUser[user.id]?.completedAt ? '✓ Completed' : '⏰ Due'} {new Date(assignmentsByUser[user.id].deadline).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                              </div>
+                            )}
                           </div>
                           <button
                             type="button"

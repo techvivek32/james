@@ -10,6 +10,9 @@ const PlaylistAssignmentSchema = new mongoose.Schema({
   managerName: { type: String, required: true },
   assignedToUserId: { type: String, required: true },
   assignedToUserName: { type: String, required: true },
+  deadline: { type: Date },
+  deadlineNotified: { type: Boolean, default: false },
+  completedAt: { type: Date },
   createdAt: { type: Date, default: Date.now }
 });
 
