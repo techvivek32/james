@@ -806,21 +806,31 @@ export function CourseManagement(props: CourseEditorProps) {
 
   function addPageForCourse(course: Course, folderId?: string, isQuiz?: boolean) {
     const pages = course.pages ?? [];
+    // If a lesson/page is currently selected, drop the new page right after it
+    // (inheriting its folder when none was explicitly passed). Otherwise append at the end.
+    const selectedIndex = activePageId ? pages.findIndex((page) => page.id === activePageId) : -1;
+    const selectedPage = selectedIndex >= 0 ? pages[selectedIndex] : undefined;
+    const targetFolderId = folderId ?? selectedPage?.folderId;
     const newPage: CoursePage = {
       id: `page-${Date.now()}`,
       title: isQuiz ? "New quiz" : "New Lesson",
       status: "published",
       body: "",
-      folderId,
+      folderId: targetFolderId,
       videoUrl: "",
       resourceLinks: [],
       fileUrls: [],
       isQuiz: isQuiz || false,
       quizQuestions: isQuiz ? [{ id: `q-${Date.now()}`, prompt: "", options: ["", "", "", ""], correctIndex: 0 }] : []
     };
+    // Only insert right after the selected lesson when it lives in the same folder as the new page.
+    const insertAfterSelected = selectedPage !== undefined && selectedPage.folderId === targetFolderId;
+    const nextPages = insertAfterSelected
+      ? [...pages.slice(0, selectedIndex + 1), newPage, ...pages.slice(selectedIndex + 1)]
+      : [...pages, newPage];
     const nextCourse: Course = {
       ...course,
-      pages: [...pages, newPage]
+      pages: nextPages
     };
     console.log("Adding page to course:", { courseId: course.id, newPage, totalPages: nextCourse.pages?.length || 0 });
     updateCourse(nextCourse);
