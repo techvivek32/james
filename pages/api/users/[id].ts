@@ -76,6 +76,8 @@ export default async function handler(
     }
     const { passwordHash: updatedPasswordHash, ...safeUser } = updated;
 
+    let emailWarning: string | null = null;
+
     // Send emails if admin checked the notify checkbox
     if (sendNotification && safeUser.email) {
       const loginUrl = process.env.NEXT_PUBLIC_APP_URL
@@ -109,7 +111,8 @@ export default async function handler(
           console.log("[Email] adminConfirmation sent OK");
         }
       } catch (emailErr: any) {
-        console.error("[Email] Failed to send update emails:", emailErr?.message || emailErr);
+        emailWarning = emailErr?.message || String(emailErr);
+        console.error("[Email] Failed to send update emails:", emailWarning);
       }
     } else {
       console.log("[Email] Skipped - sendNotification:", sendNotification, "email:", safeUser.email);
@@ -132,7 +135,7 @@ export default async function handler(
       console.log("[SMS] Skipped - sendSMSNotification:", sendSMSNotification, "phone:", safeUser.phone);
     }
 
-    res.status(200).json(safeUser);
+    res.status(200).json({ ...safeUser, emailWarning });
     return;
   }
 
