@@ -115,7 +115,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         // Extract file URLs
         if (page.fileUrls && page.fileUrls.length > 0) {
           console.log(`[SYNC]     Found ${page.fileUrls.length} file URLs`);
-          for (const fileItem of page.fileUrls) {
+          for (const fileItem of page.fileUrls as Array<string | { href: string; label: string }>) {
             const fileUrl = typeof fileItem === 'string' ? fileItem : fileItem.href;
             const fileLabel = typeof fileItem === 'string' ? fileItem.split('/').pop() || 'File' : fileItem.label;
             const isImage = /\.(jpg|jpeg|png|gif|webp|svg)$/i.test(fileUrl);

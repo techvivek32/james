@@ -3014,7 +3014,7 @@ export function CourseManagement(props: CourseEditorProps) {
                                   <>
                                     {activePage.isQuiz ? (
                                       <>
-                                        <div className="course-page-main-header">
+                                        <div className="course-page-main-header" key="quiz-header">
                                           <input
                                             className="course-page-title-input"
                                             value={activePage.title}
@@ -3024,7 +3024,38 @@ export function CourseManagement(props: CourseEditorProps) {
                                             }}
                                           />
                                         </div>
-                                        <div className="course-page-editor-body">
+                                        <div className="course-page-editor-body" key="quiz-editor-body">
+                                          <div className="field" style={{ marginBottom: 24, padding: 16, border: "1px solid #e5e7eb", borderRadius: 8, display: "block" }}>
+                                            <span className="field-label">Questions to show the user</span>
+                                            <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                                              <input
+                                                className="field-input"
+                                                type="number"
+                                                min={0}
+                                                max={(activePage.quizQuestions || []).length}
+                                                placeholder={`All (${(activePage.quizQuestions || []).length})`}
+                                                value={activePage.questionsToShow ?? ""}
+                                                style={{ flex: 1 }}
+                                                onChange={(e) => {
+                                                  const raw = e.target.value;
+                                                  const parsed = raw === "" ? undefined : Math.max(0, Math.floor(Number(raw) || 0));
+                                                  const nextPages = pages.map((page) => (page.id === activePage.id ? { ...page, questionsToShow: parsed } : page));
+                                                  updateCourse({ ...selectedCourse, pages: nextPages });
+                                                }}
+                                              />
+                                              <button
+                                                type="button"
+                                                className="btn-primary btn-small"
+                                                disabled={isSavingLesson}
+                                                onClick={async () => { await saveLessonOrQuiz('quiz'); }}
+                                              >
+                                                {isSavingLesson ? "Saving…" : "Save"}
+                                              </button>
+                                            </div>
+                                            <span className="field-hint" style={{ display: "block", marginTop: 6, fontSize: 12, color: "#6b7280" }}>
+                                              Each attempt randomly picks this many questions out of the {(activePage.quizQuestions || []).length} below. Leave blank to show all.
+                                            </span>
+                                          </div>
                                           {(activePage.quizQuestions || []).map((q, qIdx) => (
                                             <div key={q.id} style={{ marginBottom: 24, padding: 16, border: "1px solid #e5e7eb", borderRadius: 8 }}>
                                               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
@@ -3176,7 +3207,7 @@ export function CourseManagement(props: CourseEditorProps) {
                                       </>
                                     ) : (
                                       <>
-                                    <div className="course-page-main-header">
+                                    <div className="course-page-main-header" key="lesson-header">
                                       {editingLessonId === activePage.id && (
                                         <div className="course-page-toolbar">
                                           <button type="button" className={activeFormats.has("h1") ? "course-page-toolbar-button active" : "course-page-toolbar-button"} onClick={() => applyFormatting("h1")}>H1</button>
@@ -3233,7 +3264,7 @@ export function CourseManagement(props: CourseEditorProps) {
                                         )}
                                       </div>
                                     </div>
-                                    <div className="course-page-editor-body">
+                                    <div className="course-page-editor-body" key="lesson-editor-body">
                                       <div
                                         ref={bodyInputRef}
                                         className="course-page-body-input"

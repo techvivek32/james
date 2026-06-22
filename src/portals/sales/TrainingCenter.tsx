@@ -6,7 +6,7 @@ import { ShareModal } from "../../components/ShareModal";
 import { initVideoSequence } from "../../hooks/useVideoSequence";
 import { PlaybookTimer } from "../../components/PlaybookTimer";
 import { enableGlobalAutoplay } from "../../utils/autoplayEnabler";
-import { QUIZ_PASS_THRESHOLD, QUIZ_MAX_ATTEMPTS, quizPct, quizPercent, isQuizResultPassing, shuffleQuestions } from "../../lib/quiz";
+import { QUIZ_PASS_THRESHOLD, QUIZ_MAX_ATTEMPTS, quizPct, quizPercent, isQuizResultPassing, selectQuizQuestions } from "../../lib/quiz";
 
 type Playlist = {
   id: string;
@@ -191,7 +191,7 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
 
     // Give each quiz a shuffled question order (per user, per attempt).
     if (page.isQuiz && page.quizQuestions && page.quizQuestions.length > 0) {
-      setQuizQuestionOrder(prev => prev[page.id] ? prev : { ...prev, [page.id]: shuffleQuestions(page.quizQuestions!) });
+      setQuizQuestionOrder(prev => prev[page.id] ? prev : { ...prev, [page.id]: selectQuizQuestions(page.quizQuestions!, page.questionsToShow) });
     }
 
   }, [activePageId, savedQuizResults, selectedCourse]);
@@ -1021,11 +1021,14 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
 
     const handleSubmitQuiz = () => {
       if (!activePage?.quizQuestions || !user || !selectedCourse) return;
+      // Score only against the questions actually shown this attempt (a random
+      // subset when the quiz limits how many questions are presented).
+      const shownQuestions = quizQuestionOrder[activePage.id] || activePage.quizQuestions;
       let correct = 0;
-      activePage.quizQuestions.forEach(q => {
+      shownQuestions.forEach(q => {
         if (selectedAnswers[q.id] === q.correctIndex) correct++;
       });
-      const score = { correct, total: activePage.quizQuestions.length };
+      const score = { correct, total: shownQuestions.length };
       const passed = quizPct(score) >= QUIZ_PASS_THRESHOLD;
       const pct = quizPercent(score);
       setQuizScore(score);
@@ -1073,7 +1076,7 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
       setSelectedAnswers({});
       const page = pages.find(p => p.id === pageId);
       if (page?.quizQuestions?.length) {
-        setQuizQuestionOrder(prev => ({ ...prev, [pageId]: shuffleQuestions(page.quizQuestions!) }));
+        setQuizQuestionOrder(prev => ({ ...prev, [pageId]: selectQuizQuestions(page.quizQuestions!, page.questionsToShow) }));
       }
     };
 
@@ -1253,7 +1256,7 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
               </div>
                 <div style={{ display: 'flex', gap: 8 }}>
                   {activePage.isQuiz && !quizSubmitted && (
-                    <button type="button" className="btn-primary" onClick={handleSubmitQuiz} disabled={Object.keys(selectedAnswers).length !== (activePage.quizQuestions?.length || 0)}>Submit Quiz</button>
+                    <button type="button" className="btn-primary" onClick={handleSubmitQuiz} disabled={Object.keys(selectedAnswers).length !== ((quizQuestionOrder[activePage.id] || activePage.quizQuestions)?.length || 0)}>Submit Quiz</button>
                   )}
                   {pages.findIndex(p => p.id === activePage.id) === pages.length - 1 && (!activePage.isQuiz || quizSubmitted) && !courseCompleted && (
                      <button 
@@ -1789,7 +1792,7 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
                         type="button" 
                         className="btn-primary" 
                         onClick={handleSubmitQuiz}
-                        disabled={Object.keys(selectedAnswers).length !== (activePage.quizQuestions?.length || 0)}
+                        disabled={Object.keys(selectedAnswers).length !== ((quizQuestionOrder[activePage.id] || activePage.quizQuestions)?.length || 0)}
                       >
                         Submit Quiz
                       </button>
