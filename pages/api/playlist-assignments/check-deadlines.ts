@@ -4,7 +4,9 @@ import PlaylistAssignment from '../../../src/lib/models/PlaylistAssignment';
 import { CourseModel } from '../../../src/lib/models/Course';
 import { UserProgressModel } from '../../../src/lib/models/UserProgress';
 import { NotificationModel } from '../../../src/lib/models/Notification';
+import { UserModel } from '../../../src/lib/models/User';
 import { isQuizResultPassing } from '../../../src/lib/quiz';
+import { sendManagerDeadlineMissedEmail } from '../../../src/lib/email';
 
 // Scans playlist assignments whose deadline has passed and whose assigned user
 // has not finished every module (lessons watched + quizzes passed). For each
@@ -43,6 +45,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       const course = await CourseModel.findOne({ id: courseId }).lean();
       courseCache.set(courseId, course);
       return course;
+    };
+
+    // Cache manager emails the same way so one manager is only looked up once.
+    const managerEmailCache = new Map<string, string | null>();
+    const getManagerEmail = async (managerId: string) => {
+      if (managerEmailCache.has(managerId)) return managerEmailCache.get(managerId) ?? null;
+      const manager = await UserModel.findOne({ id: managerId }).lean<any>();
+      const email = manager?.email ?? null;
+      managerEmailCache.set(managerId, email);
+      return email;
     };
 
     let notified = 0;
@@ -110,6 +122,25 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           deadline: assignment.deadline
         }
       });
+
+      // Email the manager too (best-effort: never let an email failure block the
+      // in-app notification or the rest of the scan).
+      try {
+        const managerEmail = await getManagerEmail(assignment.managerId);
+        if (managerEmail) {
+          await sendManagerDeadlineMissedEmail({
+            managerName: assignment.managerName,
+            managerEmail,
+            userName: assignment.assignedToUserName,
+            playlistName: assignment.playlistName,
+            deadline: deadlineLabel,
+            completedModules: doneCount,
+            totalModules: modules.length,
+          });
+        }
+      } catch (emailErr) {
+        console.error('Failed to send deadline-missed email to manager:', emailErr);
+      }
 
       assignment.deadlineNotified = true;
       await assignment.save();
