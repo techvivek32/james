@@ -3,6 +3,7 @@ import { DashboardCard } from "../../components/DashboardCard";
 import { AuthenticatedUser, Course } from "../../types";
 import { LessonAIChat } from "../../components/LessonAIChat";
 import { ShareModal } from "../../components/ShareModal";
+import { Toast } from "../../components/Toast";
 import { initVideoSequence } from "../../hooks/useVideoSequence";
 import { PlaybookTimer } from "../../components/PlaybookTimer";
 import { QUIZ_PASS_THRESHOLD, QUIZ_MAX_ATTEMPTS, quizPct, quizPercent, isQuizResultPassing, selectQuizQuestions } from "../../lib/quiz";
@@ -30,6 +31,7 @@ export function ManagerOnlineTrainingPage(props: {
   const [courseViewInitialized, setCourseViewInitialized] = useState<string | null>(null);
   const [selectedAnswers, setSelectedAnswers] = useState<Record<string, number>>({});
   const [completedPages, setCompletedPages] = useState<Set<string>>(new Set());
+  const [seekToast, setSeekToast] = useState<string | null>(null);
   const [quizSubmitted, setQuizSubmitted] = useState(false);
   const [quizScore, setQuizScore] = useState<{ correct: number; total: number } | null>(null);
   const [savedQuizResults, setSavedQuizResults] = useState<any[]>([]);
@@ -386,7 +388,8 @@ export function ManagerOnlineTrainingPage(props: {
         () => onVideoEndedRef.current(),
         autoPlayRef,
         false, // shouldAutoStartFirst
-        isAlreadyCompleted
+        isAlreadyCompleted,
+        () => setSeekToast("You are only able to fast forward if you already completed the video at least once before.")
       );
       videoCleanupRef.current = cleanup;
 
@@ -1100,6 +1103,9 @@ export function ManagerOnlineTrainingPage(props: {
   return (
     <>
       {renderModals()}
+      {seekToast && (
+        <Toast message={seekToast} type="info" duration={4000} onClose={() => setSeekToast(null)} />
+      )}
       <div className="training-center">
         {/* Always show tabs */}
         <div style={{ display: 'flex', gap: 8, marginBottom: 24, borderBottom: '2px solid #e5e7eb' }}>

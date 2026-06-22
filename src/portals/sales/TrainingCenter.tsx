@@ -3,6 +3,7 @@ import { Course } from "../../types";
 import { LessonAIChat } from "../../components/LessonAIChat";
 import { useAuth } from "../../contexts/AuthContext";
 import { ShareModal } from "../../components/ShareModal";
+import { Toast } from "../../components/Toast";
 import { initVideoSequence } from "../../hooks/useVideoSequence";
 import { PlaybookTimer } from "../../components/PlaybookTimer";
 import { enableGlobalAutoplay } from "../../utils/autoplayEnabler";
@@ -30,6 +31,7 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
   const [showAIChat, setShowAIChat] = useState(false);
   const [selectedAnswers, setSelectedAnswers] = useState<Record<string, number>>({});
   const [completedPages, setCompletedPages] = useState<Set<string>>(new Set());
+  const [seekToast, setSeekToast] = useState<string | null>(null);
   const [quizSubmitted, setQuizSubmitted] = useState(false);
   const [quizScore, setQuizScore] = useState<{ correct: number; total: number } | null>(null);
   const [savedQuizResults, setSavedQuizResults] = useState<any[]>([]);
@@ -321,7 +323,8 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
         () => onVideoEndedRef.current(),
         autoPlayRef,
         shouldAutoStart,
-        isAlreadyCompleted
+        isAlreadyCompleted,
+        () => setSeekToast("You are only able to fast forward if you already completed the video at least once before.")
       );
       videoCleanupRef.current = cleanup;
 
@@ -438,7 +441,11 @@ export function TrainingCenter(props: { courses: Course[]; isLoading?: boolean }
         shareUrl={`${typeof window !== 'undefined' ? window.location.origin : ''}/share/lesson/${activePageId || ''}`}
         lessonId={activePageId || ''}
       />
-      
+
+      {seekToast && (
+        <Toast message={seekToast} type="info" duration={4000} onClose={() => setSeekToast(null)} />
+      )}
+
       <div className={`training-center${selectedCourse ? (mobileCourseScreen === 'lesson' ? ' mobile-lesson-active' : ' mobile-overview-active') : ''}`}>
         {/* Always show tabs */}
       <div style={{ display: 'flex', gap: 8, marginBottom: 24, borderBottom: '2px solid #e5e7eb' }}>

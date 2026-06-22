@@ -117,8 +117,25 @@ class _LessonPlayerScreenState extends State<LessonPlayerScreen> {
             });
           }
         },
+      )
+      ..addJavaScriptChannel(
+        'SeekBlockedChannel',
+        onMessageReceived: (JavaScriptMessage message) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text(
+                  'You are only able to fast forward if you already completed the video at least once before.',
+                ),
+                backgroundColor: Color(0xFF3B82F6),
+                behavior: SnackBarBehavior.floating,
+                duration: Duration(seconds: 4),
+              ),
+            );
+          }
+        },
       );
-    
+
     // Set Android-specific settings if on Android
     if (WebViewPlatform.instance is AndroidWebViewController) {
       final androidController = _webViewController!.platform as AndroidWebViewController;
@@ -346,6 +363,13 @@ class _LessonPlayerScreenState extends State<LessonPlayerScreen> {
   var maxTimeWatched = 0;
   var isSeeking = false;
   var isCompleted = $isCompleted;
+  var lastBlockNotice = 0;
+  function notifyBlocked() {
+    var now = Date.now();
+    if (now - lastBlockNotice < 3000) return;
+    lastBlockNotice = now;
+    if (window.SeekBlockedChannel) { window.SeekBlockedChannel.postMessage('blocked'); }
+  }
 
   video.setAttribute('playsinline', '');
   video.setAttribute('webkit-playsinline', '');
@@ -362,6 +386,7 @@ class _LessonPlayerScreenState extends State<LessonPlayerScreen> {
     if (!isCompleted && !isSeeking) {
       if (video.currentTime > maxTimeWatched + 2) {
         video.currentTime = maxTimeWatched;
+        notifyBlocked();
       } else {
         maxTimeWatched = Math.max(maxTimeWatched, video.currentTime);
       }
@@ -421,6 +446,13 @@ ${isYouTube ? '<script src="https://www.youtube.com/iframe_api"></script>' : ''}
   var maxTimeWatched = 0;
   var checkInterval;
   var isCompleted = $isCompleted;
+  var lastBlockNotice = 0;
+  function notifyBlocked() {
+    var now = Date.now();
+    if (now - lastBlockNotice < 3000) return;
+    lastBlockNotice = now;
+    if (window.SeekBlockedChannel) { window.SeekBlockedChannel.postMessage('blocked'); }
+  }
 
   function initVimeo() {
     if (window.Vimeo) {
@@ -430,6 +462,7 @@ ${isYouTube ? '<script src="https://www.youtube.com/iframe_api"></script>' : ''}
         if (!isCompleted) {
           if (data.seconds > maxTimeWatched + 2) {
             player.setCurrentTime(maxTimeWatched);
+            notifyBlocked();
           } else {
             maxTimeWatched = Math.max(maxTimeWatched, data.seconds);
           }
@@ -439,6 +472,7 @@ ${isYouTube ? '<script src="https://www.youtube.com/iframe_api"></script>' : ''}
       player.on('seeking', function(data) {
         if (!isCompleted && data.seconds > maxTimeWatched + 1) {
           player.setCurrentTime(maxTimeWatched);
+          notifyBlocked();
         }
       });
 
@@ -464,6 +498,7 @@ ${isYouTube ? '<script src="https://www.youtube.com/iframe_api"></script>' : ''}
           var currentTime = player.getCurrentTime();
           if (currentTime > maxTimeWatched + 2) {
             player.seekTo(maxTimeWatched, true);
+            notifyBlocked();
           } else {
             maxTimeWatched = Math.max(maxTimeWatched, currentTime);
           }
