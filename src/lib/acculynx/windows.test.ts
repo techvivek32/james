@@ -1,7 +1,7 @@
 // src/lib/acculynx/windows.test.ts
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { getWindowRange } from "./windows.ts";
+import { getWindowRange } from "./windows";
 
 // 2026-06-18T15:00:00Z is a Thursday. In US Central (CDT, UTC-5) that is
 // Thu 2026-06-18 10:00 local. Week (Mon start) began Mon 2026-06-15 00:00 CDT
