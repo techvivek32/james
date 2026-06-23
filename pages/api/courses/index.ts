@@ -5,6 +5,14 @@ import { UserModel } from "../../../src/lib/models/User";
 import { UserProgressModel } from "../../../src/lib/models/UserProgress";
 import { requireUser, requireRole, allowMethods } from "../../../src/lib/auth";
 
+// Course/lesson content (rich HTML, embedded data) can exceed the 1mb default.
+export const config = {
+  api: {
+    bodyParser: { sizeLimit: "50mb" },
+    responseLimit: false,
+  },
+};
+
 export default async function handler(
   req: NextApiRequest,
   res: NextApiResponse

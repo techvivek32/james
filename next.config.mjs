@@ -1,12 +1,6 @@
 const nextConfig = {
   reactStrictMode: true,
   transpilePackages: ["react-simple-maps"],
-  api: {
-    bodyParser: {
-      sizeLimit: '1000mb', // Increase API body size limit for large video uploads
-    },
-    responseLimit: false,
-  },
   async headers() {
     return [
       {
