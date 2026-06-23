@@ -4,12 +4,12 @@ import { LeaderboardEntryModel } from "../../src/lib/models/LeaderboardEntry";
 import { CourseModel } from "../../src/lib/models/Course";
 import { UserModel } from "../../src/lib/models/User";
 import { UserProgressModel } from "../../src/lib/models/UserProgress";
+import { requireUser, allowMethods } from "../../src/lib/auth";
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  if (req.method !== "GET") {
-    res.setHeader("Allow", "GET");
-    return res.status(405).end();
-  }
+  if (!allowMethods(req, res, ["GET"])) return;
+  const auth = requireUser(req, res);
+  if (!auth) return;
 
   await connectMongo();
 

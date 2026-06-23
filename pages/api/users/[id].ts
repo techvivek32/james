@@ -5,11 +5,17 @@ import { UserModel } from "../../../src/lib/models/User";
 import { sendUserAccountUpdatedEmail, sendAdminConfirmationEmail } from "../../../src/lib/email";
 import { sendUserAccountUpdateSMS } from "../../../src/lib/telnyx";
 import { validateUserPayload } from "../../../src/lib/sanitize";
+import { requireUser, allowMethods } from "../../../src/lib/auth";
 
 export default async function handler(
   req: NextApiRequest,
   res: NextApiResponse
 ) {
+  if (!allowMethods(req, res, ["GET", "PUT", "DELETE", "PATCH"])) return;
+
+  const auth = requireUser(req, res);
+  if (!auth) return;
+
   await connectMongo();
   const rawId = req.query.id;
   const id = typeof rawId === "string" ? decodeURIComponent(rawId) : null;
@@ -19,7 +25,16 @@ export default async function handler(
     return;
   }
 
+  const targetId = id;
+  const isSelf = auth.sub === targetId;
+  const isAdmin = auth.role === "admin";
+  const isManager = auth.role === "manager";
+
   if (req.method === "GET") {
+    if (!(isSelf || isAdmin || isManager)) {
+      res.status(403).json({ error: "Forbidden" });
+      return;
+    }
     const user = await UserModel.findOne({ id }).lean();
     if (!user) {
       res.status(404).json({ error: "Not found" });
@@ -44,6 +59,10 @@ export default async function handler(
   }
 
   if (req.method === "PUT") {
+    if (!(isSelf || isAdmin)) {
+      res.status(403).json({ error: "Forbidden" });
+      return;
+    }
     const payload = req.body || {};
 
     const valid = validateUserPayload(payload);
@@ -140,6 +159,10 @@ export default async function handler(
   }
 
   if (req.method === "DELETE") {
+    if (!isAdmin) {
+      res.status(403).json({ error: "Forbidden" });
+      return;
+    }
     // Soft delete: mark as deleted instead of removing
     await UserModel.findOneAndUpdate(
       { id },
@@ -150,6 +173,10 @@ export default async function handler(
   }
 
   if (req.method === "PATCH") {
+    if (!(isSelf || isAdmin)) {
+      res.status(403).json({ error: "Forbidden" });
+      return;
+    }
     const { action, featureToggles, fcmToken } = req.body;
 
     // Save fcmToken (from Flutter app)
@@ -189,7 +216,4 @@ export default async function handler(
     res.status(400).json({ error: "Invalid action" });
     return;
   }
-
-  res.setHeader("Allow", "GET, PUT, DELETE, PATCH");
-  res.status(405).end();
 }

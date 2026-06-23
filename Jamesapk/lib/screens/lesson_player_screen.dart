@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import '../services/api_client.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 import 'package:webview_flutter_android/webview_flutter_android.dart';
 import 'package:webview_flutter_wkwebview/webview_flutter_wkwebview.dart';
@@ -154,7 +155,7 @@ class _LessonPlayerScreenState extends State<LessonPlayerScreen> {
       _fetchCourseBot();
       
       // Get course data with lesson details
-      final response = await http.get(
+      final response = await api.get(
         Uri.parse('https://millerstorm.tech/api/courses/${widget.courseId}?userId=$userId'),
       );
 
@@ -236,7 +237,7 @@ class _LessonPlayerScreenState extends State<LessonPlayerScreen> {
         
         if (userId.isNotEmpty) {
           try {
-            final progressResponse = await http.get(
+            final progressResponse = await api.get(
               Uri.parse('https://millerstorm.tech/api/progress?userId=$userId&courseId=${widget.courseId}'),
             );
             if (progressResponse.statusCode == 200) {
@@ -657,7 +658,7 @@ ${isYouTube ? '<script src="https://www.youtube.com/iframe_api"></script>' : ''}
           'submittedAt': DateTime.now().toIso8601String(),
         };
 
-        await http.post(
+        await api.post(
           Uri.parse('https://millerstorm.tech/api/progress/save'),
           headers: {'Content-Type': 'application/json'},
           body: jsonEncode({
@@ -776,7 +777,7 @@ ${isYouTube ? '<script src="https://www.youtube.com/iframe_api"></script>' : ''}
       
       // Only mark lesson pages as complete (not quizzes)
       if (_lesson!['isQuiz'] != true) {
-        final response = await http.post(
+        final response = await api.post(
           Uri.parse('https://millerstorm.tech/api/progress/save'),
           headers: {'Content-Type': 'application/json'},
           body: jsonEncode({
@@ -838,7 +839,7 @@ ${isYouTube ? '<script src="https://www.youtube.com/iframe_api"></script>' : ''}
 
   Future<void> _fetchCourseBot() async {
     try {
-      final response = await http.get(
+      final response = await api.get(
         Uri.parse('https://millerstorm.tech/api/course-ai-bots'),
       );
       
@@ -1784,7 +1785,7 @@ class _AIChatState extends State<_AIChat> {
 
   Future<void> _fetchChatHistory() async {
     try {
-      final response = await http.get(
+      final response = await api.get(
         Uri.parse('https://millerstorm.tech/api/lesson-chat-history?userId=$_userId&lessonTitle=${Uri.encodeComponent(widget.lessonTitle)}'),
       );
       
@@ -1809,7 +1810,7 @@ class _AIChatState extends State<_AIChat> {
           ? _messages[0]['content']!.substring(0, _messages[0]['content']!.length > 50 ? 50 : _messages[0]['content']!.length)
           : 'New Chat';
       
-      await http.post(
+      await api.post(
         Uri.parse('https://millerstorm.tech/api/lesson-chat-history'),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({
@@ -1843,7 +1844,7 @@ class _AIChatState extends State<_AIChat> {
 
   Future<void> _deleteChat(String chatId) async {
     try {
-      await http.delete(
+      await api.delete(
         Uri.parse('https://millerstorm.tech/api/lesson-chat-history'),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({
@@ -1903,7 +1904,7 @@ class _AIChatState extends State<_AIChat> {
     _scrollToBottom();
 
     try {
-      final response = await http.post(
+      final response = await api.post(
         Uri.parse('https://millerstorm.tech/api/chat'),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({

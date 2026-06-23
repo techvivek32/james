@@ -7,6 +7,7 @@ import { NotificationModel } from '../../../src/lib/models/Notification';
 import { UserModel } from '../../../src/lib/models/User';
 import { isQuizResultPassing } from '../../../src/lib/quiz';
 import { sendManagerDeadlineMissedEmail } from '../../../src/lib/email';
+import { requireRole, allowMethods } from '../../../src/lib/auth';
 
 // Scans playlist assignments whose deadline has passed and whose assigned user
 // has not finished every module (lessons watched + quizzes passed). For each
@@ -17,10 +18,8 @@ import { sendManagerDeadlineMissedEmail } from '../../../src/lib/email';
 // optional `managerId` query param scopes the scan to one manager's
 // assignments so loading a single manager's portal stays cheap.
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  if (req.method !== 'POST' && req.method !== 'GET') {
-    res.setHeader('Allow', 'GET, POST');
-    return res.status(405).json({ error: 'Method not allowed' });
-  }
+  if (!allowMethods(req, res, ['GET', 'POST'])) return;
+  if (!requireRole(req, res, 'admin')) return;
 
   await connectMongo();
 
