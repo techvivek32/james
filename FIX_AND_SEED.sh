@@ -12,7 +12,7 @@ const bcrypt = require("bcryptjs");
 const mongoose = require("mongoose");
 require('dotenv').config();
 
-const uri = process.env.MONGODB_URI || "mongodb://localhost:27017/millerstorm";
+const uri = process.env.MONGODB_URI;
 SEEDEOF
 
 # Get the rest of seed.js (skip first 4 lines)
@@ -28,7 +28,7 @@ node seed.js
 
 echo ""
 echo "=== Verifying users were created ==="
-mongosh "mongodb://dsatguru:vivekVOra32+@69.62.66.123:27017/millerstorm?authSource=admin" --eval "db.users.countDocuments()"
+mongosh "$MONGODB_URI" --eval "db.users.countDocuments()"
 
 echo ""
 echo "=== Restarting application ==="
