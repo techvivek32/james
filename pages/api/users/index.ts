@@ -6,6 +6,7 @@ import { sendQuickStartUserEmail, sendQuickStartManagerEmail } from "../../../sr
 import { sendUserAccountUpdateSMS } from "../../../src/lib/telnyx";
 import { exactCaseInsensitive, asString, validateUserPayload } from "../../../src/lib/sanitize";
 import { requireRole, allowMethods } from "../../../src/lib/auth";
+import { withImpersonationAudit } from "../../../src/lib/impersonation";
 async function handler(
   req: NextApiRequest,
   res: NextApiResponse
@@ -158,4 +159,4 @@ async function handler(
   }
 }
 
-export default handler;
+export default withImpersonationAudit(handler);

@@ -3,8 +3,9 @@ import { connectMongo } from '../../src/lib/mongodb';
 import { UserModel } from '../../src/lib/models/User';
 import { BusinessPlanModel } from '../../src/lib/models/BusinessPlan';
 import { requireUser, allowMethods } from '../../src/lib/auth';
+import { withImpersonationAudit } from '../../src/lib/impersonation';
 
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (!allowMethods(req, res, ['GET', 'POST'])) return;
 
   await connectMongo();
@@ -14,7 +15,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     if (!auth) return;
     // A user saves THEIR OWN plan — trust the session id, ignore any body userId.
     const userId = auth.sub;
-    const { businessPlan } = req.body;
+    const { businessPlan, notify, changeMessage } = req.body;
 
     try {
       // Update user document with business plan
@@ -30,6 +31,36 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         { $set: { ...businessPlan, userId } },
         { upsert: true }
       );
+
+      // Notify the rep's manager + all admins. Done server-side because a sales
+      // user is not authorized to enumerate users from the client.
+      if (notify) {
+        try {
+          const me = await UserModel.findOne({ id: userId }).lean() as any;
+          const admins = await UserModel.find({ role: 'admin', deleted: { $ne: true } }).lean();
+          const recipientIds = new Set<string>();
+          if (me?.managerId) recipientIds.add(me.managerId);
+          for (const a of admins) recipientIds.add(a.id as string);
+
+          const msg = `${me?.name || 'A sales rep'} updated their business plan. ${changeMessage || 'Plan committed'}`;
+          const { NotificationModel } = await import('../../src/lib/models/Notification');
+          await Promise.all(
+            Array.from(recipientIds).map((rid, i) =>
+              NotificationModel.create({
+                id: `notif-${Date.now()}-${i}`,
+                userId: rid,
+                type: 'plan_updated',
+                title: 'Sales Rep Updated Plan',
+                message: msg,
+                metadata: { updatedBy: 'sales', targetUser: userId },
+              })
+            )
+          );
+        } catch (notifyErr) {
+          console.error('Business plan notify error:', notifyErr);
+          // Non-fatal: the plan is already saved.
+        }
+      }
 
       res.status(200).json({ success: true });
     } catch (error) {
@@ -101,3 +132,5 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     res.status(405).end();
   }
 }
+
+export default withImpersonationAudit(handler);

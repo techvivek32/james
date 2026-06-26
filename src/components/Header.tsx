@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/router";
 import { NotificationBell } from "./NotificationBell";
 import { TicketButton } from "./TicketButton";
+import { useAuth } from "../contexts/AuthContext";
 
 type HeaderProps = {
   title: string;
@@ -16,8 +17,10 @@ type HeaderProps = {
 
 export function Header(props: HeaderProps) {
   const [showDropdown, setShowDropdown] = useState(false);
+  const [exiting, setExiting] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
+  const { isImpersonating, exitImpersonation } = useAuth();
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -44,6 +47,52 @@ export function Header(props: HeaderProps) {
         )}
       </div>
       <div className="header-profile">
+        {isImpersonating && (
+          <>
+            <span
+              title="You are viewing the app as another user"
+              style={{
+                background: "#ea580c",
+                color: "#fff",
+                fontSize: 11,
+                fontWeight: 700,
+                padding: "4px 10px",
+                borderRadius: 999,
+                textTransform: "uppercase",
+                letterSpacing: 0.4,
+                whiteSpace: "nowrap",
+              }}
+            >
+              Viewing As
+            </span>
+            <button
+              type="button"
+              disabled={exiting}
+              onClick={async () => {
+                setExiting(true);
+                try {
+                  await exitImpersonation();
+                } finally {
+                  setExiting(false);
+                }
+              }}
+              style={{
+                background: "#fff",
+                color: "#b45309",
+                border: "1px solid #ea580c",
+                borderRadius: 6,
+                padding: "5px 12px",
+                fontSize: 12,
+                fontWeight: 700,
+                cursor: exiting ? "default" : "pointer",
+                opacity: exiting ? 0.7 : 1,
+                whiteSpace: "nowrap",
+              }}
+            >
+              {exiting ? "Exiting…" : "Exit View"}
+            </button>
+          </>
+        )}
         <TicketButton />
         {props.userId && <NotificationBell userId={props.userId} />}
         <div className="header-user-info" style={{ position: "relative" }} ref={dropdownRef}>

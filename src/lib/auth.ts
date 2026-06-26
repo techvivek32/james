@@ -33,9 +33,14 @@ const SECRET = (() => {
 })();
 
 export type Session = {
-  sub: string; // user id
-  role: string; // user role
+  sub: string; // user id (while impersonating: the TARGET user's id)
+  role: string; // user role (while impersonating: the TARGET user's role)
   exp: number; // expiry (unix seconds)
+  // ── Impersonation claims (present only on impersonation tokens) ──
+  imp?: boolean; // isImpersonating
+  act?: string; // "actor" — the admin id that started impersonation (impersonatedBy)
+  actRole?: string; // the actor's original role (e.g. "admin")
+  lid?: string; // audit log id, links this session to its ImpersonationLog
 };
 
 function b64url(input: Buffer | string): string {
@@ -55,6 +60,31 @@ export function signSession(user: { id: string; role: string }): string {
     sub: user.id,
     role: user.role,
     exp: Math.floor(Date.now() / 1000) + MAX_AGE_SECONDS,
+  };
+  const payloadB64 = b64url(JSON.stringify(payload));
+  return `${payloadB64}.${sign(payloadB64)}`;
+}
+
+/**
+ * Sign an *impersonation* token. The resulting session presents the TARGET
+ * user's identity (`sub`/`role`) so every existing role check and route guard
+ * automatically restricts the caller to the target's permissions. The admin's
+ * identity is preserved in the `act`/`actRole` claims for audit + exit, and
+ * `lid` links the session to its ImpersonationLog row.
+ */
+export function signImpersonationSession(
+  target: { id: string; role: string },
+  admin: { id: string; role: string },
+  lid: string
+): string {
+  const payload: Session = {
+    sub: target.id,
+    role: target.role,
+    exp: Math.floor(Date.now() / 1000) + MAX_AGE_SECONDS,
+    imp: true,
+    act: admin.id,
+    actRole: admin.role,
+    lid,
   };
   const payloadB64 = b64url(JSON.stringify(payload));
   return `${payloadB64}.${sign(payloadB64)}`;

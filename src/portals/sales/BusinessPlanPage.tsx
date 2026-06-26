@@ -135,16 +135,6 @@ export function BusinessPlanPage(props: {
     };
 
     try {
-      // Save to database
-      await fetch('/api/business-plan', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          userId: props.profile.id,
-          businessPlan: plan
-        })
-      });
-
       // Build change details
       const changes: string[] = [];
       if (existingPlan?.revenueGoal !== plan.revenueGoal) {
@@ -158,40 +148,18 @@ export function BusinessPlanPage(props: {
       }
       const changeMessage = changes.length > 0 ? changes.join(', ') : 'Plan committed';
 
-      // Create notifications for manager and admins
-      const allUsers = await fetch('/api/users').then(r => r.json());
-      const admins = allUsers.filter((u: any) => u.role === 'admin');
-      const notifications = [];
-
-      if (props.profile.managerId) {
-        notifications.push({
-          userId: props.profile.managerId,
-          type: 'plan_updated',
-          title: 'Sales Rep Updated Plan',
-          message: `${props.profile.name} updated their business plan. ${changeMessage}`,
-          metadata: { updatedBy: 'sales', targetUser: props.profile.id }
-        });
-      }
-
-      notifications.push(
-        ...admins.map((admin: any) => ({
-          userId: admin.id,
-          type: 'plan_updated',
-          title: 'Sales Rep Updated Plan',
-          message: `${props.profile.name} updated their business plan. ${changeMessage}`,
-          metadata: { updatedBy: 'sales', targetUser: props.profile.id }
-        }))
-      );
-
-      await Promise.all(
-        notifications.map(n => 
-          fetch('/api/notifications', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(n)
-          })
-        )
-      );
+      // Save to database. The server fans out notifications to the rep's
+      // manager + all admins (a sales user cannot list users client-side).
+      await fetch('/api/business-plan', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId: props.profile.id,
+          businessPlan: plan,
+          notify: true,
+          changeMessage
+        })
+      });
 
       props.onProfileChange({
         ...props.profile,
