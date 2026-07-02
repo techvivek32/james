@@ -6,9 +6,8 @@ import { sendUserAccountUpdatedEmail, sendAdminConfirmationEmail } from "../../.
 import { sendUserAccountUpdateSMS } from "../../../src/lib/telnyx";
 import { validateUserPayload } from "../../../src/lib/sanitize";
 import { requireUser, allowMethods } from "../../../src/lib/auth";
-import { withImpersonationAudit } from "../../../src/lib/impersonation";
 
-async function handler(
+export default async function handler(
   req: NextApiRequest,
   res: NextApiResponse
 ) {
@@ -218,5 +217,3 @@ async function handler(
     return;
   }
 }
-
-export default withImpersonationAudit(handler);

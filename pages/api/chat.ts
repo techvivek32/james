@@ -1,14 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import { requireUser, allowMethods } from "../../src/lib/auth";
 
-// Lesson content + all pages can exceed the 1mb default body limit.
-export const config = {
-  api: {
-    bodyParser: { sizeLimit: "50mb" },
-    responseLimit: false,
-  },
-};
-
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (!allowMethods(req, res, ["POST"])) return;
   const auth = requireUser(req, res);

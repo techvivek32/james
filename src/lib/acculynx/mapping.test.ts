@@ -1,8 +1,8 @@
 // src/lib/acculynx/mapping.test.ts
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { mapJobToFacts, buildFactKey, pickRepUserId } from "./mapping";
-import { STAGE_TO_METRIC, REVENUE_STAGE, REP_TYPES } from "./config";
+import { mapJobToFacts, buildFactKey, pickRepUserId } from "./mapping.ts";
+import { STAGE_TO_METRIC, REVENUE_STAGE, REP_TYPES } from "./config.ts";
 
 const cfg = { repTypes: REP_TYPES, stageToMetric: STAGE_TO_METRIC, revenueStage: REVENUE_STAGE };
 

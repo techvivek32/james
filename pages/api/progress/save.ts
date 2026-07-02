@@ -2,9 +2,8 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { connectMongo } from "../../../src/lib/mongodb";
 import { UserProgressModel } from "../../../src/lib/models/UserProgress";
 import { requireUser, allowMethods } from "../../../src/lib/auth";
-import { withImpersonationAudit } from "../../../src/lib/impersonation";
 
-async function handler(
+export default async function handler(
   req: NextApiRequest,
   res: NextApiResponse
 ) {
@@ -107,5 +106,3 @@ async function handler(
   res.setHeader("Allow", "POST, PUT");
   res.status(405).end();
 }
-
-export default withImpersonationAudit(handler);

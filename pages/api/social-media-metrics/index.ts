@@ -2,9 +2,8 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { connectMongo } from "../../../src/lib/mongodb";
 import { SocialMediaMetricsModel } from "../../../src/lib/models/SocialMediaMetrics";
 import { requireUser, requireRole, allowMethods } from "../../../src/lib/auth";
-import { withImpersonationAudit } from "../../../src/lib/impersonation";
 
-async function handler(
+export default async function handler(
   req: NextApiRequest,
   res: NextApiResponse
 ) {
@@ -152,5 +151,3 @@ async function handler(
     res.status(405).end();
   }
 }
-
-export default withImpersonationAudit(handler);

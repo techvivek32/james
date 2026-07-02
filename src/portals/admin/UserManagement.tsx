@@ -2,7 +2,6 @@ import { useEffect, useRef, useState } from "react";
 import { UserProfile, FeatureToggles } from "../../types";
 import { isQuizResultPassing } from "../../lib/quiz";
 import { WebPagePreview as SalesWebPagePreview } from "../SalesPortal";
-import { useAuth } from "../../contexts/AuthContext";
 
 type UserRole = "admin" | "manager" | "sales" | "marketing";
 
@@ -14,8 +13,6 @@ type UserEditorProps = {
 };
 
 export function UserManagement(props: UserEditorProps) {
-  const { user: authUser, isImpersonating, viewAs } = useAuth();
-  const [viewingAsId, setViewingAsId] = useState<string | null>(null);
   const [draftUsers, setDraftUsers] = useState<UserProfile[]>(props.users);
   const [draftDeletedUsers, setDraftDeletedUsers] = useState<UserProfile[]>(props.deletedUsers);
   
@@ -1140,32 +1137,9 @@ export function UserManagement(props: UserEditorProps) {
                       updateUser({ ...selectedUser, suspended: !selectedUser.suspended });
                     }
                   }}>{selectedUser.suspended ? "Unsuspend User" : "Suspend User"}</button>
-                  {!isImpersonating && authUser?.role === "admin" && selectedUser.id !== authUser.id && (
-                    <button
-                      type="button"
-                      className="btn-secondary btn-small"
-                      disabled={viewingAsId === selectedUser.id}
-                      title={`View the app as ${selectedUser.name}`}
-                      style={{ background: "#ea580c", color: "#fff", borderColor: "#ea580c" }}
-                      onClick={async () => {
-                        if (!window.confirm(`View the app as ${selectedUser.name}? You will see exactly what they see, with only their permissions.`)) return;
-                        setViewingAsId(selectedUser.id);
-                        try {
-                          await viewAs(selectedUser.id);
-                        } catch (err: any) {
-                          alert(err?.message || "Unable to view as this user.");
-                          setViewingAsId(null);
-                        }
-                      }}
-                    >
-                      {viewingAsId === selectedUser.id ? "Loading…" : "View As"}
-                    </button>
-                  )}
-                  {!isImpersonating && (
-                    <button type="button" className="btn-ghost btn-danger" onClick={() => {
-                      if (window.confirm(`Delete ${selectedUser.name}?`)) deleteUser(selectedUser.id);
-                    }}>Delete User</button>
-                  )}
+                  <button type="button" className="btn-ghost btn-danger" onClick={() => {
+                    if (window.confirm(`Delete ${selectedUser.name}?`)) deleteUser(selectedUser.id);
+                  }}>Delete User</button>
                 </div>
               </div>
             </div>
@@ -1178,16 +1152,13 @@ export function UserManagement(props: UserEditorProps) {
                 <span className="field-label">Email</span>
                 <input
                   ref={emailInputRef}
-                  className="field-input"
-                  value={selectedUser.email ?? ""}
-                  readOnly={isImpersonating}
-                  title={isImpersonating ? "Changing email is disabled while viewing as a user" : undefined}
+                  className="field-input" 
+                  value={selectedUser.email ?? ""} 
                   onChange={(e) => {
-                    if (isImpersonating) return;
                     updateUser({ ...selectedUser, email: e.target.value });
                     setEmailError("");
                   }}
-                  onBlur={(e) => { if (!isImpersonating) checkEmailAvailability(e.target.value, selectedUser.id); }}
+                  onBlur={(e) => checkEmailAvailability(e.target.value, selectedUser.id)}
                   style={emailError ? { borderColor: "#dc2626", animation: "shake 0.3s" } : {}}
                 />
                 {emailError && (
@@ -1198,8 +1169,8 @@ export function UserManagement(props: UserEditorProps) {
               </label>
               <label className="field">
                 <span className="field-label">Reset Password</span>
-                <div className="field-input" style={{ display: "flex", alignItems: "center", gap: 8, paddingRight: 8, opacity: isImpersonating ? 0.55 : 1 }}>
-                  <input type={showPassword ? "text" : "password"} value={selectedUser.password ?? ""} disabled={isImpersonating} onChange={(e) => updateUser({ ...selectedUser, password: e.target.value })} placeholder={isImpersonating ? "Disabled while viewing as a user" : "Set a login password"} style={{ border: "none", outline: "none", background: "transparent", flex: 1, minWidth: 0 }} />
+                <div className="field-input" style={{ display: "flex", alignItems: "center", gap: 8, paddingRight: 8 }}>
+                  <input type={showPassword ? "text" : "password"} value={selectedUser.password ?? ""} onChange={(e) => updateUser({ ...selectedUser, password: e.target.value })} placeholder="Set a login password" style={{ border: "none", outline: "none", background: "transparent", flex: 1, minWidth: 0 }} />
                   <button type="button" className="btn-ghost btn-small" onClick={() => setShowPassword((prev) => !prev)} aria-label={showPassword ? "Hide password" : "Show password"} style={{ padding: 4 }}>
                     {showPassword ? (
                       <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">

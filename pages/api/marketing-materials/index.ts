@@ -2,9 +2,8 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { connectMongo } from '../../../src/lib/mongodb';
 import MarketingMaterial from '../../../src/lib/models/MarketingMaterial';
 import { requireUser, requireRole, allowMethods } from '../../../src/lib/auth';
-import { withImpersonationAudit } from '../../../src/lib/impersonation';
 
-async function handler(req: NextApiRequest, res: NextApiResponse) {
+export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (!allowMethods(req, res, ['GET', 'POST'])) return;
 
   await connectMongo();
@@ -47,5 +46,3 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     }
   }
 }
-
-export default withImpersonationAudit(handler);

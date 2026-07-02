@@ -6,14 +6,6 @@ import { UserProgressModel } from "../../../src/lib/models/UserProgress";
 import { requireUser, requireRole, allowMethods } from "../../../src/lib/auth";
 import { isQuizResultPassing } from "../../../src/lib/quiz";
 
-// Course/lesson content (rich HTML, embedded data) can exceed the 1mb default.
-export const config = {
-  api: {
-    bodyParser: { sizeLimit: "50mb" },
-    responseLimit: false,
-  },
-};
-
 export default async function handler(
   req: NextApiRequest,
   res: NextApiResponse

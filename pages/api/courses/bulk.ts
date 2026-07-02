@@ -5,7 +5,6 @@ import { UserModel } from "../../../src/lib/models/User";
 import { NotificationModel } from "../../../src/lib/models/Notification";
 import { sendPushNotificationToMultiple } from "../../../src/lib/firebase-admin";
 import { requireRole, allowMethods } from "../../../src/lib/auth";
-import { withImpersonationAudit } from "../../../src/lib/impersonation";
 
 type ContentAnnouncement = {
   course: any;
@@ -115,7 +114,7 @@ export const config = {
   },
 };
 
-async function handler(
+export default async function handler(
   req: NextApiRequest,
   res: NextApiResponse
 ) {
@@ -210,5 +209,3 @@ async function handler(
     res.status(500).json({ error: 'Failed to save courses' });
   }
 }
-
-export default withImpersonationAudit(handler);
